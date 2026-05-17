@@ -223,8 +223,12 @@ def compute_metrics(records, today_eat):
         if role:
             role_counts[role] += 1
 
-        anc = info.get("add_new_company")
-        if anc and (vs not in DONE_LIKE):
+        # add_new_company is "open" iff ALL three: a company was proposed,
+        # verification_status is "need to be update" (QA flagged it back),
+        # and no company is linked yet. Looser definitions over-counted.
+        if (info.get("add_new_company")
+                and vs == "need to be update"
+                and not info.get("company_id")):
             add_new_company_open += 1
 
         rem_date = _parse_date(info.get("reminder"))
