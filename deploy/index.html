@@ -143,10 +143,16 @@
   .login-card h1 { margin: 0 0 6px; font-size: 20px; letter-spacing: -0.01em; }
   .login-card .sub { color: var(--muted); font-size: 13px; margin-bottom: 18px; }
   .login-card input[type=email],
-  .login-card input[type=text]  { width: 100%; font-family: inherit; font-size: 14px; padding: 10px 12px; border: 1px solid var(--border); border-radius: 6px; margin-bottom: 10px; }
+  .login-card input[type=text],
+  .login-card input[type=password] { width: 100%; font-family: inherit; font-size: 14px; padding: 10px 12px; border: 1px solid var(--border); border-radius: 6px; margin-bottom: 10px; }
   .login-card input[type=email]:focus,
-  .login-card input[type=text]:focus { outline: none; border-color: var(--ink); }
-  .login-card input#loginCode { letter-spacing: 0.4em; text-align: center; font-family: ui-monospace, Menlo, monospace; font-size: 18px; }
+  .login-card input[type=text]:focus,
+  .login-card input[type=password]:focus { outline: none; border-color: var(--ink); }
+  .login-card input#loginPin { letter-spacing: 0.4em; text-align: center; font-family: ui-monospace, Menlo, monospace; font-size: 18px; }
+  .login-tabs { display: flex; gap: 0; margin-bottom: 16px; border-bottom: 1px solid var(--border); }
+  .login-tab { flex: 1; background: none; border: 0; padding: 10px 12px; font-family: inherit; font-size: 14px; color: var(--muted); cursor: pointer; border-bottom: 2px solid transparent; margin-bottom: -1px; }
+  .login-tab.active { color: var(--ink); border-bottom-color: var(--ink); font-weight: 600; }
+  .login-tab:hover { color: var(--ink); }
   .login-card .btn-primary { width: 100%; font-family: inherit; font-size: 14px; font-weight: 500; padding: 10px 14px; background: var(--ink); color: #fff; border: 0; border-radius: 6px; cursor: pointer; }
   .login-card .btn-primary:disabled { background: #888; cursor: wait; }
   .login-card .login-msg { font-size: 12px; margin-top: 10px; padding: 8px 10px; border-radius: 6px; }
@@ -160,28 +166,25 @@
 </style>
 </head>
 <body>
-<!-- Auth login overlay — shown until session is verified. Two-step OTP flow. -->
+<!-- Auth login overlay — email + 6-digit PIN (Supabase password auth), with Sign-in / Create-account tabs. -->
 <div id="loginOverlay" class="login-overlay" style="display:none">
   <div class="login-card">
     <h1>CLIENT_A Ownership QA</h1>
     <div class="sub">Sign in to access the dashboard.</div>
 
-    <!-- Step 1 — email -->
-    <form id="loginStepEmail">
-      <input type="email" id="loginEmail" placeholder="redacted@example.com" autocomplete="email" required/>
-      <button class="btn-primary" type="submit" id="loginBtn">Send code</button>
-    </form>
+    <div class="login-tabs" role="tablist">
+      <button type="button" class="login-tab active" id="tabSignIn" data-mode="signin">Sign in</button>
+      <button type="button" class="login-tab"        id="tabSignUp" data-mode="signup">Create account</button>
+    </div>
 
-    <!-- Step 2 — code -->
-    <form id="loginStepCode" style="display:none">
-      <label for="loginCode" style="display:block;font-size:12px;color:var(--muted);margin-bottom:6px">Enter the 6-digit code from your email</label>
-      <input type="text" id="loginCode" inputmode="numeric" maxlength="6" pattern="[0-9]{6}" placeholder="123456" autocomplete="one-time-code" required/>
-      <button class="btn-primary" type="submit" id="loginCodeBtn">Verify</button>
-      <a href="#" id="loginBackLink" style="display:inline-block;font-size:11px;color:var(--link);margin-top:10px;text-decoration:none">← Use a different email</a>
+    <form id="loginForm">
+      <input type="email" id="loginEmail" placeholder="redacted@example.com" autocomplete="email" required/>
+      <input type="password" id="loginPin" inputmode="numeric" pattern="[0-9]{6}" minlength="6" maxlength="6" placeholder="6-digit PIN" autocomplete="current-password" required/>
+      <button class="btn-primary" type="submit" id="loginBtn">Sign in</button>
     </form>
 
     <div id="loginMsg" class="login-msg" style="display:none"></div>
-    <div class="explainer">Restricted to <code>@impactoutsourcing.co.ke</code> staff. We'll email you a 6-digit code — enter it on the next screen to sign in.</div>
+    <div class="explainer">Use your <code>@impactoutsourcing.co.ke</code> email. Your PIN is a 6-digit number you choose — pick something you'll remember. First time here? Click <strong>Create account</strong>.</div>
   </div>
 </div>
 
@@ -2150,89 +2153,75 @@ function emailOk(email) {
   return !!email && email.toLowerCase().endsWith(ALLOWED_DOMAIN);
 }
 
-// Two-step OTP flow. Step 1 sends the code; step 2 verifies it.
-// The email is held across steps in STATE.pendingLoginEmail so step 2 can pass it
-// to verifyOtp (Supabase doesn't keep email context between the two API calls).
-function _showStep(step) {
-  document.getElementById("loginStepEmail").style.display = step === "email" ? "block" : "none";
-  document.getElementById("loginStepCode").style.display  = step === "code"  ? "block" : "none";
-  // Focus the visible input
-  setTimeout(() => {
-    const el = document.getElementById(step === "email" ? "loginEmail" : "loginCode");
-    if (el) el.focus();
-  }, 0);
+// Email + 6-digit PIN (Supabase password auth). Tabs flip between sign-in and sign-up.
+STATE.loginMode = "signin";  // default
+
+function _setLoginMode(mode) {
+  STATE.loginMode = mode;
+  const isSignup = mode === "signup";
+  document.getElementById("tabSignIn").classList.toggle("active", !isSignup);
+  document.getElementById("tabSignUp").classList.toggle("active",  isSignup);
+  document.getElementById("loginBtn").textContent = isSignup ? "Create account & sign in" : "Sign in";
+  const pin = document.getElementById("loginPin");
+  pin.setAttribute("autocomplete", isSignup ? "new-password" : "current-password");
+  pin.value = "";   // Clear PIN on tab switch (safety) — keep email so user doesn't retype it.
+  document.getElementById("loginMsg").style.display = "none";
 }
 
-document.getElementById("loginStepEmail").addEventListener("submit", async (e) => {
+document.getElementById("tabSignIn").addEventListener("click", () => _setLoginMode("signin"));
+document.getElementById("tabSignUp").addEventListener("click", () => _setLoginMode("signup"));
+
+function _friendlyAuthError(msg) {
+  if (msg === "Invalid login credentials")
+    return "Wrong email or PIN. If you haven't signed up yet, switch to Create account.";
+  if (msg === "User already registered")
+    return "An account with this email already exists. Switch to Sign in tab.";
+  if (msg === "Password should be at least 6 characters")
+    return "PIN must be exactly 6 digits.";
+  return msg;
+}
+
+document.getElementById("loginForm").addEventListener("submit", async (e) => {
   e.preventDefault();
   const email = document.getElementById("loginEmail").value.trim();
+  const pin   = document.getElementById("loginPin").value.trim();
   const msg = document.getElementById("loginMsg");
   const btn = document.getElementById("loginBtn");
+
+  // Validate domain
   if (!emailOk(email)) {
     msg.textContent = `Only ${ALLOWED_DOMAIN} addresses can access this dashboard.`;
     msg.className = "login-msg err";
     msg.style.display = "block";
     return;
   }
-  btn.disabled = true; btn.textContent = "Sending…";
-  msg.style.display = "none";
-  // No emailRedirectTo — we want the 6-digit code, not the magic link.
-  const { error } = await sb.auth.signInWithOtp({
-    email,
-    options: { shouldCreateUser: true },
-  });
-  btn.disabled = false; btn.textContent = "Send code";
-  if (error) {
-    msg.textContent = `Could not send code: ${error.message}`;
+  // Validate PIN
+  if (!/^[0-9]{6}$/.test(pin)) {
+    msg.textContent = "PIN must be exactly 6 digits.";
     msg.className = "login-msg err";
     msg.style.display = "block";
     return;
   }
-  STATE.pendingLoginEmail = email;
-  msg.textContent = `Code sent to ${email}. Check your inbox.`;
-  msg.className = "login-msg ok";
-  msg.style.display = "block";
-  _showStep("code");
-});
 
-document.getElementById("loginStepCode").addEventListener("submit", async (e) => {
-  e.preventDefault();
-  const code = document.getElementById("loginCode").value.trim();
-  const msg = document.getElementById("loginMsg");
-  const btn = document.getElementById("loginCodeBtn");
-  const email = STATE.pendingLoginEmail;
-  if (!email) {
-    msg.textContent = "Session lost — please start again with your email.";
-    msg.className = "login-msg err";
-    msg.style.display = "block";
-    _showStep("email");
-    return;
-  }
-  if (!/^[0-9]{6}$/.test(code)) {
-    msg.textContent = "Code must be exactly 6 digits.";
-    msg.className = "login-msg err";
-    msg.style.display = "block";
-    return;
-  }
-  btn.disabled = true; btn.textContent = "Verifying…";
+  const isSignup = STATE.loginMode === "signup";
+  btn.disabled = true;
+  btn.textContent = isSignup ? "Creating account…" : "Signing in…";
   msg.style.display = "none";
-  const { error } = await sb.auth.verifyOtp({ email, token: code, type: "email" });
-  btn.disabled = false; btn.textContent = "Verify";
-  if (error) {
-    msg.textContent = `Verification failed: ${error.message}`;
+
+  const result = isSignup
+    ? await sb.auth.signUp({ email, password: pin })
+    : await sb.auth.signInWithPassword({ email, password: pin });
+
+  btn.disabled = false;
+  btn.textContent = isSignup ? "Create account & sign in" : "Sign in";
+
+  if (result.error) {
+    msg.textContent = _friendlyAuthError(result.error.message);
     msg.className = "login-msg err";
     msg.style.display = "block";
     return;
   }
-  // Success — onAuthStateChange("SIGNED_IN") will run checkSessionAndBoot()
-});
-
-document.getElementById("loginBackLink").addEventListener("click", (e) => {
-  e.preventDefault();
-  STATE.pendingLoginEmail = null;
-  document.getElementById("loginCode").value = "";
-  document.getElementById("loginMsg").style.display = "none";
-  _showStep("email");
+  // Success — onAuthStateChange("SIGNED_IN") runs checkSessionAndBoot() and hides the overlay.
 });
 
 document.getElementById("signoutBtn").addEventListener("click", async () => {
