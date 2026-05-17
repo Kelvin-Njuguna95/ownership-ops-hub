@@ -229,8 +229,11 @@ class TestComputeMetrics(unittest.TestCase):
         })
 
     def test_add_new_company_open(self):
-        # Alice 2 (BO QA, anc set), Alice 5 (tagged, anc set). Bob 5 is Valid → excluded.
-        self.assertEqual(self.m["add_new_company_open"], 2)
+        # Strict 3-condition definition: anc filled AND vs == "need to be update" AND no company.
+        # None of the fixture records have vs == "need to be update" with anc set, so count is 0.
+        # (Alice 2 = BO QA, Alice 5 = tagged, Bob 5 = Valid — all fail condition 2 now.)
+        # Detailed strict-definition fixture lives in TestAddNewCompanyOpenStrictDefinition.
+        self.assertEqual(self.m["add_new_company_open"], 0)
 
     def test_reminder_metrics(self):
         self.assertEqual(self.m["reminder_open"], 3)     # Alice 2 + Alice 3 + Carol 2
@@ -1072,6 +1075,44 @@ class TestWWQABacklog(unittest.TestCase):
         self.assertEqual(aggs["totals"]["ww_qa_backlog"], 3)
         self.assertEqual(aggs["by_team"]["Simba"]["ww_qa_backlog"], 2)
         self.assertEqual(aggs["by_team"]["Tembo"]["ww_qa_backlog"], 1)
+
+
+class TestAddNewCompanyOpenStrictDefinition(unittest.TestCase):
+    """add_new_company_open requires ALL three:
+       1. add_new_company truthy (a company name was proposed),
+       2. verification_status == 'need to be update' (QA flagged back),
+       3. NO company_id linked.
+    Older versions used a looser 'vs not in {Done, Valid}' filter which over-counted."""
+
+    def test_strict_three_condition_filter(self):
+        recs = [
+            # YES — all three conditions
+            _info(assignee="Alice", add_new_company="Proposed Co A",
+                  verification_status="need to be update", company_id=None),
+            # NO — has a company linked (condition 3 fails)
+            _info(assignee="Alice", add_new_company="Proposed Co B",
+                  verification_status="need to be update", company_id="recCo123"),
+            # NO — vs is tagged, not "need to be update" (condition 2 fails)
+            #      Was COUNTED under the old loose logic; should NOT under strict.
+            _info(assignee="Alice", add_new_company="Proposed Co C",
+                  verification_status="tagged", company_id=None),
+            # NO — vs is "Selected for BO QA " (condition 2 fails)
+            #      Was COUNTED under the old loose logic; should NOT under strict.
+            _info(assignee="Alice", add_new_company="Proposed Co D",
+                  verification_status=SELECTED_FOR_BO_QA, company_id=None),
+            # NO — add_new_company empty (condition 1 fails)
+            _info(assignee="Alice", add_new_company=None,
+                  verification_status="need to be update", company_id=None),
+            # NO — vs is Done (condition 2 fails)
+            _info(assignee="Alice", add_new_company="Proposed Co F",
+                  verification_status="Done", company_id=None),
+        ]
+        aggs = aggregate(recs, TODAY, OWNERSHIP_ASSIGNEES)
+        self.assertEqual(aggs["totals"]["add_new_company_open"], 1,
+                         "only 1 record meets all 3 conditions")
+        # Per-team / per-agent should also reflect the strict count.
+        self.assertEqual(aggs["by_team"]["Simba"]["add_new_company_open"], 1)
+        self.assertEqual(aggs["by_agent"]["Alice"]["add_new_company_open"], 1)
 
 
 class TestSnapshotsRoundTrip(unittest.TestCase):

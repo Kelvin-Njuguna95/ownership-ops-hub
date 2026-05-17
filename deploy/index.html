@@ -1106,7 +1106,7 @@ PAGE_RENDERERS.boqa = function () {
       <div id="boqaStrat" class="empty">Load the worklist above to compute.</div>
     </div>
     <div class="panel">
-      <h3>add_new_company queue — 100% QA required</h3>
+      <h3>add_new_company queue — 100% QA required <span class="meta">proposed + QA flagged back + no company linked</span></h3>
       <div id="addNewCompany"></div>
     </div>
   `;
@@ -1211,7 +1211,8 @@ function renderAddNewCompanyFromCache() {
     root.innerHTML = `<div class="alert-row warn"><span class="icon">!</span><div>Showing snapshot data only — live current-state widgets are disabled.</div></div>`;
     return;
   }
-  // Use cache records (in-scope only, non-empty add_new_company, NOT done/valid)
+  // Strict 3-condition filter: add_new_company filled AND
+  // verification_status == "need to be update" AND no company linked.
   const items = [];
   for (const r of STATE.cacheRecords) {
     const c = r.cellValuesByFieldId || {};
@@ -1221,7 +1222,9 @@ function renderAddNewCompanyFromCache() {
     const anc = c[F.add_new_company];
     if (!anc) continue;
     const vs = c[F.verification_status]?.name;
-    if (vs === "Done" || vs === "Valid") continue;
+    if (vs !== "need to be update") continue;
+    const hasCompany = (c[F.company_id_and_name] || []).length > 0;
+    if (hasCompany) continue;
     items.push({ id: r.id, imo: c[F.imo], team, agent: canonicalAgent(asg), anc, vs, st: c[F.start_tagging_date] });
   }
   if (items.length === 0) {
@@ -1236,7 +1239,7 @@ function renderAddNewCompanyFromCache() {
     <td>${esc(i.vs || "")}</td>
     <td>${esc(String(i.anc).slice(0, 80))}${String(i.anc).length > 80 ? "…" : ""}</td>
   </tr>`).join("");
-  root.innerHTML = `<div class="footer-note">Showing first 100 of ${items.length} open. Each requires 100% QA review per SOP.</div>
+  root.innerHTML = `<div class="footer-note">Records where agent proposed a new company AND QA flagged back AND no company is linked yet. Showing first 100 of ${items.length} open. Each requires 100% QA review per SOP.</div>
     <table><thead><tr><th>Team</th><th>Agent</th><th>IMO</th><th>Status</th><th>add_new_company text</th></tr></thead><tbody>${rows}</tbody></table>`;
 }
 
