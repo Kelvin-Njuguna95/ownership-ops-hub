@@ -166,6 +166,9 @@
   .topbar .user-pill { display: inline-flex; align-items: center; gap: 8px; padding: 4px 10px; border-radius: 999px; font-size: 12px; background: var(--soft); border: 1px solid var(--border); color: var(--muted); }
   .topbar .user-pill .signout { background: none; border: 0; color: var(--link); cursor: pointer; font-size: 11px; padding: 0; font-family: inherit; }
   .topbar .user-pill .signout:hover { text-decoration: underline; }
+  .topbar .date-jump { display: inline-flex; align-items: center; gap: 8px; }
+  .topbar .date-jump input[type=date] { font-family: inherit; font-size: 12px; padding: 4px 8px; border: 1px solid var(--border); border-radius: 6px; background: var(--surface); color: var(--ink); }
+  .topbar .pill.warn { background: var(--warn-bg); color: var(--warn); border-color: var(--warn-bg); }
 </style>
 </head>
 <body>
@@ -231,6 +234,12 @@
   <main>
     <div class="topbar">
       <h2 id="pageTitle">…</h2>
+      <div class="date-jump">
+        <label class="small-mono" for="viewDate">View:</label>
+        <input type="date" id="viewDate" />
+        <button id="todayBtn" class="btn" style="display:none">← Today</button>
+        <span id="historicalBadge" class="pill warn" style="display:none">Historical view</span>
+      </div>
       <div class="controls">
         <span id="syncFreshness" class="pill" title="Last time sync_to_supabase.py uploaded data"><span class="dot"></span><span id="syncFreshnessText">no sync yet</span></span>
         <span id="freshness" class="pill"><span class="dot"></span><span id="freshnessText">loading…</span></span>
@@ -334,7 +343,10 @@ const PAGES = [
 const STATE = {
   audit: null,       // ww_audit_log.json
   agg: null,         // daily_aggregates.json (whole file)
-  v2: null,          // daily_aggregates.aggregates_v2
+  v2: null,          // currently-displayed aggregates_v2 (today's by default, or a historical snapshot)
+  todayV2: null,     // pinned snapshot of today's aggregates_v2 — never mutated, used as the "back to today" anchor
+  viewDate: null,    // ISO date currently displayed in the global date picker
+  viewIsHistorical: false,  // true when viewDate != todayV2.date
   legacy: null,      // daily_aggregates.{by_agent, by_team, totals}  (the old block)
   roster: null,      // config/roster.json (.teams)
   cacheRecords: [],  // flat list of records from .poll_work/recent_p*.json (sample)
@@ -1104,6 +1116,10 @@ PAGE_RENDERERS.boqa = function () {
 
 async function loadBoqa() {
   const status = document.getElementById("boqaStatus");
+  if (STATE.viewIsHistorical) {
+    status.textContent = "Live worklist disabled in historical view. Switch back to today to fetch.";
+    return;
+  }
   if (!HAS_COWORK) {
     status.textContent = "Cowork required for live fetch (browser mode can only serve cached JSON).";
     return;
@@ -1118,6 +1134,10 @@ async function loadBoqa() {
 
 function renderBoqaWorklist() {
   const root = document.getElementById("boqaWorklist");
+  if (STATE.viewIsHistorical) {
+    root.innerHTML = `<div class="alert-row warn"><span class="icon">!</span><div>Showing snapshot data only — live current-state widgets are disabled.</div></div>`;
+    return;
+  }
   if (!STATE.liveBoQa) { root.innerHTML = `<div class="empty">Not loaded.</div>`; return; }
   const today = todayEat();
   // Group by assignee, only ownership-team agents, only today
@@ -1187,6 +1207,10 @@ function renderBoqaWorklist() {
 
 function renderAddNewCompanyFromCache() {
   const root = document.getElementById("addNewCompany");
+  if (STATE.viewIsHistorical) {
+    root.innerHTML = `<div class="alert-row warn"><span class="icon">!</span><div>Showing snapshot data only — live current-state widgets are disabled.</div></div>`;
+    return;
+  }
   // Use cache records (in-scope only, non-empty add_new_company, NOT done/valid)
   const items = [];
   for (const r of STATE.cacheRecords) {
@@ -1247,6 +1271,7 @@ PAGE_RENDERERS.intake = function () {
     </div>
     <div class="panel">
       <h3>7-day intake (whole table, from cache)</h3>
+      ${STATE.viewIsHistorical ? `<div class="alert-row warn" style="margin-bottom:8px"><span class="icon">!</span><div>Note: cache reflects current state, not ${esc(STATE.viewDate)}.</div></div>` : ""}
       <div class="chart-wrap"><canvas id="chart-7day-intake"></canvas></div>
       <div class="footer-note">Derived from .poll_work cache records (capped at the 20-page fetch — see TECH_DEBT.md item 1).</div>
     </div>
@@ -1619,6 +1644,10 @@ function closeTaskDrawer() {
 async function fetchTaskRecords(taskName) {
   const status = document.getElementById("fetchTaskStatus");
   const out = document.getElementById("fetchTaskResults");
+  if (STATE.viewIsHistorical) {
+    status.textContent = "Live record fetch disabled in historical view.";
+    return;
+  }
   if (!HAS_COWORK) {
     status.textContent = "Cowork required for live fetch.";
     return;
@@ -1702,6 +1731,7 @@ PAGE_RENDERERS.wwqa = function () {
       </div>
       <div class="panel">
         <h3>Selected for WW QA — current backlog</h3>
+        ${STATE.viewIsHistorical ? `<div class="alert-row warn" style="margin-bottom:8px"><span class="icon">!</span><div>Note: cache reflects current state, not ${esc(STATE.viewDate)}.</div></div>` : ""}
         <div id="wwqaBacklogList"></div>
         <div class="footer-note">Filter records to verification_status = "Selected for WW QA". Currently ${backlog} in queue.</div>
       </div>
@@ -1746,13 +1776,14 @@ async function loadWeeklySnapshots(startISO, endISO) {
     dates.push(d.toLocaleDateString("en-CA", { timeZone: "Africa/Nairobi" }));
     d.setDate(d.getDate() + 1);
   }
-  // Always include today, since today's aggregate is in STATE.v2 (no snapshot file may exist yet).
-  if (STATE.v2?.date && !dates.includes(STATE.v2.date)) dates.push(STATE.v2.date);
+  // Always include real today (not the globally-selected view date) — today's aggregate
+  // is in STATE.todayV2 (no snapshot file may exist yet for today).
+  if (STATE.todayV2?.date && !dates.includes(STATE.todayV2.date)) dates.push(STATE.todayV2.date);
   for (const date of dates) {
     if (STATE.weeklySnapshots[date] !== undefined) continue;  // cached (incl. null = tried & missing)
-    // Today's data is already in STATE.v2 — use that directly, don't fetch.
-    if (date === STATE.v2?.date) {
-      STATE.weeklySnapshots[date] = STATE.v2;
+    // Today's data is already pinned in STATE.todayV2 — use that directly, don't fetch.
+    if (date === STATE.todayV2?.date) {
+      STATE.weeklySnapshots[date] = STATE.todayV2;
       continue;
     }
     const data = await readJson(`snapshots/${date}.json`);
@@ -1774,7 +1805,8 @@ function _enumerateDays(startISO, endISO) {
 
 PAGE_RENDERERS.weekly = async function () {
   const root = document.getElementById("page-weekly");
-  const todayISO = STATE.v2?.date || todayEat();
+  // Use real today (not the globally-selected view date) for the default range + "today" highlights.
+  const todayISO = STATE.todayV2?.date || todayEat();
   // Default range: last 7 calendar days ending yesterday.
   const t0 = new Date(todayISO + "T00:00:00+03:00");
   const yest = new Date(t0); yest.setDate(t0.getDate() - 1);
@@ -1814,7 +1846,9 @@ PAGE_RENDERERS.weekly = async function () {
 async function renderWeeklyBody(startISO, endISO) {
   await loadWeeklySnapshots(startISO, endISO);
 
-  const todayISO = STATE.v2?.date;
+  // "Today" for highlights / open-by-default details always means the real today,
+  // regardless of where the global date picker is pointed.
+  const todayISO = STATE.todayV2?.date;
   const days = _enumerateDays(startISO, endISO);
   // Roll up — both range days AND today (if today is outside range, still show its preview).
   const presentDays = days.filter(d => STATE.weeklySnapshots[d]);
@@ -1822,7 +1856,7 @@ async function renderWeeklyBody(startISO, endISO) {
 
   // Banner
   let bannerHTML = "";
-  if (presentDays.length === 0 && STATE.v2) {
+  if (presentDays.length === 0 && STATE.todayV2) {
     bannerHTML = `<div class="alert-row warn" style="margin-bottom:14px"><span class="icon">!</span><div>No snapshots yet for ${esc(startISO)} → ${esc(endISO)}. Snapshots accumulate as each poll cycle fires (one per day). Showing today's data only as a preview.</div></div>`;
   } else {
     bannerHTML = `<div class="alert-row" style="margin-bottom:14px"><span class="icon">i</span><div>Showing <strong>${presentDays.length}</strong> day${presentDays.length === 1 ? "" : "s"} of data (from ${esc(presentDays[0] || startISO)} to ${esc(presentDays[presentDays.length - 1] || endISO)}). Missing days: <strong>${missingDays.length}</strong>${missingDays.length > 0 ? ` (${missingDays.slice(0, 3).map(esc).join(", ")}${missingDays.length > 3 ? "…" : ""})` : ""}.</div></div>`;
@@ -1832,7 +1866,7 @@ async function renderWeeklyBody(startISO, endISO) {
   // Body
   const body = document.getElementById("weeklyBody");
   // Source days: present range days. If empty, fall back to today.
-  const sourceDays = presentDays.length > 0 ? presentDays : (STATE.v2?.date && STATE.weeklySnapshots[STATE.v2.date] ? [STATE.v2.date] : []);
+  const sourceDays = presentDays.length > 0 ? presentDays : (STATE.todayV2?.date && STATE.weeklySnapshots[STATE.todayV2.date] ? [STATE.todayV2.date] : []);
   if (sourceDays.length === 0) {
     body.innerHTML = `<div class="empty-state"><div class="title">No data</div>No snapshots in range and no current aggregate.</div>`;
     return;
@@ -1937,7 +1971,7 @@ async function renderWeeklyBody(startISO, endISO) {
           <h4 style="font-size:13px;color:var(--muted);margin:14px 0 6px">Not Yet Finalized — oldest 20 (today's snapshot)</h4>
           <table>
             <thead><tr><th>IMO</th><th>Role</th><th>Agent</th><th>Team</th><th>Status</th><th class="right">Days open</th><th class="right">Other open roles</th></tr></thead>
-            <tbody>${(STATE.v2?.not_yet_finalized || []).slice(0, 20).map(r => `<tr>
+            <tbody>${(STATE.todayV2?.not_yet_finalized || []).slice(0, 20).map(r => `<tr>
               <td class="mono">${esc(r.imo)}</td>
               <td>${esc(r.role || "")}</td>
               <td>${esc(r.assignee || "—")}</td>
@@ -1947,7 +1981,7 @@ async function renderWeeklyBody(startISO, endISO) {
               <td class="right">${r.open_roles_count}</td>
             </tr>`).join("")}</tbody>
           </table>
-          ${STATE.v2?.not_yet_finalized_truncated ? '<div class="footer-note">Showing oldest 500; older records truncated.</div>' : ""}
+          ${STATE.todayV2?.not_yet_finalized_truncated ? '<div class="footer-note">Showing oldest 500; older records truncated.</div>' : ""}
         ` : `<div class="footer-note">Historical Not Yet Finalized list requires record-level snapshots — Phase E2.</div>`}
       </div>
     </details>`;
@@ -2149,6 +2183,19 @@ function noDataHtml(msg) {
 async function init() {
   const ok = await loadAll();
   if (!ok) return;
+  // Pin today's aggregate as the "back to today" anchor. loadAll() may run again
+  // (Refresh button), so always reset the date picker back to today on init.
+  STATE.todayV2 = STATE.v2;
+  STATE.viewDate = STATE.v2?.date || null;
+  STATE.viewIsHistorical = false;
+  const dp = document.getElementById("viewDate");
+  if (dp && STATE.viewDate) {
+    dp.max   = STATE.viewDate;     // no future dates
+    dp.value = STATE.viewDate;
+  }
+  document.getElementById("todayBtn").style.display = "none";
+  document.getElementById("historicalBadge").style.display = "none";
+
   renderNav();
   renderFreshness();
   goto(STATE.currentPage);
@@ -2158,6 +2205,65 @@ document.getElementById("refreshBtn").addEventListener("click", async () => {
   document.getElementById("refreshBtn").disabled = true;
   await init();
   document.getElementById("refreshBtn").disabled = false;
+});
+
+// ---- Global date picker — jump STATE.v2 to any historical snapshot ----
+function rerenderCurrentPage() {
+  for (const id in STATE.charts) destroyChart(id);
+  const renderer = PAGE_RENDERERS[STATE.currentPage];
+  if (renderer) renderer();
+}
+
+function setViewToToday() {
+  STATE.v2 = STATE.todayV2;
+  STATE.viewDate = STATE.todayV2.date;
+  STATE.viewIsHistorical = false;
+  document.getElementById("viewDate").value = STATE.viewDate;
+  document.getElementById("todayBtn").style.display = "none";
+  document.getElementById("historicalBadge").style.display = "none";
+  rerenderCurrentPage();
+}
+
+async function setViewToHistorical(date) {
+  // Reuse snapshots cache if loaded; else fetch from Supabase Storage.
+  STATE.weeklySnapshots = STATE.weeklySnapshots || {};
+  if (STATE.weeklySnapshots[date] === undefined) {
+    STATE.weeklySnapshots[date] = await readJson(`snapshots/${date}.json`);
+  }
+  const snap = STATE.weeklySnapshots[date];
+  if (!snap) {
+    // 404 — surface in the active page area and revert the picker.
+    const pageEl = document.getElementById(`page-${STATE.currentPage}`);
+    if (pageEl) {
+      const banner = document.createElement("div");
+      banner.className = "alert-row warn";
+      banner.style.marginBottom = "14px";
+      banner.innerHTML = `<span class="icon">!</span><div>No snapshot for <strong>${esc(date)}</strong>. Snapshots accumulate one per day as poll cycles fire.</div>`;
+      pageEl.prepend(banner);
+      setTimeout(() => banner.remove(), 6000);
+    }
+    document.getElementById("viewDate").value = STATE.todayV2.date;
+    return;
+  }
+  STATE.v2 = snap;
+  STATE.viewDate = date;
+  STATE.viewIsHistorical = true;
+  document.getElementById("todayBtn").style.display = "inline-block";
+  const badge = document.getElementById("historicalBadge");
+  badge.style.display = "inline-flex";
+  badge.textContent = `📅 Viewing ${date}`;
+  rerenderCurrentPage();
+}
+
+document.getElementById("viewDate").addEventListener("change", async (e) => {
+  const date = e.target.value;
+  if (!date) return;
+  if (date === STATE.todayV2.date) setViewToToday();
+  else                              await setViewToHistorical(date);
+});
+
+document.getElementById("todayBtn").addEventListener("click", () => {
+  setViewToToday();
 });
 
 // ============================================================================
