@@ -153,6 +153,9 @@
   .login-tab { flex: 1; background: none; border: 0; padding: 10px 12px; font-family: inherit; font-size: 14px; color: var(--muted); cursor: pointer; border-bottom: 2px solid transparent; margin-bottom: -1px; }
   .login-tab.active { color: var(--ink); border-bottom-color: var(--ink); font-weight: 600; }
   .login-tab:hover { color: var(--ink); }
+  .login-link { background: none; border: 0; color: var(--link); cursor: pointer; font-family: inherit; font-size: 11px; padding: 0; margin-top: 10px; text-align: left; display: inline-block; }
+  .login-link:hover { text-decoration: underline; }
+  .login-card h2 { font-size: 16px; margin: 0 0 12px; font-weight: 600; }
   .login-card .btn-primary { width: 100%; font-family: inherit; font-size: 14px; font-weight: 500; padding: 10px 14px; background: var(--ink); color: #fff; border: 0; border-radius: 6px; cursor: pointer; }
   .login-card .btn-primary:disabled { background: #888; cursor: wait; }
   .login-card .login-msg { font-size: 12px; margin-top: 10px; padding: 8px 10px; border-radius: 6px; }
@@ -166,24 +169,51 @@
 </style>
 </head>
 <body>
-<!-- Auth login overlay — email + 6-digit PIN (Supabase password auth), with Sign-in / Create-account tabs. -->
+<!-- Auth login overlay — three modes: Sign in/Create account tabs, Reset PIN request, New PIN setup. -->
 <div id="loginOverlay" class="login-overlay" style="display:none">
   <div class="login-card">
     <h1>Windward Ownership QA</h1>
     <div class="sub">Sign in to access the dashboard.</div>
 
-    <div class="login-tabs" role="tablist">
-      <button type="button" class="login-tab active" id="tabSignIn" data-mode="signin">Sign in</button>
-      <button type="button" class="login-tab"        id="tabSignUp" data-mode="signup">Create account</button>
+    <!-- Mode 1: Sign in / Create account tabs -->
+    <div id="loginStepTabs">
+      <div class="login-tabs" role="tablist">
+        <button type="button" class="login-tab active" id="tabSignIn" data-mode="signin">Sign in</button>
+        <button type="button" class="login-tab"        id="tabSignUp" data-mode="signup">Create account</button>
+      </div>
+      <form id="loginForm">
+        <input type="email" id="loginEmail" placeholder="you@impactoutsourcing.co.ke" autocomplete="email" required/>
+        <input type="password" id="loginPin" inputmode="numeric" pattern="[0-9]{6}" minlength="6" maxlength="6" placeholder="6-digit PIN" autocomplete="current-password" required/>
+        <button class="btn-primary" type="submit" id="loginBtn">Sign in</button>
+      </form>
     </div>
 
-    <form id="loginForm">
-      <input type="email" id="loginEmail" placeholder="you@impactoutsourcing.co.ke" autocomplete="email" required/>
-      <input type="password" id="loginPin" inputmode="numeric" pattern="[0-9]{6}" minlength="6" maxlength="6" placeholder="6-digit PIN" autocomplete="current-password" required/>
-      <button class="btn-primary" type="submit" id="loginBtn">Sign in</button>
-    </form>
+    <!-- Mode 2: Reset PIN request -->
+    <div id="loginStepReset" style="display:none">
+      <h2>Reset your PIN</h2>
+      <form id="loginResetForm">
+        <input type="email" id="resetEmail" placeholder="you@impactoutsourcing.co.ke" autocomplete="email" required/>
+        <button class="btn-primary" type="submit" id="resetBtn">Send reset link</button>
+      </form>
+    </div>
+
+    <!-- Mode 3: New PIN setup (after recovery link click) -->
+    <div id="loginStepNewPin" style="display:none">
+      <h2>Set your new PIN</h2>
+      <form id="loginNewPinForm">
+        <input type="password" id="newPin1" inputmode="numeric" pattern="[0-9]{6}" minlength="6" maxlength="6" placeholder="New 6-digit PIN" autocomplete="new-password" required/>
+        <input type="password" id="newPin2" inputmode="numeric" pattern="[0-9]{6}" minlength="6" maxlength="6" placeholder="Confirm new PIN"  autocomplete="new-password" required/>
+        <button class="btn-primary" type="submit" id="newPinBtn">Update PIN</button>
+      </form>
+    </div>
 
     <div id="loginMsg" class="login-msg" style="display:none"></div>
+
+    <!-- Mode-1 footer: Forgot PIN link (hidden when on Create account tab) -->
+    <button type="button" id="forgotPinBtn" class="login-link" style="display:inline-block">Forgot PIN? Reset it via email</button>
+    <!-- Mode-2 footer: back link -->
+    <button type="button" id="resetBackLink" class="login-link" style="display:none">← Back to sign in</button>
+
     <div class="explainer">Use your <code>@impactoutsourcing.co.ke</code> email. Your PIN is a 6-digit number you choose — pick something you'll remember. First time here? Click <strong>Create account</strong>.</div>
   </div>
 </div>
@@ -2162,9 +2192,25 @@ function _setLoginMode(mode) {
   document.getElementById("tabSignIn").classList.toggle("active", !isSignup);
   document.getElementById("tabSignUp").classList.toggle("active",  isSignup);
   document.getElementById("loginBtn").textContent = isSignup ? "Create account & sign in" : "Sign in";
+  // Forgot-PIN link only makes sense on the Sign-in tab.
+  document.getElementById("forgotPinBtn").style.display = isSignup ? "none" : "inline-block";
   const pin = document.getElementById("loginPin");
   pin.setAttribute("autocomplete", isSignup ? "new-password" : "current-password");
   pin.value = "";   // Clear PIN on tab switch (safety) — keep email so user doesn't retype it.
+  document.getElementById("loginMsg").style.display = "none";
+}
+
+// Switch the login card between its three views: "tabs" (sign-in/create), "reset" (request reset email),
+// "newpin" (set new PIN after clicking the recovery link).
+function _showLoginStep(step) {
+  document.getElementById("loginStepTabs").style.display    = step === "tabs"   ? "block" : "none";
+  document.getElementById("loginStepReset").style.display   = step === "reset"  ? "block" : "none";
+  document.getElementById("loginStepNewPin").style.display  = step === "newpin" ? "block" : "none";
+  // Footer-link visibility: forgot-PIN only with the Sign-in tab; back-link only with the reset view.
+  const onTabs  = step === "tabs";
+  const onReset = step === "reset";
+  document.getElementById("forgotPinBtn").style.display  = (onTabs && STATE.loginMode !== "signup") ? "inline-block" : "none";
+  document.getElementById("resetBackLink").style.display = onReset ? "inline-block" : "none";
   document.getElementById("loginMsg").style.display = "none";
 }
 
@@ -2224,6 +2270,81 @@ document.getElementById("loginForm").addEventListener("submit", async (e) => {
   // Success — onAuthStateChange("SIGNED_IN") runs checkSessionAndBoot() and hides the overlay.
 });
 
+// ---- Forgot PIN — request reset email ----
+document.getElementById("forgotPinBtn").addEventListener("click", () => {
+  // Prefill reset email from sign-in email field.
+  document.getElementById("resetEmail").value = document.getElementById("loginEmail").value.trim();
+  _showLoginStep("reset");
+  setTimeout(() => document.getElementById("resetEmail").focus(), 0);
+});
+
+document.getElementById("resetBackLink").addEventListener("click", () => {
+  _showLoginStep("tabs");
+});
+
+document.getElementById("loginResetForm").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const email = document.getElementById("resetEmail").value.trim();
+  const msg = document.getElementById("loginMsg");
+  const btn = document.getElementById("resetBtn");
+  if (!emailOk(email)) {
+    msg.textContent = `Only ${ALLOWED_DOMAIN} addresses can access this dashboard.`;
+    msg.className = "login-msg err";
+    msg.style.display = "block";
+    return;
+  }
+  btn.disabled = true; btn.textContent = "Sending…";
+  msg.style.display = "none";
+  const { error } = await sb.auth.resetPasswordForEmail(email, {
+    redirectTo: `${window.location.origin}#reset`,
+  });
+  btn.disabled = false; btn.textContent = "Send reset link";
+  if (error) {
+    msg.textContent = error.message;
+    msg.className = "login-msg err";
+    msg.style.display = "block";
+    return;
+  }
+  msg.textContent = "Reset email sent. Check your inbox and click the link to set a new PIN.";
+  msg.className = "login-msg ok";
+  msg.style.display = "block";
+});
+
+// ---- Set new PIN (fires on PASSWORD_RECOVERY event below) ----
+document.getElementById("loginNewPinForm").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const p1 = document.getElementById("newPin1").value.trim();
+  const p2 = document.getElementById("newPin2").value.trim();
+  const msg = document.getElementById("loginMsg");
+  const btn = document.getElementById("newPinBtn");
+  if (!/^[0-9]{6}$/.test(p1)) {
+    msg.textContent = "PIN must be exactly 6 digits.";
+    msg.className = "login-msg err";
+    msg.style.display = "block";
+    return;
+  }
+  if (p1 !== p2) {
+    msg.textContent = "PINs don't match.";
+    msg.className = "login-msg err";
+    msg.style.display = "block";
+    return;
+  }
+  btn.disabled = true; btn.textContent = "Updating…";
+  msg.style.display = "none";
+  const { error } = await sb.auth.updateUser({ password: p1 });
+  btn.disabled = false; btn.textContent = "Update PIN";
+  if (error) {
+    msg.textContent = error.message;
+    msg.className = "login-msg err";
+    msg.style.display = "block";
+    return;
+  }
+  msg.textContent = "PIN updated. Signing you in…";
+  msg.className = "login-msg ok";
+  msg.style.display = "block";
+  setTimeout(() => checkSessionAndBoot(), 1000);
+});
+
 document.getElementById("signoutBtn").addEventListener("click", async () => {
   await sb.auth.signOut();
   window.location.reload();
@@ -2248,9 +2369,15 @@ async function checkSessionAndBoot() {
   await init();
 }
 
-// On auth state change (e.g. magic-link redirect completes), re-check.
+// On auth state change (recovery redirect, sign-in completion, sign-out).
 sb.auth.onAuthStateChange((event, session) => {
-  if (event === "SIGNED_IN") checkSessionAndBoot();
+  if (event === "PASSWORD_RECOVERY") {
+    // User just clicked the reset link — show the "Set your new PIN" view.
+    showLogin();
+    _showLoginStep("newpin");
+    return;
+  }
+  if (event === "SIGNED_IN")  checkSessionAndBoot();
   if (event === "SIGNED_OUT") window.location.reload();
 });
 
