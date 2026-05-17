@@ -142,8 +142,11 @@
   .login-card { background: var(--surface); border-radius: 12px; padding: 30px 32px; max-width: 420px; width: 100%; box-shadow: 0 10px 40px rgba(0,0,0,0.3); }
   .login-card h1 { margin: 0 0 6px; font-size: 20px; letter-spacing: -0.01em; }
   .login-card .sub { color: var(--muted); font-size: 13px; margin-bottom: 18px; }
-  .login-card input[type=email] { width: 100%; font-family: inherit; font-size: 14px; padding: 10px 12px; border: 1px solid var(--border); border-radius: 6px; margin-bottom: 10px; }
-  .login-card input[type=email]:focus { outline: none; border-color: var(--ink); }
+  .login-card input[type=email],
+  .login-card input[type=text]  { width: 100%; font-family: inherit; font-size: 14px; padding: 10px 12px; border: 1px solid var(--border); border-radius: 6px; margin-bottom: 10px; }
+  .login-card input[type=email]:focus,
+  .login-card input[type=text]:focus { outline: none; border-color: var(--ink); }
+  .login-card input#loginCode { letter-spacing: 0.4em; text-align: center; font-family: ui-monospace, Menlo, monospace; font-size: 18px; }
   .login-card .btn-primary { width: 100%; font-family: inherit; font-size: 14px; font-weight: 500; padding: 10px 14px; background: var(--ink); color: #fff; border: 0; border-radius: 6px; cursor: pointer; }
   .login-card .btn-primary:disabled { background: #888; cursor: wait; }
   .login-card .login-msg { font-size: 12px; margin-top: 10px; padding: 8px 10px; border-radius: 6px; }
@@ -157,17 +160,28 @@
 </style>
 </head>
 <body>
-<!-- Auth login overlay — shown until session is verified -->
+<!-- Auth login overlay — shown until session is verified. Two-step OTP flow. -->
 <div id="loginOverlay" class="login-overlay" style="display:none">
   <div class="login-card">
     <h1>Windward Ownership QA</h1>
     <div class="sub">Sign in to access the dashboard.</div>
-    <form id="loginForm">
+
+    <!-- Step 1 — email -->
+    <form id="loginStepEmail">
       <input type="email" id="loginEmail" placeholder="you@impactoutsourcing.co.ke" autocomplete="email" required/>
-      <button class="btn-primary" type="submit" id="loginBtn">Send magic link</button>
-      <div id="loginMsg" class="login-msg" style="display:none"></div>
+      <button class="btn-primary" type="submit" id="loginBtn">Send code</button>
     </form>
-    <div class="explainer">Restricted to <code>@impactoutsourcing.co.ke</code> staff. Check your inbox after clicking send — the link signs you in directly.</div>
+
+    <!-- Step 2 — code -->
+    <form id="loginStepCode" style="display:none">
+      <label for="loginCode" style="display:block;font-size:12px;color:var(--muted);margin-bottom:6px">Enter the 6-digit code from your email</label>
+      <input type="text" id="loginCode" inputmode="numeric" maxlength="6" pattern="[0-9]{6}" placeholder="123456" autocomplete="one-time-code" required/>
+      <button class="btn-primary" type="submit" id="loginCodeBtn">Verify</button>
+      <a href="#" id="loginBackLink" style="display:inline-block;font-size:11px;color:var(--link);margin-top:10px;text-decoration:none">← Use a different email</a>
+    </form>
+
+    <div id="loginMsg" class="login-msg" style="display:none"></div>
+    <div class="explainer">Restricted to <code>@impactoutsourcing.co.ke</code> staff. We'll email you a 6-digit code — enter it on the next screen to sign in.</div>
   </div>
 </div>
 
@@ -215,7 +229,7 @@
 // ============================================================================
 // Supabase — public anon key, safe to embed. Service role key stays server-side.
 const SUPABASE_URL      = "https://isccbmgjgtdosiccstcp.supabase.co";
-const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImlzY2NibWdqZ3Rkb3NpY2NzdGNwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg2Nzc1MTQsImV4cCI6MjA5NDI1MzU1NH0.qfkff9oiJcRl5mBRfMxn6pbj7OIpR5pGl-eOIODoVMo";
+const SUPABASE_ANON_KEY = "sb_publishable_M4_8MhW0xVUC6HEwp57sow_Yims-p3k";
 const SUPABASE_BUCKET   = "dashboard-data";
 const ALLOWED_DOMAIN    = "@impactoutsourcing.co.ke";
 const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
@@ -2136,7 +2150,20 @@ function emailOk(email) {
   return !!email && email.toLowerCase().endsWith(ALLOWED_DOMAIN);
 }
 
-document.getElementById("loginForm").addEventListener("submit", async (e) => {
+// Two-step OTP flow. Step 1 sends the code; step 2 verifies it.
+// The email is held across steps in STATE.pendingLoginEmail so step 2 can pass it
+// to verifyOtp (Supabase doesn't keep email context between the two API calls).
+function _showStep(step) {
+  document.getElementById("loginStepEmail").style.display = step === "email" ? "block" : "none";
+  document.getElementById("loginStepCode").style.display  = step === "code"  ? "block" : "none";
+  // Focus the visible input
+  setTimeout(() => {
+    const el = document.getElementById(step === "email" ? "loginEmail" : "loginCode");
+    if (el) el.focus();
+  }, 0);
+}
+
+document.getElementById("loginStepEmail").addEventListener("submit", async (e) => {
   e.preventDefault();
   const email = document.getElementById("loginEmail").value.trim();
   const msg = document.getElementById("loginMsg");
@@ -2149,20 +2176,63 @@ document.getElementById("loginForm").addEventListener("submit", async (e) => {
   }
   btn.disabled = true; btn.textContent = "Sending…";
   msg.style.display = "none";
+  // No emailRedirectTo — we want the 6-digit code, not the magic link.
   const { error } = await sb.auth.signInWithOtp({
     email,
-    options: { emailRedirectTo: window.location.origin },
+    options: { shouldCreateUser: true },
   });
-  btn.disabled = false; btn.textContent = "Send magic link";
+  btn.disabled = false; btn.textContent = "Send code";
   if (error) {
-    msg.textContent = `Could not send magic link: ${error.message}`;
+    msg.textContent = `Could not send code: ${error.message}`;
     msg.className = "login-msg err";
     msg.style.display = "block";
-  } else {
-    msg.textContent = "Magic link sent — check your email.";
-    msg.className = "login-msg ok";
-    msg.style.display = "block";
+    return;
   }
+  STATE.pendingLoginEmail = email;
+  msg.textContent = `Code sent to ${email}. Check your inbox.`;
+  msg.className = "login-msg ok";
+  msg.style.display = "block";
+  _showStep("code");
+});
+
+document.getElementById("loginStepCode").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const code = document.getElementById("loginCode").value.trim();
+  const msg = document.getElementById("loginMsg");
+  const btn = document.getElementById("loginCodeBtn");
+  const email = STATE.pendingLoginEmail;
+  if (!email) {
+    msg.textContent = "Session lost — please start again with your email.";
+    msg.className = "login-msg err";
+    msg.style.display = "block";
+    _showStep("email");
+    return;
+  }
+  if (!/^[0-9]{6}$/.test(code)) {
+    msg.textContent = "Code must be exactly 6 digits.";
+    msg.className = "login-msg err";
+    msg.style.display = "block";
+    return;
+  }
+  btn.disabled = true; btn.textContent = "Verifying…";
+  msg.style.display = "none";
+  const { error } = await sb.auth.verifyOtp({ email, token: code, type: "email" });
+  btn.disabled = false; btn.textContent = "Verify";
+  if (error) {
+    msg.textContent = `Verification failed: ${error.message}`;
+    msg.className = "login-msg err";
+    msg.style.display = "block";
+    return;
+  }
+  // Success — onAuthStateChange("SIGNED_IN") will run checkSessionAndBoot()
+});
+
+document.getElementById("loginBackLink").addEventListener("click", (e) => {
+  e.preventDefault();
+  STATE.pendingLoginEmail = null;
+  document.getElementById("loginCode").value = "";
+  document.getElementById("loginMsg").style.display = "none";
+  _showStep("email");
 });
 
 document.getElementById("signoutBtn").addEventListener("click", async () => {
