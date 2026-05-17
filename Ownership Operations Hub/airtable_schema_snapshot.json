@@ -1,0 +1,175 @@
+{
+  "fetched_at": "2026-05-17",
+  "source": "Airtable meta API via MCP (list_tables_for_base + get_table_schema)",
+  "baseId": "appHZdfC2sn9MLGFZ",
+  "table": {
+    "id": "tblpj9aJP4ExhYCZF",
+    "name": "relations_support",
+    "primaryFieldId": "fldqWGr2XDH9BRmtE",
+    "fields": [
+      { "id": "fldqWGr2XDH9BRmtE", "name": "imo", "type": "singleLineText" },
+      {
+        "id": "fldnBNNkH7w4rS3fG",
+        "name": "role",
+        "type": "singleSelect",
+        "choices": [
+          { "id": "selJSNEnftv1wIeNY", "name": "BENEFICIAL_OWNER" },
+          { "id": "selLdyPEwYSIO6M3c", "name": "OWNER" },
+          { "id": "sellvzVdWUrt6Q9H6", "name": "MANAGEMENT" },
+          { "id": "selhwlcSBqi2UoMuc", "name": "OPERATOR" },
+          { "id": "selVfxhaerulENLxJ", "name": "COMMERCIAL_CONTROLLER" },
+          { "id": "selylOcImatyvbOk8", "name": "TECHNICAL_MANAGER" },
+          { "id": "selPWuwRTLAj5PCeM", "name": "ISM_MANAGER" },
+          { "id": "selyNKujjYLS03W1A", "name": "role" }
+        ]
+      },
+      { "id": "fldaMBqa6bEANUPpn", "name": "company_id_and_name", "type": "multipleRecordLinks" },
+      { "id": "fldUNsja6NUuDtJvN", "name": "start_date", "type": "dateTime" },
+      {
+        "id": "fldlsbwX7KnDRPn5j",
+        "name": "WW QA",
+        "type": "singleSelect",
+        "choices": [
+          { "id": "selRHAdlW2hOfWOIT", "name": "approve" },
+          { "id": "sel40voq1BCTNZZXo", "name": "change" }
+        ]
+      },
+      { "id": "fldDTTHgt8V36Zm83", "name": "current_owner", "type": "multilineText" },
+      {
+        "id": "fldYSXHGwZvxXK7s6",
+        "name": "verification_status",
+        "type": "singleSelect",
+        "choices": [
+          { "id": "self9gNziJk2Fxvip", "name": "waiting" },
+          { "id": "selPTJlCnPN8q1PvQ", "name": "tagged" },
+          { "id": "selqwElFeBWbcNtT4", "name": "need to be update" },
+          { "id": "selHROyMcSsu160lS", "name": "Selected for BO QA " },
+          { "id": "selSXpSACthHai6O3", "name": "Done" },
+          { "id": "selTLk5FHEao5Py0Y", "name": "Selected for WW QA" },
+          { "id": "selEL7BV7trNfIHGS", "name": "Valid" }
+        ]
+      },
+      { "id": "fld2wp1Q0GQJjbYdA", "name": "add a new company", "type": "multilineText" },
+      { "id": "fldXyIOPWBTYvowv7", "name": "WW QA assignee", "type": "singleCollaborator" },
+      { "id": "fldp2zKCY3TfysT1C", "name": "source_flow", "type": "singleLineText" },
+      { "id": "fldK9xjvBASgXIKlm", "name": "Dead vessel", "type": "checkbox" },
+      {
+        "id": "fldr79tP2GV0OztrZ",
+        "name": "comments",
+        "type": "singleSelect",
+        "choices": [
+          { "id": "seluMqyncapikI4HL", "name": "suspected zombie vessel" },
+          { "id": "selJpduRkjS1Guu1z", "name": "IMO searched but not found" },
+          { "id": "selwjop1HtiGPjpX8", "name": "IMO not found, has positional data" },
+          { "id": "selWAJj7VgLApk1Ck", "name": "IMO Never Existed, No positional data" },
+          { "id": "selJDIUy9hjv5DjA5", "name": "IMO not found on Nexis/Equasis, No positional data" },
+          { "id": "selLna4jiecBG6Ifm", "name": "IMO not found on Nexis/Equasis/WW" },
+          { "id": "selWtxXH5otWkW20y", "name": "IMO found, No positional data on WW" },
+          { "id": "selqBqi77RyyDQKPe", "name": "No Longer updated by (LRF) IHSF" },
+          { "id": "selyEjKtfEZQUX6AE", "name": "Role not found" },
+          { "id": "selMgwiPmWWE8tl97", "name": "Cancelled before construction" },
+          { "id": "seloDqrtZukWljLbZ", "name": "Document Not Available" }
+        ]
+      },
+      { "id": "fldiZyGLchLSY2SWn", "name": "source", "type": "singleLineText" },
+      { "id": "fld0hZzdjksTCKJ09", "name": "last_modified", "type": "lastModifiedTime" },
+      {
+        "id": "flda5KtnUWmkFijJz",
+        "name": "status",
+        "type": "singleSelect",
+        "choices": [
+          { "id": "selhCVtIJ4l0BvE1g", "name": "Waiting" },
+          { "id": "selRmeSXMMmrBjK99", "name": "In Progress" },
+          { "id": "selanHmLX3QItio3G", "name": "Tagged" },
+          { "id": "selgTcRtTFLVGDIXQ", "name": "Invalid" },
+          { "id": "selyDzEtSzmW5CXcO", "name": "Cargill_Bulk_Carrier_2023-2" },
+          { "id": "selsPSs3lNhW5hWIq", "name": "Leopard" },
+          { "id": "selF0UBHOkGS5rfpf", "name": "valid" }
+        ]
+      },
+      { "id": "fld8BxCITngW9PDtX", "name": "company_id", "type": "multipleLookupValues" },
+      { "id": "fldlPkvV6BiE7glLZ", "name": "requested_by", "type": "singleLineText" },
+      { "id": "fldT4xElSgcdnqTmy", "name": "assignee", "type": "multipleCollaborators" },
+      { "id": "fldpz9XuDm5xRblSL", "name": "last_modified_by", "type": "lastModifiedBy" },
+      { "id": "fldJaiC5C73UoUzaY", "name": "recommendations", "type": "multilineText" },
+      { "id": "fldsa5i9PmThRsVTr", "name": "company_id (from company_id_and_name)", "type": "multipleLookupValues" },
+      { "id": "fld7tZnRp36yFOWzp", "name": "company_name (from company_id_and_name)", "type": "multipleLookupValues" },
+      {
+        "id": "fldzqFTRYUOVakl1A",
+        "name": "Peer Review",
+        "type": "singleSelect",
+        "choices": [
+          { "id": "selVlyBetH7lEPJlg", "name": "Approved" },
+          { "id": "selYjlutcdvgLnuqi", "name": "Changed" },
+          { "id": "sela3zDG8x4i0riXV", "name": "approve" }
+        ]
+      },
+      { "id": "fld7fm1PknPk1UueW", "name": "start tagging date", "type": "dateTime" },
+      {
+        "id": "fldpTTs63XmNYNPww",
+        "name": "QA_status",
+        "type": "singleSelect",
+        "choices": [
+          { "id": "selXtoUGUOyBNA1Vk", "name": "approve" },
+          { "id": "sel1CqVF90T82q7Xw", "name": "changed" }
+        ]
+      },
+      { "id": "flda5zj1ne1BuJhOm", "name": "company_name", "type": "multipleLookupValues" },
+      { "id": "fldWSU7U90DX4JafO", "name": "task_open_since", "type": "createdTime" },
+      { "id": "fldZL6JmYMlFIhCLl", "name": "Created", "type": "createdTime" },
+      { "id": "fldmHBZbg57FWvrcS", "name": "reminder", "type": "date" },
+      { "id": "fldMiucXr16QXhAhZ", "name": "formula", "type": "formula" },
+      { "id": "fldGIlfR5G3c9cGou", "name": "companies copy", "type": "singleLineText" },
+      { "id": "fldtQ5HCuU45HOcg4", "name": "QA assignee", "type": "singleCollaborator" },
+      {
+        "id": "fld01JHyl1RgwYmoD",
+        "name": "risk",
+        "type": "singleSelect",
+        "choices": [
+          { "id": "selt2pkOSfr5OFaJT", "name": "Sanctions" },
+          { "id": "sel4zg83yfcEIMPzc", "name": "High" },
+          { "id": "selxJk2sacVVZ8MGu", "name": "Medium " },
+          { "id": "selLX8akK0q0ohfYA", "name": "Low" },
+          { "id": "sel52UPTJDfQD6xbL", "name": "Unknown" },
+          { "id": "sel98KXRC3muNNN8Q", "name": "0" },
+          { "id": "selXolJFINy4nwvWq", "name": "3" },
+          { "id": "selcE8pdDPv5LJyy5", "name": "2" },
+          { "id": "selhKP0E58pbHd6La", "name": "1" }
+        ]
+      },
+      { "id": "fldph8vgQ40dYQlXt", "name": "Valid/done by BO", "type": "checkbox" },
+      { "id": "fld2XVjQDnmzQzFuv", "name": "Last Modified", "type": "lastModifiedTime" },
+      { "id": "fldn11q14zrGwzEq5", "name": "last_modified_", "type": "lastModifiedTime" },
+      { "id": "fldbcTW2CD2HjejGN", "name": "Done Selected Time", "type": "dateTime", "description": "Shows the last modified time if verification_status is 'Done', otherwise blank." },
+      { "id": "fld9f125Y5wZt1Ctk", "name": "QA_status_ts", "type": "lastModifiedTime" },
+      { "id": "fldu7c6IVtQ7MucWP", "name": "Valid Selected Time", "type": "formula" },
+      { "id": "fldGbrzM7z05OM6wb", "name": "is_change", "type": "singleLineText" }
+    ]
+  },
+  "expected_vs_actual": [
+    { "expected": "qa_assignee",      "status": "name_mismatch",  "actual_name": "QA assignee",        "actual_id": "fldtQ5HCuU45HOcg4", "actual_type": "singleCollaborator" },
+    { "expected": "ww_qa_assignee",   "status": "name_mismatch",  "actual_name": "WW QA assignee",     "actual_id": "fldXyIOPWBTYvowv7", "actual_type": "singleCollaborator" },
+    { "expected": "ww_qa",            "status": "name_mismatch",  "actual_name": "WW QA",              "actual_id": "fldlsbwX7KnDRPn5j", "actual_type": "singleSelect" },
+    { "expected": "status",           "status": "exact",          "actual_name": "status",             "actual_id": "flda5KtnUWmkFijJz", "actual_type": "singleSelect" },
+    { "expected": "done_selected_time","status": "name_mismatch", "actual_name": "Done Selected Time", "actual_id": "fldbcTW2CD2HjejGN", "actual_type": "dateTime" },
+    { "expected": "is_change",        "status": "exact",          "actual_name": "is_change",          "actual_id": "fldGbrzM7z05OM6wb", "actual_type": "singleLineText" },
+    { "expected": "created",          "status": "name_mismatch",  "actual_name": "Created",            "actual_id": "fldZL6JmYMlFIhCLl", "actual_type": "createdTime" },
+    { "expected": "Comment",          "status": "name_mismatch",  "actual_name": "comments",           "actual_id": "fldr79tP2GV0OztrZ", "actual_type": "singleSelect", "note": "design doc lists 12 dropdown values; table has 11" },
+    { "expected": "reminder",         "status": "exact",          "actual_name": "reminder",           "actual_id": "fldmHBZbg57FWvrcS", "actual_type": "date" },
+    { "expected": "reason_for_change","status": "missing",        "actual_name": null,                 "actual_id": null,                 "note": "Not present in relations_support. relations_io has 'reason_for_the_change' (fldu7T8eOHaDe3uup, singleSelect)." },
+    { "expected": "source_flow",      "status": "exact",          "actual_name": "source_flow",        "actual_id": "fldp2zKCY3TfysT1C", "actual_type": "singleLineText" },
+    { "expected": "Add new company",  "status": "name_mismatch",  "actual_name": "add a new company",  "actual_id": "fld2wp1Q0GQJjbYdA", "actual_type": "multilineText" },
+    { "expected": "Requested By",     "status": "name_mismatch",  "actual_name": "requested_by",       "actual_id": "fldlPkvV6BiE7glLZ", "actual_type": "singleLineText" },
+    { "expected": "Valid",            "status": "ambiguous",      "candidates": [
+      { "name": "Valid/done by BO",       "id": "fldph8vgQ40dYQlXt", "type": "checkbox" },
+      { "name": "Valid Selected Time",    "id": "fldu7c6IVtQ7MucWP", "type": "formula" },
+      { "name": "verification_status choice 'Valid'", "id": "selEL7BV7trNfIHGS", "type": "singleSelect choice on fldYSXHGwZvxXK7s6" }
+    ], "note": "No field literally named 'Valid'. Pick one." },
+    { "expected": "Role",             "status": "name_mismatch",  "actual_name": "role",               "actual_id": "fldnBNNkH7w4rS3fG", "actual_type": "singleSelect" },
+    { "expected": "start_date",       "status": "exact",          "actual_name": "start_date",         "actual_id": "fldUNsja6NUuDtJvN", "actual_type": "dateTime" }
+  ],
+  "verification_status_check": {
+    "Selected for WW QA":  { "present": true,  "id": "selTLk5FHEao5Py0Y" },
+    "Selected for BO QA ": { "present": true,  "id": "selHROyMcSsu160lS", "note": "Trailing space preserved exactly as required." }
+  }
+}

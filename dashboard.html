@@ -1,0 +1,2060 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Windward Ownership QA — Operations Hub</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.5.0/dist/chart.umd.js"></script>
+<script src="https://unpkg.com/gridjs/dist/gridjs.umd.js"></script>
+<link href="https://unpkg.com/gridjs/dist/theme/mermaid.min.css" rel="stylesheet">
+<style>
+  :root { color-scheme: light; --bg:#f7f7f5; --surface:#fff; --border:#ececec; --muted:#6b6b6b; --ink:#1a1a1a; --soft:#fafaf7;
+          --good:#1f6f2c; --good-bg:#def7e0; --warn:#856404; --warn-bg:#fff3cd; --bad:#9b2222; --bad-bg:#fde2e2;
+          --accent:#1a1a1a; --link:#1450b3; }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; }
+  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: var(--bg); color: var(--ink); font-size: 14px; line-height: 1.45; }
+  .app { display: grid; grid-template-columns: 220px 1fr; min-height: 100vh; }
+  /* Left nav */
+  nav.side { background: #1f1f1f; color: #e4e4de; padding: 14px 0; position: sticky; top: 0; height: 100vh; overflow-y: auto; }
+  nav.side h1 { font-size: 14px; padding: 0 16px 12px; margin: 0; letter-spacing: 0.04em; text-transform: uppercase; color: #c5c5be; font-weight: 600; }
+  nav.side ul { list-style: none; padding: 0; margin: 0; }
+  nav.side li button { width: 100%; text-align: left; background: none; border: 0; color: #c5c5be; padding: 9px 16px; font-size: 13px; cursor: pointer; font-family: inherit; border-left: 3px solid transparent; display: flex; justify-content: space-between; align-items: center; }
+  nav.side li button:hover { background: #2a2a2a; color: #fff; }
+  nav.side li button.active { background: #2a2a2a; color: #fff; border-left-color: #6dd47e; }
+  nav.side li button .tag { font-size: 10px; background: #3a3a3a; padding: 1px 5px; border-radius: 4px; color: #aaa; }
+  nav.side li button .tag.stub { background: #4a3a1a; color: #ffd47e; }
+  nav.side li button .tag.live { background: #1a3a4a; color: #7edcdc; }
+  nav.side .nav-footer { padding: 16px; font-size: 11px; color: #6a6a6a; border-top: 1px solid #2a2a2a; margin-top: 16px; }
+
+  /* Main */
+  main { padding: 0; min-width: 0; }
+  .topbar { background: var(--surface); border-bottom: 1px solid var(--border); padding: 10px 22px; display: flex; gap: 14px; align-items: center; justify-content: space-between; position: sticky; top: 0; z-index: 10; }
+  .topbar h2 { font-size: 18px; margin: 0; letter-spacing: -0.01em; font-weight: 600; }
+  .topbar .controls { display: flex; gap: 10px; align-items: center; }
+  .pill { display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; border-radius: 999px; font-size: 12px; background: var(--soft); border: 1px solid var(--border); color: var(--muted); }
+  .pill .dot { width: 6px; height: 6px; border-radius: 50%; background: #6dd47e; }
+  .pill.stale .dot { background: #d48a3a; }
+  .pill.alert .dot { background: #d44a4a; }
+  button.btn { font-family: inherit; font-size: 12px; padding: 5px 12px; background: var(--surface); border: 1px solid var(--border); border-radius: 6px; cursor: pointer; color: var(--ink); }
+  button.btn:hover { background: var(--soft); }
+  button.btn.primary { background: var(--ink); color: #fff; border-color: var(--ink); }
+
+  .page { padding: 18px 22px 48px; max-width: 1500px; }
+  .page > h3 { font-size: 13px; color: var(--muted); margin: 6px 0 12px; text-transform: uppercase; letter-spacing: 0.04em; font-weight: 600; }
+
+  /* KPI cards */
+  .kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 10px; margin-bottom: 18px; }
+  .kpi { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 12px 14px; }
+  .kpi .label { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.04em; }
+  .kpi .value { font-size: 26px; font-weight: 600; margin-top: 2px; letter-spacing: -0.01em; }
+  .kpi .delta { font-size: 11px; color: var(--muted); margin-top: 2px; }
+  .kpi.good .value { color: var(--good); }
+  .kpi.warn .value { color: var(--warn); }
+  .kpi.bad .value { color: var(--bad); }
+  .kpi.hero { grid-column: span 2; }
+  .kpi.hero .value { font-size: 38px; }
+
+  /* Panels */
+  .panel { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 16px 18px; margin-bottom: 14px; }
+  .panel h3 { font-size: 14px; margin: 0 0 10px; font-weight: 600; display: flex; justify-content: space-between; align-items: center; }
+  .panel h3 .meta { font-size: 11px; color: var(--muted); font-weight: 400; }
+  .panel .empty { padding: 22px; text-align: center; color: var(--muted); font-style: italic; }
+
+  .row { display: grid; grid-template-columns: 2fr 1fr; gap: 14px; align-items: start; }
+  .row.equal { grid-template-columns: 1fr 1fr; }
+  @media (max-width: 1100px) { .row, .row.equal { grid-template-columns: 1fr; } }
+
+  /* Tables */
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th, td { padding: 7px 10px; text-align: left; border-bottom: 1px solid #f0eee8; }
+  th { font-weight: 600; color: var(--muted); background: var(--soft); text-transform: uppercase; font-size: 11px; letter-spacing: 0.04em; }
+  tbody tr:hover { background: var(--soft); }
+  td.right, th.right { text-align: right; }
+  td.mono { font-family: ui-monospace, Menlo, monospace; font-size: 12px; color: var(--muted); }
+  td .pill-inline { display: inline-block; padding: 1px 7px; border-radius: 999px; font-size: 10px; font-weight: 600; }
+  td .pill-inline.good { background: var(--good-bg); color: var(--good); }
+  td .pill-inline.warn { background: var(--warn-bg); color: var(--warn); }
+  td .pill-inline.bad { background: var(--bad-bg); color: var(--bad); }
+
+  /* Heatmap */
+  .heatmap, .hourly-heatmap { display: grid; gap: 2px; font-size: 11px; overflow-x: auto; }
+  .heatmap .cell, .hourly-heatmap .cell { padding: 5px 4px; text-align: center; border-radius: 3px; min-height: 24px; font-weight: 500; color: #fff; }
+  .heatmap .label, .hourly-heatmap .label { background: transparent; color: var(--ink); text-align: left; padding: 5px 6px; font-weight: 500; white-space: nowrap; }
+  .heatmap .header, .hourly-heatmap .header { background: transparent; color: var(--muted); text-align: center; font-size: 10px; padding: 4px; }
+  .heatmap .cell.z, .hourly-heatmap .cell.z { background: #f0eee8; color: #c5c5be; }
+  .hourly-team-label { background: #1f1f1f; color: #fff; padding: 5px 10px; font-weight: 600; font-size: 11px; text-transform: uppercase; letter-spacing: 0.04em; }
+  .hourly-team-fill { background: #1f1f1f; }
+  .hourly-spacer { grid-column: 1 / -1; height: 6px; }
+
+  /* Tasks page */
+  .sortable th { cursor: pointer; user-select: none; }
+  .sortable th:hover { background: #f0eee8; }
+  .sortable th .sort-ind { color: #c5c5be; font-size: 9px; margin-left: 3px; }
+  .task-name { font-family: ui-monospace, Menlo, monospace; font-size: 12px; color: var(--link); cursor: pointer; }
+  .task-name:hover { text-decoration: underline; }
+  .flag-pill { display: inline-block; padding: 1px 7px; border-radius: 999px; font-size: 10px; font-weight: 600; margin: 0 3px 2px 0; }
+  .flag-pill.red   { background: var(--bad-bg);  color: var(--bad);  }
+  .flag-pill.amber { background: var(--warn-bg); color: var(--warn); }
+  .flag-pill.gray  { background: #ececec;        color: var(--muted); }
+
+  .drawer-backdrop { position: fixed; inset: 0; background: rgba(0,0,0,0.25); opacity: 0; pointer-events: none; transition: opacity 180ms ease; z-index: 99; }
+  .drawer-backdrop.open { opacity: 1; pointer-events: auto; }
+  .drawer { position: fixed; top: 0; right: 0; bottom: 0; width: 70vw; max-width: 1100px; background: var(--surface); border-left: 1px solid var(--border); box-shadow: -8px 0 24px rgba(0,0,0,0.08); overflow-y: auto; transform: translateX(100%); transition: transform 220ms ease; z-index: 100; }
+  .drawer.open { transform: translateX(0); }
+  .drawer-header { padding: 14px 22px; border-bottom: 1px solid var(--border); position: sticky; top: 0; background: var(--surface); z-index: 1; }
+  .drawer-header h2 { margin: 0 0 4px; font-size: 16px; font-family: ui-monospace, Menlo, monospace; }
+  .drawer-close { float: right; background: none; border: 0; font-size: 22px; cursor: pointer; color: var(--muted); margin-top: -4px; }
+  .drawer-body { padding: 16px 22px 32px; }
+
+  /* Charts */
+  .chart-wrap { position: relative; height: 280px; }
+  .chart-wrap.small { height: 160px; }
+
+  /* Alerts */
+  .alert-row { padding: 9px 12px; border-radius: 8px; background: var(--soft); margin-bottom: 6px; display: flex; gap: 10px; align-items: center; }
+  .alert-row.warn { background: var(--warn-bg); }
+  .alert-row.bad { background: var(--bad-bg); }
+  .alert-row .icon { font-weight: 700; font-size: 12px; padding: 2px 6px; border-radius: 4px; background: rgba(0,0,0,0.06); }
+
+  .controls-row { display: flex; gap: 8px; align-items: center; margin-bottom: 14px; flex-wrap: wrap; }
+  select { font-family: inherit; font-size: 13px; padding: 7px 12px; border: 1px solid var(--border); background: var(--surface); border-radius: 6px; color: var(--ink); cursor: pointer; }
+
+  .stub-card { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 24px 22px; text-align: center; }
+  .stub-card h2 { margin: 0 0 8px; font-size: 18px; }
+  .stub-card p { color: var(--muted); max-width: 540px; margin: 0 auto 16px; }
+  .stub-card ul { text-align: left; max-width: 480px; margin: 0 auto; padding-left: 22px; color: var(--ink); font-size: 13px; }
+  .stub-card ul li { margin: 4px 0; }
+
+  .empty-state { padding: 30px; text-align: center; color: var(--muted); border: 1px dashed var(--border); border-radius: 10px; background: var(--soft); }
+  .empty-state .title { font-weight: 600; color: var(--ink); margin-bottom: 4px; }
+
+  .agent-name { font-weight: 500; }
+  .small-mono { font-family: ui-monospace, Menlo, monospace; font-size: 12px; color: var(--muted); }
+  .footer-note { font-size: 11px; color: var(--muted); margin-top: 6px; }
+
+  .gridjs-wrapper { box-shadow: none; }
+  .gridjs-th, .gridjs-td { font-size: 13px; }
+</style>
+</head>
+<body>
+<div class="app">
+  <nav class="side">
+    <h1>Operations Hub</h1>
+    <ul id="navList"></ul>
+    <div class="nav-footer">
+      <div>Phase A — JSON-first dashboard</div>
+      <div style="margin-top:4px">Airtable read-only.</div>
+    </div>
+  </nav>
+  <main>
+    <div class="topbar">
+      <h2 id="pageTitle">…</h2>
+      <div class="controls">
+        <span id="freshness" class="pill"><span class="dot"></span><span id="freshnessText">loading…</span></span>
+        <button class="btn" id="refreshBtn" title="Re-read JSON files (does not re-poll Airtable)">Refresh</button>
+      </div>
+    </div>
+    <div id="pageContainer">
+      <div id="page-overview"       class="page" style="display:none"></div>
+      <div id="page-agent"          class="page" style="display:none"></div>
+      <div id="page-hourly"         class="page" style="display:none"></div>
+      <div id="page-qa_performance" class="page" style="display:none"></div>
+      <div id="page-boqa"           class="page" style="display:none"></div>
+      <div id="page-intake"         class="page" style="display:none"></div>
+      <div id="page-tasks"          class="page" style="display:none"></div>
+      <div id="page-wwqa"           class="page" style="display:none"></div>
+      <div id="page-pipeline"       class="page" style="display:none"></div>
+      <div id="page-scenarios"      class="page" style="display:none"></div>
+      <div id="page-weekly"         class="page" style="display:none"></div>
+      <div id="taskDrawerBackdrop" class="drawer-backdrop"></div>
+      <div id="taskDrawer"         class="drawer"></div>
+    </div>
+  </main>
+</div>
+
+<script>
+// ============================================================================
+//  Constants
+// ============================================================================
+const BASH_TOOL    = "mcp__workspace__bash";
+const AIRTABLE_TOOL= "mcp__893e91e9-3198-489a-8427-1a4eceeb50bd__list_records_for_table";
+const BASE_ID      = "appHZdfC2sn9MLGFZ";
+const TABLE_ID     = "tblpj9aJP4ExhYCZF";
+
+// Source-of-truth: extract_v2.FIELD_IDS
+const F = {
+  imo:                "fldqWGr2XDH9BRmtE",
+  assignee:           "fldT4xElSgcdnqTmy",
+  qa_assignee:        "fldtQ5HCuU45HOcg4",
+  ww_qa_assignee:     "fldXyIOPWBTYvowv7",
+  qa_status:          "fldpTTs63XmNYNPww",
+  ww_qa:              "fldlsbwX7KnDRPn5j",
+  last_modified:      "fld0hZzdjksTCKJ09",
+  last_modified_by:   "fldpz9XuDm5xRblSL",
+  start_tagging_date: "fld7fm1PknPk1UueW",
+  done_selected_time: "fldbcTW2CD2HjejGN",
+  qa_status_ts:       "fld9f125Y5wZt1Ctk",
+  verification_status:"fldYSXHGwZvxXK7s6",
+  status:             "flda5KtnUWmkFijJz",
+  company_id_and_name:"fldaMBqa6bEANUPpn",
+  is_change:          "fldGbrzM7z05OM6wb",
+  created:            "fldZL6JmYMlFIhCLl",
+  comment:            "fldr79tP2GV0OztrZ",
+  reminder:           "fldmHBZbg57FWvrcS",
+  source_flow:        "fldp2zKCY3TfysT1C",
+  add_new_company:    "fld2wp1Q0GQJjbYdA",
+  requested_by:       "fldlPkvV6BiE7glLZ",
+  valid_done_by_bo:   "fldph8vgQ40dYQlXt",
+  role:               "fldnBNNkH7w4rS3fG",
+  start_date:         "fldUNsja6NUuDtJvN",
+};
+// verification_status choice IDs
+const VS = {
+  waiting:        "self9gNziJk2Fxvip",
+  tagged:         "selPTJlCnPN8q1PvQ",
+  needs_update:   "selqwElFeBWbcNtT4",
+  bo_qa:          "selHROyMcSsu160lS",  // "Selected for BO QA " (trailing space)
+  done:           "selSXpSACthHai6O3",
+  ww_qa:          "selTLk5FHEao5Py0Y",
+  valid:          "selEL7BV7trNfIHGS",
+};
+
+// Pages
+const PAGES = [
+  { id: "overview",       label: "Overview",                tag: null     },
+  { id: "agent",          label: "Agent Scorecard",         tag: null     },
+  { id: "hourly",         label: "Hourly Output",           tag: null     },
+  { id: "qa_performance", label: "QA Performance",          tag: null     },
+  { id: "boqa",           label: "BO QA Console",           tag: "live"   },
+  { id: "intake",         label: "Daily Intake",            tag: null     },
+  { id: "tasks",          label: "Tasks",                   tag: null     },
+  { id: "wwqa",           label: "WW QA Console",           tag: null     },
+  { id: "pipeline",       label: "Pipeline & Lead Time",    tag: "stub"   },
+  { id: "scenarios",      label: "Case Scenarios",          tag: "stub"   },
+  { id: "weekly",         label: "Weekly Report",           tag: null     },
+];
+
+// ============================================================================
+//  State
+// ============================================================================
+const STATE = {
+  audit: null,       // ww_audit_log.json
+  agg: null,         // daily_aggregates.json (whole file)
+  v2: null,          // daily_aggregates.aggregates_v2
+  legacy: null,      // daily_aggregates.{by_agent, by_team, totals}  (the old block)
+  roster: null,      // config/roster.json (.teams)
+  cacheRecords: [],  // flat list of records from .poll_work/recent_p*.json (sample)
+  liveBoQa: null,    // live fetch result for BO QA Console
+  currentPage: localStorage.getItem("wqa.page") || "overview",
+  currentAgent: localStorage.getItem("wqa.agent") || null,
+  freshness: null,   // {label, level: "fresh"|"stale"|"alert"}
+  charts: {},        // chart instances by element id (so we can destroy/redraw)
+};
+
+// ============================================================================
+//  Data loaders — JSON via bash cat, live via Airtable MCP
+// ============================================================================
+function unwrapText(r) {
+  if (!r) return "";
+  if (typeof r === "string") return r;
+  if (r.content && Array.isArray(r.content)) {
+    for (const c of r.content) if (c.type === "text") return c.text;
+  }
+  if (r.output) return typeof r.output === "string" ? r.output : JSON.stringify(r.output);
+  return JSON.stringify(r);
+}
+function unwrapJson(r) {
+  const t = unwrapText(r);
+  try { return JSON.parse(t); } catch (_) { return null; }
+}
+
+// MODE: cowork (window.cowork.callMcpTool present) vs browser (plain HTTP fetch).
+const HAS_COWORK = !!(window.cowork && window.cowork.callMcpTool);
+
+async function bashCat(path) {
+  if (HAS_COWORK) {
+    const cmd = `cat /sessions/*/mnt/QA*Hourly*Analysis/${path} 2>/dev/null || cat "/sessions/$(ls /sessions | head -1)/mnt/QA Hourly Analysis/${path}" 2>/dev/null || cat "${path}"`;
+    const result = await window.cowork.callMcpTool(BASH_TOOL, { command: cmd });
+    return unwrapText(result);
+  }
+  // Browser mode: HTTP fetch the file from the local server.
+  try {
+    const r = await fetch(path);
+    if (!r.ok) return "";
+    return await r.text();
+  } catch { return ""; }
+}
+async function readJson(path) {
+  const t = await bashCat(path);
+  if (!t || !t.trim().startsWith("{")) return null;
+  try { return JSON.parse(t); } catch (e) {
+    console.error(`Could not parse ${path}:`, e);
+    return null;
+  }
+}
+async function listFiles(pattern) {
+  if (HAS_COWORK) {
+    const cmd = `ls /sessions/*/mnt/QA*Hourly*Analysis/${pattern} 2>/dev/null || ls "/sessions/$(ls /sessions | head -1)/mnt/QA Hourly Analysis/${pattern}" 2>/dev/null || ls ${pattern} 2>/dev/null`;
+    const result = await window.cowork.callMcpTool(BASH_TOOL, { command: cmd });
+    return unwrapText(result).split("\n").filter(Boolean);
+  }
+  // Browser mode: probe sequential page files (we only use this for recent_p*.json).
+  const found = [];
+  for (let i = 1; i <= 30; i++) {
+    const p = pattern.replace("*", String(i));
+    try {
+      const r = await fetch(p, { method: "HEAD" });
+      if (r.ok) found.push(p);
+      else if (r.status === 404 && i > 1) break;  // page run ended
+    } catch { break; }
+  }
+  return found;
+}
+
+async function loadAll() {
+  STATE.audit  = await readJson("ww_audit_log.json");
+  STATE.agg    = await readJson("daily_aggregates.json");
+  STATE.roster = (await readJson("config/roster.json"))?.teams || STATE.audit?.roster || {};
+  STATE.v2     = STATE.agg?.aggregates_v2 || null;
+  STATE.legacy = STATE.agg ? { by_agent: STATE.agg.by_agent || {}, by_team: STATE.agg.by_team || {}, totals: STATE.agg.totals || {}, date: STATE.agg.date } : null;
+
+  if (!STATE.v2) {
+    document.getElementById("pageContainer").innerHTML = `<div class="page"><div class="empty-state"><div class="title">No data loaded</div>Could not read <code>daily_aggregates.json</code> or its <code>aggregates_v2</code> block. ${HAS_COWORK ? "Check the bash-cat path." : "Make sure this dashboard is being served from the project root over HTTP (try <code>python3 -m http.server</code>)."}</div></div>`;
+    return false;
+  }
+
+  // Load cache sample (for 7-day intake trend on Daily Intake page).
+  // Union of recent_p* (ownership work) and intake_p* (today's table intake), deduped by id.
+  STATE.cacheRecords = [];
+  const seenIds = new Set();
+  for (const pattern of [".poll_work/recent_p*.json", ".poll_work/intake_p*.json"]) {
+    const files = await listFiles(pattern);
+    for (const path of files) {
+      const cleanPath = path.replace(/^.*\/QA Hourly Analysis\//, "").replace(/^.*\/QA\*Hourly\*Analysis\//, "");
+      const data = await readJson(cleanPath);
+      if (!data?.records) continue;
+      for (const r of data.records) {
+        if (r.id && !seenIds.has(r.id)) {
+          seenIds.add(r.id);
+          STATE.cacheRecords.push(r);
+        }
+      }
+    }
+  }
+
+  // Freshness pill — prefer aggregates_v2.computed_at (precise timestamp),
+  // fall back to aggregates_v2.date (date only), then to the stale legacy block.
+  const ts = STATE.v2?.computed_at || STATE.v2?.date || STATE.legacy?.date || "unknown";
+  STATE.freshness = { label: tsLabel(ts), level: tsLevel(ts) };
+
+  return true;
+}
+
+async function liveFetchBoQaQueue() {
+  // Today's records currently in "tagged" (waiting to be picked into BO QA).
+  // We DON'T pass fieldIds — let Airtable return all fields. Read-only.
+  const args = {
+    baseId: BASE_ID,
+    tableId: TABLE_ID,
+    pageSize: 100,
+    filters: {
+      operator: "and",
+      operands: [
+        { operator: "=", operands: [F.verification_status, VS.tagged] }
+      ]
+    },
+    sort: [{ fieldId: F.start_tagging_date, direction: "asc" }]
+  };
+  const all = [];
+  let cursor;
+  for (let i = 0; i < 5; i++) {
+    if (cursor) args.cursor = cursor; else delete args.cursor;
+    let result;
+    try { result = await window.cowork.callMcpTool(AIRTABLE_TOOL, args); }
+    catch (e) { console.error("BO QA live fetch failed:", e); break; }
+    const payload = unwrapJson(result);
+    if (!payload || !payload.records) break;
+    all.push(...payload.records);
+    if (!payload.nextCursor) break;
+    cursor = payload.nextCursor;
+  }
+  return all;
+}
+
+// ============================================================================
+//  Helpers
+// ============================================================================
+function eatDate(s) {
+  if (!s) return null;
+  try { return new Date(s).toLocaleDateString("en-CA", { timeZone: "Africa/Nairobi" }); }
+  catch { return null; }
+}
+function eatHour(s) {
+  if (!s) return null;
+  try {
+    const f = new Intl.DateTimeFormat("en-GB", { timeZone: "Africa/Nairobi", hour: "2-digit", hour12: false }).formatToParts(new Date(s));
+    return parseInt(f.find(p => p.type === "hour").value, 10);
+  } catch { return null; }
+}
+function todayEat() {
+  return new Date().toLocaleDateString("en-CA", { timeZone: "Africa/Nairobi" });
+}
+function fmtEatDateTime(s) {
+  if (!s) return "";
+  try { return new Date(s).toLocaleString("en-GB", { timeZone: "Africa/Nairobi", hour12: false }); }
+  catch { return s; }
+}
+function tsLabel(ts) {
+  if (!ts || ts === "unknown") return "cache freshness unknown";
+  const dt = new Date(ts);
+  if (isNaN(dt.getTime())) return ts;
+  const ageH = (Date.now() - dt.getTime()) / 36e5;
+  return `cache from ${fmtEatDateTime(ts)} (${ageH < 1 ? "<1h" : ageH < 24 ? `${Math.round(ageH)}h` : `${Math.round(ageH / 24)}d`} ago)`;
+}
+function tsLevel(ts) {
+  if (!ts) return "alert";
+  const ageH = (Date.now() - new Date(ts).getTime()) / 36e5;
+  if (ageH < 1) return "fresh";
+  if (ageH < 6) return "stale";
+  return "alert";
+}
+function esc(s) { return String(s ?? "").replace(/[&<>"']/g, c => ({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;" }[c])); }
+function pct(num, den) { return den ? (num / den) * 100 : 0; }
+function destroyChart(id) { if (STATE.charts[id]) { STATE.charts[id].destroy(); delete STATE.charts[id]; } }
+
+// Get the canonical agent name from a possibly-cased Airtable name
+function canonicalAgent(name) {
+  if (!name || !STATE.roster) return name;
+  const k = String(name).trim().toLowerCase();
+  for (const team in STATE.roster) {
+    for (const m of (STATE.roster[team].members || [])) {
+      if (m.name.toLowerCase() === k) return m.name;
+      for (const a of (m.aliases || [])) if (a.toLowerCase() === k) return m.name;
+    }
+  }
+  return name;
+}
+function teamForAgent(name) {
+  if (!name || !STATE.roster) return null;
+  const k = String(name).trim().toLowerCase();
+  for (const team in STATE.roster) {
+    for (const m of (STATE.roster[team].members || [])) {
+      if (m.name.toLowerCase() === k) return team;
+      for (const a of (m.aliases || [])) if (a.toLowerCase() === k) return team;
+    }
+  }
+  return null;
+}
+
+// ============================================================================
+//  Navigation
+// ============================================================================
+function renderNav() {
+  const ul = document.getElementById("navList");
+  ul.innerHTML = PAGES.map(p => {
+    const tagHtml = p.tag === "stub" ? `<span class="tag stub">stub</span>`
+                  : p.tag === "live" ? `<span class="tag live">live</span>` : "";
+    return `<li><button data-page="${p.id}" class="${STATE.currentPage === p.id ? "active" : ""}">${p.label}${tagHtml}</button></li>`;
+  }).join("");
+  ul.querySelectorAll("button[data-page]").forEach(b => b.addEventListener("click", () => goto(b.dataset.page)));
+}
+
+function goto(pageId) {
+  STATE.currentPage = pageId;
+  localStorage.setItem("wqa.page", pageId);
+  renderNav();
+  for (const p of PAGES) document.getElementById(`page-${p.id}`).style.display = (p.id === pageId) ? "block" : "none";
+  document.getElementById("pageTitle").textContent = PAGES.find(p => p.id === pageId)?.label || "";
+  // Re-render the active page each time so charts can be destroyed cleanly.
+  for (const id in STATE.charts) destroyChart(id);
+  const renderer = PAGE_RENDERERS[pageId];
+  if (renderer) renderer();
+}
+
+function renderFreshness() {
+  const el = document.getElementById("freshness");
+  const txt = document.getElementById("freshnessText");
+  el.className = "pill " + (STATE.freshness?.level === "fresh" ? "" : STATE.freshness?.level || "");
+  txt.textContent = STATE.freshness?.label || "no cache";
+}
+
+// ============================================================================
+//  Page renderers
+// ============================================================================
+const PAGE_RENDERERS = {};
+
+// -------- Overview --------
+PAGE_RENDERERS.overview = function () {
+  const root = document.getElementById("page-overview");
+  const t = STATE.v2?.totals;
+  if (!t) { root.innerHTML = noDataHtml("aggregates_v2 not in daily_aggregates.json — run aggregate_v2.py"); return; }
+
+  const sampNsClass = t.sampling_non_sanctions_pct < t.sampling_target_non_sanctions_pct ? "bad" : "good";
+  const sampSClass  = t.sampling_sanctions_pct      < t.sampling_target_sanctions_pct      ? "bad" : "good";
+  const rejectClass = t.reject_rate > t.reject_threshold ? "bad" : "good";
+  const silent      = STATE.legacy?.totals?.silent_changes_today ?? "—";
+
+  const kpiHtml = `
+    <div class="kpis">
+      <div class="kpi hero"><div class="label">Records uploaded today (whole table)</div>
+        <div class="value">${(t.relations_support_intake_today || 0).toLocaleString()}</div>
+        <div class="delta">relations_support intake — all assignees</div></div>
+      <div class="kpi"><div class="label">Tagged today (5 teams)</div><div class="value">${t.tagged_today || 0}</div></div>
+      <div class="kpi"><div class="label">Done today (5 teams)</div><div class="value">${t.done_today || 0}</div></div>
+      <div class="kpi"><div class="label">Unique IMOs (cache)</div><div class="value">${(t.unique_imos || 0).toLocaleString()}</div><div class="delta">distinct vessels in window</div></div>
+      <div class="kpi" title="Properly completed = start_date filled AND (company_id filled OR Dead vessel ticked). Dead-vessel is the operational alternative when no company exists to link."><div class="label">Properly completed today</div><div class="value">${t.properly_completed_today || 0}</div><div class="delta">${(t.tagged_today || 0) - (t.properly_completed_today || 0) > 0 ? `${(t.tagged_today || 0) - (t.properly_completed_today || 0)} tagged but not yet complete` : "&nbsp;"}</div></div>
+      <div class="kpi"><div class="label">Dead vessels today</div><div class="value">${t.dead_vessels_today || 0}</div><div class="delta">checkbox-ticked, tagged today</div></div>
+      <div class="kpi"><div class="label">BO QA backlog</div><div class="value">${t.bo_qa_backlog || 0}</div><div class="delta">in queue, any age</div></div>
+      <div class="kpi"><div class="label">WW QA backlog</div><div class="value">${t.ww_qa_backlog || 0}</div><div class="delta">awaiting WW review</div></div>
+      <div class="kpi ${sampNsClass}"><div class="label">Sampling % — Non-sanctions</div><div class="value">${t.sampling_non_sanctions_pct.toFixed(1)}%</div><div class="delta">target ≥ ${t.sampling_target_non_sanctions_pct}% (of ${t.tagged_today_non_sanctions || 0} tagged)</div></div>
+      <div class="kpi ${sampSClass}"><div class="label">Sampling % — Sanctions</div><div class="value">${t.sampling_sanctions_pct.toFixed(1)}%</div><div class="delta">target ≥ ${t.sampling_target_sanctions_pct}% (of ${t.tagged_today_sanctions || 0} tagged)</div></div>
+      <div class="kpi ${rejectClass}"><div class="label">Reject %</div><div class="value">${t.reject_rate.toFixed(1)}%</div><div class="delta">threshold ${t.reject_threshold}%</div></div>
+      <div class="kpi"><div class="label">Silent changes today</div><div class="value">${silent}</div><div class="delta">from legacy poll block</div></div>
+    </div>`;
+
+  const flowHtml = `
+    <div class="panel">
+      <h3>Flow framework <span class="meta">Windward parity — A=no-QA, B=QA reviewed, C=completed after QA</span></h3>
+      <div class="kpis">
+        <div class="kpi"><div class="label">Flow A — Completed w/o QA</div><div class="value">${t.flow_a_count || 0}</div><div class="delta">Done/Valid, qa_assignee blank</div></div>
+        <div class="kpi"><div class="label">Flow B — QA reviewed</div><div class="value">${t.flow_b_count || 0}</div><div class="delta">qa_assignee + qa_status filled</div></div>
+        <div class="kpi"><div class="label">Flow C — Completed after QA</div><div class="value">${t.flow_c_count || 0}</div><div class="delta">Done/Valid AND has QA</div></div>
+        <div class="kpi"><div class="label">Total completions</div><div class="value">${t.total_completions || 0}</div><div class="delta">Flow A + Flow C</div></div>
+      </div>
+    </div>`;
+
+  const alertsHtml = `
+    <div class="panel">
+      <h3>Team Activity Alerts <span class="meta">operational signals, not errors</span></h3>
+      <div id="alerts"></div>
+    </div>`;
+
+  const trendsHtml = `
+    <div class="row">
+      <div class="panel">
+        <h3>Tagged today by team</h3>
+        <div class="chart-wrap"><canvas id="chart-tagged-by-team"></canvas></div>
+      </div>
+      <div class="panel">
+        <h3>Per-team summary</h3>
+        <table id="team-summary"></table>
+      </div>
+    </div>`;
+
+  root.innerHTML = kpiHtml + flowHtml + alertsHtml + trendsHtml;
+
+  // Alerts
+  const alerts = computeTeamAlerts();
+  const alertsEl = document.getElementById("alerts");
+  if (alerts.length === 0) {
+    alertsEl.innerHTML = `<div class="empty">All 5 teams have today's activity within expected range.</div>`;
+  } else {
+    alertsEl.innerHTML = alerts.map(a => `<div class="alert-row ${a.level}"><span class="icon">${a.icon}</span><div><strong>${esc(a.team)}</strong> — ${esc(a.message)}</div></div>`).join("");
+  }
+
+  // Per-team summary table
+  const teamRows = Object.keys(STATE.roster || {}).sort().map(team => {
+    const m = STATE.v2.by_team?.[team];
+    if (!m) return `<tr><td>${esc(team)}</td><td colspan="7" class="empty">no records in cache window</td></tr>`;
+    const ns = m.sampling_non_sanctions_pct, nsT = m.sampling_target_non_sanctions_pct;
+    const sa = m.sampling_sanctions_pct,      saT = m.sampling_target_sanctions_pct;
+    const nsCls = (m.tagged_today_non_sanctions || 0) === 0 ? "" : (ns >= nsT ? "good" : "bad");
+    const saCls = (m.tagged_today_sanctions || 0) === 0     ? "" : (sa >= saT ? "good" : "bad");
+    const nsPill = (m.tagged_today_non_sanctions || 0) === 0
+      ? `<span class="small-mono">—</span>`
+      : `<span class="pill-inline ${nsCls}">${ns.toFixed(1)}%</span>`;
+    const saPill = (m.tagged_today_sanctions || 0) === 0
+      ? `<span class="small-mono">—</span>`
+      : `<span class="pill-inline ${saCls}">${sa.toFixed(1)}%</span>`;
+    return `<tr>
+      <td><strong>${esc(team)}</strong></td>
+      <td class="right">${m.tagged_today}</td>
+      <td class="right">${m.done_today}</td>
+      <td class="right">${m.bo_qa_backlog}</td>
+      <td class="right">${nsPill}</td>
+      <td class="right">${saPill}</td>
+      <td class="right">${m.reject_rate.toFixed(1)}%</td>
+      <td class="right">${m.dead_vessels_today || 0}</td>
+    </tr>`;
+  }).join("");
+  document.getElementById("team-summary").innerHTML = `
+    <thead><tr><th>Team</th><th class="right">Tagged</th><th class="right">Done</th><th class="right">BO QA backlog</th><th class="right">Non-sanctions<br><span class="small-mono">≥15%</span></th><th class="right">Sanctions<br><span class="small-mono">≥50%</span></th><th class="right">Reject %</th><th class="right">Dead vessels</th></tr></thead>
+    <tbody>${teamRows}</tbody>`;
+
+  // Tagged by team chart
+  const labels = Object.keys(STATE.v2.by_team || {}).sort();
+  const tagged = labels.map(t => STATE.v2.by_team[t]?.tagged_today || 0);
+  const ctx = document.getElementById("chart-tagged-by-team");
+  if (ctx) {
+    STATE.charts["chart-tagged-by-team"] = new Chart(ctx, {
+      type: "bar",
+      data: { labels, datasets: [{ label: "Tagged today", data: tagged, backgroundColor: "#1a1a1a" }] },
+      options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } }
+    });
+  }
+};
+
+function computeTeamAlerts() {
+  // Two rules per the design: tagged_today == 0, OR drop > 50% from 7-day avg.
+  // 7-day avg requires history — for now we can only fire the "zero" rule.
+  const alerts = [];
+  for (const team of Object.keys(STATE.roster || {}).sort()) {
+    const m = STATE.v2?.by_team?.[team];
+    if (!m) {
+      alerts.push({ team, level: "warn", icon: "○", message: "no records in this cache window — team may be inactive today" });
+      continue;
+    }
+    if (m.tagged_today === 0) {
+      alerts.push({ team, level: "warn", icon: "○", message: "no new tags today" });
+    }
+  }
+  return alerts;
+}
+
+// -------- Agent Scorecard --------
+PAGE_RENDERERS.agent = function () {
+  const root = document.getElementById("page-agent");
+  const byAgent = STATE.v2?.by_agent || {};
+  const allAgents = [];
+  for (const team of Object.keys(STATE.roster || {}).sort()) {
+    for (const m of (STATE.roster[team].members || [])) allAgents.push({ name: m.name, team });
+  }
+  const dataAgents = new Set(Object.keys(byAgent));
+  const selectedAgent = STATE.currentAgent && byAgent[STATE.currentAgent] ? STATE.currentAgent
+                       : (Object.keys(byAgent).sort()[0] || null);
+
+  const opts = allAgents.map(a => {
+    const hasData = dataAgents.has(a.name);
+    return `<option value="${esc(a.name)}" ${a.name === selectedAgent ? "selected" : ""}>${esc(a.name)} (${esc(a.team)})${hasData ? "" : " — no records"}</option>`;
+  }).join("");
+
+  root.innerHTML = `
+    <div class="controls-row">
+      <label class="small-mono">Agent:</label>
+      <select id="agentSelect">${opts}</select>
+      <span class="small-mono" id="agentMeta"></span>
+    </div>
+    <div id="agentBody"></div>`;
+
+  const select = document.getElementById("agentSelect");
+  select.addEventListener("change", () => {
+    STATE.currentAgent = select.value;
+    localStorage.setItem("wqa.agent", select.value);
+    renderAgentBody(select.value);
+  });
+  if (selectedAgent) renderAgentBody(selectedAgent);
+  else document.getElementById("agentBody").innerHTML = noDataHtml("No agent data in aggregates_v2");
+};
+
+function renderAgentBody(agentName) {
+  const m = STATE.v2?.by_agent?.[agentName];
+  const body = document.getElementById("agentBody");
+  if (!m) {
+    body.innerHTML = noDataHtml(`No cache records for ${esc(agentName)} in past 24h window`);
+    return;
+  }
+  const team = teamForAgent(agentName);
+  document.getElementById("agentMeta").textContent = `${team || "—"} team`;
+  const min280 = STATE.audit?.config?.thresholds?.daily_productivity_minimum || 280;
+  const tagged = m.tagged_today || 0;
+  const prodClass = tagged >= min280 ? "good" : "bad";
+  const rejectClass = m.reject_rate > m.reject_threshold ? "bad" : "good";
+  const nsT = m.sampling_target_non_sanctions_pct;
+  const sCT = m.sampling_target_sanctions_pct;
+  const nsCls = (m.tagged_today_non_sanctions || 0) === 0 ? "" : (m.sampling_non_sanctions_pct >= nsT ? "good" : "bad");
+  const sCls  = (m.tagged_today_sanctions || 0) === 0     ? "" : (m.sampling_sanctions_pct     >= sCT ? "good" : "bad");
+
+  body.innerHTML = `
+    <div class="kpis">
+      <div class="kpi ${prodClass}"><div class="label">Tagged today</div><div class="value">${tagged}</div><div class="delta">target ≥ ${min280}</div></div>
+      <div class="kpi"><div class="label">QA reviewed</div><div class="value">${m.qa_inspected_today || 0}</div><div class="delta">approve+changed</div></div>
+      <div class="kpi ${rejectClass}"><div class="label">Reject %</div><div class="value">${m.reject_rate.toFixed(1)}%</div><div class="delta">threshold ${m.reject_threshold}%</div></div>
+      <div class="kpi"><div class="label">Reminder backlog</div><div class="value">${m.reminder_open || 0}</div><div class="delta">${m.reminder_overdue || 0} overdue</div></div>
+      <div class="kpi ${nsCls}"><div class="label">Sampling % — Non-sanctions</div><div class="value">${m.sampling_non_sanctions_pct.toFixed(1)}%</div><div class="delta">target ≥ ${nsT}% (of ${m.tagged_today_non_sanctions || 0} tagged)</div></div>
+      <div class="kpi ${sCls}"><div class="label">Sampling % — Sanctions</div><div class="value">${m.sampling_sanctions_pct.toFixed(1)}%</div><div class="delta">target ≥ ${sCT}% (of ${m.tagged_today_sanctions || 0} tagged)</div></div>
+      <div class="kpi" title="Properly completed = start_date filled AND (company_id filled OR Dead vessel ticked)."><div class="label">Properly completed today</div><div class="value">${m.properly_completed_today || 0}</div><div class="delta">${tagged - (m.properly_completed_today || 0) > 0 ? `${tagged - (m.properly_completed_today || 0)} tagged but not yet complete` : "&nbsp;"}</div></div>
+      <div class="kpi"><div class="label">Dead vessels today</div><div class="value">${m.dead_vessels_today || 0}</div><div class="delta">checkbox-ticked, tagged today</div></div>
+      <div class="kpi"><div class="label">Unique IMOs</div><div class="value">${m.unique_imos || 0}</div><div class="delta">distinct vessels in cache</div></div>
+    </div>
+    <div class="panel">
+      <h3>Flow framework <span class="meta">A=no QA, B=reviewed, C=completed after QA</span></h3>
+      <div class="chart-wrap small"><canvas id="agent-flow-chart"></canvas></div>
+    </div>
+    <div class="row equal">
+      <div class="panel">
+        <h3>Hourly heatmap (today, EAT)</h3>
+        <div id="agent-heatmap"></div>
+        <div class="footer-note">Hourly heatmap reflects records cached for today only; will populate as agents start tagging.</div>
+      </div>
+      <div class="panel">
+        <h3>Comment mix <span class="meta">non-zero buckets only</span></h3>
+        <div class="chart-wrap"><canvas id="chart-comment-mix"></canvas></div>
+      </div>
+    </div>
+    <div class="row equal">
+      <div class="panel">
+        <h3>Role mix</h3>
+        <div class="chart-wrap"><canvas id="chart-role-mix"></canvas></div>
+      </div>
+      <div class="panel">
+        <h3>Verification status counts</h3>
+        <table id="agent-vs"></table>
+      </div>
+    </div>
+  `;
+
+  // Hourly heatmap — read from aggregates_v2.by_agent[agent].hourly_buckets
+  // (6..23 EAT, zero-filled). Intensity scales by count vs the agent's busiest hour.
+  const buckets = m.hourly_buckets || {};
+  const hours = Array.from({ length: 18 }, (_, i) => i + 6);  // 6..23 EAT
+  const counts = hours.map(h => buckets[h] ?? buckets[String(h)] ?? 0);
+  const max = Math.max(1, ...counts);
+  const cells = hours.map((h, i) => {
+    const v = counts[i];
+    if (v === 0) return `<div class="cell z" title="${h}:00 EAT">0</div>`;
+    const alpha = (0.2 + 0.8 * (v / max)).toFixed(2);
+    return `<div class="cell" style="background:rgba(20,80,179,${alpha});" title="${h}:00 EAT → ${v} records">${v}</div>`;
+  }).join("");
+  const headers = hours.map(h => `<div class="header">${h}</div>`).join("");
+  const total = counts.reduce((a, b) => a + b, 0);
+  document.getElementById("agent-heatmap").innerHTML = `
+    <div class="heatmap" style="grid-template-columns: 130px repeat(${hours.length}, 1fr);">
+      <div class="header"></div>${headers}
+      <div class="label">${esc(agentName)} (${total})</div>${cells}
+    </div>`;
+
+  // Comment mix chart
+  const cm = m.comment_distribution || {};
+  const cmEntries = Object.entries(cm).filter(([_, v]) => v > 0).sort((a, b) => b[1] - a[1]);
+  const cmCtx = document.getElementById("chart-comment-mix");
+  if (cmCtx && cmEntries.length > 0) {
+    STATE.charts["chart-comment-mix"] = new Chart(cmCtx, {
+      type: "bar",
+      data: {
+        labels: cmEntries.map(e => e[0]),
+        datasets: [{ data: cmEntries.map(e => e[1]), backgroundColor: "#1450b3" }]
+      },
+      options: { indexAxis: "y", responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } }
+    });
+  } else if (cmCtx) {
+    cmCtx.parentElement.innerHTML = `<div class="empty">No comments set on this agent's cached records.</div>`;
+  }
+
+  // Role mix pie
+  const rm = m.per_role_volume || {};
+  const rmEntries = Object.entries(rm).sort((a, b) => b[1] - a[1]);
+  const rmCtx = document.getElementById("chart-role-mix");
+  if (rmCtx && rmEntries.length > 0) {
+    STATE.charts["chart-role-mix"] = new Chart(rmCtx, {
+      type: "doughnut",
+      data: {
+        labels: rmEntries.map(e => e[0]),
+        datasets: [{ data: rmEntries.map(e => e[1]), backgroundColor: ["#1a1a1a","#4a4a4a","#1450b3","#1f6f2c","#856404","#9b2222","#7b3aa1"] }]
+      },
+      options: { responsive: true, maintainAspectRatio: false }
+    });
+  } else if (rmCtx) {
+    rmCtx.parentElement.innerHTML = `<div class="empty">No role data.</div>`;
+  }
+
+  // Verification status table
+  const vs = m.counts_by_verification_status || {};
+  const vsRows = Object.entries(vs).map(([k, v]) => `<tr><td>${esc(k)}</td><td class="right">${v}</td></tr>`).join("");
+  document.getElementById("agent-vs").innerHTML = `<thead><tr><th>Status</th><th class="right">Count</th></tr></thead><tbody>${vsRows || '<tr><td colspan="2" class="empty">empty</td></tr>'}</tbody>`;
+
+  // Flow A/B/C stacked horizontal bar
+  const flowCtx = document.getElementById("agent-flow-chart");
+  if (flowCtx) {
+    STATE.charts["agent-flow-chart"] = new Chart(flowCtx, {
+      type: "bar",
+      data: {
+        labels: [esc(agentName)],
+        datasets: [
+          { label: `Flow A — Completed w/o QA (${m.flow_a_count || 0})`, data: [m.flow_a_count || 0], backgroundColor: "#d48a3a" },
+          { label: `Flow B — QA reviewed (${m.flow_b_count || 0})`,       data: [m.flow_b_count || 0], backgroundColor: "#1450b3" },
+          { label: `Flow C — Completed after QA (${m.flow_c_count || 0})`,data: [m.flow_c_count || 0], backgroundColor: "#1f6f2c" },
+        ],
+      },
+      options: {
+        indexAxis: "y", responsive: true, maintainAspectRatio: false,
+        scales: { x: { stacked: true }, y: { stacked: true, display: false } },
+        plugins: { legend: { position: "right", labels: { font: { size: 11 } } } },
+      },
+    });
+  }
+}
+
+// -------- Hourly Output --------
+PAGE_RENDERERS.hourly = function () {
+  const root = document.getElementById("page-hourly");
+  const teams = Object.keys(STATE.roster || {}).sort();
+  const selected = localStorage.getItem("wqa.hourlyTeam") || "__all__";
+  const opts = `<option value="__all__"${selected === "__all__" ? " selected" : ""}>All teams</option>`
+    + teams.map(t => `<option value="${esc(t)}"${selected === t ? " selected" : ""}>${esc(t)}</option>`).join("");
+  const date = STATE.v2?.date || "—";
+
+  root.innerHTML = `
+    <div class="controls-row">
+      <label class="small-mono">Team:</label>
+      <select id="hourlyTeamSelect">${opts}</select>
+      <span class="small-mono">Hourly Tagging Output by Agent — ${esc(date)}</span>
+    </div>
+    <div class="panel">
+      <div id="hourlyGrid"></div>
+      <div class="footer-note">Color intensity scales to the busiest cell in this view. Cells reflect today's <code>start_tagging</code> (EAT). Empty roster members render as zero rows.</div>
+    </div>`;
+
+  const sel = document.getElementById("hourlyTeamSelect");
+  sel.addEventListener("change", () => {
+    localStorage.setItem("wqa.hourlyTeam", sel.value);
+    renderHourlyGrid(sel.value);
+  });
+  renderHourlyGrid(selected);
+};
+
+function renderHourlyGrid(filterTeam) {
+  const hours = Array.from({ length: 18 }, (_, i) => i + 6);  // 6..23
+  const teams = Object.keys(STATE.roster || {}).sort();
+  const visibleTeams = (filterTeam && filterTeam !== "__all__") ? [filterTeam] : teams;
+
+  // First pass: gather rows so we can compute the global max for intensity scaling.
+  const rows = [];
+  let gridMax = 0;
+  for (const team of visibleTeams) {
+    const members = (STATE.roster[team]?.members || []).slice().sort((a, b) => a.name.localeCompare(b.name));
+    for (const m of members) {
+      const buckets = STATE.v2?.by_agent?.[m.name]?.hourly_buckets || {};
+      const counts = hours.map(h => buckets[h] ?? buckets[String(h)] ?? 0);
+      const total = counts.reduce((a, b) => a + b, 0);
+      gridMax = Math.max(gridMax, ...counts);
+      rows.push({ kind: "agent", team, name: m.name, counts, total });
+    }
+    rows.push({ kind: "divider", team });
+  }
+
+  // Sum-across-all-visible-agents row
+  const colSums = hours.map((_, i) => rows.filter(r => r.kind === "agent").reduce((s, r) => s + r.counts[i], 0));
+  const grand = colSums.reduce((a, b) => a + b, 0);
+
+  const cellHtml = (v, h, scale) => {
+    if (v === 0) return `<div class="cell z" title="${h}:00 EAT">0</div>`;
+    const alpha = scale === 0 ? 0 : (0.2 + 0.8 * (v / scale)).toFixed(2);
+    return `<div class="cell" style="background:rgba(20,80,179,${alpha});" title="${h}:00 EAT → ${v}">${v}</div>`;
+  };
+  const headers = hours.map(h => `<div class="header">${h}</div>`).join("");
+
+  // Group rows visually: emit a team divider row before each team's members.
+  let html = "";
+  let lastTeam = null;
+  let teamStarted = false;
+  for (const r of rows) {
+    if (r.kind === "divider") continue;
+    if (r.team !== lastTeam) {
+      if (teamStarted) html += `<div class="hourly-spacer"></div>`;
+      html += `<div class="hourly-team-label">${esc(r.team)}</div>` + `<div class="hourly-team-fill" style="grid-column: 2 / span ${hours.length + 1};"></div>`;
+      lastTeam = r.team;
+      teamStarted = true;
+    }
+    html += `<div class="label">${esc(r.name)}</div>`;
+    html += r.counts.map((v, i) => cellHtml(v, hours[i], gridMax)).join("");
+    html += `<div class="cell" style="background:#f0eee8;color:#1a1a1a;font-weight:600;">${r.total}</div>`;
+  }
+  // Footer "All agents" sum row
+  html += `<div class="hourly-spacer"></div>`;
+  html += `<div class="label" style="font-weight:600;">All agents</div>`;
+  html += colSums.map((v, i) => {
+    if (v === 0) return `<div class="cell z" title="${hours[i]}:00 EAT total">0</div>`;
+    const colMax = Math.max(1, ...colSums);
+    const alpha = (0.2 + 0.8 * (v / colMax)).toFixed(2);
+    return `<div class="cell" style="background:rgba(31,111,44,${alpha});" title="${hours[i]}:00 EAT total → ${v}">${v}</div>`;
+  }).join("");
+  html += `<div class="cell" style="background:#1a1a1a;color:#fff;font-weight:600;">${grand}</div>`;
+
+  document.getElementById("hourlyGrid").innerHTML = `
+    <div class="hourly-heatmap" style="grid-template-columns: 180px repeat(${hours.length}, 1fr) 70px;">
+      <div class="header"></div>${headers}<div class="header" style="font-weight:600;color:var(--ink);">Total</div>
+      ${html}
+    </div>`;
+}
+
+// -------- QA Performance --------
+PAGE_RENDERERS.qa_performance = function () {
+  const root = document.getElementById("page-qa_performance");
+  const reviewers = STATE.v2?.qa_reviewers || [];
+  const totalQAs     = reviewers.length;
+  const totalReviews = reviewers.reduce((s, r) => s + r.reviews, 0);
+  const totalApprov  = reviewers.reduce((s, r) => s + r.approvals, 0);
+  const overallApp   = totalReviews ? (totalApprov / totalReviews) * 100 : 0;
+  // Mean of averages weighted by review count
+  const overallAvg = totalReviews ? reviewers.reduce((s, r) => s + r.avg_review_time_hours * r.reviews, 0) / totalReviews : 0;
+
+  const timeClass = (h) => h < 12 ? "good" : h < 24 ? "warn" : "bad";
+
+  root.innerHTML = `
+    <h3 style="font-size:18px;font-weight:600;color:var(--ink);margin-bottom:8px">QA Performance</h3>
+    <div class="kpis">
+      <div class="kpi"><div class="label">Active QAs</div><div class="value">${totalQAs}</div></div>
+      <div class="kpi"><div class="label">Total reviews</div><div class="value">${totalReviews}</div></div>
+      <div class="kpi"><div class="label">Overall approval %</div><div class="value">${overallApp.toFixed(1)}%</div></div>
+      <div class="kpi ${timeClass(overallAvg)}"><div class="label">Overall avg response</div><div class="value">${overallAvg.toFixed(1)} h</div><div class="delta">green &lt;12h · amber &lt;24h · red ≥24h</div></div>
+    </div>
+    <div class="panel">
+      <h3>Per-QA breakdown <span class="meta">sort by clicking column headers</span></h3>
+      <div id="qaPerfTable"></div>
+    </div>
+    <div class="panel">
+      <h3>Reviews per QA</h3>
+      <div class="chart-wrap"><canvas id="qa-reviews-chart"></canvas></div>
+    </div>
+    ${reviewers.length === 0 ? `<div class="empty-state"><div class="title">No QA activity in cache</div>No records have <code>qa_assignee + qa_status</code> populated in the current cache window.</div>` : ""}
+  `;
+
+  // Sort state for this page
+  const ss = STATE._qaPerfSort = STATE._qaPerfSort || { by: "reviews", dir: "desc" };
+  function renderTable() {
+    const sorted = [...reviewers].sort((a, b) => {
+      let av = a[ss.by], bv = b[ss.by];
+      if (typeof av === "string") { av = av.toLowerCase(); bv = bv.toLowerCase(); }
+      const cmp = av < bv ? -1 : av > bv ? 1 : 0;
+      return ss.dir === "asc" ? cmp : -cmp;
+    });
+    const indicator = (k) => k === ss.by ? (ss.dir === "asc" ? "▲" : "▼") : "";
+    const head = `<thead><tr>
+      <th data-k="name">QA <span class="sort-ind">${indicator("name")}</span></th>
+      <th class="right" data-k="reviews">Reviews <span class="sort-ind">${indicator("reviews")}</span></th>
+      <th class="right" data-k="avg_review_time_hours">Avg (h) <span class="sort-ind">${indicator("avg_review_time_hours")}</span></th>
+      <th class="right" data-k="median_review_time_hours">Median (h) <span class="sort-ind">${indicator("median_review_time_hours")}</span></th>
+      <th class="right" data-k="p90_review_time_hours">p90 (h) <span class="sort-ind">${indicator("p90_review_time_hours")}</span></th>
+      <th class="right" data-k="approval_pct">Approval % <span class="sort-ind">${indicator("approval_pct")}</span></th>
+      <th class="right" data-k="changes">Changes <span class="sort-ind">${indicator("changes")}</span></th>
+    </tr></thead>`;
+    const body = sorted.map(r => `<tr>
+      <td><strong>${esc(r.name)}</strong></td>
+      <td class="right">${r.reviews}</td>
+      <td class="right"><span class="pill-inline ${timeClass(r.avg_review_time_hours)}">${r.avg_review_time_hours.toFixed(1)}</span></td>
+      <td class="right">${r.median_review_time_hours.toFixed(1)}</td>
+      <td class="right">${r.p90_review_time_hours.toFixed(1)}</td>
+      <td class="right">${r.approval_pct.toFixed(1)}%</td>
+      <td class="right">${r.changes}</td>
+    </tr>`).join("") || '<tr><td colspan="7" class="empty">no reviewers</td></tr>';
+    document.getElementById("qaPerfTable").innerHTML = `<table class="sortable">${head}<tbody>${body}</tbody></table>`;
+    document.querySelectorAll("#qaPerfTable th[data-k]").forEach(th => {
+      th.addEventListener("click", () => {
+        const k = th.dataset.k;
+        if (ss.by === k) ss.dir = ss.dir === "asc" ? "desc" : "asc";
+        else { ss.by = k; ss.dir = "desc"; }
+        renderTable();
+      });
+    });
+  }
+  renderTable();
+
+  // Reviews-per-QA bar chart
+  const ctx = document.getElementById("qa-reviews-chart");
+  if (ctx && reviewers.length) {
+    STATE.charts["qa-reviews-chart"] = new Chart(ctx, {
+      type: "bar",
+      data: {
+        labels: reviewers.map(r => r.name),
+        datasets: [{ label: "Reviews", data: reviewers.map(r => r.reviews), backgroundColor: "#1450b3" }],
+      },
+      options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } },
+    });
+  }
+};
+
+// -------- BO QA Console --------
+PAGE_RENDERERS.boqa = function () {
+  const root = document.getElementById("page-boqa");
+  const t = STATE.v2?.totals;
+  root.innerHTML = `
+    <div class="kpis">
+      <div class="kpi"><div class="label">Tagged today (5 teams)</div><div class="value">${t?.tagged_today || 0}</div><div class="delta">Sanctions: ${t?.tagged_today_sanctions || 0} · Non-sanctions: ${t?.tagged_today_non_sanctions || 0}</div></div>
+      <div class="kpi"><div class="label">BO QA backlog</div><div class="value">${t?.bo_qa_backlog || 0}</div></div>
+      <div class="kpi"><div class="label">add_new_company open</div><div class="value">${t?.add_new_company_open || 0}</div><div class="delta">100% QA required</div></div>
+      <div class="kpi"><div class="label">Today's reviews</div><div class="value">${(t?.qa_inspected_today || 0)}</div><div class="delta">${t?.qa_changed_today || 0} changed</div></div>
+    </div>
+    <div class="panel">
+      <h3>Today's tagged worklist <span class="meta">live from Airtable (read-only)</span></h3>
+      <div class="controls-row">
+        <button class="btn primary" id="loadBoqaBtn">Load live worklist</button>
+        <span class="small-mono" id="boqaStatus"></span>
+      </div>
+      <div id="boqaWorklist"></div>
+    </div>
+    <div class="panel">
+      <h3>5/5/5 stratification helper <span class="meta">recommended sample per agent</span></h3>
+      <div id="boqaStrat" class="empty">Load the worklist above to compute.</div>
+    </div>
+    <div class="panel">
+      <h3>add_new_company queue — 100% QA required</h3>
+      <div id="addNewCompany"></div>
+    </div>
+  `;
+  document.getElementById("loadBoqaBtn").addEventListener("click", loadBoqa);
+  renderAddNewCompanyFromCache();
+};
+
+async function loadBoqa() {
+  const status = document.getElementById("boqaStatus");
+  if (!HAS_COWORK) {
+    status.textContent = "Cowork required for live fetch (browser mode can only serve cached JSON).";
+    return;
+  }
+  status.textContent = "fetching from Airtable…";
+  document.getElementById("loadBoqaBtn").disabled = true;
+  STATE.liveBoQa = await liveFetchBoQaQueue();
+  status.textContent = `fetched ${STATE.liveBoQa.length} tagged records`;
+  document.getElementById("loadBoqaBtn").disabled = false;
+  renderBoqaWorklist();
+}
+
+function renderBoqaWorklist() {
+  const root = document.getElementById("boqaWorklist");
+  if (!STATE.liveBoQa) { root.innerHTML = `<div class="empty">Not loaded.</div>`; return; }
+  const today = todayEat();
+  // Group by assignee, only ownership-team agents, only today
+  const groups = {};
+  for (const r of STATE.liveBoQa) {
+    const c = r.cellValuesByFieldId || {};
+    const asg = (c[F.assignee] || [])[0]?.name;
+    if (!asg) continue;
+    const team = teamForAgent(asg);
+    if (!team) continue;
+    const st = c[F.start_tagging_date];
+    if (eatDate(st) !== today) continue;
+    const a = canonicalAgent(asg);
+    groups[a] = groups[a] || { team, records: [] };
+    groups[a].records.push({ id: r.id, imo: c[F.imo], company: (c[F.company_id_and_name] || [])[0]?.name, role: c[F.role]?.name, st });
+  }
+  const agents = Object.keys(groups).sort();
+  if (agents.length === 0) {
+    root.innerHTML = `<div class="empty">No agents have tagged records today yet. (BO QA's 25% pick happens once tags exist.)</div>`;
+    document.getElementById("boqaStrat").innerHTML = `<div class="empty">No agents have tagged today.</div>`;
+    return;
+  }
+  // Worklist table
+  const rows = [];
+  for (const a of agents) {
+    for (const rec of groups[a].records) {
+      rows.push(`<tr>
+        <td>${esc(groups[a].team)}</td>
+        <td class="agent-name">${esc(a)}</td>
+        <td class="mono">${esc(rec.imo || "")}</td>
+        <td>${esc(rec.role || "")}</td>
+        <td>${esc(rec.company || "")}</td>
+        <td class="mono">${rec.st ? new Date(rec.st).toLocaleTimeString("en-GB", { timeZone: "Africa/Nairobi", hour12: false }) : ""}</td>
+      </tr>`);
+    }
+  }
+  root.innerHTML = `<table>
+    <thead><tr><th>Team</th><th>Agent</th><th>IMO</th><th>Role</th><th>Company</th><th>Tagged at</th></tr></thead>
+    <tbody>${rows.join("")}</tbody></table>`;
+
+  // 5/5/5 stratification — naive: by record-creation order (already sorted by start_tagging_date asc from the fetch)
+  const stratRows = agents.map(a => {
+    const recs = groups[a].records;
+    const n = recs.length;
+    const pickN = Math.max(1, Math.round(n * 0.25));
+    const slice = (arr, where) => {
+      const k = Math.min(5, Math.ceil(pickN / 3));
+      if (where === "top") return arr.slice(0, k);
+      if (where === "bot") return arr.slice(-k);
+      const mid = Math.floor(arr.length / 2);
+      return arr.slice(Math.max(0, mid - Math.floor(k / 2)), Math.max(0, mid - Math.floor(k / 2)) + k);
+    };
+    const sample = [...slice(recs, "top"), ...slice(recs, "mid"), ...slice(recs, "bot")];
+    const sampleImos = sample.map(r => r.imo).filter(Boolean).join(", ");
+    return `<tr>
+      <td>${esc(groups[a].team)}</td>
+      <td class="agent-name">${esc(a)}</td>
+      <td class="right">${n}</td>
+      <td class="right">${pickN} (25%)</td>
+      <td class="mono">${esc(sampleImos)}</td>
+    </tr>`;
+  }).join("");
+  document.getElementById("boqaStrat").innerHTML = `<table>
+    <thead><tr><th>Team</th><th>Agent</th><th class="right">Tagged today</th><th class="right">QA sample target</th><th>Suggested IMOs (top/mid/bot)</th></tr></thead>
+    <tbody>${stratRows}</tbody></table>`;
+}
+
+function renderAddNewCompanyFromCache() {
+  const root = document.getElementById("addNewCompany");
+  // Use cache records (in-scope only, non-empty add_new_company, NOT done/valid)
+  const items = [];
+  for (const r of STATE.cacheRecords) {
+    const c = r.cellValuesByFieldId || {};
+    const asg = (c[F.assignee] || [])[0]?.name;
+    const team = teamForAgent(asg);
+    if (!team) continue;
+    const anc = c[F.add_new_company];
+    if (!anc) continue;
+    const vs = c[F.verification_status]?.name;
+    if (vs === "Done" || vs === "Valid") continue;
+    items.push({ id: r.id, imo: c[F.imo], team, agent: canonicalAgent(asg), anc, vs, st: c[F.start_tagging_date] });
+  }
+  if (items.length === 0) {
+    root.innerHTML = `<div class="empty">No open add_new_company items in the cached window.</div>`;
+    return;
+  }
+  items.sort((a, b) => (a.team + a.agent).localeCompare(b.team + b.agent));
+  const rows = items.slice(0, 100).map(i => `<tr>
+    <td>${esc(i.team)}</td>
+    <td class="agent-name">${esc(i.agent)}</td>
+    <td class="mono">${esc(i.imo || "")}</td>
+    <td>${esc(i.vs || "")}</td>
+    <td>${esc(String(i.anc).slice(0, 80))}${String(i.anc).length > 80 ? "…" : ""}</td>
+  </tr>`).join("");
+  root.innerHTML = `<div class="footer-note">Showing first 100 of ${items.length} open. Each requires 100% QA review per SOP.</div>
+    <table><thead><tr><th>Team</th><th>Agent</th><th>IMO</th><th>Status</th><th>add_new_company text</th></tr></thead><tbody>${rows}</tbody></table>`;
+}
+
+// -------- Daily Intake & Assignments --------
+PAGE_RENDERERS.intake = function () {
+  const root = document.getElementById("page-intake");
+  const t = STATE.v2?.totals;
+  root.innerHTML = `
+    <div class="kpis">
+      <div class="kpi hero"><div class="label">Records uploaded today (whole table)</div>
+        <div class="value">${(t?.relations_support_intake_today || 0).toLocaleString()}</div>
+        <div class="delta">created in relations_support — any assignee</div></div>
+      <div class="kpi"><div class="label">Distinct tasks uploaded today</div><div class="value">${t?.tasks_today_count || 0}</div><div class="delta">unique requested_by values</div></div>
+      <div class="kpi"><div class="label">Routed to 5 teams today</div><div class="value">${sumByTeam("team_routed_intake_today")}</div></div>
+      <div class="kpi"><div class="label">Tagged today (5 teams)</div><div class="value">${t?.tagged_today || 0}</div></div>
+    </div>
+    <div class="row">
+      <div class="panel">
+        <h3>Per-team intake vs tagging today</h3>
+        <table id="intakeTable"></table>
+        <div class="footer-note">team_routed_intake_today = records created today and assigned to a team member. tagged_today = records the team has actually tagged today. Gap = backlog forming.</div>
+      </div>
+      <div class="panel">
+        <h3>Routing health</h3>
+        <div id="intakeRouting"></div>
+      </div>
+    </div>
+    ${t?.intake_partial ? `<div class="alert-row warn" style="margin-bottom:14px"><span class="icon">!</span><div>Showing top 3,000 of <strong>${(t.relations_support_intake_today || 0).toLocaleString()}</strong> records uploaded today (sorted by most recent). Per-task counts may under-report; click into a task on the Tasks page and use "Fetch all records" to see its full record set.</div></div>` : ""}
+    <div class="panel">
+      <h3>Tasks uploaded today <span class="meta">grouped by requested_by, whole table</span></h3>
+      <div id="tasksTodayPanel"></div>
+    </div>
+    <div class="panel">
+      <h3>7-day intake (whole table, from cache)</h3>
+      <div class="chart-wrap"><canvas id="chart-7day-intake"></canvas></div>
+      <div class="footer-note">Derived from .poll_work cache records (capped at the 20-page fetch — see TECH_DEBT.md item 1).</div>
+    </div>
+  `;
+
+  // Tasks panel
+  const tasks = t?.tasks_today || [];
+  const tasksRoot = document.getElementById("tasksTodayPanel");
+  if (tasks.length === 0) {
+    tasksRoot.innerHTML = `<div class="empty">No records created today.</div>`;
+  } else {
+    const MAX_ROWS = 100;
+    const shown = tasks.slice(0, MAX_ROWS);
+    const more = tasks.length > MAX_ROWS ? `<div class="footer-note">${tasks.length - MAX_ROWS} more not shown.</div>` : "";
+    const totalRecords = tasks.reduce((s, x) => s + x.records, 0);
+    const rows = shown.map(task => {
+      const pillCls = task.is_sanctions ? "bad" : "good";
+      const pillTxt = task.is_sanctions ? "Sanctions" : "Standard";
+      const share = totalRecords ? ((task.records / totalRecords) * 100).toFixed(1) : "0.0";
+      return `<tr>
+        <td class="mono">${esc(task.name)}</td>
+        <td class="right"><strong>${task.records.toLocaleString()}</strong></td>
+        <td class="right">${share}%</td>
+        <td><span class="pill-inline ${pillCls}">${pillTxt}</span></td>
+      </tr>`;
+    }).join("");
+    tasksRoot.innerHTML = `
+      <table>
+        <thead><tr><th>Task name</th><th class="right">Records</th><th class="right">Share</th><th>Type</th></tr></thead>
+        <tbody>${rows}</tbody>
+      </table>
+      ${more}`;
+  }
+
+  // Per-team table
+  const teams = Object.keys(STATE.roster || {}).sort();
+  const rows = teams.map(team => {
+    const m = STATE.v2?.by_team?.[team];
+    if (!m) return `<tr><td><strong>${esc(team)}</strong></td><td colspan="3" class="empty">no cache records</td></tr>`;
+    return `<tr>
+      <td><strong>${esc(team)}</strong></td>
+      <td class="right">${m.team_routed_intake_today}</td>
+      <td class="right">${m.tagged_today}</td>
+      <td class="right">${m.bo_qa_backlog}</td>
+    </tr>`;
+  }).join("");
+  document.getElementById("intakeTable").innerHTML = `
+    <thead><tr><th>Team</th><th class="right">Routed today</th><th class="right">Tagged today</th><th class="right">BO QA backlog</th></tr></thead>
+    <tbody>${rows}</tbody>`;
+
+  // Routing health
+  const totalIntake = t?.relations_support_intake_today || 0;
+  const routed = sumByTeam("team_routed_intake_today");
+  const unassigned = Math.max(0, totalIntake - routed);
+  document.getElementById("intakeRouting").innerHTML = `
+    <table>
+      <tr><td>Total intake today</td><td class="right"><strong>${totalIntake.toLocaleString()}</strong></td></tr>
+      <tr><td>Routed to 5 ownership teams</td><td class="right">${routed}</td></tr>
+      <tr><td>Assigned elsewhere / unassigned</td><td class="right">${unassigned.toLocaleString()}</td></tr>
+    </table>
+    <div class="footer-note" style="margin-top:8px">Today's intake is being absorbed by upstream taggers, not the 5 ownership teams. Reflect on whether this is expected per SOP.</div>`;
+
+  // 7-day intake chart from cacheRecords
+  const byDay = {};
+  for (const r of STATE.cacheRecords) {
+    const d = eatDate(r.cellValuesByFieldId?.[F.created]);
+    if (!d) continue;
+    byDay[d] = (byDay[d] || 0) + 1;
+  }
+  const last7 = [];
+  const today = todayEat();
+  for (let i = 6; i >= 0; i--) {
+    const dt = new Date(today + "T00:00:00+03:00");
+    dt.setDate(dt.getDate() - i);
+    const key = dt.toLocaleDateString("en-CA", { timeZone: "Africa/Nairobi" });
+    last7.push({ d: key, n: byDay[key] || 0 });
+  }
+  const ctx = document.getElementById("chart-7day-intake");
+  if (ctx) {
+    STATE.charts["chart-7day-intake"] = new Chart(ctx, {
+      type: "bar",
+      data: { labels: last7.map(x => x.d), datasets: [{ label: "Records created", data: last7.map(x => x.n), backgroundColor: "#1450b3" }] },
+      options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } }
+    });
+  }
+};
+function sumByTeam(field) {
+  let sum = 0;
+  for (const team in (STATE.v2?.by_team || {})) sum += (STATE.v2.by_team[team]?.[field] || 0);
+  return sum;
+}
+
+// -------- Tasks --------
+const TASKS_STATE = { filter: "", view: "all", sortBy: "date_last_modified", sortDir: "desc" };
+
+PAGE_RENDERERS.tasks = function () {
+  const root = document.getElementById("page-tasks");
+  const tasks = STATE.v2?.tasks_all || [];
+  TASKS_STATE.filter = localStorage.getItem("wqa.tasksFilter") || "";
+  TASKS_STATE.view   = localStorage.getItem("wqa.tasksView") || "all";
+
+  // KPIs
+  const kpiTotal       = tasks.length;
+  const kpiIncomplete  = tasks.filter(t => t.flags.includes("incomplete")).length;
+  const kpiStuck       = tasks.filter(t => t.flags.includes("stuck")).length;
+  const kpiCompanyGap  = tasks.filter(t => t.flags.includes("company-gap")).length;
+
+  root.innerHTML = `
+    <h3 style="font-size:18px;font-weight:600;color:var(--ink);margin-bottom:8px">Task Lifecycle Tracking</h3>
+    <div class="kpis">
+      <div class="kpi"><div class="label">Tasks visible in cache</div><div class="value">${kpiTotal}</div></div>
+      <div class="kpi ${kpiIncomplete > 0 ? 'warn' : ''}"><div class="label">Incomplete tasks</div><div class="value">${kpiIncomplete}</div></div>
+      <div class="kpi ${kpiStuck > 0 ? 'warn' : ''}"><div class="label">Stuck tasks</div><div class="value">${kpiStuck}</div><div class="delta">no activity in 24h</div></div>
+      <div class="kpi ${kpiCompanyGap > 0 ? 'bad' : ''}"><div class="label">Company-gap tasks</div><div class="value">${kpiCompanyGap}</div><div class="delta">Done w/o company &amp; not dead vessel</div></div>
+    </div>
+    <div class="controls-row">
+      <label class="small-mono">Search:</label>
+      <input id="tasksSearch" type="text" placeholder="task name…" value="${esc(TASKS_STATE.filter)}" style="font-family:inherit;font-size:13px;padding:7px 12px;border:1px solid var(--border);background:var(--surface);border-radius:6px;color:var(--ink);min-width:240px"/>
+      <label class="small-mono">View:</label>
+      <select id="tasksView">
+        <option value="all"        ${TASKS_STATE.view === 'all'        ? 'selected' : ''}>All tasks</option>
+        <option value="today"      ${TASKS_STATE.view === 'today'      ? 'selected' : ''}>Today's only</option>
+        <option value="incomplete" ${TASKS_STATE.view === 'incomplete' ? 'selected' : ''}>Incomplete only</option>
+        <option value="stuck"      ${TASKS_STATE.view === 'stuck'      ? 'selected' : ''}>Stuck only</option>
+        <option value="flagged"    ${TASKS_STATE.view === 'flagged'    ? 'selected' : ''}>Has flags</option>
+      </select>
+      <span class="small-mono" id="tasksCount"></span>
+    </div>
+    <div class="panel"><div id="tasksTable"></div></div>
+  `;
+
+  document.getElementById("tasksSearch").addEventListener("input", (e) => {
+    TASKS_STATE.filter = e.target.value;
+    localStorage.setItem("wqa.tasksFilter", TASKS_STATE.filter);
+    renderTasksTable();
+  });
+  document.getElementById("tasksView").addEventListener("change", (e) => {
+    TASKS_STATE.view = e.target.value;
+    localStorage.setItem("wqa.tasksView", TASKS_STATE.view);
+    renderTasksTable();
+  });
+  renderTasksTable();
+};
+
+function _tasksFiltered() {
+  const today = STATE.v2?.date;
+  let out = STATE.v2?.tasks_all || [];
+  if (TASKS_STATE.filter) {
+    const f = TASKS_STATE.filter.toLowerCase();
+    out = out.filter(t => t.name.toLowerCase().includes(f));
+  }
+  if (TASKS_STATE.view === "today") {
+    out = out.filter(t => (t.date_first_seen || "").slice(0, 10) === today);
+  } else if (TASKS_STATE.view === "incomplete") {
+    out = out.filter(t => t.flags.includes("incomplete"));
+  } else if (TASKS_STATE.view === "stuck") {
+    out = out.filter(t => t.flags.includes("stuck"));
+  } else if (TASKS_STATE.view === "flagged") {
+    out = out.filter(t => t.flags.length > 0);
+  }
+  // Sort
+  const k = TASKS_STATE.sortBy, dir = TASKS_STATE.sortDir === "asc" ? 1 : -1;
+  out = [...out].sort((a, b) => {
+    let av, bv;
+    if (k === "name") { av = a.name; bv = b.name; }
+    else if (k === "type") { av = a.is_sanctions ? 1 : 0; bv = b.is_sanctions ? 1 : 0; }
+    else if (k === "total") { av = a.total_records_in_cache; bv = b.total_records_in_cache; }
+    else if (k === "Done")    { av = a.status_distribution.Done;    bv = b.status_distribution.Done; }
+    else if (k === "Valid")   { av = a.status_distribution.Valid;   bv = b.status_distribution.Valid; }
+    else if (k === "BO QA")   { av = a.status_distribution["Selected for BO QA "]; bv = b.status_distribution["Selected for BO QA "]; }
+    else if (k === "WW QA")   { av = a.status_distribution["Selected for WW QA"];  bv = b.status_distribution["Selected for WW QA"]; }
+    else if (k === "waiting") { av = a.status_distribution.waiting; bv = b.status_distribution.waiting; }
+    else if (k === "tagged")  { av = a.status_distribution.tagged;  bv = b.status_distribution.tagged; }
+    else if (k === "rework")  { av = a.status_distribution["need to be update"]; bv = b.status_distribution["need to be update"]; }
+    else if (k === "donePct") {
+      av = a.total_records_in_cache ? a.properly_completed / a.total_records_in_cache : 0;
+      bv = b.total_records_in_cache ? b.properly_completed / b.total_records_in_cache : 0;
+    }
+    else if (k === "completed")   { av = a.completed || 0; bv = b.completed || 0; }
+    else if (k === "qa_reviewed") { av = a.qa_reviewed || 0; bv = b.qa_reviewed || 0; }
+    else if (k === "qa_coverage") { av = a.qa_coverage_pct || 0; bv = b.qa_coverage_pct || 0; }
+    else if (k === "dead")    { av = a.dead_vessels; bv = b.dead_vessels; }
+    else if (k === "teams")   { av = a.teams_worked.length; bv = b.teams_worked.length; }
+    else if (k === "flags")   { av = a.flags.length; bv = b.flags.length; }
+    else /* date_last_modified */ { av = a.date_last_modified || ""; bv = b.date_last_modified || ""; }
+    if (av < bv) return -1 * dir;
+    if (av > bv) return  1 * dir;
+    return 0;
+  });
+  return out;
+}
+
+const FLAG_STYLES = {
+  "company-gap": "red",
+  "unassigned":  "red",
+  "incomplete":  "amber",
+  "high-waiting":"amber",
+  "stuck":       "gray",
+};
+
+function timeAgo(iso) {
+  if (!iso) return "—";
+  const ms = Date.now() - new Date(iso).getTime();
+  if (isNaN(ms)) return iso;
+  if (ms < 0) return "future";
+  const m = ms / 60000;
+  if (m < 60) return `${Math.round(m)}m ago`;
+  const h = m / 60;
+  if (h < 24) return `${Math.round(h)}h ago`;
+  return `${Math.round(h / 24)}d ago`;
+}
+function pctClass(pct) { return pct >= 95 ? "good" : pct >= 70 ? "warn" : "bad"; }
+
+function renderTasksTable() {
+  const list = _tasksFiltered();
+  document.getElementById("tasksCount").textContent = `${list.length} of ${(STATE.v2?.tasks_all || []).length}`;
+  const cols = [
+    ["name", "Task name"], ["type", "Type"], ["total", "Total"],
+    ["Done", "Done"], ["Valid", "Valid"], ["BO QA", "BO QA"], ["WW QA", "WW QA"],
+    ["waiting", "Waiting"], ["tagged", "Tagged"], ["rework", "Rework"],
+    ["completed", "Completed"], ["qa_reviewed", "QA Reviewed"], ["qa_coverage", "QA %"],
+    ["donePct", "Properly done %"], ["dead", "Dead vessels"],
+    ["teams", "Teams"], ["date_last_modified", "Last active"], ["flags", "Flags"],
+  ];
+  const sortInd = (k) => k === TASKS_STATE.sortBy ? (TASKS_STATE.sortDir === "asc" ? "▲" : "▼") : "";
+  const rightCols = new Set(['total','dead','Done','Valid','BO QA','WW QA','waiting','tagged','rework','completed','qa_reviewed','qa_coverage']);
+  const head = `<thead><tr>${cols.map(([k, lab]) => `<th data-sort="${k}" class="${rightCols.has(k) ? 'right' : ''}">${esc(lab)} <span class="sort-ind">${sortInd(k)}</span></th>`).join("")}</tr></thead>`;
+  const body = list.map(t => {
+    const s = t.status_distribution;
+    const total = t.total_records_in_cache;
+    const donePct = total ? (t.properly_completed / total) * 100 : 0;
+    const teams = t.teams_worked.map(x => x.team).join(", ") || "—";
+    const flagsHtml = t.flags.map(f => `<span class="flag-pill ${FLAG_STYLES[f] || 'gray'}">${esc(f)}</span>`).join("");
+    return `<tr>
+      <td><a class="task-name" data-task="${esc(t.name)}">${esc(t.name)}</a></td>
+      <td><span class="pill-inline ${t.is_sanctions ? 'bad' : 'good'}">${t.is_sanctions ? 'Sanctions' : 'Standard'}</span></td>
+      <td class="right">${total.toLocaleString()}</td>
+      <td class="right">${s.Done}</td>
+      <td class="right">${s.Valid}</td>
+      <td class="right">${s["Selected for BO QA "]}</td>
+      <td class="right">${s["Selected for WW QA"]}</td>
+      <td class="right">${s.waiting}</td>
+      <td class="right">${s.tagged}</td>
+      <td class="right">${s["need to be update"]}</td>
+      <td class="right">${t.completed || 0}</td>
+      <td class="right">${t.qa_reviewed || 0}</td>
+      <td class="right"><span class="pill-inline ${(t.qa_coverage_pct || 0) >= 15 ? 'good' : (t.qa_coverage_pct || 0) >= 5 ? 'warn' : 'bad'}">${(t.qa_coverage_pct || 0).toFixed(0)}%</span></td>
+      <td class="right"><span class="pill-inline ${pctClass(donePct).replace('warn','warn')}">${donePct.toFixed(0)}%</span></td>
+      <td class="right">${t.dead_vessels}</td>
+      <td>${esc(teams)}</td>
+      <td class="small-mono">${esc(timeAgo(t.date_last_modified))}</td>
+      <td>${flagsHtml || '<span class="small-mono">—</span>'}</td>
+    </tr>`;
+  }).join("");
+  document.getElementById("tasksTable").innerHTML = `<table class="sortable">${head}<tbody>${body || '<tr><td colspan="18" class="empty">No tasks match.</td></tr>'}</tbody></table>`;
+  // Click handlers
+  document.querySelectorAll("#tasksTable th[data-sort]").forEach(th => {
+    th.addEventListener("click", () => {
+      const k = th.dataset.sort;
+      if (TASKS_STATE.sortBy === k) TASKS_STATE.sortDir = TASKS_STATE.sortDir === "asc" ? "desc" : "asc";
+      else { TASKS_STATE.sortBy = k; TASKS_STATE.sortDir = "desc"; }
+      renderTasksTable();
+    });
+  });
+  document.querySelectorAll(".task-name").forEach(a => {
+    a.addEventListener("click", () => openTaskDrawer(a.dataset.task));
+  });
+}
+
+// ----- Task detail drawer -----
+function openTaskDrawer(taskName) {
+  const t = (STATE.v2?.tasks_all || []).find(x => x.name === taskName);
+  if (!t) return;
+  const drawer = document.getElementById("taskDrawer");
+  const backdrop = document.getElementById("taskDrawerBackdrop");
+
+  // Completion breakdown rows
+  const noCoNoDead = t.total_records_in_cache - t.with_company - (t.dead_vessels);  // approximation; see note
+  // Better: derive from records — but we don't have records in aggregates_v2. So compute from emitted fields:
+  // with_company AND dead_vessel ticked is not separately emitted, so approximate buckets.
+  const flagsHtml = t.flags.map(f => `<span class="flag-pill ${FLAG_STYLES[f] || 'gray'}">${esc(f)}</span>`).join("") || '<span class="small-mono">no flags</span>';
+  const sd = t.status_distribution;
+
+  drawer.innerHTML = `
+    <div class="drawer-header">
+      <button class="drawer-close" id="drawerCloseBtn" title="Close">×</button>
+      <h2>${esc(t.name)}</h2>
+      <div>
+        <span class="pill-inline ${t.is_sanctions ? 'bad' : 'good'}">${t.is_sanctions ? 'Sanctions' : 'Standard'}</span>
+        <span class="small-mono"> · ${t.total_records_in_cache.toLocaleString()} records in cache · last active ${esc(timeAgo(t.date_last_modified))}</span>
+      </div>
+      <div style="margin-top:6px">${flagsHtml}</div>
+    </div>
+    <div class="drawer-body">
+
+      <div class="row equal">
+        <div class="panel">
+          <h3>Status breakdown</h3>
+          <div class="chart-wrap small"><canvas id="drawerStatusChart"></canvas></div>
+        </div>
+        <div class="panel">
+          <h3>Completion breakdown</h3>
+          <table>
+            <tr><td>Properly completed</td><td class="right"><strong>${t.properly_completed}</strong> / ${t.total_records_in_cache}</td></tr>
+            <tr><td>With company</td><td class="right">${t.with_company}</td></tr>
+            <tr><td>Without company</td><td class="right">${t.without_company}</td></tr>
+            <tr><td>Dead vessels (any status)</td><td class="right">${t.dead_vessels}</td></tr>
+            <tr><td>On reminder</td><td class="right">${t.with_reminder}</td></tr>
+          </table>
+          <div class="footer-note">Detailed "with company AND dead vessel" / "no company, no dead vessel" breakdown requires per-record visibility — click "Fetch all records" below.</div>
+        </div>
+      </div>
+
+      <div class="row equal">
+        <div class="panel">
+          <h3>Agents working this task <span class="meta">multi-assignee aware</span></h3>
+          <table>
+            <thead><tr><th>Agent</th><th>Team</th><th class="right">Records touched</th></tr></thead>
+            <tbody>${t.agents_worked.map(a => `<tr><td class="agent-name">${esc(a.name)}</td><td>${esc(a.team || '—')}</td><td class="right">${a.records}</td></tr>`).join("") || '<tr><td colspan="3" class="empty">no assignees in cache window</td></tr>'}</tbody>
+          </table>
+        </div>
+        <div class="panel">
+          <h3>Teams involved</h3>
+          <table>
+            <thead><tr><th>Team</th><th class="right">Distinct records</th></tr></thead>
+            <tbody>${t.teams_worked.map(x => `<tr><td>${esc(x.team)}</td><td class="right">${x.records}</td></tr>`).join("") || '<tr><td colspan="2" class="empty">no in-roster assignees</td></tr>'}</tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="panel">
+        <h3>Records in this task <span class="meta">live from Airtable, read-only</span></h3>
+        <div class="controls-row">
+          <button class="btn primary" id="fetchTaskBtn">Fetch all records from Airtable for this task</button>
+          <span class="small-mono" id="fetchTaskStatus"></span>
+        </div>
+        <div id="fetchTaskResults"></div>
+      </div>
+
+    </div>
+  `;
+
+  // Status doughnut
+  const labels = Object.keys(sd).filter(k => sd[k] > 0);
+  const data = labels.map(k => sd[k]);
+  const ctx = document.getElementById("drawerStatusChart");
+  if (ctx && labels.length) {
+    if (STATE.charts["drawerStatusChart"]) STATE.charts["drawerStatusChart"].destroy();
+    STATE.charts["drawerStatusChart"] = new Chart(ctx, {
+      type: "doughnut",
+      data: { labels, datasets: [{ data, backgroundColor: ["#1450b3","#856404","#9b2222","#1f6f2c","#4a4a4a","#7b3aa1","#d48a3a"] }] },
+      options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: "right", labels: { font: { size: 10 } } } } }
+    });
+  }
+
+  document.getElementById("drawerCloseBtn").addEventListener("click", closeTaskDrawer);
+  document.getElementById("taskDrawerBackdrop").addEventListener("click", closeTaskDrawer);
+  document.getElementById("fetchTaskBtn").addEventListener("click", () => fetchTaskRecords(t.name));
+
+  drawer.classList.add("open");
+  backdrop.classList.add("open");
+}
+
+function closeTaskDrawer() {
+  document.getElementById("taskDrawer").classList.remove("open");
+  document.getElementById("taskDrawerBackdrop").classList.remove("open");
+  if (STATE.charts["drawerStatusChart"]) { STATE.charts["drawerStatusChart"].destroy(); delete STATE.charts["drawerStatusChart"]; }
+}
+
+async function fetchTaskRecords(taskName) {
+  const status = document.getElementById("fetchTaskStatus");
+  const out = document.getElementById("fetchTaskResults");
+  if (!HAS_COWORK) {
+    status.textContent = "Cowork required for live fetch.";
+    return;
+  }
+  document.getElementById("fetchTaskBtn").disabled = true;
+  status.textContent = "fetching…";
+  const args = {
+    baseId: BASE_ID,
+    tableId: TABLE_ID,
+    pageSize: 100,
+    filters: { operator: "and", operands: [{ operator: "=", operands: [F.requested_by, taskName] }] },
+    sort: [{ fieldId: F.last_modified, direction: "desc" }],
+  };
+  const all = [];
+  let cursor;
+  for (let i = 0; i < 30; i++) {
+    if (cursor) args.cursor = cursor; else delete args.cursor;
+    let result;
+    try { result = await window.cowork.callMcpTool(AIRTABLE_TOOL, args); }
+    catch (e) { console.error(e); break; }
+    const payload = unwrapJson(result);
+    if (!payload || !payload.records) break;
+    all.push(...payload.records);
+    if (!payload.nextCursor) break;
+    cursor = payload.nextCursor;
+  }
+  status.textContent = `fetched ${all.length} record${all.length === 1 ? '' : 's'}`;
+  document.getElementById("fetchTaskBtn").disabled = false;
+
+  const rows = all.slice(0, 500).map(r => {
+    const c = r.cellValuesByFieldId || {};
+    const asgs = (c[F.assignee] || []).map(x => x.name).join(", ");
+    const vs = c[F.verification_status]?.name || "";
+    const co = (c[F.company_id_and_name] || [])[0]?.name || "";
+    const lm = c[F.last_modified] || "";
+    const recFlags = [];
+    if ((vs === "Done" || vs === "Valid") && !co && c[F.dead_vessel] !== true) recFlags.push('<span class="flag-pill red">company-gap</span>');
+    if (!asgs) recFlags.push('<span class="flag-pill red">unassigned</span>');
+    return `<tr>
+      <td class="mono">${esc(c[F.imo] || "")}</td>
+      <td>${esc(c[F.role]?.name || "")}</td>
+      <td>${esc(vs)}</td>
+      <td>${esc(co || "—")}</td>
+      <td>${esc(asgs || "—")}</td>
+      <td class="mono">${esc(fmtEatDateTime(lm))}</td>
+      <td>${recFlags.join(" ")}</td>
+    </tr>`;
+  }).join("");
+  const more = all.length > 500 ? `<div class="footer-note">${all.length - 500} more not shown.</div>` : "";
+  out.innerHTML = `<table><thead><tr><th>IMO</th><th>Role</th><th>Status</th><th>Company</th><th>Assignees</th><th>Last modified</th><th>Flags</th></tr></thead><tbody>${rows}</tbody></table>${more}`;
+}
+
+// -------- WW QA Console --------
+PAGE_RENDERERS.wwqa = function () {
+  const root = document.getElementById("page-wwqa");
+  const t = STATE.v2?.totals;
+  const backlog = t?.ww_qa_backlog || 0;
+  const throughput = t?.ww_qa_throughput || 0;
+  const changeRate = t?.ww_qa_change_rate || 0;
+  const wwqaPeople = Object.keys(STATE.v2?.by_ww_qa || {});
+
+  root.innerHTML = `
+    <div class="kpis">
+      <div class="kpi"><div class="label">WW QA backlog</div><div class="value">${backlog}</div><div class="delta">in Selected for WW QA</div></div>
+      <div class="kpi"><div class="label">WW QA throughput</div><div class="value">${throughput}</div><div class="delta">approve+change verdicts</div></div>
+      <div class="kpi"><div class="label">WW change rate</div><div class="value">${changeRate.toFixed(1)}%</div></div>
+      <div class="kpi"><div class="label">Active WW QAs</div><div class="value">${wwqaPeople.length}</div></div>
+    </div>
+    ${wwqaPeople.length === 0 && backlog === 0 ? `
+      <div class="empty-state">
+        <div class="title">No WW QA activity in the last 24h</div>
+        <div>The WW QA stage exists in Airtable (records can move to <code>Selected for WW QA</code>) but appears unused in current operations.</div>
+        <div style="margin-top:8px">When ops starts routing through WW QA — assignees in <code>ww_qa_assignee</code> and verdicts in <code>ww_qa</code> — this page will populate immediately with no rebuild required.</div>
+        <div style="margin-top:8px" class="small-mono">See <code>Ownership Operations Hub/TECH_DEBT.md</code> item 3.</div>
+      </div>
+    ` : ""}
+    <div class="row equal">
+      <div class="panel">
+        <h3>Per-WW-QA throughput</h3>
+        <table id="wwqaTable"></table>
+      </div>
+      <div class="panel">
+        <h3>Selected for WW QA — current backlog</h3>
+        <div id="wwqaBacklogList"></div>
+        <div class="footer-note">Filter records to verification_status = "Selected for WW QA". Currently ${backlog} in queue.</div>
+      </div>
+    </div>
+  `;
+
+  // Per-WW-QA table
+  const rows = wwqaPeople.length === 0 ? `<tr><td colspan="3" class="empty">No WW QA assignees in cache window.</td></tr>`
+    : wwqaPeople.map(name => {
+      const m = STATE.v2.by_ww_qa[name];
+      return `<tr><td>${esc(name)}</td><td class="right">${m.ww_qa_throughput}</td><td class="right">${m.ww_qa_change_rate.toFixed(1)}%</td></tr>`;
+    }).join("");
+  document.getElementById("wwqaTable").innerHTML = `
+    <thead><tr><th>WW QA</th><th class="right">Throughput</th><th class="right">Change %</th></tr></thead>
+    <tbody>${rows}</tbody>`;
+
+  // Backlog list from cacheRecords
+  const backlogRows = [];
+  for (const r of STATE.cacheRecords) {
+    const c = r.cellValuesByFieldId || {};
+    if (c[F.verification_status]?.name !== "Selected for WW QA") continue;
+    backlogRows.push(`<tr>
+      <td class="mono">${esc(c[F.imo] || "")}</td>
+      <td>${esc((c[F.assignee] || [])[0]?.name || "")}</td>
+      <td>${esc(c[F.ww_qa_assignee]?.name || "—")}</td>
+      <td class="mono">${esc(fmtEatDateTime(c[F.last_modified]))}</td>
+    </tr>`);
+  }
+  document.getElementById("wwqaBacklogList").innerHTML = backlogRows.length
+    ? `<table><thead><tr><th>IMO</th><th>Tagged by</th><th>WW QA</th><th>Last modified</th></tr></thead><tbody>${backlogRows.join("")}</tbody></table>`
+    : `<div class="empty">No Selected for WW QA records in cache window.</div>`;
+};
+
+// -------- Weekly Report --------
+STATE.weeklySnapshots = STATE.weeklySnapshots || {};  // {dateStr: aggsV2 | null (not found)}
+
+async function loadWeeklySnapshots(startISO, endISO) {
+  const dates = [];
+  let d = new Date(startISO + "T00:00:00+03:00");
+  const end = new Date(endISO + "T00:00:00+03:00");
+  while (d <= end) {
+    dates.push(d.toLocaleDateString("en-CA", { timeZone: "Africa/Nairobi" }));
+    d.setDate(d.getDate() + 1);
+  }
+  // Always include today, since today's aggregate is in STATE.v2 (no snapshot file may exist yet).
+  if (STATE.v2?.date && !dates.includes(STATE.v2.date)) dates.push(STATE.v2.date);
+  for (const date of dates) {
+    if (STATE.weeklySnapshots[date] !== undefined) continue;  // cached (incl. null = tried & missing)
+    // Today's data is already in STATE.v2 — use that directly, don't fetch.
+    if (date === STATE.v2?.date) {
+      STATE.weeklySnapshots[date] = STATE.v2;
+      continue;
+    }
+    const data = await readJson(`.poll_work/snapshots/${date}.json`);
+    STATE.weeklySnapshots[date] = data;  // null when missing
+  }
+  return dates;
+}
+
+function _enumerateDays(startISO, endISO) {
+  const out = [];
+  let d = new Date(startISO + "T00:00:00+03:00");
+  const end = new Date(endISO + "T00:00:00+03:00");
+  while (d <= end) {
+    out.push(d.toLocaleDateString("en-CA", { timeZone: "Africa/Nairobi" }));
+    d.setDate(d.getDate() + 1);
+  }
+  return out;
+}
+
+PAGE_RENDERERS.weekly = async function () {
+  const root = document.getElementById("page-weekly");
+  const todayISO = STATE.v2?.date || todayEat();
+  // Default range: last 7 calendar days ending yesterday.
+  const t0 = new Date(todayISO + "T00:00:00+03:00");
+  const yest = new Date(t0); yest.setDate(t0.getDate() - 1);
+  const start = new Date(t0); start.setDate(t0.getDate() - 7);
+  const iso = (d) => d.toLocaleDateString("en-CA", { timeZone: "Africa/Nairobi" });
+  const stored = JSON.parse(localStorage.getItem("wqa.weekly") || "{}");
+  const rangeStart = stored.start || iso(start);
+  const rangeEnd   = stored.end   || iso(yest);
+
+  root.innerHTML = `
+    <h3 style="font-size:18px;font-weight:600;color:var(--ink);margin-bottom:8px">Weekly Report</h3>
+    <div class="controls-row">
+      <label class="small-mono">Date range:</label>
+      <input type="date" id="weeklyStart" value="${esc(rangeStart)}" style="font-family:inherit;font-size:13px;padding:6px 10px;border:1px solid var(--border);border-radius:6px"/>
+      <span class="small-mono">to</span>
+      <input type="date" id="weeklyEnd" value="${esc(rangeEnd)}" style="font-family:inherit;font-size:13px;padding:6px 10px;border:1px solid var(--border);border-radius:6px"/>
+      <span class="small-mono">(default: last 7 days ending yesterday)</span>
+    </div>
+    <div id="weeklyBanner"></div>
+    <div id="weeklyBody"><div class="empty">Loading snapshots…</div></div>
+  `;
+  document.getElementById("weeklyStart").addEventListener("change", onPickerChange);
+  document.getElementById("weeklyEnd").addEventListener("change", onPickerChange);
+
+  await renderWeeklyBody(rangeStart, rangeEnd);
+
+  async function onPickerChange() {
+    const s = document.getElementById("weeklyStart").value;
+    const e = document.getElementById("weeklyEnd").value;
+    if (!s || !e || s > e) return;
+    localStorage.setItem("wqa.weekly", JSON.stringify({ start: s, end: e }));
+    document.getElementById("weeklyBody").innerHTML = `<div class="empty">Loading snapshots…</div>`;
+    await renderWeeklyBody(s, e);
+  }
+};
+
+async function renderWeeklyBody(startISO, endISO) {
+  await loadWeeklySnapshots(startISO, endISO);
+
+  const todayISO = STATE.v2?.date;
+  const days = _enumerateDays(startISO, endISO);
+  // Roll up — both range days AND today (if today is outside range, still show its preview).
+  const presentDays = days.filter(d => STATE.weeklySnapshots[d]);
+  const missingDays = days.filter(d => !STATE.weeklySnapshots[d]);
+
+  // Banner
+  let bannerHTML = "";
+  if (presentDays.length === 0 && STATE.v2) {
+    bannerHTML = `<div class="alert-row warn" style="margin-bottom:14px"><span class="icon">!</span><div>No snapshots yet for ${esc(startISO)} → ${esc(endISO)}. Snapshots accumulate as each poll cycle fires (one per day). Showing today's data only as a preview.</div></div>`;
+  } else {
+    bannerHTML = `<div class="alert-row" style="margin-bottom:14px"><span class="icon">i</span><div>Showing <strong>${presentDays.length}</strong> day${presentDays.length === 1 ? "" : "s"} of data (from ${esc(presentDays[0] || startISO)} to ${esc(presentDays[presentDays.length - 1] || endISO)}). Missing days: <strong>${missingDays.length}</strong>${missingDays.length > 0 ? ` (${missingDays.slice(0, 3).map(esc).join(", ")}${missingDays.length > 3 ? "…" : ""})` : ""}.</div></div>`;
+  }
+  document.getElementById("weeklyBanner").innerHTML = bannerHTML;
+
+  // Body
+  const body = document.getElementById("weeklyBody");
+  // Source days: present range days. If empty, fall back to today.
+  const sourceDays = presentDays.length > 0 ? presentDays : (STATE.v2?.date && STATE.weeklySnapshots[STATE.v2.date] ? [STATE.v2.date] : []);
+  if (sourceDays.length === 0) {
+    body.innerHTML = `<div class="empty-state"><div class="title">No data</div>No snapshots in range and no current aggregate.</div>`;
+    return;
+  }
+  const rollup = _rollupClientSide(sourceDays);
+
+  // KPI row
+  const dailyAvg = rollup.days_with_data ? rollup.totals.tagged / rollup.days_with_data : 0;
+  const qaCoverage = rollup.totals.total_completions > 0 ? (rollup.totals.flow_c / rollup.totals.total_completions) * 100 : 0;
+  const kpiHTML = `
+    <div class="kpis">
+      <div class="kpi hero"><div class="label">Total records</div><div class="value">${rollup.totals.tagged.toLocaleString()}</div><div class="delta">sum of tagged across ${rollup.days_with_data} day${rollup.days_with_data === 1 ? "" : "s"}</div></div>
+      <div class="kpi"><div class="label">Active agents (avg/day)</div><div class="value">${rollup.totals.active_agents_avg.toFixed(1)}</div></div>
+      <div class="kpi" title="Sum of per-day unique IMOs — may double-count IMOs worked on multiple days."><div class="label">Unique IMOs (sum)</div><div class="value">${rollup.totals.unique_imos_union.toLocaleString()}</div><div class="delta">may double-count across days</div></div>
+      <div class="kpi"><div class="label">Daily avg</div><div class="value">${dailyAvg.toFixed(0)}</div></div>
+      <div class="kpi"><div class="label">Flow A</div><div class="value">${rollup.totals.flow_a}</div><div class="delta">w/o QA</div></div>
+      <div class="kpi"><div class="label">Flow B</div><div class="value">${rollup.totals.flow_b}</div><div class="delta">QA reviewed</div></div>
+      <div class="kpi"><div class="label">Flow C</div><div class="value">${rollup.totals.flow_c}</div><div class="delta">after QA</div></div>
+      <div class="kpi"><div class="label">Total completions</div><div class="value">${rollup.totals.total_completions}</div></div>
+      <div class="kpi"><div class="label">QA coverage %</div><div class="value">${qaCoverage.toFixed(0)}%</div></div>
+    </div>`;
+
+  // Per-team performance
+  const teamRows = Object.keys(STATE.roster || {}).sort().map(team => {
+    const r = rollup.per_team_rollup[team];
+    if (!r || r.records === 0) {
+      return `<tr><td><strong>${esc(team)}</strong></td><td colspan="5" class="empty">no activity in range</td></tr>`;
+    }
+    const numAgents = (STATE.roster[team].members || []).length;
+    const avgPerAgent = numAgents ? r.records / numAgents : 0;
+    const top = r.top_performer ? `${esc(r.top_performer.name)} <span class="small-mono">(${r.top_performer.records})</span>` : "—";
+    return `<tr>
+      <td><strong>${esc(team)}</strong></td>
+      <td class="right">${r.records.toLocaleString()}</td>
+      <td class="right">${numAgents}</td>
+      <td class="right">${r.unique_imos_sum}</td>
+      <td class="right">${avgPerAgent.toFixed(1)}</td>
+      <td>${top}</td>
+    </tr>`;
+  }).join("");
+  const teamPerfHTML = `
+    <div class="panel">
+      <h3>Team Performance <span class="meta">across ${rollup.days_with_data} day${rollup.days_with_data === 1 ? "" : "s"}</span></h3>
+      <table>
+        <thead><tr><th>Team</th><th class="right">Records</th><th class="right">Agents</th><th class="right">Unique IMOs (sum)</th><th class="right">Avg/Agent</th><th>Top Performer</th></tr></thead>
+        <tbody>${teamRows}</tbody>
+      </table>
+    </div>`;
+
+  const chartsHTML = `
+    <div class="row equal">
+      <div class="panel">
+        <h3>Daily Activity by Team</h3>
+        <div class="chart-wrap"><canvas id="weekly-team-chart"></canvas></div>
+      </div>
+      <div class="panel">
+        <h3>Total Completions by Work Date</h3>
+        <div class="chart-wrap"><canvas id="weekly-completions-chart"></canvas></div>
+      </div>
+    </div>`;
+
+  // Agents not working — limit missing_dates display to 5 with ellipsis
+  const anwRows = rollup.agents_not_working.map(a => {
+    const dates = a.missing_dates.slice(0, 5).map(esc).join(", ") + (a.missing_dates.length > 5 ? "…" : "");
+    return `<tr><td class="agent-name">${esc(a.name)}</td><td>${esc(a.team)}</td><td>${a.days_missed}</td><td class="small-mono">${dates}</td></tr>`;
+  }).join("");
+  const anwHTML = `
+    <div class="panel">
+      <h3>Agents Not Working <span class="meta">${rollup.agents_not_working.length} agents with at least one missed day</span></h3>
+      ${anwRows ? `<table>
+        <thead><tr><th>Agent</th><th>Team</th><th>Days missed</th><th>Missing dates (first 5)</th></tr></thead>
+        <tbody>${anwRows}</tbody>
+      </table>` : '<div class="empty">All roster members worked every day in range.</div>'}
+    </div>`;
+
+  // Per-day expandable sections
+  const perDayHTML = rollup.per_day.map(d => {
+    const isToday = d.date === todayISO;
+    const snap = STATE.weeklySnapshots[d.date];
+    const byAgent = snap?.by_agent || {};
+    const flowAleaders = Object.entries(byAgent).sort((a, b) => (b[1].flow_a_count || 0) - (a[1].flow_a_count || 0)).slice(0, 5);
+    const flowCleaders = Object.entries(byAgent).sort((a, b) => (b[1].flow_c_count || 0) - (a[1].flow_c_count || 0)).slice(0, 5);
+    return `
+    <details class="panel" ${isToday ? "open" : ""}>
+      <summary style="cursor:pointer;font-weight:600;font-size:14px">${esc(d.date)}${isToday ? " (today)" : ""} — Tagged: ${d.tagged} · Done: ${d.done} · Flow A/B/C: ${d.flow_a}/${d.flow_b}/${d.flow_c} · Completions: ${d.total_completions}</summary>
+      <div style="margin-top:10px">
+        <div class="row equal">
+          <div>
+            <h4 style="font-size:13px;color:var(--muted);margin:8px 0">Flow A leaders (completed w/o QA)</h4>
+            <table><thead><tr><th>Agent</th><th class="right">Flow A</th></tr></thead><tbody>
+              ${flowAleaders.length ? flowAleaders.map(([n, a]) => `<tr><td>${esc(n)}</td><td class="right">${a.flow_a_count || 0}</td></tr>`).join("") : '<tr><td colspan="2" class="empty">no records</td></tr>'}
+            </tbody></table>
+          </div>
+          <div>
+            <h4 style="font-size:13px;color:var(--muted);margin:8px 0">Flow C leaders (completed after QA)</h4>
+            <table><thead><tr><th>Agent</th><th class="right">Flow C</th></tr></thead><tbody>
+              ${flowCleaders.length ? flowCleaders.map(([n, a]) => `<tr><td>${esc(n)}</td><td class="right">${a.flow_c_count || 0}</td></tr>`).join("") : '<tr><td colspan="2" class="empty">no records</td></tr>'}
+            </tbody></table>
+          </div>
+        </div>
+        ${isToday ? `
+          <h4 style="font-size:13px;color:var(--muted);margin:14px 0 6px">Not Yet Finalized — oldest 20 (today's snapshot)</h4>
+          <table>
+            <thead><tr><th>IMO</th><th>Role</th><th>Agent</th><th>Team</th><th>Status</th><th class="right">Days open</th><th class="right">Other open roles</th></tr></thead>
+            <tbody>${(STATE.v2?.not_yet_finalized || []).slice(0, 20).map(r => `<tr>
+              <td class="mono">${esc(r.imo)}</td>
+              <td>${esc(r.role || "")}</td>
+              <td>${esc(r.assignee || "—")}</td>
+              <td>${esc(r.team || "—")}</td>
+              <td>${esc(r.verification_status)}</td>
+              <td class="right">${r.days_open}</td>
+              <td class="right">${r.open_roles_count}</td>
+            </tr>`).join("")}</tbody>
+          </table>
+          ${STATE.v2?.not_yet_finalized_truncated ? '<div class="footer-note">Showing oldest 500; older records truncated.</div>' : ""}
+        ` : `<div class="footer-note">Historical Not Yet Finalized list requires record-level snapshots — Phase E2.</div>`}
+      </div>
+    </details>`;
+  }).join("");
+
+  body.innerHTML = kpiHTML + teamPerfHTML + chartsHTML + anwHTML + perDayHTML;
+
+  // Daily Activity chart — real multi-day stacked bar
+  const teamCtx = document.getElementById("weekly-team-chart");
+  if (teamCtx) {
+    const teams = Object.keys(STATE.roster || {}).sort();
+    const colors = ["#1f6f2c", "#856404", "#9b2222", "#1450b3", "#7b3aa1"];
+    if (STATE.charts["weekly-team-chart"]) STATE.charts["weekly-team-chart"].destroy();
+    STATE.charts["weekly-team-chart"] = new Chart(teamCtx, {
+      type: "bar",
+      data: {
+        labels: rollup.per_day.map(d => d.date),
+        datasets: teams.map((tname, i) => ({
+          label: tname,
+          data: rollup.per_day.map(d => d.by_team[tname] || 0),
+          backgroundColor: colors[i % colors.length],
+        })),
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        scales: { x: { stacked: true }, y: { stacked: true } },
+        plugins: { legend: { position: "right" } },
+      },
+    });
+  }
+
+  // Completions chart — real multi-day stacked bar + Flow B line overlay
+  const compCtx = document.getElementById("weekly-completions-chart");
+  if (compCtx) {
+    if (STATE.charts["weekly-completions-chart"]) STATE.charts["weekly-completions-chart"].destroy();
+    STATE.charts["weekly-completions-chart"] = new Chart(compCtx, {
+      data: {
+        labels: rollup.per_day.map(d => d.date),
+        datasets: [
+          { type: "bar", label: "Flow A — Completed w/o QA",  data: rollup.per_day.map(d => d.flow_a), backgroundColor: "#d48a3a", stack: "comp" },
+          { type: "bar", label: "Flow C — Completed after QA", data: rollup.per_day.map(d => d.flow_c), backgroundColor: "#1f6f2c", stack: "comp" },
+          { type: "line", label: "Flow B — QA reviewed",        data: rollup.per_day.map(d => d.flow_b), borderColor: "#1450b3", backgroundColor: "#1450b3", tension: 0.3 },
+        ],
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        scales: { x: { stacked: true }, y: { stacked: true } },
+        plugins: { legend: { position: "right" } },
+      },
+    });
+  }
+}
+
+// Client-side mirror of compute_weekly_rollup. Operates on STATE.weeklySnapshots
+// for the listed days. Roster comes from STATE.roster.
+function _rollupClientSide(dayList) {
+  const snaps = dayList.map(d => [d, STATE.weeklySnapshots[d]]).filter(([_, s]) => s);
+  const perDay = snaps.map(([day, aggs]) => {
+    const tt = aggs.totals || {};
+    const byAgent = aggs.by_agent || {};
+    const activeAgents = Object.values(byAgent).filter(m =>
+      (m.tagged_today || 0) + (m.total_completions || 0) > 0).length;
+    return {
+      date: day,
+      tagged: tt.tagged_today || 0,
+      done: tt.done_today || 0,
+      flow_a: tt.flow_a_count || 0,
+      flow_b: tt.flow_b_count || 0,
+      flow_c: tt.flow_c_count || 0,
+      total_completions: tt.total_completions || 0,
+      active_agents: activeAgents,
+      by_team: Object.fromEntries(Object.entries(aggs.by_team || {}).map(([t, m]) => [t, m.tagged_today || 0])),
+    };
+  });
+  const totals = {
+    tagged:            perDay.reduce((s, d) => s + d.tagged, 0),
+    done:              perDay.reduce((s, d) => s + d.done, 0),
+    flow_a:            perDay.reduce((s, d) => s + d.flow_a, 0),
+    flow_b:            perDay.reduce((s, d) => s + d.flow_b, 0),
+    flow_c:            perDay.reduce((s, d) => s + d.flow_c, 0),
+    total_completions: perDay.reduce((s, d) => s + d.total_completions, 0),
+    unique_imos_union: snaps.reduce((s, [_, a]) => s + (a.totals?.unique_imos || 0), 0),
+    qa_reviews:        snaps.reduce((s, [_, a]) => s + (a.qa_reviewers || []).reduce((x, r) => x + (r.reviews || 0), 0), 0),
+    qa_changes:        snaps.reduce((s, [_, a]) => s + (a.qa_reviewers || []).reduce((x, r) => x + (r.changes || 0), 0), 0),
+    active_agents_avg: perDay.length ? perDay.reduce((s, d) => s + d.active_agents, 0) / perDay.length : 0,
+  };
+  // Per-team rollup
+  const perTeam = {};
+  const agentTagged = {};
+  for (const [_, aggs] of snaps) {
+    for (const [a, m] of Object.entries(aggs.by_agent || {})) {
+      agentTagged[a] = (agentTagged[a] || 0) + (m.tagged_today || 0);
+    }
+  }
+  for (const team of Object.keys(STATE.roster || {})) {
+    let records = 0, uniqueSum = 0;
+    for (const [_, aggs] of snaps) {
+      const tm = (aggs.by_team || {})[team];
+      if (tm) { records += tm.tagged_today || 0; uniqueSum += tm.unique_imos || 0; }
+    }
+    const members = (STATE.roster[team].members || []).map(m => m.name);
+    const memberSet = new Set(members);
+    const ranked = Object.entries(agentTagged).filter(([n, _]) => memberSet.has(n)).sort((a, b) => b[1] - a[1]);
+    const top = ranked.length && ranked[0][1] > 0 ? { name: ranked[0][0], records: ranked[0][1] } : null;
+    perTeam[team] = { records, unique_imos_sum: uniqueSum, top_performer: top };
+  }
+  // Agents not working
+  const anw = [];
+  for (const team of Object.keys(STATE.roster || {})) {
+    for (const member of (STATE.roster[team].members || [])) {
+      const missing = [];
+      for (const [day, aggs] of snaps) {
+        const rec = (aggs.by_agent || {})[member.name];
+        if (!rec || ((rec.tagged_today || 0) + (rec.total_completions || 0)) === 0) {
+          missing.push(day);
+        }
+      }
+      if (missing.length > 0) {
+        anw.push({ name: member.name, team, days_missed: missing.length, missing_dates: missing });
+      }
+    }
+  }
+  anw.sort((a, b) => b.days_missed - a.days_missed || a.team.localeCompare(b.team) || a.name.localeCompare(b.name));
+  return {
+    date_range: { start: dayList[0], end: dayList[dayList.length - 1] },
+    days_with_data: perDay.length,
+    totals,
+    per_day: perDay,
+    per_team_rollup: perTeam,
+    agents_not_working: anw,
+  };
+}
+
+// -------- Pipeline & Lead Time (stub) --------
+PAGE_RENDERERS.pipeline = function () {
+  const root = document.getElementById("page-pipeline");
+  const lt = STATE.v2?.totals?.lead_time_seconds || {};
+  const fmt = (s) => s == null ? "<em>awaiting more cache history</em>" : `${(s / 3600).toFixed(1)} h`;
+  root.innerHTML = `
+    <div class="stub-card">
+      <h2>Pipeline & Lead Time</h2>
+      <p>Coming in <strong>Phase D</strong>. Planned widgets:</p>
+      <ul>
+        <li>Funnel chart: Waiting → Tagged → BO QA → Done → Valid</li>
+        <li>p50 / p90 hours per transition (table + bar chart)</li>
+        <li>Stuck records: in-stage for &gt; X days</li>
+        <li>Per-team funnel comparison</li>
+      </ul>
+    </div>
+    <div class="panel" style="margin-top:18px">
+      <h3>What we have today <span class="meta">from aggregates_v2.totals.lead_time_seconds</span></h3>
+      <table>
+        <tr><td>created → tagged (p50)</td><td class="right">${fmt(lt.created_to_tagged_p50)}</td></tr>
+        <tr><td>created → tagged (p90)</td><td class="right">${fmt(lt.created_to_tagged_p90)}</td></tr>
+        <tr><td>tagged → BO QA (p50)</td><td class="right">${fmt(lt.tagged_to_bo_qa_p50)}</td></tr>
+        <tr><td>tagged → BO QA (p90)</td><td class="right">${fmt(lt.tagged_to_bo_qa_p90)}</td></tr>
+        <tr><td>BO QA → Done (p50)</td><td class="right">${fmt(lt.bo_qa_to_done_p50)}</td></tr>
+        <tr><td>BO QA → Done (p90)</td><td class="right">${fmt(lt.bo_qa_to_done_p90)}</td></tr>
+      </table>
+    </div>
+  `;
+};
+
+// -------- Case Scenarios (stub) --------
+PAGE_RENDERERS.scenarios = function () {
+  const root = document.getElementById("page-scenarios");
+  const cd = STATE.v2?.totals?.comment_distribution || {};
+  const nonzero = Object.entries(cd).filter(([_, v]) => v > 0).sort((a, b) => b[1] - a[1]);
+  const totalComments = nonzero.reduce((s, [_, v]) => s + v, 0);
+  root.innerHTML = `
+    <div class="stub-card">
+      <h2>Case Scenarios</h2>
+      <p>Coming in <strong>Phase C</strong>. Planned widgets:</p>
+      <ul>
+        <li>Per-agent × comment heatmap</li>
+        <li>Per-day comment distribution trend</li>
+        <li>Anomaly flags (e.g. "Document Not Available" without a reminder)</li>
+        <li>Cross-table joins to <code>relations_io.reason_for_the_change</code></li>
+      </ul>
+    </div>
+    <div class="panel" style="margin-top:18px">
+      <h3>Today's comment mix <span class="meta">${totalComments} comments across 5 teams</span></h3>
+      ${nonzero.length === 0 ? `<div class="empty">No comments on cached records today.</div>` : `
+        <table>
+          <thead><tr><th>Comment</th><th class="right">Count</th><th class="right">Share</th></tr></thead>
+          <tbody>${nonzero.map(([k, v]) => `<tr><td>${esc(k)}</td><td class="right">${v}</td><td class="right">${(v/totalComments*100).toFixed(0)}%</td></tr>`).join("")}</tbody>
+        </table>`}
+    </div>
+  `;
+};
+
+// ============================================================================
+//  Init
+// ============================================================================
+function noDataHtml(msg) {
+  return `<div class="empty-state"><div class="title">No data</div>${esc(msg)}</div>`;
+}
+
+async function init() {
+  const ok = await loadAll();
+  if (!ok) return;
+  renderNav();
+  renderFreshness();
+  goto(STATE.currentPage);
+}
+
+document.getElementById("refreshBtn").addEventListener("click", async () => {
+  document.getElementById("refreshBtn").disabled = true;
+  await init();
+  document.getElementById("refreshBtn").disabled = false;
+});
+
+init();
+</script>
+</body>
+</html>

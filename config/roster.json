@@ -1,0 +1,65 @@
+{
+  "_note": "Source of truth for the 5 ownership teams' roster. A deprecation shim in ww_audit_log.json mirrors this file for one release. ww_qa entries are null pending a cache refresh — backfill once qa_assignee/ww_qa_assignee start appearing in the polled records.",
+  "teams": {
+    "Simba": {
+      "qa": {
+        "name": "Melanie Wanjiku",
+        "email": "melanie.wanjiku@impactoutsourcing.co.ke"
+      },
+      "ww_qa": null,
+      "members": [
+        { "name": "Merline Akinyi", "aliases": ["Bet Merline Akinyi"] },
+        { "name": "Caroline Murugi" },
+        { "name": "Stephen Muindi" },
+        { "name": "Teresa Mbuthia" }
+      ]
+    },
+    "Nyati": {
+      "qa": {
+        "name": "Stephen Kimari",
+        "email": "stephenkimari@impactoutsourcing.co.ke"
+      },
+      "ww_qa": null,
+      "members": [
+        { "name": "Lewis Nganga" },
+        { "name": "Flavian Etyang" },
+        { "name": "Anne Nzisa" },
+        { "name": "Annabel Grace", "aliases": ["Annabel Muriithi"] },
+        { "name": "Beatrice Mutheu" }
+      ]
+    },
+    "Kobe": {
+      "qa": {
+        "name": "Zuleikha Musa",
+        "email": "zuleikha.musa@impactoutsourcing.co.ke"
+      },
+      "ww_qa": null,
+      "members": [
+        { "name": "Veronica Muthiora" },
+        { "name": "Ashley Nyambura" },
+        { "name": "Lillian Gichamba", "aliases": ["lillian Gichamba"] },
+        { "name": "Timothy Kamanja" }
+      ]
+    },
+    "Pweza": {
+      "qa": { "name": "Ashley Wairimu" },
+      "ww_qa": null,
+      "members": [
+        { "name": "Stanley Munyambu" },
+        { "name": "Faith John" },
+        { "name": "Solomon Muturi" },
+        { "name": "Faith Khalai" }
+      ]
+    },
+    "Tembo": {
+      "qa": { "name": "Selah Nabiswa" },
+      "ww_qa": null,
+      "members": [
+        { "name": "Wilson Karani" },
+        { "name": "James Maina", "aliases": ["JAMES MAINA"] },
+        { "name": "Hellen Vigehi" },
+        { "name": "Elvis Mwanzia" }
+      ]
+    }
+  }
+}

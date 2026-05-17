@@ -1,0 +1,112 @@
+{
+  "captured_at": "2026-05-12T22:47:59.198600+03:00",
+  "count": 1185,
+  "by_team": {
+    "Pweza": 632,
+    "Simba": 299,
+    "Kobe": 103,
+    "Tembo": 150,
+    "Nyati": 1
+  },
+  "by_team_qa_agent": [
+    {
+      "team": "Kobe",
+      "qa": "Zuleikha Musa",
+      "agent": "Lillian Gichamba",
+      "count": 63,
+      "oldest_h": 11
+    },
+    {
+      "team": "Kobe",
+      "qa": "Zuleikha Musa",
+      "agent": "Timothy Kamanja",
+      "count": 20,
+      "oldest_h": 10
+    },
+    {
+      "team": "Kobe",
+      "qa": "Zuleikha Musa",
+      "agent": "Veronica Muthiora",
+      "count": 20,
+      "oldest_h": 10
+    },
+    {
+      "team": "Nyati",
+      "qa": "Stephen Kimari",
+      "agent": "Lewis Nganga",
+      "count": 1,
+      "oldest_h": 10
+    },
+    {
+      "team": "Pweza",
+      "qa": "Ashley Wairimu",
+      "agent": "Stanley Munyambu",
+      "count": 161,
+      "oldest_h": 17
+    },
+    {
+      "team": "Pweza",
+      "qa": "Ashley Wairimu",
+      "agent": "Faith John",
+      "count": 158,
+      "oldest_h": 15
+    },
+    {
+      "team": "Pweza",
+      "qa": "Ashley Wairimu",
+      "agent": "Solomon Muturi",
+      "count": 157,
+      "oldest_h": 17
+    },
+    {
+      "team": "Pweza",
+      "qa": "Ashley Wairimu",
+      "agent": "Faith Khalai",
+      "count": 156,
+      "oldest_h": 17
+    },
+    {
+      "team": "Simba",
+      "qa": "Melanie Wanjiku",
+      "agent": "Stephen Muindi",
+      "count": 103,
+      "oldest_h": 9
+    },
+    {
+      "team": "Simba",
+      "qa": "Melanie Wanjiku",
+      "agent": "Teresa Mbuthia",
+      "count": 98,
+      "oldest_h": 12
+    },
+    {
+      "team": "Simba",
+      "qa": "Melanie Wanjiku",
+      "agent": "Merline Akinyi",
+      "count": 98,
+      "oldest_h": 11
+    },
+    {
+      "team": "Tembo",
+      "qa": "Selah Nabiswa",
+      "agent": "Hellen Vigehi",
+      "count": 51,
+      "oldest_h": 14
+    },
+    {
+      "team": "Tembo",
+      "qa": "Selah Nabiswa",
+      "agent": "James Maina",
+      "count": 50,
+      "oldest_h": 17
+    },
+    {
+      "team": "Tembo",
+      "qa": "Selah Nabiswa",
+      "agent": "Wilson Karani",
+      "count": 49,
+      "oldest_h": 17
+    }
+  ],
+  "note": null
+}

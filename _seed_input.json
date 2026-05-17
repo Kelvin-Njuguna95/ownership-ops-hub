@@ -1,0 +1,18 @@
+{
+  "captured_at": "2026-05-12T19:36:00+03:00",
+  "totalRecordCount": 339,
+  "note": "First 100 of 339 records currently in 'Selected for BO QA'. Remaining 239 will be captured by the polling task as records transition.",
+  "records": [
+    {"id": "recD89CZe3EECfbqx", "imo": "9601675", "assignee": "lillian Gichamba", "company": "101736 - PT Pertamina (Persero)", "start_tagging_date": "2026-05-12T11:24:00.000Z"},
+    {"id": "recSLaa6Bmg3jJVxH", "imo": "9601675", "assignee": "lillian Gichamba", "company": "36791 - PT Pertamina International Shipping", "start_tagging_date": "2026-05-12T11:24:00.000Z"},
+    {"id": "recLaN0iF0RBRMerq", "imo": "9606089", "assignee": "lillian Gichamba", "company": "22054 - Scanbio Logistics As", "start_tagging_date": "2026-05-12T11:24:00.000Z"},
+    {"id": "recZVA5WIG3DNafFI", "imo": "9606089", "assignee": "lillian Gichamba", "company": "36250 - Scanbio Marine Group As", "start_tagging_date": "2026-05-12T11:24:00.000Z"},
+    {"id": "rec16JKDmhZzRHZhX", "imo": "9611632", "assignee": "lillian Gichamba", "company": "37428 - COSCO Shipping Energy Trans", "start_tagging_date": "2026-05-12T11:24:00.000Z"},
+    {"id": "recUgu2KkCnmE7R41", "imo": "9592484", "assignee": "lillian Gichamba", "company": "34801 - Arkas Holding Anonim Sirketi", "start_tagging_date": "2026-05-12T11:23:00.000Z"},
+    {"id": "recJgzc3KiN1Lg4Jd", "imo": "9592680", "assignee": "lillian Gichamba", "company": "49242 - TORM A/S", "start_tagging_date": "2026-05-12T11:23:00.000Z"},
+    {"id": "recHkfxKmEU1vO3zI", "imo": "9571210", "assignee": "lillian Gichamba", "company": "51414 - Focus Shipping Co Ltd", "start_tagging_date": "2026-05-12T08:28:00.000Z"},
+    {"id": "recB3Nh6d3hR2fcP2", "imo": "9571210", "assignee": "lillian Gichamba", "company": "15404 - Shanghai Dingheng Shipping Technology Co Ltd", "start_tagging_date": "2026-05-12T08:28:00.000Z"},
+    {"id": "recMxLhIammeQPKR3", "imo": "9744958", "assignee": "Veronica Muthiora", "company": "80469 - Seapeak Maritime Denmark A/s", "start_tagging_date": "2026-05-12T07:46:00.000Z"},
+    {"id": "recr0ZN0lzQGWoXVp", "imo": "9621742", "assignee": "Timothy Kamanja", "company": "103624 - Sinopec-NJTC Shipping Co Ltd", "start_tagging_date": "2026-05-12T07:45:00.000Z"}
+  ]
+}
