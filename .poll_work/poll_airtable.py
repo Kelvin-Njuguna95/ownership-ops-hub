@@ -47,7 +47,7 @@ FLD_DONE_SELECTED_TIME = "fldbcTW2CD2HjejGN"
 # above any historical day, and any cap-hit aborts the cycle (exit 2) so
 # truncation can never silently under-report metrics. Bumping the ceiling
 # higher in a real squeeze is preferable to letting bad data ship.
-RECENT_PAGE_CAP        = 100  # Fetch A: ownership-team work in past 24h
+RECENT_PAGE_CAP        = 200  # Fetch A: ownership-team work in past 24h (bumped from 100 — exceeded 10k on 2026-05-18)
 INTAKE_PAGE_CAP        = 30   # Fetch B: today's whole-table intake (cache-only, header KPI uses metadata count)
 BOQA_PAGE_CAP          = 30   # Fetch C: current BO QA queue
 TAGGED_PAGE_CAP        = 100  # Fetch D: tagged today
