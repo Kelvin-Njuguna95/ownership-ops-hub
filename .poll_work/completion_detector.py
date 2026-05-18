@@ -350,10 +350,24 @@ def _sb_get_paginated(url, headers, params):
 
 def supabase_insert_completions(supabase_url, service_key, rows):
     """Bulk INSERT to ownership_completions with first-write-wins on
-    completed_at, then PATCH the flow column for any duplicate row whose
-    existing flow is NULL. Returns dict with counts."""
+    completed_at, then bulk PATCH the flow column for any duplicate rows
+    whose existing flow is NULL. Returns dict with counts.
+
+    The PATCH path uses PostgREST's in.() filter to update many rows in
+    one round-trip, grouped by intended flow value. Replaces a per-row
+    PATCH loop that scaled poorly: 3000+ duplicates × ~150ms each
+    = ~7-8 min wall time on a busy day, timing out the workflow's 10-min
+    cap. The batched version makes ~10 PATCH calls per cycle regardless
+    of duplicate count.
+
+    URL-length guard: PostgREST's default proxy URL cap is ~8KB. With
+    ~17-char Airtable record IDs and %2C-encoded comma separators
+    (~20 chars per ID), 100 IDs per chunk → ~2KB URL — comfortably under.
+    """
     if not rows:
         return {"inserted": 0, "flow_upserted": 0, "duplicates_no_flow": 0}
+    from collections import defaultdict as _defaultdict
+
     base = supabase_url.rstrip("/")
     insert_url = f"{base}/rest/v1/ownership_completions?on_conflict=airtable_record_id"
     headers = _sb_headers(service_key, {
@@ -362,22 +376,39 @@ def supabase_insert_completions(supabase_url, service_key, rows):
     inserted = _sb_post(insert_url, headers, rows)
     inserted_ids = {r["airtable_record_id"] for r in inserted}
 
-    # PATCH flow on duplicates whose flow is NULL and our classification has a flow.
-    flow_upserted = 0
+    # Group duplicates by intended flow value. Rows without a flow value
+    # (pre-Flow path) don't need PATCH at all — skip.
+    dup_by_flow = _defaultdict(list)
     duplicates_no_flow = 0
     for row in rows:
         if row["airtable_record_id"] in inserted_ids:
             continue
-        if not row.get("flow"):
+        flow = row.get("flow")
+        if not flow:
             duplicates_no_flow += 1
             continue
-        patch_url = (f"{base}/rest/v1/ownership_completions"
-                     f"?airtable_record_id=eq.{row['airtable_record_id']}"
-                     f"&flow=is.null")
-        patch_body = {"flow": row["flow"]}
-        result = _sb_patch(patch_url, _sb_headers(service_key, {"Prefer": "return=representation"}), patch_body)
-        if result:
-            flow_upserted += 1
+        dup_by_flow[flow].append(row["airtable_record_id"])
+
+    flow_upserted = 0
+    CHUNK = 100  # ~2KB URL with %2C-encoded commas; safely under PostgREST default
+    for flow_value, rec_ids in dup_by_flow.items():
+        for i in range(0, len(rec_ids), CHUNK):
+            chunk = rec_ids[i:i + CHUNK]
+            ids_clause = ",".join(chunk)
+            patch_url = (f"{base}/rest/v1/ownership_completions"
+                         f"?airtable_record_id=in.({ids_clause})"
+                         f"&flow=is.null")
+            # &flow=is.null filter ensures we don't overwrite an already-set
+            # flow value — only NULL rows get upgraded. Server-side filter
+            # so safe even if our list contains rows whose flow was set
+            # since we built the batch.
+            result = _sb_patch(
+                patch_url,
+                _sb_headers(service_key, {"Prefer": "return=representation"}),
+                {"flow": flow_value},
+            )
+            flow_upserted += len(result)
+
     return {
         "inserted":           len(inserted),
         "flow_upserted":      flow_upserted,

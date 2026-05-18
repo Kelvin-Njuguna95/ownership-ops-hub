@@ -307,7 +307,7 @@ class TestSupabaseInsertCompletions(unittest.TestCase):
 
     def test_upsert_flow_on_existing_null_row(self):
         """Record was previously inserted with flow=NULL (pre-Flow path),
-        now caught at Done/Valid → PATCH should fire and upsert flow."""
+        now caught at Done/Valid → batched PATCH should fire and upsert flow."""
         row = {"airtable_record_id": "rec1", "flow": "A"}
         with patch.object(det, "requests") as mock_req:
             # POST returns [] (already exists)
@@ -319,10 +319,11 @@ class TestSupabaseInsertCompletions(unittest.TestCase):
             result = det.supabase_insert_completions("https://x", "key", [row])
             self.assertEqual(result["inserted"], 0)
             self.assertEqual(result["flow_upserted"], 1)
-            # Verify the PATCH URL has the flow=is.null filter
+            # Verify the PATCH URL uses the batched in.() filter + flow=is.null guard
             patch_url = mock_req.patch.call_args.args[0]
             self.assertIn("flow=is.null", patch_url)
-            self.assertIn("airtable_record_id=eq.rec1", patch_url)
+            self.assertIn("airtable_record_id=in.(rec1)", patch_url,
+                          "single-row batch should still use in.() format")
 
     def test_pre_flow_row_without_flow_value_does_not_patch(self):
         """A pre-Flow detection (row.flow=None) on a duplicate should NOT
@@ -333,6 +334,62 @@ class TestSupabaseInsertCompletions(unittest.TestCase):
             result = det.supabase_insert_completions("https://x", "key", [row])
             mock_req.patch.assert_not_called()
             self.assertEqual(result["duplicates_no_flow"], 1)
+
+    def test_batched_patch_one_call_per_flow_value_per_chunk(self):
+        """Performance regression guard: 250 duplicate rows split across
+        2 flow values should produce 3 PATCH calls (100+100 for one flow,
+        50 for the other), NOT 250 per-row PATCH calls.
+
+        Replaces the prior O(N) per-row pattern that caused 10-min cron
+        timeouts on busy days."""
+        rows = (
+            [{"airtable_record_id": f"recA{i}", "flow": "A"} for i in range(150)]
+            + [{"airtable_record_id": f"recC{i}", "flow": "C"} for i in range(100)]
+        )
+        with patch.object(det, "requests") as mock_req:
+            # All POST'd rows come back as duplicates (server returns [])
+            mock_req.post.return_value = MagicMock(status_code=201, json=lambda: [], text="[]")
+            # Each PATCH returns 50 representative updates (just a count for assertion)
+            mock_req.patch.return_value = MagicMock(
+                status_code=200, json=lambda: [{"id": f"u{i}"} for i in range(50)], text="[]")
+            det.supabase_insert_completions("https://x", "key", rows)
+            # 150 A's → 2 chunks of 100+50; 100 C's → 1 chunk. Total 3 PATCH calls.
+            self.assertEqual(mock_req.patch.call_count, 3,
+                             f"Expected 3 batched PATCH calls, got {mock_req.patch.call_count}. "
+                             f"Did per-row PATCH regress?")
+            # Each PATCH URL should contain in.(...) with comma-separated IDs
+            for call in mock_req.patch.call_args_list:
+                url = call.args[0]
+                self.assertIn("airtable_record_id=in.(", url)
+                self.assertIn("flow=is.null", url)
+            # And the chunk sizes are 100, 50, 100 (in some order)
+            chunk_sizes = []
+            for call in mock_req.patch.call_args_list:
+                url = call.args[0]
+                # Count IDs in the in.(...) by counting commas + 1
+                m = url.split("in.(")[1].split(")")[0]
+                chunk_sizes.append(m.count(",") + 1)
+            self.assertEqual(sorted(chunk_sizes), [50, 100, 100])
+
+    def test_batched_patch_chunks_at_100_to_stay_under_url_limit(self):
+        """A single flow value with 250 duplicates should produce 3 chunked
+        PATCH calls (100+100+50), keeping URLs under the proxy's ~8KB cap."""
+        rows = [{"airtable_record_id": f"rec{i:03d}", "flow": "A"} for i in range(250)]
+        with patch.object(det, "requests") as mock_req:
+            mock_req.post.return_value = MagicMock(status_code=201, json=lambda: [], text="[]")
+            mock_req.patch.return_value = MagicMock(
+                status_code=200, json=lambda: [], text="[]")
+            det.supabase_insert_completions("https://x", "key", rows)
+            self.assertEqual(mock_req.patch.call_count, 3)
+            sizes = []
+            for call in mock_req.patch.call_args_list:
+                ids_part = call.args[0].split("in.(")[1].split(")")[0]
+                sizes.append(ids_part.count(",") + 1)
+            self.assertEqual(sorted(sizes), [50, 100, 100])
+            # Sanity: URLs all under 3KB (allows %2C encoding overhead)
+            for call in mock_req.patch.call_args_list:
+                self.assertLess(len(call.args[0]), 3000,
+                                "URL should stay well under proxy limit")
 
 
 class TestStuckInSamplingDetection(unittest.TestCase):
