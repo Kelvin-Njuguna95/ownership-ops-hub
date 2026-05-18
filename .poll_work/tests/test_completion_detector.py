@@ -166,6 +166,42 @@ class TestResolveCompletedBy(unittest.TestCase):
         self.assertEqual(name, "Lillian Gichamba")
         self.assertEqual(source, "last_modified_by")
 
+    def test_automations_falls_through_to_qa_assignee(self):
+        # "Automations" is the Airtable automation bot — treat as non-human
+        # and fall through to the next link in the chain so completion is
+        # credited to the human who did the work, not the bot that updated
+        # a derived field after the fact.
+        f = _fields(last_modified_by={"id": "sys", "name": "Automations"},
+                    qa_assignee={"id": "q1", "name": "Real QA Person"},
+                    assignee=[{"id": "a1", "name": "Agent Person"}])
+        name, source = resolve_completed_by(f)
+        self.assertEqual(name, "Real QA Person")
+        self.assertEqual(source, "qa_assignee")
+
+    def test_automations_falls_through_to_assignee_when_qa_blank(self):
+        f = _fields(last_modified_by={"id": "sys", "name": "Automations"},
+                    assignee=[{"id": "a1", "name": "Agent Person"}])
+        name, source = resolve_completed_by(f)
+        self.assertEqual(name, "Agent Person")
+        self.assertEqual(source, "assignee")
+
+    def test_automations_with_no_human_fallback_returns_none(self):
+        # If Automations is the only entry, skip the record entirely
+        # rather than write "Automations" to the table.
+        f = _fields(last_modified_by={"id": "sys", "name": "Automations"})
+        name, source = resolve_completed_by(f)
+        self.assertIsNone(name)
+        self.assertIsNone(source)
+
+    def test_automations_string_shape_also_filtered(self):
+        # Raw REST returns singleCollaborator as dict, but defensive: also
+        # cover the case where some other code path stores it as a string.
+        f = _fields(last_modified_by="Automations",
+                    qa_assignee={"id": "q1", "name": "Real Person"})
+        name, source = resolve_completed_by(f)
+        self.assertEqual(name, "Real Person")
+        self.assertEqual(source, "qa_assignee")
+
 
 class TestBuildRow(unittest.TestCase):
     def test_full_row_shape(self):

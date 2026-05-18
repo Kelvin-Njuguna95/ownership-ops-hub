@@ -135,12 +135,24 @@ def is_complete(fields):
 # unassigned QA reviews.
 # ----------------------------------------------------------------------
 
+# Names in this set are non-human last_modified_by values from Airtable
+# (system / automation identities). When ``last_modified_by`` matches one
+# of these, treat it as null and fall through to qa_assignee → assignee
+# so completion is attributed to the human who did the work — not to the
+# automation that updated a derived field after the fact. Surfaced during
+# dry verify: ~42% of would-insert rows credited "Automations".
+NON_HUMAN_LAST_MODIFIED = {"Automations"}
+
+
 def resolve_completed_by(fields):
     """Return (name, source) where source is 'last_modified_by',
     'qa_assignee', 'assignee', or None when all three are blank.
+
+    ``last_modified_by`` values in NON_HUMAN_LAST_MODIFIED are treated as
+    null and fall through to the next link in the chain.
     """
     n = _name(fields.get(FLD_LAST_MODIFIED_BY))
-    if n:
+    if n and n not in NON_HUMAN_LAST_MODIFIED:
         return n, "last_modified_by"
     n = _name(fields.get(FLD_QA_ASSIGNEE))
     if n:
