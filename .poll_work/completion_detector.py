@@ -230,10 +230,21 @@ def fetch_terminal_records(pat):
 def supabase_insert(supabase_url, service_key, rows):
     """Bulk insert rows with resolution=ignore-duplicates. Returns the list
     of rows the server actually inserted (others were dups). Supabase
-    returns the inserted set in the response body when Prefer=return."""
+    returns the inserted set in the response body when Prefer=return.
+
+    The ``?on_conflict=airtable_record_id`` query parameter is REQUIRED
+    for ``Prefer: resolution=ignore-duplicates`` to take effect. Per the
+    PostgREST docs (https://docs.postgrest.org/en/v12/references/api/
+    preferences.html#prefer-resolution): a plain POST without on_conflict
+    treats the Prefer header as a no-op and returns 409 on the first
+    UNIQUE-violation. The first detector run after a fresh table works
+    either way (no dups possible), so the missing param only surfaces
+    starting with run #2.
+    """
     if not rows:
         return []
-    url = f"{supabase_url.rstrip('/')}/rest/v1/ownership_completions"
+    url = (f"{supabase_url.rstrip('/')}/rest/v1/ownership_completions"
+           f"?on_conflict=airtable_record_id")
     headers = {
         "apikey":        service_key,
         "Authorization": f"Bearer {service_key}",

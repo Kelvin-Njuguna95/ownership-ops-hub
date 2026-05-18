@@ -246,12 +246,27 @@ class TestSupabaseInsertContract(unittest.TestCase):
             mock_req.post.return_value = MagicMock(status_code=201, json=lambda: [], text="[]")
             det.supabase_insert("https://example.supabase.co", "fake-key", [{"airtable_record_id": "rec1"}])
             mock_req.post.assert_called_once()
-            kwargs = mock_req.post.call_args.kwargs
+            args, kwargs = mock_req.post.call_args
             prefer = kwargs["headers"]["Prefer"]
             self.assertIn("resolution=ignore-duplicates", prefer)
             self.assertIn("return=representation", prefer)
             self.assertEqual(kwargs["headers"]["apikey"], "fake-key")
             self.assertEqual(kwargs["headers"]["Authorization"], "Bearer fake-key")
+
+    def test_insert_url_includes_on_conflict_param(self):
+        # PostgREST requires ?on_conflict=<col> for the Prefer:
+        # resolution=ignore-duplicates header to take effect. Without it
+        # the server returns 409 on the first UNIQUE violation. Caught
+        # in production on detector run #2 (run #1 succeeded because the
+        # table was empty so no conflicts).
+        with patch.object(det, "requests") as mock_req:
+            mock_req.post.return_value = MagicMock(status_code=201, json=lambda: [], text="[]")
+            det.supabase_insert("https://example.supabase.co", "fake-key", [{"airtable_record_id": "rec1"}])
+            url = mock_req.post.call_args.args[0]
+            self.assertIn("on_conflict=airtable_record_id", url,
+                          "URL must include ?on_conflict=airtable_record_id for "
+                          "PostgREST to honor the resolution=ignore-duplicates "
+                          "Prefer header on bulk POST")
 
     def test_first_write_wins_on_duplicate(self):
         """Two detector runs see the same complete record. The first
