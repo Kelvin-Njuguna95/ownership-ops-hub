@@ -8,6 +8,11 @@ ww_audit_log.json
 .poll_work/recent_p*.json
 .poll_work/intake_p*.json
 .poll_work/boqa_p*.json
+.poll_work/tagged_today_p*.json
+.poll_work/done_today_p*.json
+.poll_work/valid_today_p*.json
+.poll_work/qa_reviewed_today_p*.json
+.poll_work/ww_qa_backlog_p*.json
 .poll_work/snapshots/
 .poll_work/.dashboard_pid
 .poll_work/.dashboard_server.log

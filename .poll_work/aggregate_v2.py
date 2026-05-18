@@ -64,7 +64,7 @@ QA_KEYS = {
 WW_QA_KEYS = {
     "ww_qa_throughput",
     "ww_qa_change_rate",
-    "ww_qa_backlog",              # currently in 'Selected for WW QA'
+    "ww_qa_backlog",              # from Fetch G — {WW QA assignee} filled AND {WW QA} blank
 }
 
 
@@ -338,7 +338,14 @@ def compute_metrics(records, today_eat):
 
         if vs == SELECTED_FOR_BO_QA:
             bo_qa_backlog += 1
-        if vs == SELECTED_FOR_WW_QA:
+        # ww_qa_backlog: per the fix-systemic-today-metric-truncation refactor,
+        # this now means "record appears in Fetch G" — i.e. {WW QA assignee}
+        # is filled AND {WW QA} is blank. The legacy definition
+        # (vs == "Selected for WW QA") counted records the operator had
+        # routed but excluded records actually sitting in a WW QA's queue
+        # awaiting their decision. The Fetch-G semantic is what WW QAs and
+        # the user-facing "WW QA backlog" tile actually mean.
+        if "G" in info.get("_sources", ()):
             ww_qa_backlog += 1
 
     return {
@@ -771,18 +778,46 @@ def aggregate(records, today_eat, ownership_assignees):
 def _load_records(work_dir):
     """Load raw page files, dedup by record id, extract.
 
-    Three page-file sets (per POLL_PROCEDURE.md):
-      - recent_p*.json  — Fetch A (ownership-team work, past 24h)
-      - intake_p*.json  — Fetch B (today's table intake, all assignees, top 3,000)
-      - boqa_p*.json    — Fetch C (current BO QA queue)
-    Same record can appear in more than one — dedup by `id`.
+    Seven page-file sets (per POLL_PROCEDURE.md + the fix-systemic-today-
+    metric-truncation refactor — see ``audit_today_metrics.md``):
+
+      - recent_p*.json            — Fetch A (ownership-team work, past 24h)
+      - intake_p*.json            — Fetch B (today's table intake)
+      - boqa_p*.json              — Fetch C (current BO QA queue)
+      - tagged_today_p*.json      — Fetch D (today's tagged work, authoritative)
+      - done_today_p*.json        — Fetch E (today's done/valid, authoritative)
+      - qa_reviewed_today_p*.json — Fetch F (today's QA reviews, authoritative)
+      - ww_qa_backlog_p*.json     — Fetch G (assigned-but-not-reviewed WW QA)
+
+    Same record can appear in more than one — dedup by ``id``. Each
+    extracted record is tagged with ``_sources`` (set of fetch letters)
+    so downstream metrics can route from their authoritative source where
+    semantics demand it (e.g. ww_qa_backlog now means "in Fetch G", not
+    "vs == Selected for WW QA").
     """
-    raw = {}
-    for pattern in ("recent_p*.json", "intake_p*.json", "boqa_p*.json"):
+    raw     = {}
+    sources = {}
+    fetch_map = {
+        "recent_p*.json":            "A",
+        "intake_p*.json":            "B",
+        "boqa_p*.json":              "C",
+        "tagged_today_p*.json":      "D",
+        "done_today_p*.json":        "E",   # E1 — Done Selected Time today
+        "valid_today_p*.json":       "E",   # E2 — Valid Selected Time today (formula field; split to avoid OR-truncation)
+        "qa_reviewed_today_p*.json": "F",
+        "ww_qa_backlog_p*.json":     "G",
+    }
+    for pattern, letter in fetch_map.items():
         for p in sorted(work_dir.glob(pattern)):
             for r in json.loads(p.read_text()).get("records", []):
                 raw[r["id"]] = r
-    return [extract(r) for r in raw.values()]
+                sources.setdefault(r["id"], set()).add(letter)
+    out = []
+    for rid, r in raw.items():
+        info = extract(r)
+        info["_sources"] = sources.get(rid, set())
+        out.append(info)
+    return out
 
 
 def _intake_total_from_metadata(work_dir):
