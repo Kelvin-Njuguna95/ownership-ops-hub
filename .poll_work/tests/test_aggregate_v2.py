@@ -229,11 +229,14 @@ class TestComputeMetrics(unittest.TestCase):
         })
 
     def test_add_new_company_open(self):
-        # Strict 3-condition definition: anc filled AND vs == "need to be update" AND no company.
-        # None of the fixture records have vs == "need to be update" with anc set, so count is 0.
-        # (Alice 2 = BO QA, Alice 5 = tagged, Bob 5 = Valid — all fail condition 2 now.)
-        # Detailed strict-definition fixture lives in TestAddNewCompanyOpenStrictDefinition.
-        self.assertEqual(self.m["add_new_company_open"], 0)
+        # Broader definition (fix-add-new-company-metric-broader-definition):
+        # any record tagged today with add_new_company filled. The main
+        # fixture has 2 such records (Alice 2 = BO QA today, Alice 5 = tagged
+        # today, both with add_new_company filled). Detailed scenarios live
+        # in TestAddNewCompanyBroaderDefinition.
+        self.assertEqual(self.m["add_new_company_open"], 2)
+        # Same value exposed under the new alias key.
+        self.assertEqual(self.m["add_new_company_today"], 2)
 
     def test_reminder_metrics(self):
         self.assertEqual(self.m["reminder_open"], 3)     # Alice 2 + Alice 3 + Carol 2
@@ -1314,42 +1317,101 @@ class TestFetchSourceReconciliation(unittest.TestCase):
         self.assertEqual(aggs["totals"]["ww_qa_backlog"], 0)
 
 
-class TestAddNewCompanyOpenStrictDefinition(unittest.TestCase):
-    """add_new_company_open requires ALL three:
-       1. add_new_company truthy (a company name was proposed),
-       2. verification_status == 'need to be update' (QA flagged back),
-       3. NO company_id linked.
-    Older versions used a looser 'vs not in {Done, Valid}' filter which over-counted."""
+class TestAddNewCompanyBroaderDefinition(unittest.TestCase):
+    """Broader operational definition (fix-add-new-company-metric-
+    broader-definition): count any record TAGGED TODAY where the
+    add_new_company column has any input. The verification_status and
+    company_id_and_name checks from the old 3-condition rule are dropped
+    — under-counted ops reality (11 vs 96 Airtable truth).
 
-    def test_strict_three_condition_filter(self):
+    Backward-compat: the metric key add_new_company_open is preserved
+    so existing dashboard tiles read the new value automatically. The
+    new alias add_new_company_today is published with the same value
+    for future per-team rendering."""
+
+    def test_add_new_company_today_counts_any_filled(self):
+        """A record tagged today with add_new_company filled counts —
+        REGARDLESS of verification_status or company_id_and_name."""
         recs = [
-            # YES — all three conditions
+            # All have add_new_company filled + tagged today; all should count.
             _info(assignee="Alice", add_new_company="Proposed Co A",
-                  verification_status="need to be update", company_id=None),
-            # NO — has a company linked (condition 3 fails)
+                  verification_status="need to be update", company_id=None,
+                  start_tagging=f"{TODAY.isoformat()}T09:00:00.000+03:00"),
             _info(assignee="Alice", add_new_company="Proposed Co B",
-                  verification_status="need to be update", company_id="recCo123"),
-            # NO — vs is tagged, not "need to be update" (condition 2 fails)
-            #      Was COUNTED under the old loose logic; should NOT under strict.
+                  verification_status="need to be update", company_id="recCo123",
+                  start_tagging=f"{TODAY.isoformat()}T09:30:00.000+03:00"),
             _info(assignee="Alice", add_new_company="Proposed Co C",
-                  verification_status="tagged", company_id=None),
-            # NO — vs is "Selected for BO QA " (condition 2 fails)
-            #      Was COUNTED under the old loose logic; should NOT under strict.
+                  verification_status="tagged", company_id=None,
+                  start_tagging=f"{TODAY.isoformat()}T10:00:00.000+03:00"),
             _info(assignee="Alice", add_new_company="Proposed Co D",
-                  verification_status=SELECTED_FOR_BO_QA, company_id=None),
-            # NO — add_new_company empty (condition 1 fails)
+                  verification_status=SELECTED_FOR_BO_QA, company_id=None,
+                  start_tagging=f"{TODAY.isoformat()}T10:30:00.000+03:00"),
+            _info(assignee="Alice", add_new_company="Proposed Co E",
+                  verification_status="Done", company_id="recCo456",
+                  start_tagging=f"{TODAY.isoformat()}T11:00:00.000+03:00"),
+        ]
+        aggs = aggregate(recs, TODAY, OWNERSHIP_ASSIGNEES)
+        self.assertEqual(aggs["totals"]["add_new_company_open"], 5,
+                         "every record with add_new_company filled + tagged today counts")
+        # The new alias key publishes the same value.
+        self.assertEqual(aggs["totals"]["add_new_company_today"], 5)
+
+    def test_add_new_company_today_excludes_blank(self):
+        """Records without add_new_company filled don't count, even if
+        tagged today."""
+        recs = [
             _info(assignee="Alice", add_new_company=None,
-                  verification_status="need to be update", company_id=None),
-            # NO — vs is Done (condition 2 fails)
-            _info(assignee="Alice", add_new_company="Proposed Co F",
-                  verification_status="Done", company_id=None),
+                  verification_status="need to be update",
+                  start_tagging=f"{TODAY.isoformat()}T09:00:00.000+03:00"),
+            _info(assignee="Alice", add_new_company="",
+                  verification_status="tagged",
+                  start_tagging=f"{TODAY.isoformat()}T10:00:00.000+03:00"),
+        ]
+        aggs = aggregate(recs, TODAY, OWNERSHIP_ASSIGNEES)
+        self.assertEqual(aggs["totals"]["add_new_company_open"], 0)
+
+    def test_add_new_company_today_excludes_records_not_tagged_today(self):
+        """Records with add_new_company filled but tagged yesterday don't
+        count — the metric is scoped to today's tagged work."""
+        recs = [
+            _info(assignee="Alice", add_new_company="Proposed Co Yesterday",
+                  verification_status="need to be update",
+                  start_tagging="2026-04-01T09:00:00.000+03:00"),
+            # Sanity: one tagged today that DOES count
+            _info(assignee="Alice", add_new_company="Proposed Co Today",
+                  verification_status="tagged",
+                  start_tagging=f"{TODAY.isoformat()}T09:00:00.000+03:00"),
         ]
         aggs = aggregate(recs, TODAY, OWNERSHIP_ASSIGNEES)
         self.assertEqual(aggs["totals"]["add_new_company_open"], 1,
-                         "only 1 record meets all 3 conditions")
-        # Per-team / per-agent should also reflect the strict count.
-        self.assertEqual(aggs["by_team"]["Simba"]["add_new_company_open"], 1)
-        self.assertEqual(aggs["by_agent"]["Alice"]["add_new_company_open"], 1)
+                         "only the today-tagged record counts")
+
+    def test_add_new_company_today_per_team_sums_to_total(self):
+        """Per-team breakdown reconciles with the totals figure."""
+        recs = [
+            _info(assignee="Alice", add_new_company="Co Alice 1",
+                  verification_status="tagged",
+                  start_tagging=f"{TODAY.isoformat()}T09:00:00.000+03:00"),
+            _info(assignee="Alice", add_new_company="Co Alice 2",
+                  verification_status="Done",
+                  start_tagging=f"{TODAY.isoformat()}T10:00:00.000+03:00"),
+            _info(assignee="Bob", add_new_company="Co Bob 1",
+                  verification_status="need to be update",
+                  start_tagging=f"{TODAY.isoformat()}T11:00:00.000+03:00"),
+            _info(assignee="Carol", add_new_company=None,  # NOT counted
+                  start_tagging=f"{TODAY.isoformat()}T12:00:00.000+03:00"),
+        ]
+        aggs = aggregate(recs, TODAY, OWNERSHIP_ASSIGNEES)
+        total = aggs["totals"]["add_new_company_open"]
+        team_sum = sum(t.get("add_new_company_open", 0) for t in aggs["by_team"].values())
+        self.assertEqual(total, 3)
+        self.assertEqual(team_sum, total, "per-team breakdown must sum to total")
+        # Per-team specifics (Alice → Simba, Bob → Tembo, Carol → Nyati)
+        self.assertEqual(aggs["by_team"]["Simba"]["add_new_company_open"], 2)
+        self.assertEqual(aggs["by_team"]["Tembo"]["add_new_company_open"], 1)
+        self.assertEqual(aggs["by_team"]["Nyati"]["add_new_company_open"], 0)
+        # by_team also exposes the add_new_company_today alias
+        self.assertEqual(aggs["by_team"]["Simba"]["add_new_company_today"], 2)
 
 
 class TestSamplingNoDoubleCount(unittest.TestCase):

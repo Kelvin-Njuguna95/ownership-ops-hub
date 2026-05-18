@@ -1206,7 +1206,7 @@ PAGE_RENDERERS.boqa = function () {
     <div class="kpis">
       <div class="kpi"><div class="label">Tagged today (5 teams)</div><div class="value">${t?.tagged_today || 0}</div><div class="delta">Sanctions: ${t?.tagged_today_sanctions || 0} · Non-sanctions: ${t?.tagged_today_non_sanctions || 0}</div></div>
       <div class="kpi"><div class="label">BO QA backlog</div><div class="value">${t?.bo_qa_backlog || 0}</div></div>
-      <div class="kpi"><div class="label">add_new_company open</div><div class="value">${t?.add_new_company_open || 0}</div><div class="delta">100% QA required</div></div>
+      <div class="kpi"><div class="label">New companies proposed today</div><div class="value">${t?.add_new_company_open || 0}</div><div class="delta">Records tagged today with add_new_company filled</div></div>
       <div class="kpi"><div class="label">Today's reviews</div><div class="value">${(t?.qa_inspected_today || 0)}</div><div class="delta">${t?.qa_changed_today || 0} changed</div></div>
     </div>
     <div class="panel">
