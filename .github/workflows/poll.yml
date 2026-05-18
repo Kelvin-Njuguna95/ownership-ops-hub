@@ -51,9 +51,19 @@ jobs:
         # Flow Framework v2 — reads the 5 flow-relevant verification_status
         # states from Airtable, classifies records (A/B/C/alert/pre_flow),
         # and writes to ownership_completions / ownership_qa_sampling /
-        # flow_alerts. Runs BEFORE Aggregate so the aggregator reads the
-        # freshest table state (avoids a one-cycle lag on the dashboard's
-        # Flow A/B/C tiles + Alerts panel).
+        # flow_alerts.
+        #
+        # continue-on-error: a hang or transient Airtable 5xx here used to
+        # block Aggregate + Sync, freezing the dashboard at a stale snapshot.
+        # The Flow Framework v3 cards now read from cache, not Supabase
+        # tables, so Aggregate can produce correct totals even if Detect
+        # fails. The Hourly Output heatmap stays stale (heatmap reads
+        # Supabase tables directly) until the next successful Detect — an
+        # acceptable degradation vs the whole dashboard going stale.
+        #
+        # Follow-up: PR (b) fixes the underlying detector PATCH-per-row
+        # performance issue so timeouts stop happening in the first place.
+        continue-on-error: true
         env:
           AIRTABLE_PAT:              ${{ secrets.AIRTABLE_PAT }}
           SUPABASE_URL:              ${{ secrets.SUPABASE_URL }}
