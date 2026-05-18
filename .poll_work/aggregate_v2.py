@@ -237,12 +237,16 @@ def compute_metrics(records, today_eat):
         if role:
             role_counts[role] += 1
 
-        # add_new_company is "open" iff ALL three: a company was proposed,
-        # verification_status is "need to be update" (QA flagged it back),
-        # and no company is linked yet. Looser definitions over-counted.
+        # add_new_company_open (broader definition per fix-add-new-company-
+        # metric-broader-definition): any record tagged today with the
+        # add_new_company column filled. Mirrors the Airtable view "filter
+        # by start_tagging today AND add_new_company non-empty". Replaces
+        # the legacy 3-condition rule (need-to-be-update + no company_id)
+        # which under-counted (11 vs the live Airtable count of 96).
+        # Same metric key for backward dashboard compatibility; the
+        # user-facing label is updated in deploy/index.html.
         if (info.get("add_new_company")
-                and vs == "need to be update"
-                and not info.get("company_id")):
+                and _parse_eat_date(info.get("start_tagging")) == today_eat):
             add_new_company_open += 1
 
         rem_date = _parse_date(info.get("reminder"))
@@ -355,6 +359,9 @@ def compute_metrics(records, today_eat):
         "source_flow_distribution":      dict(source_counts),
         "per_role_volume":               dict(role_counts),
         "add_new_company_open":          add_new_company_open,
+        # Alias under a clearer name for new dashboard tiles / future
+        # per-team rendering. Same value as add_new_company_open above.
+        "add_new_company_today":         add_new_company_open,
         "reminder_open":                 reminder_open,
         "reminder_overdue":              reminder_overdue,
         "team_routed_intake_today":      team_routed_intake_today,
