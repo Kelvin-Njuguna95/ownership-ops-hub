@@ -1643,6 +1643,36 @@ class TestFlowFrameworkV2Counts(unittest.TestCase):
             result = _fetch_flow_framework_counts(date(2026, 5, 18))
         self.assertEqual(result, {})
 
+    def test_and_filter_value_is_bare_paren_list_not_doubled_and_prefix(self):
+        """PostgREST and() filter syntax: ?and=(cond1,cond2). The param VALUE
+        is the paren-wrapped list, NOT prefixed with 'and('. The 'and(' in
+        the URL comes from the param NAME, not the value.
+
+        Pre-hotfix bug: value was f'and(...)' which produced the URL
+        ?and=and(...) — double 'and'. PostgREST silently returned 0 results
+        instead of erroring, so Flow A/B/C counts all showed 0 on the live
+        dashboard despite the table having thousands of rows. Regression
+        guard: assert the value starts with '(' and not 'and('."""
+        from unittest.mock import patch
+        from aggregate_v2 import _fetch_flow_framework_counts
+        from datetime import date
+        with patch.dict("os.environ", {"SUPABASE_URL": "https://x.supabase.co",
+                                        "SUPABASE_SERVICE_ROLE_KEY": "fake"}), \
+             patch("requests.get") as mock_get:
+            mock_get.return_value = self._mock_count_resp(0)
+            _fetch_flow_framework_counts(date(2026, 5, 18))
+        # Inspect every GET call's params — any that includes an "and" key
+        # must have a bare paren-wrapped value, not the doubled "and(" prefix.
+        and_calls = [c for c in mock_get.call_args_list
+                     if "and" in c.kwargs.get("params", {})]
+        self.assertGreater(len(and_calls), 0, "no and() filter calls fired — helper changed shape?")
+        for c in and_calls:
+            v = c.kwargs["params"]["and"]
+            self.assertTrue(v.startswith("("),
+                            f"and= value must start with '(' (PostgREST syntax). Got: {v[:50]!r}")
+            self.assertFalse(v.startswith("and("),
+                             f"REGRESSION: and= value has the broken 'and(' prefix that double-and's the URL: {v[:50]!r}")
+
 
 if __name__ == "__main__":
     unittest.main()
