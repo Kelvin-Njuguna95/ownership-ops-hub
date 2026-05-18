@@ -1099,10 +1099,14 @@ def _fetch_flow_framework_counts(today_eat):
             print(f"  WARN _fetch_flow_framework_counts {table}: {e}")
             return 0
 
-    today_window = f"and(completed_at.gte.{start_utc},completed_at.lt.{end_utc})"
+    # PostgREST and() filter syntax: ?and=(cond1,cond2) — the param VALUE
+    # is the paren-wrapped list, NOT prefixed with "and(". Common bug:
+    # f"and(...)" as the value produces ?and=and(...) which silently
+    # returns 0 results instead of erroring.
+    today_window  = f"(completed_at.gte.{start_utc},completed_at.lt.{end_utc})"
+    sample_window = f"(sampled_at.gte.{start_utc},sampled_at.lt.{end_utc})"
     flow_a = _count("ownership_completions", {"and": today_window, "flow": "eq.A"})
     flow_c = _count("ownership_completions", {"and": today_window, "flow": "eq.C"})
-    sample_window = f"and(sampled_at.gte.{start_utc},sampled_at.lt.{end_utc})"
     flow_b = _count("ownership_qa_sampling", {"and": sample_window})
 
     alerts_missing_qa_assignee = _count("flow_alerts", {"alert_type": "eq.missing_qa_assignee", "resolved_at": "is.null"})
