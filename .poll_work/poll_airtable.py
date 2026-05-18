@@ -163,8 +163,12 @@ def main():
           f"{' (TRUNCATED — hit cap with more remaining)' if trunc_a else ''}")
 
     # ---- Fetch B: today's table intake ----
+    # Airtable's TODAY() is UTC-based. Comparing {Created} (UTC) against TODAY() (UTC)
+    # silently drops records created in the 21:00-23:59 UTC window (= 00:00-02:59 EAT),
+    # which are "today in EAT" but "yesterday in UTC". Shift BOTH sides into EAT
+    # (UTC+3) before comparing dates so the filter matches the operational day.
     print("\n=== Fetch B: today's table intake (intake_p*.json) ===")
-    filter_b = "IS_SAME({Created}, TODAY(), 'day')"
+    filter_b = "IS_SAME(DATEADD({Created}, 3, 'hours'), DATEADD(NOW(), 3, 'hours'), 'day')"
     params_b = {
         **common,
         "filterByFormula":      filter_b,
