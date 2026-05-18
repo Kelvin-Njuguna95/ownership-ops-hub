@@ -23,7 +23,7 @@ def _rec(data):
 EXPECTED_KEYS = {
     "imo", "assignee", "assignees", "qa_assignee", "ww_qa_assignee", "last_modified_by",
     "start_tagging", "start_date", "created", "last_modified",
-    "done_selected_time", "qa_status_ts", "company_id", "company_name",
+    "done_selected_time", "valid_selected_time", "qa_status_ts", "company_id", "company_name",
     "verification_status", "qa_status", "ww_qa", "status", "is_change",
     "comment", "reminder", "source_flow", "add_new_company",
     "requested_by", "valid_done_by_bo", "role", "dead_vessel",
@@ -43,6 +43,7 @@ class TestExtract(unittest.TestCase):
             "created": "2026-05-12T09:00:00.000Z",
             "last_modified": "2026-05-12T12:00:00.000Z",
             "done_selected_time": "2026-05-12T14:00:00.000Z",
+            "valid_selected_time": "2026-05-12T15:00:00.000Z",
             "qa_status_ts": "2026-05-12T13:00:00.000Z",
             "company_id_and_name": [{"id": "recCo1", "name": "12345 - Acme Shipping"}],
             "verification_status": {"id": "selX", "name": SELECTED_FOR_BO_QA},
@@ -73,6 +74,7 @@ class TestExtract(unittest.TestCase):
         self.assertEqual(info["start_date"], "2024-01-15T00:00:00.000Z")
         self.assertEqual(info["created"], "2026-05-12T09:00:00.000Z")
         self.assertEqual(info["done_selected_time"], "2026-05-12T14:00:00.000Z")
+        self.assertEqual(info["valid_selected_time"], "2026-05-12T15:00:00.000Z")
         self.assertEqual(info["company_id"], "recCo1")
         self.assertEqual(info["company_name"], "12345 - Acme Shipping")
         self.assertEqual(info["verification_status"], SELECTED_FOR_BO_QA)

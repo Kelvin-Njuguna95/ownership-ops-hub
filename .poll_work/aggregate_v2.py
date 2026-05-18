@@ -159,6 +159,9 @@ def compute_metrics(records, today_eat):
     tagged_today = 0
     done_today = 0
     in_bo_qa_today = 0
+    sampled_today_ids = set()
+    sampled_today_sanctions_ids = set()
+    sampled_today_non_sanctions_ids = set()
     qa_inspected_today = 0
     qa_changed_today = 0
     need_to_be_update_today = 0
@@ -186,14 +189,17 @@ def compute_metrics(records, today_eat):
     dead_vessels_today = 0
     # Flow A/B/C — Windward parity. A record can be in Flow B AND Flow C
     # simultaneously (reviewed AND completed-after-QA), so track independently.
-    flow_a_count = 0   # Done/Valid AND qa_assignee blank   (completed without QA)
-    flow_b_count = 0   # qa_assignee+qa_status both filled  (QA reviewed)
-    flow_c_count = 0   # Done/Valid AND has_qa              (completed AFTER QA)
+    flow_a_in_cache = 0   # Done/Valid AND qa_assignee blank   (completed without QA)
+    flow_b_in_cache = 0   # qa_assignee+qa_status both filled  (QA reviewed)
+    flow_c_in_cache = 0   # Done/Valid AND has_qa              (completed AFTER QA)
+    flow_a_today = 0
+    flow_b_today = 0
+    flow_c_today = 0
     # Working hours window — zero-fill so the dashboard always renders a
     # complete 6→23 row even on quiet hours.
     hourly_buckets = {h: 0 for h in range(6, 24)}
 
-    for info in records:
+    for idx, info in enumerate(records):
         vs = info.get("verification_status")
         qs = info.get("qa_status")
         if vs:
@@ -201,15 +207,23 @@ def compute_metrics(records, today_eat):
         if qs:
             qa_counts[qs] += 1
 
-        # Flow A/B/C — counted on every record regardless of date.
+        # Flow A/B/C — keep cache-wide counters for weekly/downstream users,
+        # and separate today-scoped counters for the Overview dashboard.
         is_completed = vs in ("Done", "Valid")
         has_qa = bool(info.get("qa_assignee")) and bool(qs)
+        is_tagged_today = _parse_eat_date(info.get("start_tagging")) == today_eat
         if is_completed and not info.get("qa_assignee"):
-            flow_a_count += 1
+            flow_a_in_cache += 1
+            if is_tagged_today:
+                flow_a_today += 1
         if has_qa:
-            flow_b_count += 1
+            flow_b_in_cache += 1
+            if is_tagged_today:
+                flow_b_today += 1
         if is_completed and has_qa:
-            flow_c_count += 1
+            flow_c_in_cache += 1
+            if is_tagged_today:
+                flow_c_today += 1
 
         cm = info.get("comment")
         if cm:
@@ -240,7 +254,8 @@ def compute_metrics(records, today_eat):
         if _parse_eat_date(info.get("created")) == today_eat:
             team_routed_intake_today += 1
 
-        if _parse_eat_date(info.get("done_selected_time")) == today_eat:
+        if any(_parse_eat_date(info.get(field)) == today_eat
+               for field in ("done_selected_time", "valid_selected_time")):
             done_today += 1
 
         if _parse_eat_date(info.get("start_tagging")) == today_eat:
@@ -257,15 +272,19 @@ def compute_metrics(records, today_eat):
                 h = dt.astimezone(EAT).hour
                 if 6 <= h <= 23:
                     hourly_buckets[h] += 1
+            sampled = False
             if vs == SELECTED_FOR_BO_QA:
+                sampled = True
                 in_bo_qa_today += 1
                 if san: in_bo_qa_today_sanctions += 1
                 else:   in_bo_qa_today_non_sanctions += 1
             elif vs == "need to be update":
+                sampled = True
                 need_to_be_update_today += 1
                 if san: need_to_be_update_today_sanctions += 1
                 else:   need_to_be_update_today_non_sanctions += 1
             if qs in ("approve", "changed"):
+                sampled = True
                 qa_inspected_today += 1
                 if san: qa_inspected_today_sanctions += 1
                 else:   qa_inspected_today_non_sanctions += 1
@@ -273,6 +292,12 @@ def compute_metrics(records, today_eat):
                     qa_changed_today += 1
                     if san: qa_changed_today_sanctions += 1
                     else:   qa_changed_today_non_sanctions += 1
+            if sampled:
+                sampled_today_ids.add(idx)
+                if san:
+                    sampled_today_sanctions_ids.add(idx)
+                else:
+                    sampled_today_non_sanctions_ids.add(idx)
 
         ww = info.get("ww_qa")
         if ww in ("approve", "change"):
@@ -320,30 +345,32 @@ def compute_metrics(records, today_eat):
         "bo_qa_backlog":                 bo_qa_backlog,
         "ww_qa_backlog":                 ww_qa_backlog,
         # Flow framework (Windward parity)
-        "flow_a_count":                  flow_a_count,
-        "flow_b_count":                  flow_b_count,
-        "flow_c_count":                  flow_c_count,
-        "total_completions":             flow_a_count + flow_c_count,
+        "flow_a_in_cache":               flow_a_in_cache,
+        "flow_b_in_cache":               flow_b_in_cache,
+        "flow_c_in_cache":               flow_c_in_cache,
+        "flow_a_today":                  flow_a_today,
+        "flow_b_today":                  flow_b_today,
+        "flow_c_today":                  flow_c_today,
+        "total_completions":             flow_a_in_cache + flow_c_in_cache,
+        "total_completions_today":       flow_a_today + flow_c_today,
+        "multi_assignee_count":          sum(1 for info in records if len(info.get("assignees", [])) > 1),
         "unique_imos":                   len({info["imo"] for info in records if info.get("imo")}),
-        # Sampling: 3-component denominator matches the existing aggregator's reading.
-        # "Sampled" = anything QA actually touched today =
-        #   still in queue (in_bo_qa_today)
-        # + already reviewed       (qa_inspected_today)
-        # + bounced back for rework (need_to_be_update_today)
-        # The combined metric stays for backward-compat. The two cohort metrics
-        # (15% non-sanctions, 50% sanctions) are the operational truth.
+        # Sampling: numerator is the set-union of records that are in BO QA,
+        # already QA-reviewed, or bounced back for rework today. The combined
+        # metric stays for backward-compat. The two cohort metrics (15%
+        # non-sanctions, 50% sanctions) are the operational truth.
         "sampling_actual_pct":           _pct(
-            in_bo_qa_today + qa_inspected_today + need_to_be_update_today,
+            len(sampled_today_ids),
             tagged_today,
         ),
         "sampling_target_pct":           SAMPLING_TARGET_PCT,
         "sampling_non_sanctions_pct":    _pct(
-            in_bo_qa_today_non_sanctions + qa_inspected_today_non_sanctions + need_to_be_update_today_non_sanctions,
+            len(sampled_today_non_sanctions_ids),
             tagged_today_non_sanctions,
         ),
         "sampling_target_non_sanctions_pct": SAMPLING_TARGET_NON_SANCTIONS_PCT,
         "sampling_sanctions_pct":        _pct(
-            in_bo_qa_today_sanctions + qa_inspected_today_sanctions + need_to_be_update_today_sanctions,
+            len(sampled_today_sanctions_ids),
             tagged_today_sanctions,
         ),
         "sampling_target_sanctions_pct": SAMPLING_TARGET_SANCTIONS_PCT,
@@ -645,13 +672,16 @@ def aggregate(records, today_eat, ownership_assignees):
 
     in_scope = []
     for r in records:
-        asg = r.get("assignee")
-        info = norm_ownership.get(asg.strip().lower()) if asg else None
-        if not info:
+        match = None
+        for asg in r.get("assignees", []):
+            match = norm_ownership.get(asg.strip().lower()) if asg else None
+            if match:
+                break
+        if not match:
             continue
-        # Stamp team AND overwrite assignee with the canonical spelling so
+        # Stamp team AND overwrite assignee with the matched canonical spelling so
         # by_agent / by_team grouping keys match the roster, not Airtable raw text.
-        r = dict(r, team=info["team"], assignee=info["canonical"])
+        r = dict(r, team=match["team"], assignee=match["canonical"])
         in_scope.append(r)
 
     # Whole-table intake metric — NOT scoped to ownership teams. Counts every
@@ -841,15 +871,15 @@ def compute_weekly_rollup(snapshots, roster=None):
         by_agent = aggs.get("by_agent", {}) or {}
         active_agents = sum(
             1 for m in by_agent.values()
-            if (m.get("tagged_today", 0) or 0) + (m.get("total_completions", 0) or 0) > 0
+            if (m.get("tagged_today", 0) or 0) + (m.get("total_completions_today", m.get("total_completions", 0)) or 0) > 0
         )
         per_day.append({
             "date": day.isoformat(),
             "tagged":             totals.get("tagged_today", 0) or 0,
             "done":               totals.get("done_today", 0) or 0,
-            "flow_a":             totals.get("flow_a_count", 0) or 0,
-            "flow_b":             totals.get("flow_b_count", 0) or 0,
-            "flow_c":             totals.get("flow_c_count", 0) or 0,
+            "flow_a":             totals.get("flow_a_in_cache", totals.get("flow_a_count", 0)) or 0,
+            "flow_b":             totals.get("flow_b_in_cache", totals.get("flow_b_count", 0)) or 0,
+            "flow_c":             totals.get("flow_c_in_cache", totals.get("flow_c_count", 0)) or 0,
             "total_completions":  totals.get("total_completions", 0) or 0,
             "active_agents":      active_agents,
             "by_team": {
@@ -882,7 +912,7 @@ def compute_weekly_rollup(snapshots, roster=None):
         "flow_b":             sum_fb,
         "flow_c":             sum_fc,
         "total_completions":  sum_comp,
-        "unique_imos_union":  sum_unique,
+        "unique_imos_sum":    sum_unique,
         "qa_reviews":         sum_reviews,
         "qa_changes":         sum_changes,
         "active_agents_avg":  avg_active,
@@ -935,7 +965,7 @@ def compute_weekly_rollup(snapshots, roster=None):
                 for day, aggs in snapshots_sorted:
                     by_agent = aggs.get("by_agent", {}) or {}
                     rec = by_agent.get(member["name"])
-                    if not rec or (rec.get("tagged_today", 0) or 0) + (rec.get("total_completions", 0) or 0) == 0:
+                    if not rec or (rec.get("tagged_today", 0) or 0) + (rec.get("total_completions_today", rec.get("total_completions", 0)) or 0) == 0:
                         missing_dates.append(day.isoformat())
                 if missing_dates:
                     agents_not_working.append({
