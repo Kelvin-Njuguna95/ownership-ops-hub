@@ -69,3 +69,37 @@ Only when you're certain the result set is bounded below 1,000 by the query itse
 - **PostgREST INSERT with `Prefer: resolution=ignore-duplicates`** requires `?on_conflict=<col>` in the URL or it's a no-op (returns 409 on the first dup). (See PR #9.)
 - **GitHub Actions cron runs in UTC.** `*/15 3-17 * * 1-6` = every 15 min, 03:00–17:00 UTC = 06:00–20:00 EAT, Mon–Sat. Sundays off.
 - **Do NOT auto-merge PRs.** Kelvin reviews everything; standing instruction throughout this project.
+
+---
+
+## ⚠️ Backfills and historical snapshots — handle with care
+
+Backfilling a historical day's snapshot has bitten this project twice. Both root causes:
+
+### 1. `sync_to_supabase.py` re-uploads ALL local snapshots
+
+The current script uploads every file under `.poll_work/snapshots/` regardless of date. If a one-off local aggregator run regenerates an OLD snapshot file (e.g. `snapshots/2026-05-18.json`) against a stale cache, the sync **happily clobbers the correct historical snapshot on Supabase Storage** with the regenerated wrong one.
+
+Concrete failure mode (2026-05-19): a local backfill aggregator ran with `today_eat=2026-05-18` against ~hours-old cache files. It correctly fixed the `add_new_company_open` metric (16 → 84) but inadvertently regressed `bo_qa_backlog` per-team (Pweza/Tembo dropped from 165/179 → 0/0) because the cache was missing records that had transitioned to SBO since the last poll. `sync_to_supabase.py` then uploaded the regenerated `snapshots/2026-05-18.json`, overwriting the cron-written one that had the correct values.
+
+**Guardrail to add (follow-up):** `sync_to_supabase.py` should never upload a `snapshots/<date>.json` whose date is older than today (EAT). At minimum, add a printed warning if it's about to do so. Belt-and-braces: a flag like `--allow-historical-snapshots` that defaults off.
+
+**Until that ships, manual rule:** before running `sync_to_supabase.py` after any local aggregator run, check `ls .poll_work/snapshots/` — if there's a snapshot file for a date that's not today, delete it from the local copy before syncing.
+
+### 2. Backfills must re-poll Airtable when the local cache is stale
+
+Cache files in `.poll_work/` (`recent_p*.json`, `tagged_today_p*.json`, etc.) get refreshed every cron cycle. Between cron cycles they're stale. Running the aggregator against a stale cache produces wrong values for current-state metrics:
+
+- `bo_qa_backlog` — current SBO count; drifts as records move in/out of SBO
+- `flow_a/b/c/d_today` — classifies by CURRENT verification_status; drifts as records advance through states
+- `add_new_company_open` — stable once a record is tagged with `add_new_company`, but new records keep appearing through the day
+
+**If you need to backfill a historical day's snapshot:**
+
+- **Either** re-poll Airtable first to refresh the cache (`set -a && . ./.env.local && set +a && python3 .poll_work/poll_airtable.py`). This works only if the historical day's records are still within the live filters' lookback windows (Fetch A is past-24h, Fetch D is "tagged today" so won't pull yesterday).
+- **Or** write only the specific metric you're backfilling. Load the existing `snapshots/<date>.json`, mutate just the field you're fixing, write back. Don't replace the whole snapshot.
+- **Or — preferred:** don't backfill. Document the gap in the changelog and let the next day's correct snapshot take over. Trying to reconstruct point-in-time current-state metrics retroactively will always be lossy.
+
+### 3. `_save_snapshot` writes today's snapshot every aggregator run
+
+The cron's normal behavior writes only `snapshots/<today_eat>.json`. So a fresh workflow run will never accidentally touch historical snapshots — only manual local runs with overridden `today_eat` can do that. The guardrail above is specifically for the manual-override path.
