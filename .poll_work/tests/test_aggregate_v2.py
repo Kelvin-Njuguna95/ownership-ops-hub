@@ -451,13 +451,38 @@ class TestComputedAt(unittest.TestCase):
         self.assertLess(age_s, 60, f"computed_at should be within the last 60s, was {age_s:.1f}s")
 
 
+# Helper for the new hourly_buckets rule — a record that satisfies all gates
+# at the given EAT start_date timestamp. Override any single field via kwargs
+# to construct negative-case fixtures.
+def _tagging_rec(assignee, start_date_iso, **overrides):
+    base = dict(
+        assignee=assignee,
+        verification_status="tagged",
+        company_id="recCo1",
+        company_name="12345 - Acme Shipping",
+        start_date=start_date_iso,
+        # dead_vessel / add_new_company left at defaults (False / None)
+    )
+    base.update(overrides)
+    return _info(**base)
+
+
 class TestHourlyBuckets(unittest.TestCase):
-    def test_hours_8_9_9(self):
-        # Three records tagged today at 08:30, 09:15, 09:45 EAT.
+    """hourly_buckets rule (post-fix-hourly-output-restore-correct-rule):
+       contributes to hour H for agent A on day D iff ALL:
+         - verification_status == 'tagged'
+         - company_id truthy AND company_name truthy
+         - dead_vessel falsy
+         - add_new_company falsy
+         - start_date parses; EAT date == today; 6 <= EAT hour <= 23
+       NOT dependent on start_tagging anymore."""
+
+    def test_hours_8_9_9_happy_path(self):
+        # Three records satisfying all gates, start_date at 08:30, 09:15, 09:45 EAT.
         records = [
-            _info(assignee="Alice", start_tagging=f"{TODAY.isoformat()}T08:30:00.000+03:00"),
-            _info(assignee="Alice", start_tagging=f"{TODAY.isoformat()}T09:15:00.000+03:00"),
-            _info(assignee="Alice", start_tagging=f"{TODAY.isoformat()}T09:45:00.000+03:00"),
+            _tagging_rec("Alice", f"{TODAY.isoformat()}T08:30:00.000+03:00"),
+            _tagging_rec("Alice", f"{TODAY.isoformat()}T09:15:00.000+03:00"),
+            _tagging_rec("Alice", f"{TODAY.isoformat()}T09:45:00.000+03:00"),
         ]
         aggs = aggregate(records, TODAY, OWNERSHIP_ASSIGNEES)
         expected = {h: 0 for h in range(6, 24)}
@@ -468,22 +493,70 @@ class TestHourlyBuckets(unittest.TestCase):
         self.assertEqual(aggs["totals"]["hourly_buckets"], expected)
 
     def test_records_outside_working_hours_dropped(self):
-        # Tagged at 03:00 EAT today — outside the 6..23 working-hours window.
-        records = [
-            _info(assignee="Alice", start_tagging=f"{TODAY.isoformat()}T03:00:00.000+03:00"),
-        ]
+        # 03:00 EAT — outside the 6..23 window, even with all other gates passing.
+        records = [_tagging_rec("Alice", f"{TODAY.isoformat()}T03:00:00.000+03:00")]
         aggs = aggregate(records, TODAY, OWNERSHIP_ASSIGNEES)
-        expected = {h: 0 for h in range(6, 24)}
-        self.assertEqual(aggs["totals"]["hourly_buckets"], expected)
+        self.assertEqual(aggs["totals"]["hourly_buckets"], {h: 0 for h in range(6, 24)})
 
     def test_records_not_today_dropped(self):
-        # Tagged yesterday — should NOT appear in today's hourly_buckets.
+        # start_date is yesterday EAT — should NOT appear in today's buckets.
+        records = [_tagging_rec("Alice", "2026-05-14T09:00:00.000+03:00")]
+        aggs = aggregate(records, TODAY, OWNERSHIP_ASSIGNEES)
+        self.assertEqual(aggs["totals"]["hourly_buckets"], {h: 0 for h in range(6, 24)})
+
+    def test_negative_verification_status_not_tagged(self):
+        # All other gates satisfied; vs is "Done" instead of "tagged" → no bucket.
+        records = [_tagging_rec("Alice", f"{TODAY.isoformat()}T10:00:00.000+03:00",
+                                verification_status="Done")]
+        aggs = aggregate(records, TODAY, OWNERSHIP_ASSIGNEES)
+        self.assertEqual(aggs["totals"]["hourly_buckets"][10], 0)
+
+    def test_negative_company_id_blank(self):
+        records = [_tagging_rec("Alice", f"{TODAY.isoformat()}T10:00:00.000+03:00",
+                                company_id=None)]
+        aggs = aggregate(records, TODAY, OWNERSHIP_ASSIGNEES)
+        self.assertEqual(aggs["totals"]["hourly_buckets"][10], 0)
+
+    def test_negative_company_name_blank(self):
+        records = [_tagging_rec("Alice", f"{TODAY.isoformat()}T10:00:00.000+03:00",
+                                company_name=None)]
+        aggs = aggregate(records, TODAY, OWNERSHIP_ASSIGNEES)
+        self.assertEqual(aggs["totals"]["hourly_buckets"][10], 0)
+
+    def test_negative_add_new_company_filled(self):
+        records = [_tagging_rec("Alice", f"{TODAY.isoformat()}T10:00:00.000+03:00",
+                                add_new_company="Proposed New Co Ltd")]
+        aggs = aggregate(records, TODAY, OWNERSHIP_ASSIGNEES)
+        self.assertEqual(aggs["totals"]["hourly_buckets"][10], 0,
+                         "add_new_company records are 100% QA workflow, not agent tagging output")
+
+    def test_negative_dead_vessel_set(self):
+        records = [_tagging_rec("Alice", f"{TODAY.isoformat()}T10:00:00.000+03:00",
+                                dead_vessel=True)]
+        aggs = aggregate(records, TODAY, OWNERSHIP_ASSIGNEES)
+        self.assertEqual(aggs["totals"]["hourly_buckets"][10], 0)
+
+    def test_negative_start_date_missing(self):
+        records = [_tagging_rec("Alice", None)]
+        aggs = aggregate(records, TODAY, OWNERSHIP_ASSIGNEES)
+        self.assertEqual(aggs["totals"]["hourly_buckets"], {h: 0 for h in range(6, 24)})
+
+    def test_boundary_hours_06_23_inclusive_and_05_excluded(self):
         records = [
-            _info(assignee="Alice", start_tagging="2026-05-14T09:00:00.000+03:00"),
+            _tagging_rec("Alice", f"{TODAY.isoformat()}T06:00:00.000+03:00"),  # h=6 included
+            _tagging_rec("Alice", f"{TODAY.isoformat()}T23:59:00.000+03:00"),  # h=23 included
+            _tagging_rec("Alice", f"{TODAY.isoformat()}T05:59:00.000+03:00"),  # h=5 excluded
+            _tagging_rec("Alice", f"{TODAY.isoformat()}T00:00:00.000+03:00"),  # h=0 excluded
         ]
         aggs = aggregate(records, TODAY, OWNERSHIP_ASSIGNEES)
-        expected = {h: 0 for h in range(6, 24)}
-        self.assertEqual(aggs["totals"]["hourly_buckets"], expected)
+        h = aggs["totals"]["hourly_buckets"]
+        self.assertEqual(h[6], 1, "06:00 EAT should bucket into hour 6")
+        self.assertEqual(h[23], 1, "23:59 EAT should bucket into hour 23")
+        # 05:59 and 00:00 don't bucket because hours 5 and 0 aren't in the dict at all.
+        self.assertNotIn(5, h)
+        self.assertNotIn(0, h)
+        # Sanity: total bucketed = 2 (the two boundary-included ones).
+        self.assertEqual(sum(h.values()), 2)
 
     def test_hourly_buckets_excluded_from_slimmed_dims(self):
         aggs = aggregate(_fixture(), TODAY, OWNERSHIP_ASSIGNEES)
