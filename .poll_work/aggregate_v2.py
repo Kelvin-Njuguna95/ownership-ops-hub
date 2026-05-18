@@ -1052,6 +1052,75 @@ def compute_weekly_rollup(snapshots, roster=None):
     }
 
 
+def _fetch_flow_framework_counts(today_eat):
+    """Read Flow Framework v2 counts from Supabase (the authoritative source
+    post the feat-flow-framework-v2 PR). Returns a dict with flow_a/b/c_today,
+    total_completions_today, and alerts_* counts. Returns {} if Supabase
+    credentials aren't set (keeps the aggregator runnable in local-dev
+    without the env). Errors are logged and swallowed so a Supabase outage
+    doesn't break the rest of the aggregator pipeline.
+    """
+    import os
+    try:
+        import requests
+    except ImportError:
+        return {}
+    url = os.environ.get("SUPABASE_URL")
+    key = os.environ.get("SUPABASE_SERVICE_ROLE_KEY")
+    if not (url and key):
+        return {}
+
+    start_eat = datetime.combine(today_eat, datetime.min.time(), tzinfo=EAT)
+    end_eat   = start_eat + timedelta(days=1)
+    start_utc = start_eat.astimezone(timezone.utc).isoformat()
+    end_utc   = end_eat.astimezone(timezone.utc).isoformat()
+
+    def _count(table, extra_params):
+        # PostgREST exact count via Range 0-0 + Prefer count=exact.
+        # Content-Range header looks like "0-0/152" or "*/0". The cap on
+        # the data side doesn't matter — we only want the header.
+        params = dict(extra_params)
+        headers = {"apikey": key, "Authorization": f"Bearer {key}",
+                   "Prefer": "count=exact", "Range": "0-0", "Range-Unit": "items"}
+        try:
+            r = requests.get(f"{url.rstrip('/')}/rest/v1/{table}",
+                              headers=headers, params={**params, "select": "airtable_record_id"},
+                              timeout=15)
+            if r.status_code not in (200, 206):
+                return 0
+            cr = r.headers.get("Content-Range", "")
+            if "/" in cr:
+                try:
+                    return int(cr.split("/")[1])
+                except ValueError:
+                    return 0
+            return 0
+        except Exception as e:
+            print(f"  WARN _fetch_flow_framework_counts {table}: {e}")
+            return 0
+
+    today_window = f"and(completed_at.gte.{start_utc},completed_at.lt.{end_utc})"
+    flow_a = _count("ownership_completions", {"and": today_window, "flow": "eq.A"})
+    flow_c = _count("ownership_completions", {"and": today_window, "flow": "eq.C"})
+    sample_window = f"and(sampled_at.gte.{start_utc},sampled_at.lt.{end_utc})"
+    flow_b = _count("ownership_qa_sampling", {"and": sample_window})
+
+    alerts_missing_qa_assignee = _count("flow_alerts", {"alert_type": "eq.missing_qa_assignee", "resolved_at": "is.null"})
+    alerts_missing_qa_status   = _count("flow_alerts", {"alert_type": "eq.missing_qa_status",   "resolved_at": "is.null"})
+    alerts_stuck_in_sampling   = _count("flow_alerts", {"alert_type": "eq.stuck_in_sampling",   "resolved_at": "is.null"})
+
+    return {
+        "flow_a_today":              flow_a,
+        "flow_b_today":              flow_b,
+        "flow_c_today":              flow_c,
+        "total_completions_today":   flow_a + flow_c,  # B excluded — in-progress, not done
+        "alerts_missing_qa_assignee": alerts_missing_qa_assignee,
+        "alerts_missing_qa_status":   alerts_missing_qa_status,
+        "alerts_stuck_in_sampling":   alerts_stuck_in_sampling,
+        "alerts_open_total":          alerts_missing_qa_assignee + alerts_missing_qa_status + alerts_stuck_in_sampling,
+    }
+
+
 def main():
     here = Path(__file__).resolve().parent.parent
     work = here / ".poll_work"
@@ -1068,6 +1137,19 @@ def main():
     if intake_total > 0:
         aggs["totals"]["relations_support_intake_today"] = intake_total
     aggs["totals"]["intake_partial"] = intake_partial
+
+    # Flow Framework v2 — overwrite the cache-derived flow_*_today values
+    # with Supabase counts from ownership_completions / ownership_qa_sampling.
+    # The cache values are kept on by_team / by_agent for backwards-compat
+    # (deprecated; will be removed in a follow-up).
+    flow_counts = _fetch_flow_framework_counts(today_eat)
+    if flow_counts:
+        aggs["totals"].update(flow_counts)
+        print(f"  Flow v2 totals: A={flow_counts['flow_a_today']} "
+              f"B={flow_counts['flow_b_today']} C={flow_counts['flow_c_today']} "
+              f"| alerts: missing_qa_assignee={flow_counts['alerts_missing_qa_assignee']} "
+              f"missing_qa_status={flow_counts['alerts_missing_qa_status']} "
+              f"stuck={flow_counts['alerts_stuck_in_sampling']}")
 
     agg_path = here / "daily_aggregates.json"
     existing = json.loads(agg_path.read_text()) if agg_path.exists() else {}

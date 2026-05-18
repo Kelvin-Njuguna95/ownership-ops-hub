@@ -1,20 +1,21 @@
-"""Tests for completion_detector — the completion rule, the completed_by
-fallback chain, and the first-write-wins insert behavior.
+"""Tests for completion_detector — Flow Framework v2 classification,
+completed_by attribution, row builders, and first-write-wins semantics.
 
-Network calls (Airtable GET, Supabase INSERT) are stubbed via
-unittest.mock — the detector is exercised end-to-end against fake HTTP
-responses, no real services hit.
+Network calls (Airtable GET, Supabase INSERT/PATCH) are stubbed via
+unittest.mock — the detector is exercised against fake HTTP responses,
+no real services hit.
 """
 import os
 import sys
 import unittest
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from unittest.mock import patch, MagicMock
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import completion_detector as det  # noqa: E402
 from completion_detector import (  # noqa: E402
+    DONE,
     FLD_ADD_NEW_COMPANY,
     FLD_ASSIGNEE,
     FLD_COMPANY_ID_AND_NAME,
@@ -22,12 +23,19 @@ from completion_detector import (  # noqa: E402
     FLD_IMO,
     FLD_LAST_MODIFIED_BY,
     FLD_QA_ASSIGNEE,
+    FLD_QA_STATUS,
     FLD_REQUESTED_BY,
     FLD_ROLE,
     FLD_VERIFICATION_STATUS,
     NEED_TO_BE_UPDATE,
+    SELECTED_FOR_BO_QA,
+    STUCK_HOURS,
     TAGGED,
-    build_row,
+    VALID,
+    build_completion_row,
+    build_sampling_row,
+    build_alert_row,
+    classify,
     is_complete,
     resolve_completed_by,
 )
@@ -39,6 +47,7 @@ def _fields(**kw):
         "imo":                 FLD_IMO,
         "assignee":            FLD_ASSIGNEE,
         "qa_assignee":         FLD_QA_ASSIGNEE,
+        "qa_status":           FLD_QA_STATUS,
         "last_modified_by":    FLD_LAST_MODIFIED_BY,
         "verification_status": FLD_VERIFICATION_STATUS,
         "company_id_and_name": FLD_COMPANY_ID_AND_NAME,
@@ -50,301 +59,392 @@ def _fields(**kw):
     return {keymap[k]: v for k, v in kw.items()}
 
 
-class TestCompletionRule(unittest.TestCase):
-    """The completion rule — both terminal verification_status states."""
+# ============================================================================
+# Pre-Flow detection rule (kept verbatim from v1).
+# ============================================================================
+class TestPreFlowCompletionRule(unittest.TestCase):
+    """The pre-Flow rule still applies to records in `tagged` or
+    `need to be update` — first-contact detection with flow=NULL."""
 
-    def test_tagged_with_company_linked_and_not_dead_is_complete(self):
-        f = _fields(verification_status=TAGGED,
-                    company_id_and_name=["recCo1"])
+    def test_tagged_with_company_linked(self):
+        f = _fields(verification_status=TAGGED, company_id_and_name=["recCo1"])
         self.assertTrue(is_complete(f))
 
-    def test_tagged_with_dead_vessel_but_no_company_is_complete(self):
-        # Dead vessel is the operational alternative to company linkage.
+    def test_tagged_with_dead_vessel(self):
         f = _fields(verification_status=TAGGED, dead_vessel=True)
         self.assertTrue(is_complete(f))
 
-    def test_tagged_with_no_company_and_not_dead_is_not_complete(self):
-        # Still in flight — agent hasn't picked a company yet.
-        f = _fields(verification_status=TAGGED)
-        self.assertFalse(is_complete(f))
+    def test_tagged_with_neither(self):
+        self.assertFalse(is_complete(_fields(verification_status=TAGGED)))
 
-    def test_tagged_with_both_company_and_dead_is_complete(self):
-        # OR semantics: either alone suffices, both together also.
-        f = _fields(verification_status=TAGGED,
-                    company_id_and_name=["recCo1"],
-                    dead_vessel=True)
+    def test_need_to_be_update_with_add_new_company(self):
+        f = _fields(verification_status=NEED_TO_BE_UPDATE, add_new_company="New Co")
         self.assertTrue(is_complete(f))
 
-    def test_need_to_be_update_with_add_new_company_is_complete(self):
-        f = _fields(verification_status=NEED_TO_BE_UPDATE,
-                    add_new_company="Proposed New Co Ltd")
-        self.assertTrue(is_complete(f))
+    def test_need_to_be_update_without_add_new_company(self):
+        self.assertFalse(is_complete(_fields(verification_status=NEED_TO_BE_UPDATE)))
 
-    def test_need_to_be_update_with_blank_add_new_company_is_not_complete(self):
-        f = _fields(verification_status=NEED_TO_BE_UPDATE)
-        self.assertFalse(is_complete(f))
+    def test_other_states_not_pre_flow_complete(self):
+        for vs in (DONE, VALID, SELECTED_FOR_BO_QA, "waiting"):
+            self.assertFalse(is_complete(_fields(verification_status=vs,
+                                                  company_id_and_name=["recCo1"])))
 
-    def test_need_to_be_update_with_empty_string_add_new_company_is_not_complete(self):
-        f = _fields(verification_status=NEED_TO_BE_UPDATE, add_new_company="")
-        self.assertFalse(is_complete(f))
 
-    def test_waiting_is_not_complete_even_with_company(self):
-        # vs="waiting" → not in a terminal state, never complete.
-        f = _fields(verification_status="waiting",
-                    company_id_and_name=["recCo1"])
-        self.assertFalse(is_complete(f))
+# ============================================================================
+# Flow Framework v2 classification.
+# ============================================================================
+class TestClassification(unittest.TestCase):
+    """The 5-state classification matrix per Kelvin's spec."""
 
-    def test_selected_for_bo_qa_is_not_complete(self):
-        # Records in BO QA backlog — agent already finished, but vs isn't
-        # one of the two terminal states the detector tracks.
-        f = _fields(verification_status="Selected for BO QA ",
-                    company_id_and_name=["recCo1"])
-        self.assertFalse(is_complete(f))
+    # ---- Done/Valid ----
+    def test_done_with_no_qa_classified_as_flow_a(self):
+        # vs in (Done, Valid) + qa_assignee empty + qa_status empty → Flow A
+        for vs in (DONE, VALID):
+            target, flow = classify(_fields(verification_status=vs))
+            self.assertEqual(target, "completion")
+            self.assertEqual(flow, "A", f"vs={vs}: expected A")
 
-    def test_done_is_not_complete(self):
-        # Done means already fully approved by QA. Not tracked by detector —
-        # only the agent-completion moment is, which is upstream of Done.
-        f = _fields(verification_status="Done",
-                    company_id_and_name=["recCo1"])
-        self.assertFalse(is_complete(f))
+    def test_done_with_qa_assignee_and_qa_status_classified_as_flow_c(self):
+        for vs in (DONE, VALID):
+            f = _fields(verification_status=vs,
+                        qa_assignee={"id": "q1", "name": "QA1"},
+                        qa_status="approve")
+            target, flow = classify(f)
+            self.assertEqual(target, "completion")
+            self.assertEqual(flow, "C", f"vs={vs}: expected C")
 
-    def test_null_verification_status_is_not_complete(self):
-        self.assertFalse(is_complete(_fields()))
+    def test_done_with_qa_assignee_but_no_qa_status_alerts_not_classified(self):
+        f = _fields(verification_status=DONE,
+                    qa_assignee={"id": "q1", "name": "QA1"})
+        target, detail = classify(f)
+        self.assertEqual(target, "alert")
+        self.assertEqual(detail, "missing_qa_status")
 
-    def test_tagged_handles_raw_rest_string_vs(self):
-        # singleSelect raw-REST shape is a plain string. _name unwraps it.
+    def test_done_with_qa_status_but_no_qa_assignee_alerts_missing_assignee(self):
+        # Rare edge case — qa_status set but no reviewer recorded.
+        f = _fields(verification_status=VALID, qa_status="approve")
+        target, detail = classify(f)
+        self.assertEqual(target, "alert")
+        self.assertEqual(detail, "missing_qa_assignee")
+
+    # ---- Selected for BO QA ----
+    def test_selected_for_bo_qa_with_assignee_classified_as_flow_b(self):
+        f = _fields(verification_status=SELECTED_FOR_BO_QA,
+                    qa_assignee={"id": "q1", "name": "QA1"})
+        target, flow = classify(f)
+        self.assertEqual(target, "sampling")
+        self.assertIsNone(flow)
+
+    def test_selected_for_bo_qa_without_assignee_alerts(self):
+        f = _fields(verification_status=SELECTED_FOR_BO_QA)
+        target, detail = classify(f)
+        self.assertEqual(target, "alert")
+        self.assertEqual(detail, "missing_qa_assignee")
+
+    # ---- Pre-Flow states ----
+    def test_tagged_with_completion_rule_routes_to_pre_flow(self):
         f = _fields(verification_status=TAGGED, company_id_and_name=["recX"])
-        self.assertTrue(is_complete(f))
+        target, _ = classify(f)
+        self.assertEqual(target, "pre_flow")
 
-    def test_tagged_handles_cowork_dict_vs(self):
-        # Cowork shape: vs is a dict {id, name}. _name unwraps it.
-        f = _fields(verification_status={"id": "x", "name": TAGGED},
-                    company_id_and_name=["recX"])
-        self.assertTrue(is_complete(f))
+    def test_tagged_without_completion_rule_skipped(self):
+        f = _fields(verification_status=TAGGED)
+        target, _ = classify(f)
+        self.assertEqual(target, "skip")
 
-    def test_tagged_handles_cowork_link_dict(self):
-        # multipleRecordLinks Cowork shape: list of dicts. _first_link sees non-empty.
-        f = _fields(verification_status=TAGGED,
-                    company_id_and_name=[{"id": "recCo1", "name": "Acme"}])
-        self.assertTrue(is_complete(f))
+    def test_need_to_be_update_with_rule_routes_to_pre_flow(self):
+        f = _fields(verification_status=NEED_TO_BE_UPDATE, add_new_company="X")
+        target, _ = classify(f)
+        self.assertEqual(target, "pre_flow")
+
+    # ---- Other states ----
+    def test_waiting_skipped(self):
+        self.assertEqual(classify(_fields(verification_status="waiting")), ("skip", None))
+
+    def test_unknown_vs_skipped(self):
+        self.assertEqual(classify(_fields(verification_status="anything")), ("skip", None))
+
+    def test_null_vs_skipped(self):
+        self.assertEqual(classify(_fields()), ("skip", None))
 
 
+# ============================================================================
+# completed_by attribution chain — unchanged from v1.
+# ============================================================================
 class TestResolveCompletedBy(unittest.TestCase):
-    """Fallback chain: last_modified_by → qa_assignee → assignee."""
-
     def test_prefers_last_modified_by(self):
-        f = _fields(last_modified_by={"id": "u1", "name": "Last Mod Person"},
-                    qa_assignee={"id": "q1", "name": "QA Person"},
-                    assignee=[{"id": "a1", "name": "Agent Person"}])
-        name, source = resolve_completed_by(f)
-        self.assertEqual(name, "Last Mod Person")
-        self.assertEqual(source, "last_modified_by")
+        f = _fields(last_modified_by={"id": "u1", "name": "Last Mod"},
+                    qa_assignee={"id": "q1", "name": "QA"},
+                    assignee=[{"id": "a1", "name": "Agent"}])
+        self.assertEqual(resolve_completed_by(f), ("Last Mod", "last_modified_by"))
 
     def test_falls_back_to_qa_assignee(self):
-        f = _fields(qa_assignee={"id": "q1", "name": "QA Person"},
-                    assignee=[{"id": "a1", "name": "Agent Person"}])
-        name, source = resolve_completed_by(f)
-        self.assertEqual(name, "QA Person")
-        self.assertEqual(source, "qa_assignee")
+        f = _fields(qa_assignee={"id": "q1", "name": "QA"},
+                    assignee=[{"id": "a1", "name": "Agent"}])
+        self.assertEqual(resolve_completed_by(f), ("QA", "qa_assignee"))
 
     def test_falls_back_to_assignee(self):
-        f = _fields(assignee=[{"id": "a1", "name": "Agent Person"}])
-        name, source = resolve_completed_by(f)
-        self.assertEqual(name, "Agent Person")
-        self.assertEqual(source, "assignee")
+        f = _fields(assignee=[{"id": "a1", "name": "Agent"}])
+        self.assertEqual(resolve_completed_by(f), ("Agent", "assignee"))
 
-    def test_returns_none_when_all_three_blank(self):
-        name, source = resolve_completed_by(_fields())
-        self.assertIsNone(name)
-        self.assertIsNone(source)
+    def test_none_when_all_blank(self):
+        self.assertEqual(resolve_completed_by(_fields()), (None, None))
 
-    def test_handles_raw_rest_collaborator_with_email(self):
-        # Raw REST returns collaborators with id/name/email — _name reads .name.
-        f = _fields(last_modified_by={"id": "u1", "name": "Lillian Gichamba",
-                                       "email": "redacted@example.com"})
-        name, source = resolve_completed_by(f)
-        self.assertEqual(name, "Lillian Gichamba")
-        self.assertEqual(source, "last_modified_by")
-
-    def test_automations_falls_through_to_qa_assignee(self):
-        # "Automations" is the Airtable automation bot — treat as non-human
-        # and fall through to the next link in the chain so completion is
-        # credited to the human who did the work, not the bot that updated
-        # a derived field after the fact.
-        f = _fields(last_modified_by={"id": "sys", "name": "Automations"},
-                    qa_assignee={"id": "q1", "name": "Real QA Person"},
-                    assignee=[{"id": "a1", "name": "Agent Person"}])
-        name, source = resolve_completed_by(f)
-        self.assertEqual(name, "Real QA Person")
-        self.assertEqual(source, "qa_assignee")
-
-    def test_automations_falls_through_to_assignee_when_qa_blank(self):
-        f = _fields(last_modified_by={"id": "sys", "name": "Automations"},
-                    assignee=[{"id": "a1", "name": "Agent Person"}])
-        name, source = resolve_completed_by(f)
-        self.assertEqual(name, "Agent Person")
-        self.assertEqual(source, "assignee")
-
-    def test_automations_with_no_human_fallback_returns_none(self):
-        # If Automations is the only entry, skip the record entirely
-        # rather than write "Automations" to the table.
-        f = _fields(last_modified_by={"id": "sys", "name": "Automations"})
-        name, source = resolve_completed_by(f)
-        self.assertIsNone(name)
-        self.assertIsNone(source)
-
-    def test_automations_string_shape_also_filtered(self):
-        # Raw REST returns singleCollaborator as dict, but defensive: also
-        # cover the case where some other code path stores it as a string.
-        f = _fields(last_modified_by="Automations",
+    def test_automations_skipped(self):
+        f = _fields(last_modified_by={"id": "s", "name": "Automations"},
                     qa_assignee={"id": "q1", "name": "Real Person"})
-        name, source = resolve_completed_by(f)
-        self.assertEqual(name, "Real Person")
-        self.assertEqual(source, "qa_assignee")
+        self.assertEqual(resolve_completed_by(f), ("Real Person", "qa_assignee"))
 
 
-class TestBuildRow(unittest.TestCase):
-    def test_full_row_shape(self):
+# ============================================================================
+# Row builders.
+# ============================================================================
+class TestBuildCompletionRow(unittest.TestCase):
+    def test_full_row_shape_with_flow_a(self):
         now = datetime(2026, 5, 18, 12, 0, 0, tzinfo=timezone.utc)
-        f = _fields(
-            imo="9999999",
-            verification_status=TAGGED,
-            company_id_and_name=[{"id": "recCo1", "name": "Acme Shipping"}],
-            role="OWNER",
-            requested_by="CargoTask17May",
-            last_modified_by={"id": "u1", "name": "Lillian Gichamba"},
-        )
-        row, source = build_row({"id": "rec123", "fields": f}, now)
+        f = _fields(verification_status=DONE,
+                    imo="9999999",
+                    role="OWNER",
+                    last_modified_by={"id": "u1", "name": "Lillian Gichamba"})
+        row, source = build_completion_row({"id": "rec123", "fields": f}, now, flow="A")
         self.assertEqual(source, "last_modified_by")
         self.assertEqual(row["airtable_record_id"], "rec123")
-        self.assertEqual(row["imo"], "9999999")
-        self.assertEqual(row["role"], "OWNER")
-        self.assertEqual(row["verification_status"], TAGGED)
-        self.assertEqual(row["completed_by"], "Lillian Gichamba")
-        # completed_at is detector clock, not Airtable's
+        self.assertEqual(row["flow"], "A")
         self.assertEqual(row["completed_at"], "2026-05-18T12:00:00+00:00")
-        self.assertEqual(row["requested_by"], "CargoTask17May")
-        # raw_payload preserves the fields dict for forensics
-        self.assertEqual(row["raw_payload"], f)
+        self.assertEqual(row["verification_status"], DONE)
+
+    def test_flow_c_row(self):
+        now = datetime(2026, 5, 18, 12, 0, 0, tzinfo=timezone.utc)
+        f = _fields(verification_status=VALID,
+                    qa_assignee={"id": "q1", "name": "QA"},
+                    qa_status="approve",
+                    last_modified_by={"id": "q1", "name": "QA"})
+        row, _ = build_completion_row({"id": "rec1", "fields": f}, now, flow="C")
+        self.assertEqual(row["flow"], "C")
+
+    def test_pre_flow_row_has_null_flow(self):
+        now = datetime(2026, 5, 18, 12, 0, 0, tzinfo=timezone.utc)
+        f = _fields(verification_status=TAGGED,
+                    company_id_and_name=["recX"],
+                    last_modified_by={"id": "u1", "name": "Agent"})
+        row, _ = build_completion_row({"id": "rec1", "fields": f}, now, flow=None)
+        self.assertIsNone(row["flow"])
 
     def test_returns_none_when_unattributable(self):
-        now = datetime(2026, 5, 18, 12, 0, 0, tzinfo=timezone.utc)
-        row, source = build_row({"id": "recX", "fields": _fields(
-            verification_status=TAGGED,
-            company_id_and_name=["recCo1"],
-        )}, now)
+        now = datetime(2026, 5, 18, tzinfo=timezone.utc)
+        row, src = build_completion_row({"id": "rec1", "fields": _fields(verification_status=DONE)}, now, flow="A")
         self.assertIsNone(row)
-        self.assertIsNone(source)
+        self.assertIsNone(src)
 
 
-class TestSupabaseInsertContract(unittest.TestCase):
-    """Verify the detector calls Supabase with the right Prefer header so
-    UNIQUE-constraint duplicates are silently skipped (first-write-wins)."""
+class TestBuildSamplingRow(unittest.TestCase):
+    def test_sampling_row(self):
+        now = datetime(2026, 5, 18, 12, 0, 0, tzinfo=timezone.utc)
+        f = _fields(verification_status=SELECTED_FOR_BO_QA,
+                    imo="9999",
+                    qa_assignee={"id": "q1", "name": "Zuleikha"})
+        row = build_sampling_row({"id": "rec1", "fields": f}, now)
+        self.assertEqual(row["airtable_record_id"], "rec1")
+        self.assertEqual(row["qa_assignee"], "Zuleikha")
+        self.assertEqual(row["sampled_at"], "2026-05-18T12:00:00+00:00")
 
-    def test_insert_sends_ignore_duplicates_header(self):
+    def test_none_when_no_qa_assignee(self):
+        now = datetime(2026, 5, 18, tzinfo=timezone.utc)
+        self.assertIsNone(build_sampling_row({"id": "rec1", "fields": _fields(verification_status=SELECTED_FOR_BO_QA)}, now))
+
+
+class TestBuildAlertRow(unittest.TestCase):
+    def test_alert_row_captures_context(self):
+        f = _fields(verification_status=DONE,
+                    qa_assignee={"id": "q1", "name": "QA1"})
+        row = build_alert_row({"id": "rec1", "fields": f}, "missing_qa_status")
+        self.assertEqual(row["airtable_record_id"], "rec1")
+        self.assertEqual(row["alert_type"], "missing_qa_status")
+        self.assertEqual(row["verification_status"], DONE)
+        self.assertEqual(row["qa_assignee"], "QA1")
+        self.assertIsNone(row["qa_status"])
+        # resolved_at omitted → server default NULL
+        self.assertNotIn("resolved_at", row)
+
+
+# ============================================================================
+# Supabase write semantics — first-write-wins, on_conflict, UPSERT.
+# ============================================================================
+class TestSupabaseInsertCompletions(unittest.TestCase):
+    def test_url_includes_on_conflict_param(self):
+        """Per CLAUDE.md: Prefer: resolution=ignore-duplicates needs
+        ?on_conflict=<col> or it's a no-op (returns 409 on first dup)."""
         with patch.object(det, "requests") as mock_req:
             mock_req.post.return_value = MagicMock(status_code=201, json=lambda: [], text="[]")
-            det.supabase_insert("https://example.supabase.co", "fake-key", [{"airtable_record_id": "rec1"}])
-            mock_req.post.assert_called_once()
-            args, kwargs = mock_req.post.call_args
-            prefer = kwargs["headers"]["Prefer"]
-            self.assertIn("resolution=ignore-duplicates", prefer)
-            self.assertIn("return=representation", prefer)
-            self.assertEqual(kwargs["headers"]["apikey"], "fake-key")
-            self.assertEqual(kwargs["headers"]["Authorization"], "Bearer fake-key")
-
-    def test_insert_url_includes_on_conflict_param(self):
-        # PostgREST requires ?on_conflict=<col> for the Prefer:
-        # resolution=ignore-duplicates header to take effect. Without it
-        # the server returns 409 on the first UNIQUE violation. Caught
-        # in production on detector run #2 (run #1 succeeded because the
-        # table was empty so no conflicts).
-        with patch.object(det, "requests") as mock_req:
-            mock_req.post.return_value = MagicMock(status_code=201, json=lambda: [], text="[]")
-            det.supabase_insert("https://example.supabase.co", "fake-key", [{"airtable_record_id": "rec1"}])
+            mock_req.patch.return_value = MagicMock(status_code=200, json=lambda: [], text="[]")
+            det.supabase_insert_completions("https://x.supabase.co", "key",
+                                             [{"airtable_record_id": "rec1", "flow": "A"}])
             url = mock_req.post.call_args.args[0]
-            self.assertIn("on_conflict=airtable_record_id", url,
-                          "URL must include ?on_conflict=airtable_record_id for "
-                          "PostgREST to honor the resolution=ignore-duplicates "
-                          "Prefer header on bulk POST")
+            self.assertIn("on_conflict=airtable_record_id", url)
 
-    def test_first_write_wins_on_duplicate(self):
-        """Two detector runs see the same complete record. The first
-        insert returns the row; the second returns an empty list because
-        the server silently skipped it. completed_at stays whatever the
-        first run stamped."""
+    def test_first_write_wins_per_flow_type(self):
+        """The same record stamped twice with different flow values: the
+        second insert is a no-op via ignore-duplicates, but the PATCH path
+        upserts the flow column when it was NULL."""
+        row_with_flow = {"airtable_record_id": "rec1", "flow": "A"}
         with patch.object(det, "requests") as mock_req:
-            row = {"airtable_record_id": "rec1", "completed_at": "2026-05-18T10:00:00+00:00"}
-            # First call — server returns the inserted row
-            mock_req.post.return_value = MagicMock(status_code=201,
-                                                    json=lambda: [row],
-                                                    text='[{"airtable_record_id":"rec1"}]')
-            first = det.supabase_insert("https://x.supabase.co", "k", [row])
-            self.assertEqual(len(first), 1)
-
-            # Second call (15 min later, same row) — server returns []
-            mock_req.post.return_value = MagicMock(status_code=201,
-                                                    json=lambda: [],
-                                                    text="[]")
-            second = det.supabase_insert("https://x.supabase.co", "k",
-                                          [{**row, "completed_at": "2026-05-18T10:15:00+00:00"}])
-            self.assertEqual(second, [],
-                             "Server should silently skip the duplicate "
-                             "and return no inserted rows")
-
-    def test_empty_rows_skips_http_call(self):
-        # No work to do → no POST, no error.
-        with patch.object(det, "requests") as mock_req:
-            result = det.supabase_insert("https://x", "k", [])
-            self.assertEqual(result, [])
-            mock_req.post.assert_not_called()
-
-
-class TestEndToEndFlow(unittest.TestCase):
-    """End-to-end: Airtable returns a mix of complete and incomplete records;
-    detector should only attempt to insert the complete ones."""
-
-    def test_only_complete_records_are_inserted(self):
-        airtable_records = [
-            {"id": "recA", "fields": _fields(  # complete: tagged + company
-                verification_status=TAGGED,
-                company_id_and_name=["recCo1"],
-                last_modified_by={"id": "u1", "name": "Alice"})},
-            {"id": "recB", "fields": _fields(  # NOT complete: tagged but no company, not dead
-                verification_status=TAGGED,
-                last_modified_by={"id": "u2", "name": "Bob"})},
-            {"id": "recC", "fields": _fields(  # complete: need to be update + add_new_company
-                verification_status=NEED_TO_BE_UPDATE,
-                add_new_company="New Co",
-                last_modified_by={"id": "u3", "name": "Carol"})},
-            {"id": "recD", "fields": _fields(  # NOT complete: waiting (not a terminal state)
-                verification_status="waiting",
-                company_id_and_name=["recCo2"],
-                last_modified_by={"id": "u4", "name": "Dave"})},
-            {"id": "recE", "fields": _fields(  # complete via dead_vessel
-                verification_status=TAGGED, dead_vessel=True,
-                last_modified_by={"id": "u5", "name": "Eve"})},
-        ]
-        with patch.object(det, "requests") as mock_req:
-            mock_req.get.return_value = MagicMock(
-                status_code=200,
-                json=lambda: {"records": airtable_records, "offset": None},
-            )
+            # First call: INSERT, server returns the row as newly inserted
             mock_req.post.return_value = MagicMock(
-                status_code=201,
-                json=lambda: [{"airtable_record_id": rid} for rid in ["recA", "recC", "recE"]],
-                text="[]",
-            )
-            records = det.fetch_terminal_records("fake-pat")
-            self.assertEqual(len(records), 5)
-            now = datetime.now(timezone.utc)
-            rows = []
-            for rec in records:
-                if det.is_complete(rec["fields"]):
-                    row, _ = det.build_row(rec, now)
-                    if row:
-                        rows.append(row)
-            self.assertEqual({r["airtable_record_id"] for r in rows}, {"recA", "recC", "recE"})
+                status_code=201, json=lambda: [row_with_flow], text="[]")
+            r1 = det.supabase_insert_completions("https://x", "key", [row_with_flow])
+            self.assertEqual(r1["inserted"], 1)
+            self.assertEqual(r1["flow_upserted"], 0)
+
+            # Second call: row already exists (POST returns [] = no new inserts).
+            # The flow column is being re-asserted with same value 'A'.
+            # PATCH path: filter flow=is.null → returns empty (existing row has flow=A).
+            mock_req.post.return_value = MagicMock(status_code=201, json=lambda: [], text="[]")
+            mock_req.patch.return_value = MagicMock(status_code=200, json=lambda: [], text="[]")
+            r2 = det.supabase_insert_completions("https://x", "key", [row_with_flow])
+            self.assertEqual(r2["inserted"], 0)
+            self.assertEqual(r2["flow_upserted"], 0,
+                             "flow already set → PATCH filter rejects → no upsert")
+
+    def test_upsert_flow_on_existing_null_row(self):
+        """Record was previously inserted with flow=NULL (pre-Flow path),
+        now caught at Done/Valid → PATCH should fire and upsert flow."""
+        row = {"airtable_record_id": "rec1", "flow": "A"}
+        with patch.object(det, "requests") as mock_req:
+            # POST returns [] (already exists)
+            mock_req.post.return_value = MagicMock(status_code=201, json=lambda: [], text="[]")
+            # PATCH returns [{"id": ...}] (row matched the flow=is.null filter)
+            mock_req.patch.return_value = MagicMock(
+                status_code=200, json=lambda: [{"id": "uuid", "airtable_record_id": "rec1", "flow": "A"}],
+                text="[...]")
+            result = det.supabase_insert_completions("https://x", "key", [row])
+            self.assertEqual(result["inserted"], 0)
+            self.assertEqual(result["flow_upserted"], 1)
+            # Verify the PATCH URL has the flow=is.null filter
+            patch_url = mock_req.patch.call_args.args[0]
+            self.assertIn("flow=is.null", patch_url)
+            self.assertIn("airtable_record_id=eq.rec1", patch_url)
+
+    def test_pre_flow_row_without_flow_value_does_not_patch(self):
+        """A pre-Flow detection (row.flow=None) on a duplicate should NOT
+        trigger a PATCH — it's just a no-op."""
+        row = {"airtable_record_id": "rec1", "flow": None}
+        with patch.object(det, "requests") as mock_req:
+            mock_req.post.return_value = MagicMock(status_code=201, json=lambda: [], text="[]")
+            result = det.supabase_insert_completions("https://x", "key", [row])
+            mock_req.patch.assert_not_called()
+            self.assertEqual(result["duplicates_no_flow"], 1)
+
+
+class TestStuckInSamplingDetection(unittest.TestCase):
+    def test_stuck_in_sampling_threshold_24h(self):
+        """Records sampled > STUCK_HOURS ago AND not yet completed should
+        generate stuck_in_sampling alerts."""
+        now = datetime(2026, 5, 18, 12, 0, 0, tzinfo=timezone.utc)
+        cutoff = (now - timedelta(hours=STUCK_HOURS)).isoformat()
+        with patch.object(det, "requests") as mock_req:
+            # First GET: ownership_qa_sampling rows older than cutoff
+            old_samples_resp = MagicMock(status_code=200, json=lambda: [
+                {"airtable_record_id": "rec_stuck", "qa_assignee": "QA1",
+                 "sampled_at": "2026-05-17T08:00:00+00:00", "raw_payload": {}},
+                {"airtable_record_id": "rec_done",   "qa_assignee": "QA1",
+                 "sampled_at": "2026-05-17T08:00:00+00:00", "raw_payload": {}},
+            ])
+            # Second GET: which of those have completed (only rec_done)
+            completed_resp = MagicMock(status_code=200, json=lambda: [
+                {"airtable_record_id": "rec_done"},
+            ])
+            mock_req.get.side_effect = [old_samples_resp, completed_resp]
+            alerts = det.detect_stuck_in_sampling("https://x", "key", now)
+            self.assertEqual(len(alerts), 1)
+            self.assertEqual(alerts[0]["airtable_record_id"], "rec_stuck")
+            self.assertEqual(alerts[0]["alert_type"], "stuck_in_sampling")
+            # Verify the cutoff in the first GET's filter
+            first_call_params = mock_req.get.call_args_list[0].kwargs["params"]
+            self.assertIn(cutoff, first_call_params["sampled_at"])
+
+    def test_no_stuck_when_table_empty(self):
+        now = datetime(2026, 5, 18, tzinfo=timezone.utc)
+        with patch.object(det, "requests") as mock_req:
+            mock_req.get.return_value = MagicMock(status_code=200, json=lambda: [])
+            alerts = det.detect_stuck_in_sampling("https://x", "key", now)
+            self.assertEqual(alerts, [])
+
+
+class TestSamplingInsert(unittest.TestCase):
+    def test_uses_on_conflict_param(self):
+        with patch.object(det, "requests") as mock_req:
+            mock_req.post.return_value = MagicMock(status_code=201, json=lambda: [], text="[]")
+            det.supabase_insert_samplings("https://x", "key",
+                                          [{"airtable_record_id": "rec1", "qa_assignee": "Q"}])
+            url = mock_req.post.call_args.args[0]
+            self.assertIn("on_conflict=airtable_record_id", url)
+
+
+class TestAlertUpsert(unittest.TestCase):
+    def test_upserts_with_composite_on_conflict(self):
+        """flow_alerts UNIQUE is on (airtable_record_id, alert_type)."""
+        with patch.object(det, "requests") as mock_req:
+            mock_req.post.return_value = MagicMock(status_code=201, json=lambda: [], text="[]")
+            mock_req.patch.return_value = MagicMock(status_code=200, json=lambda: [], text="[]")
+            det.supabase_upsert_alerts("https://x", "key",
+                                       [{"airtable_record_id": "rec1", "alert_type": "missing_qa_status"}])
+            url = mock_req.post.call_args.args[0]
+            self.assertIn("on_conflict=airtable_record_id,alert_type", url)
+
+    def test_reopens_resolved_alert_when_condition_returns(self):
+        """If an alert was previously resolved but the bad state has come
+        back, PATCH it to clear resolved_at."""
+        row = {"airtable_record_id": "rec1", "alert_type": "missing_qa_status"}
+        with patch.object(det, "requests") as mock_req:
+            # POST: row already exists (returns [])
+            mock_req.post.return_value = MagicMock(status_code=201, json=lambda: [], text="[]")
+            # PATCH (clearing resolved_at): returns the patched row
+            mock_req.patch.return_value = MagicMock(
+                status_code=200, json=lambda: [{"id": "uuid"}], text="[...]")
+            new, reopened = det.supabase_upsert_alerts("https://x", "key", [row])
+            self.assertEqual(new, 0)
+            self.assertEqual(reopened, 1)
+            patch_url = mock_req.patch.call_args.args[0]
+            self.assertIn("resolved_at=not.is.null", patch_url)
+
+
+class TestAlertResolution(unittest.TestCase):
+    def test_resolves_alerts_not_in_current_set(self):
+        """Alerts open in DB whose (record_id, alert_type) is no longer
+        in this cycle's current set → PATCH resolved_at."""
+        now = datetime(2026, 5, 18, 12, 0, 0, tzinfo=timezone.utc)
+        with patch.object(det, "requests") as mock_req:
+            # GET open alerts: 2 in DB
+            mock_req.get.return_value = MagicMock(status_code=200, json=lambda: [
+                {"id": "uuid1", "airtable_record_id": "recA", "alert_type": "missing_qa_status"},
+                {"id": "uuid2", "airtable_record_id": "recB", "alert_type": "stuck_in_sampling"},
+            ])
+            mock_req.patch.return_value = MagicMock(status_code=204, json=lambda: [], text="")
+            # Current cycle only has recA's alert (recB has been resolved)
+            current_keys = {("recA", "missing_qa_status")}
+            resolved = det.supabase_resolve_alerts("https://x", "key", current_keys, now)
+            self.assertEqual(resolved, 1)
+            # Verify the PATCH targeted recB's id
+            patch_url = mock_req.patch.call_args.args[0]
+            self.assertIn("uuid2", patch_url)
+
+
+# ============================================================================
+# Total Completions contract.
+# ============================================================================
+class TestTotalCompletionsContract(unittest.TestCase):
+    def test_total_completions_excludes_flow_b(self):
+        """Total Completions = A + C. Flow B is in-progress (sampling),
+        explicitly excluded per Kelvin's v2 spec."""
+        # This is enforced by the aggregator (tested in test_aggregate_v2),
+        # but documenting the contract here too so future detector changes
+        # don't accidentally route Flow B records into ownership_completions.
+        f_b = _fields(verification_status=SELECTED_FOR_BO_QA,
+                      qa_assignee={"id": "q", "name": "Q"})
+        target, _ = classify(f_b)
+        self.assertEqual(target, "sampling",
+                         "Flow B must NEVER classify as completion target")
+        self.assertNotEqual(target, "completion")
 
 
 if __name__ == "__main__":

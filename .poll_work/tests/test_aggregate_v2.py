@@ -1568,5 +1568,81 @@ class TestComputeWeeklyRollup(unittest.TestCase):
         self.assertEqual(r["agents_not_working"], [])
 
 
+class TestFlowFrameworkV2Counts(unittest.TestCase):
+    """The Flow v2 totals (flow_a/b/c_today, total_completions_today, alerts_*)
+    come from Supabase counts, NOT from the cache-iterating compute_metrics.
+    These tests pin the contract via mocked HTTP."""
+
+    def _mock_count_resp(self, count):
+        from unittest.mock import MagicMock
+        m = MagicMock()
+        m.status_code = 200
+        m.headers = {"Content-Range": f"0-0/{count}"}
+        return m
+
+    def test_flow_a_b_c_reconcile_with_table_counts(self):
+        """_fetch_flow_framework_counts queries 6 endpoints (A, C, B, plus
+        3 alert types). Each returns a count via Content-Range header.
+        The returned dict must reflect those exact counts."""
+        from unittest.mock import patch
+        from aggregate_v2 import _fetch_flow_framework_counts
+        from datetime import date
+        today = date(2026, 5, 18)
+        # Patch env vars + requests
+        with patch.dict("os.environ", {"SUPABASE_URL": "https://x.supabase.co",
+                                        "SUPABASE_SERVICE_ROLE_KEY": "fake"}), \
+             patch("requests.get") as mock_get:
+            # 6 sequential calls in order: A, C, B, missing_qa_assignee,
+            # missing_qa_status, stuck_in_sampling
+            mock_get.side_effect = [
+                self._mock_count_resp(123),  # flow_a
+                self._mock_count_resp(45),   # flow_c
+                self._mock_count_resp(7),    # flow_b
+                self._mock_count_resp(2),    # missing_qa_assignee
+                self._mock_count_resp(3),    # missing_qa_status
+                self._mock_count_resp(1),    # stuck_in_sampling
+            ]
+            result = _fetch_flow_framework_counts(today)
+        self.assertEqual(result["flow_a_today"], 123)
+        self.assertEqual(result["flow_b_today"], 7)
+        self.assertEqual(result["flow_c_today"], 45)
+        self.assertEqual(result["alerts_missing_qa_assignee"], 2)
+        self.assertEqual(result["alerts_missing_qa_status"], 3)
+        self.assertEqual(result["alerts_stuck_in_sampling"], 1)
+        self.assertEqual(result["alerts_open_total"], 6)
+
+    def test_total_completions_equals_a_plus_c_not_a_plus_b_plus_c(self):
+        """Total Completions explicitly excludes Flow B per the v2 spec —
+        B is in-progress, not done."""
+        from unittest.mock import patch
+        from aggregate_v2 import _fetch_flow_framework_counts
+        from datetime import date
+        with patch.dict("os.environ", {"SUPABASE_URL": "https://x", "SUPABASE_SERVICE_ROLE_KEY": "k"}), \
+             patch("requests.get") as mock_get:
+            mock_get.side_effect = [
+                self._mock_count_resp(100),  # A
+                self._mock_count_resp(50),   # C
+                self._mock_count_resp(200),  # B — large to make the bug obvious if it slips through
+                self._mock_count_resp(0),
+                self._mock_count_resp(0),
+                self._mock_count_resp(0),
+            ]
+            result = _fetch_flow_framework_counts(date(2026, 5, 18))
+        self.assertEqual(result["total_completions_today"], 150,
+                         "Total = A + C only; B (in-progress) MUST NOT be added")
+        self.assertNotEqual(result["total_completions_today"], 350,
+                            "Regression guard: total != A + B + C")
+
+    def test_returns_empty_dict_when_env_missing(self):
+        """No Supabase creds → helper is a no-op (keeps the aggregator
+        runnable in local dev without env)."""
+        from unittest.mock import patch
+        from aggregate_v2 import _fetch_flow_framework_counts
+        from datetime import date
+        with patch.dict("os.environ", {}, clear=True):
+            result = _fetch_flow_framework_counts(date(2026, 5, 18))
+        self.assertEqual(result, {})
+
+
 if __name__ == "__main__":
     unittest.main()
