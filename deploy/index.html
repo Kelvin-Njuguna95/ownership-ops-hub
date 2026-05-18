@@ -355,6 +355,12 @@ const STATE = {
   currentAgent: localStorage.getItem("wqa.agent") || null,
   freshness: null,   // {label, level: "fresh"|"stale"|"alert"}
   charts: {},        // chart instances by element id (so we can destroy/redraw)
+  // Hourly completions for STATE.viewDate (EAT calendar day). Shape:
+  // {canonical_agent_name: {hour: count}} or null when load hasn't run.
+  // Empty object {} = load ran but ownership_completions had zero rows.
+  // Source: Supabase REST → ownership_completions table (NOT hourly_buckets).
+  completions: null,
+  completionsDate: null,  // the EAT date STATE.completions was loaded for
 };
 
 // ============================================================================
@@ -395,6 +401,65 @@ async function readJson(path) {
   }
 }
 
+// Load hourly completions from the ownership_completions table for the
+// given EAT calendar day. Stores the result in STATE.completions as
+// {canonical_agent_name: {hour: count}}. Sets STATE.completions = {} when
+// the table has zero rows for the day — so the renderer can distinguish
+// "no data yet" from "load failed" (the latter leaves it as null).
+//
+// completed_at is timestamptz in UTC. The bounds are computed as the
+// EAT calendar day in UTC: [dateStr 00:00 EAT, dateStr+1 00:00 EAT).
+async function loadCompletions(dateStr) {
+  STATE.completionsDate = dateStr;
+  STATE.completions = null;
+  if (!dateStr) return;
+  const start = new Date(`${dateStr}T00:00:00+03:00`);
+  const end   = new Date(start);
+  end.setUTCDate(end.getUTCDate() + 1);
+  try {
+    const { data, error } = await sb.from("ownership_completions")
+      .select("completed_by, completed_at")
+      .gte("completed_at", start.toISOString())
+      .lt("completed_at",  end.toISOString())
+      .limit(50000);
+    if (error) {
+      console.error("loadCompletions:", error);
+      return;
+    }
+    const out = {};
+    for (const r of (data || [])) {
+      const canon = canonicalAgent(r.completed_by);
+      if (!canon) continue;
+      const d = new Date(r.completed_at);
+      const eatHour = (d.getUTCHours() + 3) % 24;
+      out[canon] = out[canon] || {};
+      out[canon][eatHour] = (out[canon][eatHour] || 0) + 1;
+    }
+    STATE.completions = out;
+  } catch (e) {
+    console.error("loadCompletions:", e);
+  }
+}
+
+// Map an Airtable collaborator name to the roster's canonical member name.
+// Handles case / whitespace drift and roster-declared aliases. Unknown
+// names pass through unchanged so they're still bucketable (the renderer
+// just won't find them under any team).
+function canonicalAgent(name) {
+  if (!name) return null;
+  const lc = name.trim().toLowerCase();
+  const roster = STATE.roster || {};
+  for (const team in roster) {
+    for (const m of (roster[team].members || [])) {
+      if (m.name && m.name.toLowerCase() === lc) return m.name;
+      for (const a of (m.aliases || [])) {
+        if (a.toLowerCase() === lc) return m.name;
+      }
+    }
+  }
+  return name;
+}
+
 // List files under a Supabase Storage prefix matching a simple glob like
 // "cache/recent_p*.json". Returns full paths (prefix-relative for fetch).
 async function listFiles(pattern) {
@@ -424,6 +489,12 @@ async function loadAll() {
     document.getElementById("pageContainer").innerHTML = `<div class="page"><div class="empty-state"><div class="title">No data loaded</div>Could not read <code>daily_aggregates.json</code> from Supabase Storage. Run <code>python3 sync_to_supabase.py</code> from the project root and refresh.</div></div>`;
     return false;
   }
+
+  // Hourly completions for today (or the date the picker lands on). Loaded
+  // separately from the aggregates JSON because the source of truth is now
+  // the ownership_completions Supabase table — true per-record completion
+  // timestamps, not the batch-clustered start_tagging field.
+  await loadCompletions(STATE.v2?.date || null);
 
   // Load cache (for 7-day intake trend on Daily Intake page).
   // Union of cache/recent_p* (ownership work) and cache/intake_p* (today's intake), deduped by id.
@@ -822,9 +893,10 @@ function renderAgentBody(agentName) {
     </div>
   `;
 
-  // Hourly heatmap — read from aggregates_v2.by_agent[agent].hourly_buckets
-  // (6..23 EAT, zero-filled). Intensity scales by count vs the agent's busiest hour.
-  const buckets = m.hourly_buckets || {};
+  // Hourly heatmap — reads from STATE.completions (Supabase ownership_completions
+  // table). 6..23 EAT working hours. Empty when the detector hasn't stamped
+  // anything for this agent on the displayed date.
+  const buckets = STATE.completions?.[agentName] || {};
   const hours = Array.from({ length: 18 }, (_, i) => i + 6);  // 6..23 EAT
   const counts = hours.map(h => buckets[h] ?? buckets[String(h)] ?? 0);
   const max = Math.max(1, ...counts);
@@ -912,6 +984,33 @@ PAGE_RENDERERS.hourly = function () {
     + teams.map(t => `<option value="${esc(t)}"${selected === t ? " selected" : ""}>${esc(t)}</option>`).join("");
   const date = STATE.v2?.date || "—";
 
+  // Empty-state diagnostic: completion_detector.py writes to
+  // ownership_completions on every poll cycle. If the table has zero rows
+  // for the displayed date, render an explicit message rather than a sea
+  // of zero cells — the empty grid is the right diagnostic signal that the
+  // detector isn't writing (don't fall back to the old hourly_buckets,
+  // which would hide whether the new pipeline is working).
+  const noRows = STATE.completions && Object.keys(STATE.completions).length === 0;
+  const loadFailed = STATE.completions === null;
+  if (noRows || loadFailed) {
+    const msg = loadFailed
+      ? `Could not read <code>ownership_completions</code> from Supabase. Check that the table exists (run <code>db/migrations/001_ownership_completions.sql</code>) and that the anon role has SELECT access.`
+      : `No completions detected yet for <strong>${esc(date)}</strong> — first detector run pending. Each poll cycle of <code>completion_detector.py</code> stamps newly-complete records; the heatmap populates as those land.`;
+    root.innerHTML = `
+      <div class="controls-row">
+        <label class="small-mono">Team:</label>
+        <select id="hourlyTeamSelect" disabled>${opts}</select>
+        <span class="small-mono">Hourly Tagging Output by Agent — ${esc(date)}</span>
+      </div>
+      <div class="panel">
+        <div class="empty-state">
+          <div class="title">${loadFailed ? "Cannot reach completions table" : "No completions detected yet"}</div>
+          ${msg}
+        </div>
+      </div>`;
+    return;
+  }
+
   root.innerHTML = `
     <div class="controls-row">
       <label class="small-mono">Team:</label>
@@ -920,7 +1019,7 @@ PAGE_RENDERERS.hourly = function () {
     </div>
     <div class="panel">
       <div id="hourlyGrid"></div>
-      <div class="footer-note">Color intensity scales to the busiest cell in this view. Cells reflect today's <code>start_tagging</code> (EAT). Empty roster members render as zero rows.</div>
+      <div class="footer-note">Cells = records the detector stamped as complete during that EAT hour (source: <code>ownership_completions.completed_at</code>, not Airtable's batch timestamp). Color intensity scales to the busiest cell in this view.</div>
     </div>`;
 
   const sel = document.getElementById("hourlyTeamSelect");
@@ -942,7 +1041,7 @@ function renderHourlyGrid(filterTeam) {
   for (const team of visibleTeams) {
     const members = (STATE.roster[team]?.members || []).slice().sort((a, b) => a.name.localeCompare(b.name));
     for (const m of members) {
-      const buckets = STATE.v2?.by_agent?.[m.name]?.hourly_buckets || {};
+      const buckets = STATE.completions?.[m.name] || {};
       const counts = hours.map(h => buckets[h] ?? buckets[String(h)] ?? 0);
       const total = counts.reduce((a, b) => a + b, 0);
       gridMax = Math.max(gridMax, ...counts);
@@ -2263,6 +2362,10 @@ document.getElementById("viewDate").addEventListener("change", async (e) => {
   if (!date) return;
   if (date === STATE.todayV2.date) setViewToToday();
   else                              await setViewToHistorical(date);
+  // Refresh completions for the newly-displayed date so the hourly grid
+  // shows that day's actual per-record completion timestamps, not today's.
+  await loadCompletions(STATE.viewDate);
+  rerenderCurrentPage();
 });
 
 document.getElementById("todayBtn").addEventListener("click", () => {
