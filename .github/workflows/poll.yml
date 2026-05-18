@@ -47,19 +47,25 @@ jobs:
           AIRTABLE_PAT: ${{ secrets.AIRTABLE_PAT }}
         run: python3 .poll_work/poll_airtable.py
 
-      - name: Aggregate
-        run: python3 .poll_work/aggregate_v2.py
-
       - name: Detect completions
-        # Reads Airtable's two terminal states, applies the completion rule,
-        # and inserts newly-complete records into the ownership_completions
-        # table (first-write-wins via UNIQUE on airtable_record_id).
-        # The dashboard's Hourly Output page reads from that table.
+        # Flow Framework v2 — reads the 5 flow-relevant verification_status
+        # states from Airtable, classifies records (A/B/C/alert/pre_flow),
+        # and writes to ownership_completions / ownership_qa_sampling /
+        # flow_alerts. Runs BEFORE Aggregate so the aggregator reads the
+        # freshest table state (avoids a one-cycle lag on the dashboard's
+        # Flow A/B/C tiles + Alerts panel).
         env:
           AIRTABLE_PAT:              ${{ secrets.AIRTABLE_PAT }}
           SUPABASE_URL:              ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
         run: python3 .poll_work/completion_detector.py
+
+      - name: Aggregate
+        # Reads cache files + queries Supabase for Flow v2 counts.
+        env:
+          SUPABASE_URL:              ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: python3 .poll_work/aggregate_v2.py
 
       - name: Sync to Supabase Storage
         env:

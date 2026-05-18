@@ -1,16 +1,35 @@
 #!/usr/bin/env python3
 """Detect newly-completed ownership records and stamp them in Supabase.
 
-Runs every poll cycle after the aggregator. Reads Airtable for records in
-the two terminal verification_status states, applies the completion rule,
-and writes the first-time-seen completion to the ownership_completions
-table. The Supabase UNIQUE constraint on airtable_record_id + the
-``Prefer: resolution=ignore-duplicates`` header give us first-write-wins:
-a record's completed_at is stamped once and never updated.
+Flow Framework v2 (feat-flow-framework-v2):
 
-The dashboard's Hourly Output page reads from this table, so the
-``completed_at`` distribution = true intra-day work distribution, not the
-batch-assignment clustering you get from Airtable's start_tagging field.
+  - Flow A: vs in (Done, Valid) + qa_assignee EMPTY + qa_status EMPTY
+            → ownership_completions, flow='A'
+  - Flow B: vs == "Selected for BO QA " + qa_assignee FILLED
+            → ownership_qa_sampling (in-progress, NOT a completion)
+  - Flow C: vs in (Done, Valid) + qa_assignee FILLED + qa_status FILLED
+            → ownership_completions, flow='C'
+  - Alerts: data-integrity mismatches → flow_alerts table
+      missing_qa_assignee: vs SBO without reviewer; or Done/Valid + qa_status w/o assignee
+      missing_qa_status:   Done/Valid + qa_assignee filled + qa_status blank
+      stuck_in_sampling:   ownership_qa_sampling row older than 24h not yet completed
+  - Pre-Flow (vs in tagged / need to be update): existing rule, flow=NULL on insert
+    (these are first-contact records; they get a flow value if/when caught
+    in a later terminal state, via the PATCH-on-NULL UPSERT path below.)
+
+Total Completions = Flow A + Flow C (B excluded — in-progress, not done).
+
+First-write-wins semantics:
+  - ``completed_at`` is the detector's clock at first observation of a record
+    in any qualifying state. Never overwritten.
+  - ``flow`` is upserted: if a previous detection wrote the row with flow=NULL
+    (pre-Flow path) and a later detection classifies it as A/C, the flow
+    column is PATCHed in place. PostgREST filter ``&flow=is.null`` prevents
+    overwriting an already-set flow.
+  - flow_alerts (record_id, alert_type) is UNIQUE. ``resolved_at`` is NULL
+    while the condition holds; cleared back to NULL if a previously-resolved
+    record bounces back into the bad state; set to NOW() when the condition
+    no longer applies.
 
 Airtable is strictly read-only — only GET requests against the table.
 Supabase writes use the service_role key (server-side only, never in the
@@ -20,7 +39,7 @@ import json
 import os
 import sys
 import time
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 from pathlib import Path
 
 try:
@@ -33,12 +52,18 @@ HERE = Path(__file__).resolve().parent
 
 # ----------------------------------------------------------------------
 # Airtable choice literals — kept as module-level constants so a rename
-# in Airtable can be fixed by editing one place. Note the "be" in
-# ``need to be update`` — that's the exact choice name as it appears in
-# the live cache (Airtable field choices aren't trimmed/normalised).
+# in Airtable can be fixed by editing one place. Note the trailing space
+# on "Selected for BO QA " — that's the literal choice name in Airtable.
+# And the "be" in "need to be update" — same reason.
 # ----------------------------------------------------------------------
-TAGGED            = "tagged"
-NEED_TO_BE_UPDATE = "need to be update"
+TAGGED              = "tagged"
+NEED_TO_BE_UPDATE   = "need to be update"
+SELECTED_FOR_BO_QA  = "Selected for BO QA "  # trailing space, intentional
+DONE                = "Done"
+VALID               = "Valid"
+
+# Stuck-in-QA-sampling threshold per the v2 spec.
+STUCK_HOURS = 24
 
 # Airtable base / table — same as poll_airtable.py
 BASE_ID  = "appHZdfC2sn9MLGFZ"
@@ -51,6 +76,7 @@ AIRTABLE_URL = f"https://api.airtable.com/v0/{BASE_ID}/{TABLE_ID}"
 FLD_IMO                    = "fldqWGr2XDH9BRmtE"
 FLD_ASSIGNEE               = "fldT4xElSgcdnqTmy"
 FLD_QA_ASSIGNEE            = "fldtQ5HCuU45HOcg4"
+FLD_QA_STATUS              = "fldpTTs63XmNYNPww"
 FLD_LAST_MODIFIED_BY       = "fldpz9XuDm5xRblSL"
 FLD_VERIFICATION_STATUS    = "fldYSXHGwZvxXK7s6"
 FLD_COMPANY_ID_AND_NAME    = "fldaMBqa6bEANUPpn"
@@ -60,9 +86,10 @@ FLD_ADD_NEW_COMPANY        = "fld2wp1Q0GQJjbYdA"
 FLD_ROLE                   = "fldnBNNkH7w4rS3fG"
 FLD_REQUESTED_BY           = "fldlPkvV6BiE7glLZ"
 
-# Cap pages so a runaway day can't loop forever. Both terminal states
-# combined typically yield ~1-3k records on a busy day.
-PAGE_CAP = 60
+# Cap pages so a runaway day can't loop forever. The expanded v2 filter
+# pulls 4 more states than v1 (was tagged + need-to-be-update; now adds
+# SBO + Done + Valid). Done/Valid bulk easily hits 5k+ on a busy day.
+PAGE_CAP = 100
 
 
 # ----------------------------------------------------------------------
@@ -94,33 +121,14 @@ def _first_link(val):
 
 
 # ----------------------------------------------------------------------
-# Completion rule — Kelvin's spec.
+# Pre-Flow completion rule (kept verbatim from v1). Records currently in
+# "tagged" or "need to be update" are first-contact captures — they get
+# inserted into ownership_completions with flow=NULL. The flow column is
+# upserted later if a subsequent cycle catches them in a terminal state.
 # ----------------------------------------------------------------------
 
 def is_complete(fields):
-    """Apply the completion rule.
-
-    Two terminal verification_status states qualify a record as "complete":
-
-      - ``"tagged"``: complete iff EITHER ``company_id_and_name`` is filled
-        OR ``dead_vessel`` is True. Both are valid terminal outcomes — a
-        record gets a real company linked, OR it's marked as a dead vessel
-        (a zombie ship with no live owner; ops's escape hatch).
-      - ``"need to be update"``: complete iff ``add_a_new_company`` is
-        non-empty. The agent is proposing a new company not yet in the
-        company table, awaiting QA approval to create it.
-
-    Anything else → not complete (still in flight, or not an ownership
-    workflow record at all).
-
-    Note on the original spec clause "(NOT is_dead_vessel OR dead_vessel ==
-    TRUE)": as written this is tautological (any A: ``NOT A OR A`` is True).
-    Interpreting it as ``company_filled OR dead_vessel`` here — i.e. the
-    intended meaning is that dead_vessel is an alternative completion
-    signal to company linkage, not an additional gate.
-
-    TODO(kelvin): confirm interpretation.
-    """
+    """Pre-Flow detection rule for first-contact records."""
     vs = _name(fields.get(FLD_VERIFICATION_STATUS))
     if vs == TAGGED:
         return _first_link(fields.get(FLD_COMPANY_ID_AND_NAME)) or bool(fields.get(FLD_DEAD_VESSEL))
@@ -130,27 +138,55 @@ def is_complete(fields):
 
 
 # ----------------------------------------------------------------------
-# completed_by attribution — last_modified_by → qa_assignee → assignee.
-# Records when fallback was used so we can spot data-quality issues with
-# unassigned QA reviews.
+# Flow Framework v2 classification.
 # ----------------------------------------------------------------------
 
-# Names in this set are non-human last_modified_by values from Airtable
-# (system / automation identities). When ``last_modified_by`` matches one
-# of these, treat it as null and fall through to qa_assignee → assignee
-# so completion is attributed to the human who did the work — not to the
-# automation that updated a derived field after the fact. Surfaced during
-# dry verify: ~42% of would-insert rows credited "Automations".
+# Routing decision shape:
+#   ("completion", "A" | "C")  → insert/upsert to ownership_completions
+#   ("sampling", None)         → insert to ownership_qa_sampling
+#   ("alert", alert_type)      → insert to flow_alerts
+#   ("pre_flow", None)         → existing first-contact rule (flow=NULL)
+#   ("skip", None)             → not a flow-relevant state
+
+def classify(fields):
+    """Classify a record per the Flow Framework v2 rules."""
+    vs          = _name(fields.get(FLD_VERIFICATION_STATUS))
+    qa_assignee = _name(fields.get(FLD_QA_ASSIGNEE))
+    qa_status   = _name(fields.get(FLD_QA_STATUS))
+
+    if vs in (DONE, VALID):
+        if not qa_assignee and not qa_status:
+            return ("completion", "A")
+        if qa_assignee and qa_status:
+            return ("completion", "C")
+        if qa_assignee and not qa_status:
+            return ("alert", "missing_qa_status")
+        # qa_status filled but no qa_assignee — rare; flag the inverse.
+        return ("alert", "missing_qa_assignee")
+
+    if vs == SELECTED_FOR_BO_QA:
+        if qa_assignee:
+            return ("sampling", None)
+        return ("alert", "missing_qa_assignee")
+
+    if vs in (TAGGED, NEED_TO_BE_UPDATE):
+        # Defer to the existing first-contact rule.
+        return ("pre_flow", None) if is_complete(fields) else ("skip", None)
+
+    return ("skip", None)
+
+
+# ----------------------------------------------------------------------
+# completed_by attribution — last_modified_by → qa_assignee → assignee.
+# Names in NON_HUMAN_LAST_MODIFIED are skipped (Automations bot etc.) so
+# completion is credited to the human who did the work.
+# ----------------------------------------------------------------------
+
 NON_HUMAN_LAST_MODIFIED = {"Automations"}
 
 
 def resolve_completed_by(fields):
-    """Return (name, source) where source is 'last_modified_by',
-    'qa_assignee', 'assignee', or None when all three are blank.
-
-    ``last_modified_by`` values in NON_HUMAN_LAST_MODIFIED are treated as
-    null and fall through to the next link in the chain.
-    """
+    """Return (name, source) — first non-blank in the chain, or (None, None)."""
     n = _name(fields.get(FLD_LAST_MODIFIED_BY))
     if n and n not in NON_HUMAN_LAST_MODIFIED:
         return n, "last_modified_by"
@@ -163,10 +199,12 @@ def resolve_completed_by(fields):
     return None, None
 
 
-def build_row(rec, now_utc):
-    """Build the Supabase row from an Airtable record. Returns None if the
-    record can't be attributed to anyone (completed_by is NOT NULL in the
-    schema, so we skip rather than error)."""
+# ----------------------------------------------------------------------
+# Row builders for each target table.
+# ----------------------------------------------------------------------
+
+def build_completion_row(rec, now_utc, flow):
+    """ownership_completions row. ``flow`` is 'A', 'C', or None for pre-Flow."""
     fields = rec.get("fields") or rec.get("cellValuesByFieldId") or {}
     completed_by, source = resolve_completed_by(fields)
     if not completed_by:
@@ -180,26 +218,61 @@ def build_row(rec, now_utc):
                                or _name(fields.get(FLD_COMPANY_ID_AND_NAME)),
         "add_a_new_company":   fields.get(FLD_ADD_NEW_COMPANY),
         "completed_by":        completed_by,
-        # Detector clock — not Airtable's. This is the whole point of the
-        # architecture: the moment the system observed completion, NOT a
-        # batch-assignment timestamp from Airtable.
         "completed_at":        now_utc.isoformat(),
         "requested_by":        fields.get(FLD_REQUESTED_BY),
         "raw_payload":         fields,
+        "flow":                flow,
     }
     return row, source
+
+
+def build_sampling_row(rec, now_utc):
+    """ownership_qa_sampling row. Returns None if qa_assignee is missing
+    (caller should have classified that as an alert, not a sampling)."""
+    fields = rec.get("fields") or rec.get("cellValuesByFieldId") or {}
+    qa_assignee = _name(fields.get(FLD_QA_ASSIGNEE))
+    if not qa_assignee:
+        return None
+    return {
+        "airtable_record_id": rec["id"],
+        "imo":                fields.get(FLD_IMO),
+        "role":               _name(fields.get(FLD_ROLE)),
+        "qa_assignee":        qa_assignee,
+        "sampled_at":         now_utc.isoformat(),
+        "raw_payload":        fields,
+    }
+
+
+def build_alert_row(rec, alert_type):
+    """flow_alerts row. resolved_at omitted → defaults to NULL (open)."""
+    fields = rec.get("fields") or rec.get("cellValuesByFieldId") or {}
+    return {
+        "airtable_record_id":  rec["id"],
+        "alert_type":          alert_type,
+        "verification_status": _name(fields.get(FLD_VERIFICATION_STATUS)),
+        "qa_assignee":         _name(fields.get(FLD_QA_ASSIGNEE)),
+        "qa_status":           _name(fields.get(FLD_QA_STATUS)),
+        "raw_payload":         fields,
+    }
 
 
 # ----------------------------------------------------------------------
 # Airtable fetch
 # ----------------------------------------------------------------------
 
-def fetch_terminal_records(pat):
-    """GET pages of records currently in either terminal state. Returns
-    the flat list of records (across all pages)."""
+def fetch_flow_records(pat):
+    """GET pages of records in any of the 5 Flow-relevant states."""
     headers = {"Authorization": f"Bearer {pat}"}
-    formula = f'OR({{verification_status}}="{TAGGED}", {{verification_status}}="{NEED_TO_BE_UPDATE}")'
-    params  = {
+    formula = (
+        "OR("
+        f'{{verification_status}}="{TAGGED}",'
+        f'{{verification_status}}="{NEED_TO_BE_UPDATE}",'
+        f'{{verification_status}}="{SELECTED_FOR_BO_QA}",'
+        f'{{verification_status}}="{DONE}",'
+        f'{{verification_status}}="{VALID}"'
+        ")"
+    )
+    params = {
         "pageSize":              "100",
         "returnFieldsByFieldId": "true",
         "filterByFormula":       formula,
@@ -220,44 +293,207 @@ def fetch_terminal_records(pat):
         pages += 1
         if not offset:
             break
+    if pages >= PAGE_CAP and offset:
+        raise RuntimeError(f"fetch_flow_records hit {PAGE_CAP}-page cap with more pending — bump cap")
     return out
 
 
 # ----------------------------------------------------------------------
-# Supabase insert
+# Supabase operations
 # ----------------------------------------------------------------------
 
-def supabase_insert(supabase_url, service_key, rows):
-    """Bulk insert rows with resolution=ignore-duplicates. Returns the list
-    of rows the server actually inserted (others were dups). Supabase
-    returns the inserted set in the response body when Prefer=return.
-
-    The ``?on_conflict=airtable_record_id`` query parameter is REQUIRED
-    for ``Prefer: resolution=ignore-duplicates`` to take effect. Per the
-    PostgREST docs (https://docs.postgrest.org/en/v12/references/api/
-    preferences.html#prefer-resolution): a plain POST without on_conflict
-    treats the Prefer header as a no-op and returns 409 on the first
-    UNIQUE-violation. The first detector run after a fresh table works
-    either way (no dups possible), so the missing param only surfaces
-    starting with run #2.
-    """
-    if not rows:
-        return []
-    url = (f"{supabase_url.rstrip('/')}/rest/v1/ownership_completions"
-           f"?on_conflict=airtable_record_id")
-    headers = {
+def _sb_headers(service_key, extra=None):
+    h = {
         "apikey":        service_key,
         "Authorization": f"Bearer {service_key}",
         "Content-Type":  "application/json",
-        # ignore-duplicates: silently skip rows that violate the UNIQUE
-        # constraint on airtable_record_id. First-write-wins for completed_at.
-        # return=representation so the response body lists the inserted rows.
-        "Prefer":        "resolution=ignore-duplicates,return=representation",
     }
-    r = requests.post(url, headers=headers, data=json.dumps(rows), timeout=60)
+    if extra:
+        h.update(extra)
+    return h
+
+
+def _sb_post(url, headers, body):
+    r = requests.post(url, headers=headers, data=json.dumps(body), timeout=60)
     if r.status_code not in (200, 201):
-        raise RuntimeError(f"Supabase insert {r.status_code}: {r.text[:300]}")
+        raise RuntimeError(f"Supabase POST {r.status_code} {url}: {r.text[:300]}")
     return r.json() if r.text else []
+
+
+def _sb_patch(url, headers, body):
+    r = requests.patch(url, headers=headers, data=json.dumps(body), timeout=60)
+    if r.status_code not in (200, 204):
+        raise RuntimeError(f"Supabase PATCH {r.status_code} {url}: {r.text[:300]}")
+    return r.json() if r.text else []
+
+
+def _sb_get_paginated(url, headers, params):
+    """GET with Range pagination (per CLAUDE.md: db-max-rows defaults to 1000)."""
+    out = []
+    offset = 0
+    while True:
+        h = dict(headers)
+        h["Range"]      = f"{offset}-{offset+999}"
+        h["Range-Unit"] = "items"
+        r = requests.get(url, headers=h, params=params, timeout=60)
+        if r.status_code not in (200, 206):
+            raise RuntimeError(f"Supabase GET {r.status_code}: {r.text[:300]}")
+        batch = r.json()
+        out.extend(batch)
+        if len(batch) < 1000:
+            break
+        offset += 1000
+        if offset > 100_000:
+            raise RuntimeError("_sb_get_paginated runaway — >100k rows")
+    return out
+
+
+def supabase_insert_completions(supabase_url, service_key, rows):
+    """Bulk INSERT to ownership_completions with first-write-wins on
+    completed_at, then PATCH the flow column for any duplicate row whose
+    existing flow is NULL. Returns dict with counts."""
+    if not rows:
+        return {"inserted": 0, "flow_upserted": 0, "duplicates_no_flow": 0}
+    base = supabase_url.rstrip("/")
+    insert_url = f"{base}/rest/v1/ownership_completions?on_conflict=airtable_record_id"
+    headers = _sb_headers(service_key, {
+        "Prefer": "resolution=ignore-duplicates,return=representation",
+    })
+    inserted = _sb_post(insert_url, headers, rows)
+    inserted_ids = {r["airtable_record_id"] for r in inserted}
+
+    # PATCH flow on duplicates whose flow is NULL and our classification has a flow.
+    flow_upserted = 0
+    duplicates_no_flow = 0
+    for row in rows:
+        if row["airtable_record_id"] in inserted_ids:
+            continue
+        if not row.get("flow"):
+            duplicates_no_flow += 1
+            continue
+        patch_url = (f"{base}/rest/v1/ownership_completions"
+                     f"?airtable_record_id=eq.{row['airtable_record_id']}"
+                     f"&flow=is.null")
+        patch_body = {"flow": row["flow"]}
+        result = _sb_patch(patch_url, _sb_headers(service_key, {"Prefer": "return=representation"}), patch_body)
+        if result:
+            flow_upserted += 1
+    return {
+        "inserted":           len(inserted),
+        "flow_upserted":      flow_upserted,
+        "duplicates_no_flow": duplicates_no_flow,
+    }
+
+
+def supabase_insert_samplings(supabase_url, service_key, rows):
+    if not rows:
+        return 0
+    url = f"{supabase_url.rstrip('/')}/rest/v1/ownership_qa_sampling?on_conflict=airtable_record_id"
+    headers = _sb_headers(service_key, {
+        "Prefer": "resolution=ignore-duplicates,return=representation",
+    })
+    inserted = _sb_post(url, headers, rows)
+    return len(inserted)
+
+
+def supabase_upsert_alerts(supabase_url, service_key, rows):
+    """INSERT alerts (first-write-wins on first_seen_at) AND clear resolved_at
+    on any existing alert that's still firing (was resolved, condition came back).
+    Returns (new_inserts, reopened_count)."""
+    if not rows:
+        return (0, 0)
+    base = supabase_url.rstrip("/")
+    insert_url = f"{base}/rest/v1/flow_alerts?on_conflict=airtable_record_id,alert_type"
+    headers = _sb_headers(service_key, {
+        "Prefer": "resolution=ignore-duplicates,return=representation",
+    })
+    inserted = _sb_post(insert_url, headers, rows)
+    inserted_keys = {(r["airtable_record_id"], r["alert_type"]) for r in inserted}
+
+    reopened = 0
+    for row in rows:
+        key = (row["airtable_record_id"], row["alert_type"])
+        if key in inserted_keys:
+            continue
+        # Existing row — clear resolved_at if it was set (record bounced back).
+        patch_url = (f"{base}/rest/v1/flow_alerts"
+                     f"?airtable_record_id=eq.{row['airtable_record_id']}"
+                     f"&alert_type=eq.{row['alert_type']}"
+                     f"&resolved_at=not.is.null")
+        result = _sb_patch(patch_url, _sb_headers(service_key, {"Prefer": "return=representation"}),
+                           {"resolved_at": None})
+        if result:
+            reopened += 1
+    return (len(inserted), reopened)
+
+
+def supabase_resolve_alerts(supabase_url, service_key, current_keys, now_utc):
+    """Mark resolved any open alert whose (record_id, alert_type) is no longer
+    in the current cycle's set. ``current_keys`` is a set of (rid, type) tuples.
+    Returns count of newly-resolved alerts."""
+    base = supabase_url.rstrip("/")
+    list_url = f"{base}/rest/v1/flow_alerts"
+    headers = _sb_headers(service_key)
+    open_alerts = _sb_get_paginated(list_url, headers, {
+        "select":      "id,airtable_record_id,alert_type",
+        "resolved_at": "is.null",
+    })
+    resolved = 0
+    for a in open_alerts:
+        key = (a["airtable_record_id"], a["alert_type"])
+        if key in current_keys:
+            continue
+        patch_url = f"{base}/rest/v1/flow_alerts?id=eq.{a['id']}"
+        _sb_patch(patch_url, _sb_headers(service_key, {"Prefer": "return=minimal"}),
+                  {"resolved_at": now_utc.isoformat()})
+        resolved += 1
+    return resolved
+
+
+def detect_stuck_in_sampling(supabase_url, service_key, now_utc):
+    """Find ownership_qa_sampling rows older than STUCK_HOURS whose
+    airtable_record_id has NOT yet completed (not in ownership_completions
+    with flow=A or flow=C). Returns list of dicts suitable for flow_alerts."""
+    base = supabase_url.rstrip("/")
+    cutoff = (now_utc - timedelta(hours=STUCK_HOURS)).isoformat()
+    old_samples = _sb_get_paginated(
+        f"{base}/rest/v1/ownership_qa_sampling",
+        _sb_headers(service_key),
+        {"select": "airtable_record_id,qa_assignee,sampled_at,raw_payload",
+         "sampled_at": f"lt.{cutoff}"},
+    )
+    if not old_samples:
+        return []
+    # Check which of those have NOT completed.
+    ids = [s["airtable_record_id"] for s in old_samples]
+    # PostgREST `in.()` with a long list works up to URL-length limits;
+    # chunk to be safe.
+    completed_ids = set()
+    CHUNK = 200
+    for i in range(0, len(ids), CHUNK):
+        chunk = ids[i:i + CHUNK]
+        in_clause = ",".join(chunk)
+        completed = _sb_get_paginated(
+            f"{base}/rest/v1/ownership_completions",
+            _sb_headers(service_key),
+            {"select": "airtable_record_id",
+             "airtable_record_id": f"in.({in_clause})",
+             "flow": "in.(A,C)"},
+        )
+        completed_ids.update(c["airtable_record_id"] for c in completed)
+    alerts = []
+    for s in old_samples:
+        if s["airtable_record_id"] in completed_ids:
+            continue
+        alerts.append({
+            "airtable_record_id":  s["airtable_record_id"],
+            "alert_type":          "stuck_in_sampling",
+            "verification_status": SELECTED_FOR_BO_QA,
+            "qa_assignee":         s["qa_assignee"],
+            "qa_status":           None,
+            "raw_payload":         s.get("raw_payload") or {},
+        })
+    return alerts
 
 
 # ----------------------------------------------------------------------
@@ -276,36 +512,79 @@ def main():
 
     t0 = time.time()
     now_utc = datetime.now(timezone.utc)
-    print(f"completion_detector — {now_utc.isoformat()}")
+    print(f"completion_detector (Flow v2) — {now_utc.isoformat()}")
 
-    records  = fetch_terminal_records(pat)
-    checked  = len(records)
-    complete = 0
-    rows     = []
-    fallback_counts = {"last_modified_by": 0, "qa_assignee": 0, "assignee": 0, "none": 0}
+    records = fetch_flow_records(pat)
+    print(f"  Fetched {len(records)} records from Airtable")
+
+    # Bucket records by classification target.
+    completion_rows = []
+    sampling_rows   = []
+    alert_rows      = []
+    skipped         = {"skip": 0, "no_attribution": 0}
+    by_class        = {"A": 0, "B": 0, "C": 0, "pre_flow": 0,
+                       "missing_qa_assignee": 0, "missing_qa_status": 0}
 
     for rec in records:
         fields = rec.get("fields") or rec.get("cellValuesByFieldId") or {}
-        if not is_complete(fields):
+        target, detail = classify(fields)
+        if target == "skip":
+            skipped["skip"] += 1
             continue
-        complete += 1
-        row, source = build_row(rec, now_utc)
-        if row is None:
-            fallback_counts["none"] += 1
-            continue
-        fallback_counts[source] += 1
-        rows.append(row)
+        if target == "completion":
+            row, _ = build_completion_row(rec, now_utc, flow=detail)
+            if not row:
+                skipped["no_attribution"] += 1
+                continue
+            completion_rows.append(row)
+            by_class[detail] += 1
+        elif target == "sampling":
+            row = build_sampling_row(rec, now_utc)
+            if not row:
+                skipped["no_attribution"] += 1
+                continue
+            sampling_rows.append(row)
+            by_class["B"] += 1
+        elif target == "alert":
+            alert_rows.append(build_alert_row(rec, detail))
+            by_class[detail] += 1
+        elif target == "pre_flow":
+            row, _ = build_completion_row(rec, now_utc, flow=None)
+            if not row:
+                skipped["no_attribution"] += 1
+                continue
+            completion_rows.append(row)
+            by_class["pre_flow"] += 1
 
-    inserted = supabase_insert(supabase_url, service_key, rows)
-    newly_stamped   = len(inserted)
-    already_stamped = len(rows) - newly_stamped
+    # Stuck-in-sampling detection — query the existing sampling table.
+    stuck_alerts = detect_stuck_in_sampling(supabase_url, service_key, now_utc)
+    alert_rows.extend(stuck_alerts)
+    by_class.setdefault("stuck_in_sampling", 0)
+    by_class["stuck_in_sampling"] = len(stuck_alerts)
+
+    # Write to the three tables.
+    comp_result = supabase_insert_completions(supabase_url, service_key, completion_rows)
+    samp_new    = supabase_insert_samplings(supabase_url, service_key, sampling_rows)
+    alert_new, alert_reopened = supabase_upsert_alerts(supabase_url, service_key, alert_rows)
+
+    # Resolve open alerts whose condition no longer applies.
+    current_alert_keys = {(a["airtable_record_id"], a["alert_type"]) for a in alert_rows}
+    resolved_count = supabase_resolve_alerts(supabase_url, service_key, current_alert_keys, now_utc)
 
     elapsed = time.time() - t0
-    print(f"  Checked:           {checked}")
-    print(f"  Complete:          {complete}")
-    print(f"  Newly stamped:     {newly_stamped}")
-    print(f"  Already-stamped:   {already_stamped}")
-    print(f"  completed_by source breakdown: {fallback_counts}")
+    print(f"  Classified:        "
+          f"A={by_class['A']} B={by_class['B']} C={by_class['C']} "
+          f"pre_flow={by_class['pre_flow']} skipped={skipped['skip']}")
+    print(f"  completions:       new={comp_result['inserted']} "
+          f"flow_upserted={comp_result['flow_upserted']} "
+          f"dup_no_flow={comp_result['duplicates_no_flow']}")
+    print(f"  qa_sampling:       new={samp_new}")
+    print(f"  alerts:            "
+          f"missing_qa_assignee={by_class['missing_qa_assignee']} "
+          f"missing_qa_status={by_class['missing_qa_status']} "
+          f"stuck={by_class['stuck_in_sampling']} "
+          f"(new_inserts={alert_new} reopened={alert_reopened} resolved={resolved_count})")
+    print(f"  No attribution:    {skipped['no_attribution']}")
     print(f"  Elapsed:           {elapsed:.1f}s")
 
 
