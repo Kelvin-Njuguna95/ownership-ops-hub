@@ -451,34 +451,44 @@ class TestComputedAt(unittest.TestCase):
         self.assertLess(age_s, 60, f"computed_at should be within the last 60s, was {age_s:.1f}s")
 
 
-# Helper for the new hourly_buckets rule — a record that satisfies all gates
-# at the given EAT start_date timestamp. Override any single field via kwargs
-# to construct negative-case fixtures.
-def _tagging_rec(assignee, start_date_iso, **overrides):
+# A vessel business date — start_date is a build/inception year, NOT a tagging
+# timestamp. Tests keep it distinct from start_tagging on purpose so the two
+# fields' semantics stay honest in fixtures (start_date 2020-03-15, bucketing
+# decided by start_tagging at today's EAT hour).
+_BUSINESS_DATE = "2020-03-15T00:00:00.000+00:00"
+
+
+# Helper for the hourly_buckets rule — a record that satisfies all gates at
+# the given EAT start_tagging timestamp. Override any field via kwargs to
+# construct negative-case fixtures (set start_date=None, etc.).
+def _tagging_rec(assignee, start_tagging_iso, **overrides):
     base = dict(
         assignee=assignee,
-        verification_status="tagged",
         company_id="recCo1",
         company_name="12345 - Acme Shipping",
-        start_date=start_date_iso,
-        # dead_vessel / add_new_company left at defaults (False / None)
+        start_tagging=start_tagging_iso,
+        start_date=_BUSINESS_DATE,
+        # verification_status / dead_vessel / add_new_company left at defaults.
     )
     base.update(overrides)
     return _info(**base)
 
 
 class TestHourlyBuckets(unittest.TestCase):
-    """hourly_buckets rule (post-fix-hourly-output-restore-correct-rule):
+    """hourly_buckets rule (post-fix-hourly-rule-transient-state-bug):
        contributes to hour H for agent A on day D iff ALL:
-         - verification_status == 'tagged'
          - company_id truthy AND company_name truthy
+         - start_date non-null (any value — not date-compared)
+         - start_tagging parses; EAT date == today; 6 <= EAT hour <= 23
          - dead_vessel falsy
          - add_new_company falsy
-         - start_date parses; EAT date == today; 6 <= EAT hour <= 23
-       NOT dependent on start_tagging anymore."""
+       verification_status is NOT gated — "tagged" is transient and records
+       move downstream within seconds, so the bucket counts records that
+       PASSED THROUGH tagged today regardless of their current state."""
 
     def test_hours_8_9_9_happy_path(self):
-        # Three records satisfying all gates, start_date at 08:30, 09:15, 09:45 EAT.
+        # Three records, start_tagging at 08:30, 09:15, 09:45 EAT today.
+        # start_date is a 2020 business date — distinct from start_tagging.
         records = [
             _tagging_rec("Alice", f"{TODAY.isoformat()}T08:30:00.000+03:00"),
             _tagging_rec("Alice", f"{TODAY.isoformat()}T09:15:00.000+03:00"),
@@ -499,17 +509,45 @@ class TestHourlyBuckets(unittest.TestCase):
         self.assertEqual(aggs["totals"]["hourly_buckets"], {h: 0 for h in range(6, 24)})
 
     def test_records_not_today_dropped(self):
-        # start_date is yesterday EAT — should NOT appear in today's buckets.
+        # start_tagging is yesterday EAT — should NOT appear in today's buckets.
         records = [_tagging_rec("Alice", "2026-05-14T09:00:00.000+03:00")]
         aggs = aggregate(records, TODAY, OWNERSHIP_ASSIGNEES)
         self.assertEqual(aggs["totals"]["hourly_buckets"], {h: 0 for h in range(6, 24)})
 
-    def test_negative_verification_status_not_tagged(self):
-        # All other gates satisfied; vs is "Done" instead of "tagged" → no bucket.
+    def test_positive_verification_status_selected_for_bo_qa(self):
+        # The transient-state insight: a record that PASSED THROUGH tagged today
+        # is now in "Selected for BO QA" by poll time. It MUST still contribute
+        # — gating on vs=="tagged" would zero out the histogram on a busy day.
+        records = [_tagging_rec("Alice", f"{TODAY.isoformat()}T10:00:00.000+03:00",
+                                verification_status=SELECTED_FOR_BO_QA)]
+        aggs = aggregate(records, TODAY, OWNERSHIP_ASSIGNEES)
+        self.assertEqual(aggs["totals"]["hourly_buckets"][10], 1)
+
+    def test_positive_verification_status_valid(self):
+        # Same insight, further downstream — record moved straight to Valid.
+        records = [_tagging_rec("Alice", f"{TODAY.isoformat()}T10:00:00.000+03:00",
+                                verification_status="Valid")]
+        aggs = aggregate(records, TODAY, OWNERSHIP_ASSIGNEES)
+        self.assertEqual(aggs["totals"]["hourly_buckets"][10], 1)
+
+    def test_positive_verification_status_done(self):
+        # Same insight — record moved all the way to Done.
         records = [_tagging_rec("Alice", f"{TODAY.isoformat()}T10:00:00.000+03:00",
                                 verification_status="Done")]
         aggs = aggregate(records, TODAY, OWNERSHIP_ASSIGNEES)
-        self.assertEqual(aggs["totals"]["hourly_buckets"][10], 0)
+        self.assertEqual(aggs["totals"]["hourly_buckets"][10], 1)
+
+    def test_positive_verification_status_waiting(self):
+        # Trade-off documented: Option X drops the verification_status gate
+        # entirely, so a record still in "waiting" with company already linked
+        # WILL contribute. In practice agents link company AT the moment of
+        # tagging, so this combination is rare — and counting it is the right
+        # call: if company_id+company_name+start_date are all filled by an
+        # in-roster agent today within working hours, the work happened.
+        records = [_tagging_rec("Alice", f"{TODAY.isoformat()}T10:00:00.000+03:00",
+                                verification_status="waiting")]
+        aggs = aggregate(records, TODAY, OWNERSHIP_ASSIGNEES)
+        self.assertEqual(aggs["totals"]["hourly_buckets"][10], 1)
 
     def test_negative_company_id_blank(self):
         records = [_tagging_rec("Alice", f"{TODAY.isoformat()}T10:00:00.000+03:00",
@@ -537,6 +575,16 @@ class TestHourlyBuckets(unittest.TestCase):
         self.assertEqual(aggs["totals"]["hourly_buckets"][10], 0)
 
     def test_negative_start_date_missing(self):
+        # start_date is a required non-null gate (any value), even though the
+        # value itself isn't used for bucketing — it's evidence the agent
+        # recorded the vessel's business-date entry.
+        records = [_tagging_rec("Alice", f"{TODAY.isoformat()}T10:00:00.000+03:00",
+                                start_date=None)]
+        aggs = aggregate(records, TODAY, OWNERSHIP_ASSIGNEES)
+        self.assertEqual(aggs["totals"]["hourly_buckets"][10], 0)
+
+    def test_negative_start_tagging_missing(self):
+        # Without start_tagging there's no hour-of-day to bucket into.
         records = [_tagging_rec("Alice", None)]
         aggs = aggregate(records, TODAY, OWNERSHIP_ASSIGNEES)
         self.assertEqual(aggs["totals"]["hourly_buckets"], {h: 0 for h in range(6, 24)})

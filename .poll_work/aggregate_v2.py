@@ -267,11 +267,6 @@ def compute_metrics(records, today_eat):
                 properly_completed_today += 1
             if info.get("dead_vessel") is True:
                 dead_vessels_today += 1
-            # NOTE: hourly_buckets used to be computed here using start_tagging.
-            # That bucketing was wrong — start_tagging gets set by automation when
-            # records are assigned, not when the agent does the tagging. The new
-            # rule lives below, outside this `if tagged_today` block, gated on
-            # the agent-driven start_date + tagged verification_status.
             sampled = False
             if vs == SELECTED_FOR_BO_QA:
                 sampled = True
@@ -301,28 +296,35 @@ def compute_metrics(records, today_eat):
 
         # Hourly Tagging Output — independent of the today-scoped block above.
         # A record contributes to hour H for an agent on the EAT day of its
-        # start_date iff ALL:
-        #   - verification_status == "tagged"   (literal lowercase per the
-        #     Airtable singleSelect; the choice IDs live in
-        #     ww_audit_log.json.config.verification_status_choices.tagged)
-        #   - company_id AND company_name are both truthy — i.e. the agent
-        #     has linked a real company via company_id_and_name. extract_v2
-        #     reads these from the linked record (.id / .name); both are
-        #     None when the link is empty (which matches the lookup-field
-        #     "empty array" semantic the spec calls out).
-        #   - start_date is a real timestamp (agent's tagging session start).
-        #   - That timestamp's EAT date is today AND its EAT hour is 6..23.
-        #   - assignee is in roster — already enforced upstream in aggregate()
+        # start_tagging iff ALL:
+        #   - company_id AND company_name are both truthy — the agent has
+        #     linked a real company via company_id_and_name. extract_v2 reads
+        #     these from the linked record (.id / .name); both are None when
+        #     the link is empty (matches the lookup-field "empty array" semantic).
+        #   - start_date is non-null — evidence the agent recorded the vessel's
+        #     business-date entry. The VALUE isn't compared to today; the gate
+        #     is just "filled". (start_date is a vessel business date — build
+        #     year, inception — not a tagging-session timestamp.)
+        #   - start_tagging parses; its EAT date is today AND its EAT hour
+        #     is 6..23. This is the agent-driven tagging-session timestamp
+        #     (same field tagged_today uses).
+        #   - assignee in roster — already enforced upstream in aggregate()
         #     before records reach compute_metrics.
         # Exclusions:
         #   - dead_vessel checkbox ticked — those aren't tagging output.
         #   - add_new_company non-empty — 100% QA workflow, separate metric.
-        if (info.get("verification_status") == "tagged"
-                and info.get("company_id")
+        # NOTE: verification_status is deliberately NOT gated. "tagged" is a
+        # transient state — records pass through it in seconds en route to
+        # "Selected for BO QA" / "Valid" / "Done" / "need to be update", so
+        # by poll time the day's work has already moved downstream. Gating on
+        # current verification_status would zero out the histogram. The
+        # company_id+company_name pair IS the agent-completion evidence.
+        if (info.get("company_id")
                 and info.get("company_name")
+                and info.get("start_date")
                 and not info.get("dead_vessel")
                 and not info.get("add_new_company")):
-            dt = _parse_iso(info.get("start_date"))
+            dt = _parse_iso(info.get("start_tagging"))
             if dt:
                 dt_eat = dt.astimezone(EAT)
                 if dt_eat.date() == today_eat and 6 <= dt_eat.hour <= 23:
