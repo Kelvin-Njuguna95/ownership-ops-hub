@@ -40,6 +40,15 @@
   .pill .dot { width: 6px; height: 6px; border-radius: 50%; background: #6dd47e; }
   .pill.stale .dot { background: #d48a3a; }
   .pill.alert .dot { background: #d44a4a; }
+  /* Refresh button feedback states — mirror of deploy/index.html. */
+  .pill .dot.refreshing { background: #d48a3a; animation: pulse 1.2s ease-in-out infinite; }
+  .pill.success { background: #def7e0; color: #1f6f2c; transition: background 0.15s; }
+  .pill.success .dot { background: #1f6f2c; }
+  .pill.error { background: #fde2e2; color: #9b2222; transition: background 0.15s; }
+  .pill.error .dot { background: #9b2222; }
+  @keyframes pulse { 0%, 100% { opacity: 0.4; } 50% { opacity: 1; } }
+  @keyframes refresh-spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+  .spinning-icon { display: inline-block; animation: refresh-spin 0.8s linear infinite; }
   button.btn { font-family: inherit; font-size: 12px; padding: 5px 12px; background: var(--surface); border: 1px solid var(--border); border-radius: 6px; cursor: pointer; color: var(--ink); }
   button.btn:hover { background: var(--soft); }
   button.btn.primary { background: var(--ink); color: #fff; border-color: var(--ink); }
@@ -2241,10 +2250,69 @@ async function init() {
   goto(STATE.currentPage);
 }
 
-document.getElementById("refreshBtn").addEventListener("click", async () => {
-  document.getElementById("refreshBtn").disabled = true;
-  await init();
-  document.getElementById("refreshBtn").disabled = false;
+// Reusable refresh-with-feedback wrapper — mirror of deploy/index.html.
+// 500ms debounce, spinning ↻ icon, pill state changes during/after refresh,
+// 2s green success flash settling to "Synced just now", 5s red error flash
+// reverting to prior pill state on failure.
+const _refreshDebounce = new WeakMap();
+async function runRefresh({ btn, pillEl, pillTextEl, action, idleLabel = "Refresh" }) {
+  const now = Date.now();
+  const last = _refreshDebounce.get(btn) || 0;
+  if (now - last < 500) return;
+  _refreshDebounce.set(btn, now);
+
+  const priorPillClass = pillEl ? pillEl.className : null;
+  const priorPillText  = pillTextEl ? pillTextEl.textContent : null;
+
+  btn.disabled = true;
+  btn.innerHTML = `<span class="spinning-icon">↻</span> Refreshing…`;
+  if (pillEl && pillTextEl) {
+    pillEl.className = "pill";
+    pillEl.querySelector(".dot")?.classList.add("refreshing");
+    pillTextEl.textContent = "Refreshing…";
+  }
+
+  try {
+    await action();
+    btn.disabled = false;
+    btn.textContent = idleLabel;
+    if (pillEl && pillTextEl) {
+      pillEl.className = "pill success";
+      pillEl.querySelector(".dot")?.classList.remove("refreshing");
+      pillTextEl.textContent = "Updated just now";
+      setTimeout(() => {
+        if (pillTextEl.textContent === "Updated just now") {
+          pillEl.className = "pill";
+          pillTextEl.textContent = "Synced just now";
+        }
+      }, 2000);
+    }
+  } catch (e) {
+    console.error("refresh failed:", e);
+    btn.disabled = false;
+    btn.textContent = idleLabel;
+    if (pillEl && pillTextEl) {
+      pillEl.className = "pill error";
+      pillEl.querySelector(".dot")?.classList.remove("refreshing");
+      pillTextEl.textContent = "Refresh failed — retry?";
+      setTimeout(() => {
+        if (pillTextEl.textContent === "Refresh failed — retry?") {
+          pillEl.className = priorPillClass || "pill";
+          pillTextEl.textContent = priorPillText || "loading…";
+        }
+      }, 5000);
+    }
+  }
+}
+
+document.getElementById("refreshBtn").addEventListener("click", () => {
+  runRefresh({
+    btn:         document.getElementById("refreshBtn"),
+    pillEl:      document.getElementById("freshness"),
+    pillTextEl:  document.getElementById("freshnessText"),
+    action:      init,
+    idleLabel:   "Refresh",
+  });
 });
 
 init();
