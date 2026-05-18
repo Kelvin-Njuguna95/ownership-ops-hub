@@ -1568,10 +1568,181 @@ class TestComputeWeeklyRollup(unittest.TestCase):
         self.assertEqual(r["agents_not_working"], [])
 
 
-class TestFlowFrameworkV2Counts(unittest.TestCase):
-    """The Flow v2 totals (flow_a/b/c_today, total_completions_today, alerts_*)
-    come from Supabase counts, NOT from the cache-iterating compute_metrics.
-    These tests pin the contract via mocked HTTP."""
+class TestFlowFrameworkV3Counts(unittest.TestCase):
+    """Flow v3 — cache-based A/B/C/D classification. The Flow counts come
+    from .poll_work/tagged_today_p*.json (Fetch D) — each in-scope record
+    is passed through completion_detector.classify() and bucketed by its
+    CURRENT state. Sum reconciles with tagged_today.
+
+    Alerts counts still come from Supabase (separate test class below)
+    because integrity issues span multiple days, not just today's tagged.
+    """
+
+    def _write_page(self, work_dir, page_num, records):
+        """Write a tagged_today_p<N>.json fixture in the temp work_dir."""
+        import json as _json
+        p = work_dir / f"tagged_today_p{page_num}.json"
+        p.write_text(_json.dumps({"records": records}))
+
+    def _rec(self, rec_id, assignee_name, **fields_kw):
+        """Build a raw Airtable record dict (fields keyed by field ID)."""
+        from completion_detector import (
+            FLD_ASSIGNEE, FLD_VERIFICATION_STATUS, FLD_QA_ASSIGNEE,
+            FLD_QA_STATUS, FLD_COMPANY_ID_AND_NAME, FLD_DEAD_VESSEL,
+            FLD_ADD_NEW_COMPANY,
+        )
+        keymap = {
+            "verification_status": FLD_VERIFICATION_STATUS,
+            "qa_assignee":         FLD_QA_ASSIGNEE,
+            "qa_status":           FLD_QA_STATUS,
+            "company_id_and_name": FLD_COMPANY_ID_AND_NAME,
+            "dead_vessel":         FLD_DEAD_VESSEL,
+            "add_new_company":     FLD_ADD_NEW_COMPANY,
+        }
+        fields = {FLD_ASSIGNEE: [{"id": "u1", "name": assignee_name}]}
+        for k, v in fields_kw.items():
+            fields[keymap[k]] = v
+        return {"id": rec_id, "fields": fields}
+
+    def _roster(self):
+        # Mirror the shape ownership_assignees uses (extract-style dict).
+        # Reuse the test fixture's OWNERSHIP_ASSIGNEES.
+        return OWNERSHIP_ASSIGNEES
+
+    def test_flow_a_b_c_d_sum_equals_tagged_today(self):
+        """Architectural invariant: every in-scope Fetch D record lands in
+        exactly one bucket → A + B + C + D == count of records classified."""
+        import tempfile
+        from pathlib import Path
+        from aggregate_v2 import _compute_flow_framework_counts
+        with tempfile.TemporaryDirectory() as td:
+            work = Path(td)
+            recs = [
+                # 3 × Flow A (Done, no qa)
+                self._rec("rA1", "Alice", verification_status="Done"),
+                self._rec("rA2", "Alice", verification_status="Valid"),
+                self._rec("rA3", "Bob",   verification_status="Done"),
+                # 2 × Flow B (SBO + qa_assignee)
+                self._rec("rB1", "Alice", verification_status="Selected for BO QA ",
+                          qa_assignee={"id": "q1", "name": "QA"}),
+                self._rec("rB2", "Bob",   verification_status="Selected for BO QA ",
+                          qa_assignee={"id": "q1", "name": "QA"}),
+                # 1 × Flow C (Done + qa + status)
+                self._rec("rC1", "Alice", verification_status="Done",
+                          qa_assignee={"id": "q1", "name": "QA"},
+                          qa_status="approve"),
+                # 1 × Flow D — pre_flow (tagged + company)
+                self._rec("rD1", "Alice", verification_status="tagged",
+                          company_id_and_name=["recX"]),
+                # 1 × Flow D — alert (Done + qa_assignee, missing qa_status)
+                self._rec("rD2", "Bob", verification_status="Done",
+                          qa_assignee={"id": "q1", "name": "QA"}),
+                # 1 × Flow D — skip-state (waiting)
+                self._rec("rD3", "Alice", verification_status="waiting"),
+                # Non-roster record — filtered out, NOT counted in any bucket
+                self._rec("rNR", "Stranger Danger", verification_status="Done"),
+            ]
+            self._write_page(work, 1, recs)
+            result = _compute_flow_framework_counts(work, self._roster())
+        self.assertEqual(result["flow_a_today"], 3)
+        self.assertEqual(result["flow_b_today"], 2)
+        self.assertEqual(result["flow_c_today"], 1)
+        self.assertEqual(result["flow_d_today"], 3)
+        # Reconciliation: 3+2+1+3 = 9 in-scope (non-roster Stranger excluded).
+        self.assertEqual(
+            result["flow_a_today"] + result["flow_b_today"]
+            + result["flow_c_today"] + result["flow_d_today"],
+            9, "A+B+C+D must equal in-scope record count")
+        # Total Completions = A + C only (B + D excluded — in-progress / in-flight)
+        self.assertEqual(result["total_completions_today"], 4)
+
+    def test_flow_d_catches_pre_flow_records(self):
+        """Records still in tagged / need-to-be-update (with the underlying
+        completion rule met) → classify returns ('pre_flow', None) → Flow D.
+        Must NOT count toward A or C."""
+        import tempfile
+        from pathlib import Path
+        from aggregate_v2 import _compute_flow_framework_counts
+        with tempfile.TemporaryDirectory() as td:
+            work = Path(td)
+            self._write_page(work, 1, [
+                self._rec("r1", "Alice", verification_status="tagged",
+                          company_id_and_name=["recX"]),
+                self._rec("r2", "Alice", verification_status="need to be update",
+                          add_new_company="Proposed Co"),
+            ])
+            r = _compute_flow_framework_counts(work, self._roster())
+        self.assertEqual(r["flow_a_today"], 0)
+        self.assertEqual(r["flow_b_today"], 0)
+        self.assertEqual(r["flow_c_today"], 0)
+        self.assertEqual(r["flow_d_today"], 2)
+
+    def test_flow_d_catches_alert_records(self):
+        """Records in shape-mismatch states (Done+qa_assignee-missing-status,
+        SBO without assignee) → classify returns ('alert', ...) → Flow D.
+        Must NOT count toward A or C."""
+        import tempfile
+        from pathlib import Path
+        from aggregate_v2 import _compute_flow_framework_counts
+        with tempfile.TemporaryDirectory() as td:
+            work = Path(td)
+            self._write_page(work, 1, [
+                # Done + qa_assignee but no qa_status → alert: missing_qa_status
+                self._rec("r1", "Alice", verification_status="Done",
+                          qa_assignee={"id": "q", "name": "QA"}),
+                # SBO without qa_assignee → alert: missing_qa_assignee
+                self._rec("r2", "Bob", verification_status="Selected for BO QA "),
+            ])
+            r = _compute_flow_framework_counts(work, self._roster())
+        self.assertEqual(r["flow_a_today"], 0)
+        self.assertEqual(r["flow_b_today"], 0)
+        self.assertEqual(r["flow_c_today"], 0)
+        self.assertEqual(r["flow_d_today"], 2)
+
+    def test_no_cache_files_returns_zeros(self):
+        """No tagged_today_p*.json (e.g. local dev without polling) →
+        helper returns all zeros, doesn't crash."""
+        import tempfile
+        from pathlib import Path
+        from aggregate_v2 import _compute_flow_framework_counts
+        with tempfile.TemporaryDirectory() as td:
+            r = _compute_flow_framework_counts(Path(td), self._roster())
+        self.assertEqual(r["flow_a_today"], 0)
+        self.assertEqual(r["flow_d_today"], 0)
+        self.assertEqual(r["total_completions_today"], 0)
+
+    def test_total_completions_excludes_b_and_d(self):
+        """Regression guard: Total = A + C only. Neither B (in-progress)
+        nor D (in-flight) should ever be added to Total Completions."""
+        import tempfile
+        from pathlib import Path
+        from aggregate_v2 import _compute_flow_framework_counts
+        with tempfile.TemporaryDirectory() as td:
+            work = Path(td)
+            self._write_page(work, 1, [
+                self._rec("a", "Alice", verification_status="Done"),  # A
+                self._rec("b", "Alice", verification_status="Selected for BO QA ",
+                          qa_assignee={"id": "q", "name": "QA"}),    # B
+                self._rec("c", "Alice", verification_status="Done",
+                          qa_assignee={"id": "q", "name": "QA"},
+                          qa_status="approve"),                       # C
+                self._rec("d", "Alice", verification_status="tagged",
+                          company_id_and_name=["x"]),                 # D
+            ])
+            r = _compute_flow_framework_counts(work, self._roster())
+        self.assertEqual(r["total_completions_today"], 2,
+                         "Total = A(1) + C(1) = 2; B and D both excluded")
+        # Regression guard: if anyone refactors total to include B or D,
+        # this catches it.
+        self.assertNotEqual(r["total_completions_today"], 3,
+                            "Total must not include B")
+        self.assertNotEqual(r["total_completions_today"], 4,
+                            "Total must not include D")
+
+
+class TestFetchAlertsCounts(unittest.TestCase):
+    """Supabase-backed alert counts (separate from cache-based Flow counts).
+    Alerts span multiple days, so they're queried directly from flow_alerts."""
 
     def _mock_count_resp(self, count):
         from unittest.mock import MagicMock
@@ -1580,98 +1751,28 @@ class TestFlowFrameworkV2Counts(unittest.TestCase):
         m.headers = {"Content-Range": f"0-0/{count}"}
         return m
 
-    def test_flow_a_b_c_reconcile_with_table_counts(self):
-        """_fetch_flow_framework_counts queries 6 endpoints (A, C, B, plus
-        3 alert types). Each returns a count via Content-Range header.
-        The returned dict must reflect those exact counts."""
+    def test_alerts_counts_from_supabase(self):
         from unittest.mock import patch
-        from aggregate_v2 import _fetch_flow_framework_counts
-        from datetime import date
-        today = date(2026, 5, 18)
-        # Patch env vars + requests
-        with patch.dict("os.environ", {"SUPABASE_URL": "https://x.supabase.co",
-                                        "SUPABASE_SERVICE_ROLE_KEY": "fake"}), \
-             patch("requests.get") as mock_get:
-            # 6 sequential calls in order: A, C, B, missing_qa_assignee,
-            # missing_qa_status, stuck_in_sampling
-            mock_get.side_effect = [
-                self._mock_count_resp(123),  # flow_a
-                self._mock_count_resp(45),   # flow_c
-                self._mock_count_resp(7),    # flow_b
-                self._mock_count_resp(2),    # missing_qa_assignee
-                self._mock_count_resp(3),    # missing_qa_status
-                self._mock_count_resp(1),    # stuck_in_sampling
-            ]
-            result = _fetch_flow_framework_counts(today)
-        self.assertEqual(result["flow_a_today"], 123)
-        self.assertEqual(result["flow_b_today"], 7)
-        self.assertEqual(result["flow_c_today"], 45)
-        self.assertEqual(result["alerts_missing_qa_assignee"], 2)
-        self.assertEqual(result["alerts_missing_qa_status"], 3)
-        self.assertEqual(result["alerts_stuck_in_sampling"], 1)
-        self.assertEqual(result["alerts_open_total"], 6)
-
-    def test_total_completions_equals_a_plus_c_not_a_plus_b_plus_c(self):
-        """Total Completions explicitly excludes Flow B per the v2 spec —
-        B is in-progress, not done."""
-        from unittest.mock import patch
-        from aggregate_v2 import _fetch_flow_framework_counts
-        from datetime import date
+        from aggregate_v2 import _fetch_alerts_counts
         with patch.dict("os.environ", {"SUPABASE_URL": "https://x", "SUPABASE_SERVICE_ROLE_KEY": "k"}), \
              patch("requests.get") as mock_get:
             mock_get.side_effect = [
-                self._mock_count_resp(100),  # A
-                self._mock_count_resp(50),   # C
-                self._mock_count_resp(200),  # B — large to make the bug obvious if it slips through
-                self._mock_count_resp(0),
-                self._mock_count_resp(0),
-                self._mock_count_resp(0),
+                self._mock_count_resp(2),  # missing_qa_assignee
+                self._mock_count_resp(3),  # missing_qa_status
+                self._mock_count_resp(1),  # stuck_in_sampling
             ]
-            result = _fetch_flow_framework_counts(date(2026, 5, 18))
-        self.assertEqual(result["total_completions_today"], 150,
-                         "Total = A + C only; B (in-progress) MUST NOT be added")
-        self.assertNotEqual(result["total_completions_today"], 350,
-                            "Regression guard: total != A + B + C")
+            r = _fetch_alerts_counts()
+        self.assertEqual(r["alerts_missing_qa_assignee"], 2)
+        self.assertEqual(r["alerts_missing_qa_status"], 3)
+        self.assertEqual(r["alerts_stuck_in_sampling"], 1)
+        self.assertEqual(r["alerts_open_total"], 6)
 
     def test_returns_empty_dict_when_env_missing(self):
-        """No Supabase creds → helper is a no-op (keeps the aggregator
-        runnable in local dev without env)."""
         from unittest.mock import patch
-        from aggregate_v2 import _fetch_flow_framework_counts
-        from datetime import date
+        from aggregate_v2 import _fetch_alerts_counts
         with patch.dict("os.environ", {}, clear=True):
-            result = _fetch_flow_framework_counts(date(2026, 5, 18))
-        self.assertEqual(result, {})
-
-    def test_and_filter_value_is_bare_paren_list_not_doubled_and_prefix(self):
-        """PostgREST and() filter syntax: ?and=(cond1,cond2). The param VALUE
-        is the paren-wrapped list, NOT prefixed with 'and('. The 'and(' in
-        the URL comes from the param NAME, not the value.
-
-        Pre-hotfix bug: value was f'and(...)' which produced the URL
-        ?and=and(...) — double 'and'. PostgREST silently returned 0 results
-        instead of erroring, so Flow A/B/C counts all showed 0 on the live
-        dashboard despite the table having thousands of rows. Regression
-        guard: assert the value starts with '(' and not 'and('."""
-        from unittest.mock import patch
-        from aggregate_v2 import _fetch_flow_framework_counts
-        from datetime import date
-        with patch.dict("os.environ", {"SUPABASE_URL": "https://x.supabase.co",
-                                        "SUPABASE_SERVICE_ROLE_KEY": "fake"}), \
-             patch("requests.get") as mock_get:
-            mock_get.return_value = self._mock_count_resp(0)
-            _fetch_flow_framework_counts(date(2026, 5, 18))
-        # Inspect every GET call's params — any that includes an "and" key
-        # must have a bare paren-wrapped value, not the doubled "and(" prefix.
-        and_calls = [c for c in mock_get.call_args_list
-                     if "and" in c.kwargs.get("params", {})]
-        self.assertGreater(len(and_calls), 0, "no and() filter calls fired — helper changed shape?")
-        for c in and_calls:
-            v = c.kwargs["params"]["and"]
-            self.assertTrue(v.startswith("("),
-                            f"and= value must start with '(' (PostgREST syntax). Got: {v[:50]!r}")
-            self.assertFalse(v.startswith("and("),
-                             f"REGRESSION: and= value has the broken 'and(' prefix that double-and's the URL: {v[:50]!r}")
+            r = _fetch_alerts_counts()
+        self.assertEqual(r, {})
 
 
 if __name__ == "__main__":
