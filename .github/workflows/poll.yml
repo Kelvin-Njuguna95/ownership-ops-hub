@@ -1,0 +1,57 @@
+name: Poll Airtable → Supabase
+
+# Every 15 min during EAT business hours (Mon–Sat, 06:00–20:00 EAT = 03:00–17:00 UTC).
+# Plus manual trigger via workflow_dispatch.
+#
+# Cron syntax notes:
+#   - GitHub Actions schedules run in UTC.
+#   - "3-17" = hours 3..17 inclusive; "*/15" = every 15 min within each hour.
+#   - "1-6"  = Mon..Sat (0=Sun in GitHub's cron impl).
+#   - GitHub may delay scheduled runs under load — actual fire time can drift.
+
+on:
+  schedule:
+    - cron: '*/15 3-17 * * 1-6'
+  workflow_dispatch:
+
+# Single concurrent run — if a poll is mid-flight, skip the next scheduled fire
+# rather than queue a backlog.
+concurrency:
+  group: poll-airtable
+  cancel-in-progress: false
+
+jobs:
+  poll:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install dependencies
+        run: pip install requests
+
+      - name: Hydrate state from Supabase Storage
+        env:
+          SUPABASE_URL:              ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: python3 .poll_work/download_state.py
+
+      - name: Poll Airtable (read-only)
+        env:
+          AIRTABLE_PAT: ${{ secrets.AIRTABLE_PAT }}
+        run: python3 .poll_work/poll_airtable.py
+
+      - name: Aggregate
+        run: python3 .poll_work/aggregate_v2.py
+
+      - name: Sync to Supabase Storage
+        env:
+          SUPABASE_URL:              ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: python3 sync_to_supabase.py

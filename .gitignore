@@ -1,5 +1,6 @@
 .env.local
 .env.*.local
+last_sync.json
 
 # Generated dashboard data — refreshed by polling + aggregate runs
 daily_aggregates.json
