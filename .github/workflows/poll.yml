@@ -50,6 +50,17 @@ jobs:
       - name: Aggregate
         run: python3 .poll_work/aggregate_v2.py
 
+      - name: Detect completions
+        # Reads Airtable's two terminal states, applies the completion rule,
+        # and inserts newly-complete records into the ownership_completions
+        # table (first-write-wins via UNIQUE on airtable_record_id).
+        # The dashboard's Hourly Output page reads from that table.
+        env:
+          AIRTABLE_PAT:              ${{ secrets.AIRTABLE_PAT }}
+          SUPABASE_URL:              ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: python3 .poll_work/completion_detector.py
+
       - name: Sync to Supabase Storage
         env:
           SUPABASE_URL:              ${{ secrets.SUPABASE_URL }}
