@@ -614,9 +614,11 @@ PAGE_RENDERERS.overview = function () {
   const flowB = t.flow_b_today || 0;
   const flowC = t.flow_c_today || 0;
   const flowD = t.flow_d_today || 0;
-  const tagged = t.tagged_today || 0;
+  // Renamed from "tagged" — collided with another `const tagged` later
+  // in this same function. Mirror of deploy/index.html hotfix.
+  const taggedTotal = t.tagged_today || 0;
   const sumABCD = flowA + flowB + flowC + flowD;
-  const reconcileOk = sumABCD === tagged;
+  const reconcileOk = sumABCD === taggedTotal;
   const flowHtml = `
     <div class="panel">
       <h3>Flow framework <span class="meta">v3 — A + B + C + D = today's tagged tasks (5 teams)</span></h3>
@@ -628,7 +630,7 @@ PAGE_RENDERERS.overview = function () {
         <div class="kpi"><div class="label">Total Completions (Today)</div><div class="value">${t.total_completions_today || 0}</div><div class="delta">Flow A + Flow C (B excluded — in-progress; D excluded — in-flight)</div></div>
       </div>
       <div class="small-mono" style="color:var(--muted);margin-top:10px;">
-        Reconciles with Tagged Today: ${flowA} + ${flowB} + ${flowC} + ${flowD} = ${sumABCD} ${reconcileOk ? "✓" : `⚠ (expected ${tagged})`}
+        Reconciles with Tagged Today: ${flowA} + ${flowB} + ${flowC} + ${flowD} = ${sumABCD} ${reconcileOk ? "✓" : `⚠ (expected ${taggedTotal})`}
       </div>
     </div>`;
 
