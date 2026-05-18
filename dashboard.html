@@ -884,15 +884,34 @@ PAGE_RENDERERS.hourly = function () {
       <label class="small-mono">Team:</label>
       <select id="hourlyTeamSelect">${opts}</select>
       <span class="small-mono">Hourly Tagging Output by Agent — ${esc(date)}</span>
+      <button id="hourlyRefreshBtn" class="small-mono" style="margin-left:auto; padding:4px 10px; cursor:pointer; border:1px solid var(--border); background:var(--surface); border-radius:3px;">↻ Refresh</button>
+      <span id="hourlyRefreshTs" class="small-mono" style="color:var(--muted);"></span>
     </div>
     <div class="panel">
       <div id="hourlyGrid"></div>
-      <div class="footer-note">Cells = records the detector stamped as complete during that EAT hour (source: <code>ownership_completions.completed_at</code>, not Airtable's batch timestamp). Color intensity scales to the busiest cell in this view.</div>
+      <div class="footer-note">Cells = records the detector stamped as complete during that EAT hour (source: <code>ownership_completions.completed_at</code>, not Airtable's batch timestamp). Data auto-refreshes when the browser tab regains focus; tap Refresh to fetch immediately.</div>
     </div>`;
 
   const sel = document.getElementById("hourlyTeamSelect");
   sel.addEventListener("change", () => {
     localStorage.setItem("wqa.hourlyTeam", sel.value);
+    renderHourlyGrid(sel.value);
+  });
+  const refreshBtn = document.getElementById("hourlyRefreshBtn");
+  const refreshTs = document.getElementById("hourlyRefreshTs");
+  const updateTsLabel = () => {
+    const now = new Date();
+    const hhmm = now.toLocaleTimeString("en-GB", {timeZone:"Africa/Nairobi", hour:"2-digit", minute:"2-digit"});
+    refreshTs.textContent = `loaded ${hhmm} EAT`;
+  };
+  updateTsLabel();
+  refreshBtn.addEventListener("click", async () => {
+    refreshBtn.disabled = true;
+    refreshBtn.textContent = "↻ Loading…";
+    await loadCompletions(STATE.completionsDate || STATE.v2?.date || null);
+    refreshBtn.disabled = false;
+    refreshBtn.textContent = "↻ Refresh";
+    updateTsLabel();
     renderHourlyGrid(sel.value);
   });
   renderHourlyGrid(selected);
@@ -2137,6 +2156,22 @@ document.getElementById("refreshBtn").addEventListener("click", async () => {
   document.getElementById("refreshBtn").disabled = true;
   await init();
   document.getElementById("refreshBtn").disabled = false;
+});
+
+// Auto-refresh ownership_completions when the tab regains focus.
+// Mirror of deploy/index.html — see that file for the full rationale.
+let _lastVisibilityRefresh = 0;
+document.addEventListener("visibilitychange", async () => {
+  if (document.visibilityState !== "visible") return;
+  const now = Date.now();
+  if (now - _lastVisibilityRefresh < 30_000) return;
+  _lastVisibilityRefresh = now;
+  if (!STATE.completionsDate) return;
+  await loadCompletions(STATE.completionsDate);
+  if (STATE.currentPage === "hourly") {
+    const renderer = PAGE_RENDERERS[STATE.currentPage];
+    if (renderer) renderer();
+  }
 });
 
 init();
