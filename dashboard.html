@@ -316,15 +316,30 @@ async function loadCompletions(dateStr) {
   const start = new Date(`${dateStr}T00:00:00+03:00`);
   const end   = new Date(start);
   end.setUTCDate(end.getUTCDate() + 1);
+
+  // Paginate via .range() — Supabase enforces a project-level db-max-rows
+  // cap (default 1000) regardless of .limit(). See deploy/index.html for
+  // the full rationale.
+  const PAGE_SIZE = 1000;
+  const MAX_PAGES = 50;
+  const all = [];
   try {
-    const { data, error } = await sb.from("ownership_completions")
-      .select("completed_by, completed_at")
-      .gte("completed_at", start.toISOString())
-      .lt("completed_at",  end.toISOString())
-      .limit(50000);
-    if (error) { console.error("loadCompletions:", error); return; }
+    for (let page = 0; page < MAX_PAGES; page++) {
+      const from = page * PAGE_SIZE;
+      const to   = from + PAGE_SIZE - 1;
+      const { data, error } = await sb.from("ownership_completions")
+        .select("completed_by, completed_at")
+        .gte("completed_at", start.toISOString())
+        .lt("completed_at",  end.toISOString())
+        .order("completed_at", { ascending: true })
+        .range(from, to);
+      if (error) { console.error("loadCompletions:", error); return; }
+      if (!data || data.length === 0) break;
+      all.push(...data);
+      if (data.length < PAGE_SIZE) break;
+    }
     const out = {};
-    for (const r of (data || [])) {
+    for (const r of all) {
       const canon = canonicalAgent(r.completed_by);
       if (!canon) continue;
       const eatHour = (new Date(r.completed_at).getUTCHours() + 3) % 24;
