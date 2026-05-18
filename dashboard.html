@@ -610,14 +610,25 @@ PAGE_RENDERERS.overview = function () {
       <div class="kpi"><div class="label">Silent changes today</div><div class="value">${silent}</div><div class="delta">from legacy poll block</div></div>
     </div>`;
 
+  const flowA = t.flow_a_today || 0;
+  const flowB = t.flow_b_today || 0;
+  const flowC = t.flow_c_today || 0;
+  const flowD = t.flow_d_today || 0;
+  const tagged = t.tagged_today || 0;
+  const sumABCD = flowA + flowB + flowC + flowD;
+  const reconcileOk = sumABCD === tagged;
   const flowHtml = `
     <div class="panel">
-      <h3>Flow framework <span class="meta">v2 — A=no-QA, B=in QA sampling pool, C=completed after QA</span></h3>
+      <h3>Flow framework <span class="meta">v3 — A + B + C + D = today's tagged tasks (5 teams)</span></h3>
       <div class="kpis">
-        <div class="kpi"><div class="label">Flow A — Completed W/O QA</div><div class="value">${t.flow_a_today || 0}</div><div class="delta">Done/Valid, no QA involvement</div></div>
-        <div class="kpi"><div class="label">Flow B — Selected for QA Sampling</div><div class="value">${t.flow_b_today || 0}</div><div class="delta">In BO QA pool with reviewer assigned (in-progress)</div></div>
-        <div class="kpi"><div class="label">Flow C — Completed After QA</div><div class="value">${t.flow_c_today || 0}</div><div class="delta">Done/Valid with approve/change recorded</div></div>
-        <div class="kpi"><div class="label">Total Completions (Today)</div><div class="value">${t.total_completions_today || 0}</div><div class="delta">Flow A + Flow C (B excluded — in-progress)</div></div>
+        <div class="kpi"><div class="label">Flow A — Completed W/O QA</div><div class="value">${flowA}</div><div class="delta">Done/Valid, no QA involvement</div></div>
+        <div class="kpi"><div class="label">Flow B — Selected for QA Sampling</div><div class="value">${flowB}</div><div class="delta">In BO QA pool with reviewer assigned (in-progress)</div></div>
+        <div class="kpi"><div class="label">Flow C — Completed After QA</div><div class="value">${flowC}</div><div class="delta">Done/Valid with approve/change recorded</div></div>
+        <div class="kpi"><div class="label">Flow D — In Flight</div><div class="value">${flowD}</div><div class="delta">Tagged today, not yet in A/B/C — still in tagged / need to be update, or pending QA assignment</div></div>
+        <div class="kpi"><div class="label">Total Completions (Today)</div><div class="value">${t.total_completions_today || 0}</div><div class="delta">Flow A + Flow C (B excluded — in-progress; D excluded — in-flight)</div></div>
+      </div>
+      <div class="small-mono" style="color:var(--muted);margin-top:10px;">
+        Reconciles with Tagged Today: ${flowA} + ${flowB} + ${flowC} + ${flowD} = ${sumABCD} ${reconcileOk ? "✓" : `⚠ (expected ${tagged})`}
       </div>
     </div>`;
 
