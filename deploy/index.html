@@ -635,10 +635,10 @@ PAGE_RENDERERS.overview = function () {
     <div class="panel">
       <h3>Flow framework <span class="meta">CLIENT_A parity — A=no-QA, B=QA reviewed, C=completed after QA</span></h3>
       <div class="kpis">
-        <div class="kpi"><div class="label">Flow A — Completed w/o QA</div><div class="value">${t.flow_a_count || 0}</div><div class="delta">Done/Valid, qa_assignee blank</div></div>
-        <div class="kpi"><div class="label">Flow B — QA reviewed</div><div class="value">${t.flow_b_count || 0}</div><div class="delta">qa_assignee + qa_status filled</div></div>
-        <div class="kpi"><div class="label">Flow C — Completed after QA</div><div class="value">${t.flow_c_count || 0}</div><div class="delta">Done/Valid AND has QA</div></div>
-        <div class="kpi"><div class="label">Total completions</div><div class="value">${t.total_completions || 0}</div><div class="delta">Flow A + Flow C</div></div>
+        <div class="kpi"><div class="label">Flow A — Completed w/o QA (today)</div><div class="value">${t.flow_a_today || 0}</div><div class="delta">Done/Valid, qa_assignee blank</div></div>
+        <div class="kpi"><div class="label">Flow B — QA reviewed (today)</div><div class="value">${t.flow_b_today || 0}</div><div class="delta">qa_assignee + qa_status filled</div></div>
+        <div class="kpi"><div class="label">Flow C — Completed after QA (today)</div><div class="value">${t.flow_c_today || 0}</div><div class="delta">Done/Valid AND has QA</div></div>
+        <div class="kpi"><div class="label">Total completions (today)</div><div class="value">${t.total_completions_today || 0}</div><div class="delta">Flow A + Flow C</div></div>
       </div>
     </div>`;
 
@@ -889,9 +889,9 @@ function renderAgentBody(agentName) {
       data: {
         labels: [esc(agentName)],
         datasets: [
-          { label: `Flow A — Completed w/o QA (${m.flow_a_count || 0})`, data: [m.flow_a_count || 0], backgroundColor: "#d48a3a" },
-          { label: `Flow B — QA reviewed (${m.flow_b_count || 0})`,       data: [m.flow_b_count || 0], backgroundColor: "#1450b3" },
-          { label: `Flow C — Completed after QA (${m.flow_c_count || 0})`,data: [m.flow_c_count || 0], backgroundColor: "#1f6f2c" },
+          { label: `Flow A — Completed w/o QA (${m.flow_a_today || 0})`, data: [m.flow_a_today || 0], backgroundColor: "#d48a3a" },
+          { label: `Flow B — QA reviewed (${m.flow_b_today || 0})`,       data: [m.flow_b_today || 0], backgroundColor: "#1450b3" },
+          { label: `Flow C — Completed after QA (${m.flow_c_today || 0})`,data: [m.flow_c_today || 0], backgroundColor: "#1f6f2c" },
         ],
       },
       options: {
@@ -1883,7 +1883,7 @@ async function renderWeeklyBody(startISO, endISO) {
     <div class="kpis">
       <div class="kpi hero"><div class="label">Total records</div><div class="value">${rollup.totals.tagged.toLocaleString()}</div><div class="delta">sum of tagged across ${rollup.days_with_data} day${rollup.days_with_data === 1 ? "" : "s"}</div></div>
       <div class="kpi"><div class="label">Active agents (avg/day)</div><div class="value">${rollup.totals.active_agents_avg.toFixed(1)}</div></div>
-      <div class="kpi" title="Sum of per-day unique IMOs — may double-count IMOs worked on multiple days."><div class="label">Unique IMOs (sum)</div><div class="value">${rollup.totals.unique_imos_union.toLocaleString()}</div><div class="delta">may double-count across days</div></div>
+      <div class="kpi" title="Unique IMOs (sum-of-daily) — may double-count IMOs worked on multiple days. True set-union pending Phase E2 record-level snapshots."><div class="label">Unique IMOs (sum-of-daily)</div><div class="value">${rollup.totals.unique_imos_sum.toLocaleString()}</div><div class="delta">may double-count across days</div></div>
       <div class="kpi"><div class="label">Daily avg</div><div class="value">${dailyAvg.toFixed(0)}</div></div>
       <div class="kpi"><div class="label">Flow A</div><div class="value">${rollup.totals.flow_a}</div><div class="delta">w/o QA</div></div>
       <div class="kpi"><div class="label">Flow B</div><div class="value">${rollup.totals.flow_b}</div><div class="delta">QA reviewed</div></div>
@@ -1950,8 +1950,8 @@ async function renderWeeklyBody(startISO, endISO) {
     const isToday = d.date === todayISO;
     const snap = STATE.weeklySnapshots[d.date];
     const byAgent = snap?.by_agent || {};
-    const flowAleaders = Object.entries(byAgent).sort((a, b) => (b[1].flow_a_count || 0) - (a[1].flow_a_count || 0)).slice(0, 5);
-    const flowCleaders = Object.entries(byAgent).sort((a, b) => (b[1].flow_c_count || 0) - (a[1].flow_c_count || 0)).slice(0, 5);
+    const flowAleaders = Object.entries(byAgent).sort((a, b) => (b[1].flow_a_in_cache || 0) - (a[1].flow_a_in_cache || 0)).slice(0, 5);
+    const flowCleaders = Object.entries(byAgent).sort((a, b) => (b[1].flow_c_in_cache || 0) - (a[1].flow_c_in_cache || 0)).slice(0, 5);
     return `
     <details class="panel" ${isToday ? "open" : ""}>
       <summary style="cursor:pointer;font-weight:600;font-size:14px">${esc(d.date)}${isToday ? " (today)" : ""} — Tagged: ${d.tagged} · Done: ${d.done} · Flow A/B/C: ${d.flow_a}/${d.flow_b}/${d.flow_c} · Completions: ${d.total_completions}</summary>
@@ -1960,13 +1960,13 @@ async function renderWeeklyBody(startISO, endISO) {
           <div>
             <h4 style="font-size:13px;color:var(--muted);margin:8px 0">Flow A leaders (completed w/o QA)</h4>
             <table><thead><tr><th>Agent</th><th class="right">Flow A</th></tr></thead><tbody>
-              ${flowAleaders.length ? flowAleaders.map(([n, a]) => `<tr><td>${esc(n)}</td><td class="right">${a.flow_a_count || 0}</td></tr>`).join("") : '<tr><td colspan="2" class="empty">no records</td></tr>'}
+              ${flowAleaders.length ? flowAleaders.map(([n, a]) => `<tr><td>${esc(n)}</td><td class="right">${a.flow_a_in_cache || 0}</td></tr>`).join("") : '<tr><td colspan="2" class="empty">no records</td></tr>'}
             </tbody></table>
           </div>
           <div>
             <h4 style="font-size:13px;color:var(--muted);margin:8px 0">Flow C leaders (completed after QA)</h4>
             <table><thead><tr><th>Agent</th><th class="right">Flow C</th></tr></thead><tbody>
-              ${flowCleaders.length ? flowCleaders.map(([n, a]) => `<tr><td>${esc(n)}</td><td class="right">${a.flow_c_count || 0}</td></tr>`).join("") : '<tr><td colspan="2" class="empty">no records</td></tr>'}
+              ${flowCleaders.length ? flowCleaders.map(([n, a]) => `<tr><td>${esc(n)}</td><td class="right">${a.flow_c_in_cache || 0}</td></tr>`).join("") : '<tr><td colspan="2" class="empty">no records</td></tr>'}
             </tbody></table>
           </div>
         </div>
@@ -2046,14 +2046,14 @@ function _rollupClientSide(dayList) {
     const tt = aggs.totals || {};
     const byAgent = aggs.by_agent || {};
     const activeAgents = Object.values(byAgent).filter(m =>
-      (m.tagged_today || 0) + (m.total_completions || 0) > 0).length;
+      (m.tagged_today || 0) + ((m.total_completions_today ?? m.total_completions) || 0) > 0).length;
     return {
       date: day,
       tagged: tt.tagged_today || 0,
       done: tt.done_today || 0,
-      flow_a: tt.flow_a_count || 0,
-      flow_b: tt.flow_b_count || 0,
-      flow_c: tt.flow_c_count || 0,
+      flow_a: (tt.flow_a_in_cache ?? tt.flow_a_count) || 0,
+      flow_b: (tt.flow_b_in_cache ?? tt.flow_b_count) || 0,
+      flow_c: (tt.flow_c_in_cache ?? tt.flow_c_count) || 0,
       total_completions: tt.total_completions || 0,
       active_agents: activeAgents,
       by_team: Object.fromEntries(Object.entries(aggs.by_team || {}).map(([t, m]) => [t, m.tagged_today || 0])),
@@ -2066,7 +2066,7 @@ function _rollupClientSide(dayList) {
     flow_b:            perDay.reduce((s, d) => s + d.flow_b, 0),
     flow_c:            perDay.reduce((s, d) => s + d.flow_c, 0),
     total_completions: perDay.reduce((s, d) => s + d.total_completions, 0),
-    unique_imos_union: snaps.reduce((s, [_, a]) => s + (a.totals?.unique_imos || 0), 0),
+    unique_imos_sum: snaps.reduce((s, [_, a]) => s + (a.totals?.unique_imos || 0), 0),
     qa_reviews:        snaps.reduce((s, [_, a]) => s + (a.qa_reviewers || []).reduce((x, r) => x + (r.reviews || 0), 0), 0),
     qa_changes:        snaps.reduce((s, [_, a]) => s + (a.qa_reviewers || []).reduce((x, r) => x + (r.changes || 0), 0), 0),
     active_agents_avg: perDay.length ? perDay.reduce((s, d) => s + d.active_agents, 0) / perDay.length : 0,
@@ -2098,7 +2098,7 @@ function _rollupClientSide(dayList) {
       const missing = [];
       for (const [day, aggs] of snaps) {
         const rec = (aggs.by_agent || {})[member.name];
-        if (!rec || ((rec.tagged_today || 0) + (rec.total_completions || 0)) === 0) {
+        if (!rec || ((rec.tagged_today || 0) + ((rec.total_completions_today ?? rec.total_completions) || 0)) === 0) {
           missing.push(day);
         }
       }

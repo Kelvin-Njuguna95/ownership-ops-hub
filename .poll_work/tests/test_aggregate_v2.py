@@ -53,7 +53,7 @@ def _info(**overrides):
         "imo": None, "assignee": None, "assignees": [], "qa_assignee": None, "ww_qa_assignee": None,
         "last_modified_by": None, "start_tagging": None, "start_date": None,
         "created": None, "last_modified": None, "done_selected_time": None,
-        "qa_status_ts": None, "company_id": None, "company_name": None,
+        "valid_selected_time": None, "qa_status_ts": None, "company_id": None, "company_name": None,
         "verification_status": None, "qa_status": None, "ww_qa": None,
         "status": None, "is_change": None, "comment": None, "reminder": None,
         "source_flow": None, "add_new_company": None, "requested_by": None,
@@ -675,14 +675,21 @@ class TestFlowABC(unittest.TestCase):
         ]
         aggs = aggregate(recs, TODAY, OWNERSHIP_ASSIGNEES)
         m = aggs["totals"]
-        self.assertEqual(m["flow_a_count"], 2,
+        self.assertEqual(m["flow_a_in_cache"], 2,
                          "2 records Done/Valid without qa_assignee")
-        self.assertEqual(m["flow_b_count"], 3,
+        self.assertEqual(m["flow_b_in_cache"], 3,
                          "3 records with qa_assignee + qa_status")
-        self.assertEqual(m["flow_c_count"], 2,
+        self.assertEqual(m["flow_c_in_cache"], 2,
                          "2 records Done/Valid AND with QA review")
+        self.assertEqual(m["flow_a_today"], 0,
+                         "no start_tagging date means no today-scoped Flow A")
+        self.assertEqual(m["flow_b_today"], 0,
+                         "no start_tagging date means no today-scoped Flow B")
+        self.assertEqual(m["flow_c_today"], 0,
+                         "no start_tagging date means no today-scoped Flow C")
         self.assertEqual(m["total_completions"], 4,
-                         "completions = flow_a (2) + flow_c (2)")
+                         "in-cache completions = flow_a_in_cache (2) + flow_c_in_cache (2)")
+        self.assertEqual(m["total_completions_today"], 0)
 
 
 class TestUniqueImos(unittest.TestCase):
@@ -1115,6 +1122,75 @@ class TestAddNewCompanyOpenStrictDefinition(unittest.TestCase):
         self.assertEqual(aggs["by_agent"]["Alice"]["add_new_company_open"], 1)
 
 
+class TestSamplingNoDoubleCount(unittest.TestCase):
+    def test_sampling_union_counts_record_once(self):
+        recs = [
+            _info(assignee="Alice", verification_status="need to be update",
+                  qa_assignee="Q1", qa_status="changed",
+                  start_tagging=f"{TODAY.isoformat()}T09:00:00.000+03:00"),
+            _info(assignee="Alice", verification_status="tagged",
+                  start_tagging=f"{TODAY.isoformat()}T10:00:00.000+03:00"),
+        ]
+        m = aggregate(recs, TODAY, OWNERSHIP_ASSIGNEES)["totals"]
+        self.assertEqual(m["tagged_today"], 2)
+        self.assertEqual(m["qa_inspected_today"], 1)
+        self.assertEqual(m["need_to_be_update_today"], 1)
+        self.assertEqual(m["sampling_actual_pct"], 50.0)
+
+
+class TestDoneTodayValidTime(unittest.TestCase):
+    def test_valid_selected_time_counts_done_today(self):
+        recs = [
+            _info(assignee="Alice", verification_status="Valid", done_selected_time=None,
+                  valid_selected_time=f"{TODAY.isoformat()}T12:00:00.000+03:00"),
+        ]
+        m = aggregate(recs, TODAY, OWNERSHIP_ASSIGNEES)["totals"]
+        self.assertGreaterEqual(m["done_today"], 1)
+
+
+class TestWeeklyUniqueImosSumName(unittest.TestCase):
+    def test_rollup_uses_sum_key_not_union_key(self):
+        snaps = [(TODAY, {"totals": {"unique_imos": 7}, "by_agent": {}, "by_team": {}})]
+        totals = compute_weekly_rollup(snaps)["totals"]
+        self.assertEqual(totals["unique_imos_sum"], 7)
+        self.assertNotIn("unique_imos_union", totals)
+
+
+class TestMultiAssigneeFallbackToRoster(unittest.TestCase):
+    def test_second_roster_assignee_is_in_scope_and_attributed(self):
+        recs = [
+            _info(assignees=["NonRosterUser", "Hellen Vigehi"], verification_status="tagged",
+                  start_tagging=f"{TODAY.isoformat()}T09:00:00.000+03:00"),
+        ]
+        aggs = aggregate(recs, TODAY, {"Hellen Vigehi": "Tembo"})
+        self.assertIn("Tembo", aggs["by_team"])
+        self.assertIn("Hellen Vigehi", aggs["by_agent"])
+        self.assertEqual(aggs["by_team"]["Tembo"]["tagged_today"], 1)
+
+    def test_all_non_roster_assignees_are_dropped(self):
+        recs = [
+            _info(assignees=["NonRosterUser", "OtherNonRoster"], verification_status="tagged",
+                  start_tagging=f"{TODAY.isoformat()}T09:00:00.000+03:00"),
+        ]
+        aggs = aggregate(recs, TODAY, {"Hellen Vigehi": "Tembo"})
+        self.assertEqual(aggs["totals"]["tagged_today"], 0)
+        self.assertEqual(aggs["by_team"], {})
+        self.assertEqual(aggs["by_agent"], {})
+
+
+class TestMultiAssigneeCount(unittest.TestCase):
+    def test_counts_multi_assignee_records_in_scope(self):
+        recs = [
+            _info(assignees=["Alice", "Bob"], verification_status="tagged"),
+            _info(assignees=["Bob"], verification_status="tagged"),
+            _info(assignees=["Carol", "Alice"], verification_status="tagged"),
+        ]
+        aggs = aggregate(recs, TODAY, OWNERSHIP_ASSIGNEES)
+        self.assertEqual(aggs["totals"]["multi_assignee_count"], 2)
+        self.assertEqual(aggs["by_team"]["Simba"]["multi_assignee_count"], 1)
+        self.assertEqual(aggs["by_team"]["Nyati"]["multi_assignee_count"], 1)
+
+
 class TestSnapshotsRoundTrip(unittest.TestCase):
     def test_save_and_load_one_snapshot(self):
         import json as _json
@@ -1172,7 +1248,7 @@ class TestComputeWeeklyRollup(unittest.TestCase):
         snap_day1 = (date(2026, 5, 10), {
             "date": "2026-05-10",
             "totals": {"tagged_today": 100, "done_today": 50,
-                       "flow_a_count": 5, "flow_b_count": 30, "flow_c_count": 25, "total_completions": 30,
+                       "flow_a_in_cache": 5, "flow_b_in_cache": 30, "flow_c_in_cache": 25, "total_completions": 30,
                        "unique_imos": 40},
             "by_team":  {"Simba": {"tagged_today": 60, "unique_imos": 20},
                          "Tembo": {"tagged_today": 40, "unique_imos": 20}},
@@ -1184,7 +1260,7 @@ class TestComputeWeeklyRollup(unittest.TestCase):
         snap_day2 = (date(2026, 5, 11), {
             "date": "2026-05-11",
             "totals": {"tagged_today": 50, "done_today": 25,
-                       "flow_a_count": 2, "flow_b_count": 18, "flow_c_count": 23, "total_completions": 25,
+                       "flow_a_in_cache": 2, "flow_b_in_cache": 18, "flow_c_in_cache": 23, "total_completions": 25,
                        "unique_imos": 30},
             "by_team":  {"Simba": {"tagged_today": 50, "unique_imos": 30}},
             "by_agent": {"Alice": {"tagged_today": 50, "total_completions": 25}},
@@ -1194,7 +1270,7 @@ class TestComputeWeeklyRollup(unittest.TestCase):
         snap_day4 = (date(2026, 5, 13), {
             "date": "2026-05-13",
             "totals": {"tagged_today": 30, "done_today": 15,
-                       "flow_a_count": 1, "flow_b_count": 14, "flow_c_count": 14, "total_completions": 15,
+                       "flow_a_in_cache": 1, "flow_b_in_cache": 14, "flow_c_in_cache": 14, "total_completions": 15,
                        "unique_imos": 20},
             "by_team":  {"Tembo": {"tagged_today": 30, "unique_imos": 20}},
             "by_agent": {"Bob":   {"tagged_today": 30, "total_completions": 15}},
@@ -1213,7 +1289,8 @@ class TestComputeWeeklyRollup(unittest.TestCase):
         self.assertEqual(t["flow_b"], 30 + 18 + 14)
         self.assertEqual(t["flow_c"], 25 + 23 + 14)
         self.assertEqual(t["total_completions"], 30 + 25 + 15)
-        self.assertEqual(t["unique_imos_union"], 40 + 30 + 20)
+        self.assertEqual(t["unique_imos_sum"], 40 + 30 + 20)
+        self.assertNotIn("unique_imos_union", t)
         self.assertEqual(t["qa_reviews"], (15 + 10) + 18 + 8)
         self.assertEqual(t["qa_changes"], (2 + 1) + 0 + 3)
 
