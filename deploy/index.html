@@ -37,6 +37,16 @@
   .pill .dot { width: 6px; height: 6px; border-radius: 50%; background: #6dd47e; }
   .pill.stale .dot { background: #d48a3a; }
   .pill.alert .dot { background: #d44a4a; }
+  /* Refresh button feedback states — applied while a refresh is in flight
+     and during the success/error flash that follows. */
+  .pill .dot.refreshing { background: #d48a3a; animation: pulse 1.2s ease-in-out infinite; }
+  .pill.success { background: #def7e0; color: #1f6f2c; transition: background 0.15s; }
+  .pill.success .dot { background: #1f6f2c; }
+  .pill.error { background: #fde2e2; color: #9b2222; transition: background 0.15s; }
+  .pill.error .dot { background: #9b2222; }
+  @keyframes pulse { 0%, 100% { opacity: 0.4; } 50% { opacity: 1; } }
+  @keyframes refresh-spin { from { display: inline-block; transform: rotate(0deg); } to { transform: rotate(360deg); } }
+  .spinning-icon { display: inline-block; animation: refresh-spin 0.8s linear infinite; }
   button.btn { font-family: inherit; font-size: 12px; padding: 5px 12px; background: var(--surface); border: 1px solid var(--border); border-radius: 6px; cursor: pointer; color: var(--ink); }
   button.btn:hover { background: var(--soft); }
   button.btn.primary { background: var(--ink); color: #fff; border-color: var(--ink); }
@@ -2443,10 +2453,80 @@ async function init() {
   goto(STATE.currentPage);
 }
 
-document.getElementById("refreshBtn").addEventListener("click", async () => {
-  document.getElementById("refreshBtn").disabled = true;
-  await init();
-  document.getElementById("refreshBtn").disabled = false;
+// Reusable refresh-with-feedback wrapper. Use for any button that triggers
+// a network refresh. Provides: visible loading state, debounce, success/error
+// flash on a status pill. (Designed to be reused by the Hourly Output local
+// Refresh button once PR #10 ships — pass pillEl/pillTextEl=null when the
+// button has no pill.)
+//   btn       — the <button> to disable + update text on
+//   pillEl    — the <span class="pill"> to flash (or null to skip pill feedback)
+//   pillTextEl— the <span> inside the pill for the message text
+//   action    — async function that does the actual refresh
+// Returns nothing. Errors from `action` are caught and surfaced via the pill.
+const _refreshDebounce = new WeakMap();  // per-button last-click timestamp
+async function runRefresh({ btn, pillEl, pillTextEl, action, idleLabel = "Refresh" }) {
+  // 500ms debounce — guard against rapid double-clicks confusing parallel state.
+  const now = Date.now();
+  const last = _refreshDebounce.get(btn) || 0;
+  if (now - last < 500) return;
+  _refreshDebounce.set(btn, now);
+
+  // Capture pill's pre-refresh state so we can restore it on failure.
+  const priorPillClass = pillEl ? pillEl.className : null;
+  const priorPillText  = pillTextEl ? pillTextEl.textContent : null;
+
+  btn.disabled = true;
+  btn.innerHTML = `<span class="spinning-icon">↻</span> Refreshing…`;
+  if (pillEl && pillTextEl) {
+    pillEl.className = "pill";
+    pillEl.querySelector(".dot")?.classList.add("refreshing");
+    pillTextEl.textContent = "Refreshing…";
+  }
+
+  try {
+    await action();
+    // Success — flash green for 2s, then settle to "Synced just now".
+    btn.disabled = false;
+    btn.textContent = idleLabel;
+    if (pillEl && pillTextEl) {
+      pillEl.className = "pill success";
+      pillEl.querySelector(".dot")?.classList.remove("refreshing");
+      pillTextEl.textContent = "Updated just now";
+      setTimeout(() => {
+        // Only settle if the pill hasn't been clobbered by another refresh.
+        if (pillTextEl.textContent === "Updated just now") {
+          pillEl.className = "pill";
+          pillTextEl.textContent = "Synced just now";
+        }
+      }, 2000);
+    }
+  } catch (e) {
+    console.error("refresh failed:", e);
+    btn.disabled = false;
+    btn.textContent = idleLabel;
+    if (pillEl && pillTextEl) {
+      pillEl.className = "pill error";
+      pillEl.querySelector(".dot")?.classList.remove("refreshing");
+      pillTextEl.textContent = "Refresh failed — retry?";
+      setTimeout(() => {
+        // Restore the pre-refresh state.
+        if (pillTextEl.textContent === "Refresh failed — retry?") {
+          pillEl.className = priorPillClass || "pill";
+          pillTextEl.textContent = priorPillText || "no sync yet";
+        }
+      }, 5000);
+    }
+  }
+}
+
+document.getElementById("refreshBtn").addEventListener("click", () => {
+  runRefresh({
+    btn:         document.getElementById("refreshBtn"),
+    pillEl:      document.getElementById("syncFreshness"),
+    pillTextEl:  document.getElementById("syncFreshnessText"),
+    action:      init,
+    idleLabel:   "Refresh",
+  });
 });
 
 // ---- Global date picker — jump STATE.v2 to any historical snapshot ----
