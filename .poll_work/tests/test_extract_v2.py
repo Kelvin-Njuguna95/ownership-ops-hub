@@ -141,6 +141,34 @@ class TestExtract(unittest.TestCase):
         self.assertEqual(extract(rec)["verification_status"], "Selected for BO QA ")
         self.assertTrue(extract(rec)["verification_status"].endswith(" "))
 
+    def test_accepts_raw_airtable_rest_shape_with_fields_key(self):
+        """The raw Airtable REST API returns records with a ``fields`` key.
+        The Cowork MCP wrapper returns ``cellValuesByFieldId``. extract() must
+        handle both — the poller writes ``fields``-shaped records to cache."""
+        rest_rec = {
+            "id": "rec123",
+            "createdTime": "2026-05-18T09:00:00.000Z",
+            "fields": {
+                FIELD_IDS["imo"]: "9999999",
+                FIELD_IDS["assignee"]: [{"id": "u1", "name": "Hellen Vigehi"}],
+                FIELD_IDS["verification_status"]: {"id": "x", "name": "tagged"},
+            },
+        }
+        info = extract(rest_rec)
+        self.assertEqual(info["imo"], "9999999")
+        self.assertEqual(info["assignee"], "Hellen Vigehi")
+        self.assertEqual(info["assignees"], ["Hellen Vigehi"])
+        self.assertEqual(info["verification_status"], "tagged")
+
+    def test_cell_values_takes_precedence_over_fields_when_both_present(self):
+        """If both keys exist (shouldn't happen in practice), prefer the
+        Cowork shape so existing tests keep their guarantees."""
+        rec = {
+            "cellValuesByFieldId": {FIELD_IDS["imo"]: "from-cell"},
+            "fields":              {FIELD_IDS["imo"]: "from-fields"},
+        }
+        self.assertEqual(extract(rec)["imo"], "from-cell")
+
     def test_valid_done_by_bo_is_bool(self):
         self.assertFalse(extract(_rec({}))["valid_done_by_bo"])
         self.assertTrue(extract(_rec({"valid_done_by_bo": True}))["valid_done_by_bo"])

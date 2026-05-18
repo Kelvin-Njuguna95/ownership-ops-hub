@@ -76,12 +76,19 @@ def _first(val):
 
 
 def extract(rec):
-    """Flatten an Airtable record's cellValuesByFieldId into a dict with stable keys.
+    """Flatten an Airtable record into a dict with stable keys.
 
-    Every key is always present. Missing → None (or False for the checkbox).
-    Garbage values on role/status are mapped to None.
+    Accepts both record shapes:
+      - ``cellValuesByFieldId`` — what the Cowork MCP wrapper returns.
+      - ``fields``              — what the raw Airtable REST API returns
+        (via ``poll_airtable.py``) when ``returnFieldsByFieldId=true``.
+    Both are dicts of {field_id: value}, so the rest of the function is
+    schema-agnostic.
+
+    Every key is always present in the output. Missing → None (or False
+    for the checkbox fields). Garbage values on role/status are mapped to None.
     """
-    c = (rec.get("cellValuesByFieldId") or {})
+    c = (rec.get("cellValuesByFieldId") or rec.get("fields") or {})
     F = FIELD_IDS
 
     asg_list = c.get(F["assignee"]) or []
