@@ -317,32 +317,45 @@ async function loadCompletions(dateStr) {
   const end   = new Date(start);
   end.setUTCDate(end.getUTCDate() + 1);
 
-  // Paginate via .range() — Supabase enforces a project-level db-max-rows
-  // cap (default 1000) regardless of .limit(). See deploy/index.html for
-  // the full rationale.
-  const PAGE_SIZE = 1000;
-  const MAX_PAGES = 50;
-  const all = [];
+  // Reads from BOTH ownership_completions AND ownership_qa_sampling per
+  // the Flow v2 spec. Dedupe by airtable_record_id keeping earliest
+  // timestamp. Mirror of deploy/index.html — see that file for rationale.
+  const fetchAll = async (table, agentCol, tsCol) => {
+    const out = [];
+    for (let page = 0; page < 50; page++) {
+      const { data, error } = await sb.from(table)
+        .select(`airtable_record_id,${agentCol},${tsCol}`)
+        .gte(tsCol, start.toISOString())
+        .lt(tsCol,  end.toISOString())
+        .order(tsCol, { ascending: true })
+        .range(page * 1000, page * 1000 + 999);
+      if (error) { console.error(`loadCompletions(${table}):`, error); return null; }
+      if (!data || !data.length) break;
+      out.push(...data.map(r => ({
+        record_id: r.airtable_record_id, agent: r[agentCol], ts: r[tsCol],
+      })));
+      if (data.length < 1000) break;
+    }
+    return out;
+  };
   try {
-    for (let page = 0; page < MAX_PAGES; page++) {
-      const from = page * PAGE_SIZE;
-      const to   = from + PAGE_SIZE - 1;
-      const { data, error } = await sb.from("ownership_completions")
-        .select("completed_by, completed_at")
-        .gte("completed_at", start.toISOString())
-        .lt("completed_at",  end.toISOString())
-        .order("completed_at", { ascending: true })
-        .range(from, to);
-      if (error) { console.error("loadCompletions:", error); return; }
-      if (!data || data.length === 0) break;
-      all.push(...data);
-      if (data.length < PAGE_SIZE) break;
+    const [comp, samp] = await Promise.all([
+      fetchAll("ownership_completions",  "completed_by", "completed_at"),
+      fetchAll("ownership_qa_sampling",  "qa_assignee",  "sampled_at"),
+    ]);
+    if (comp === null || samp === null) return;
+    const merged = {};
+    for (const r of [...comp, ...samp]) {
+      const existing = merged[r.record_id];
+      if (!existing || new Date(r.ts) < new Date(existing.ts)) {
+        merged[r.record_id] = r;
+      }
     }
     const out = {};
-    for (const r of all) {
-      const canon = canonicalAgent(r.completed_by);
+    for (const r of Object.values(merged)) {
+      const canon = canonicalAgent(r.agent);
       if (!canon) continue;
-      const eatHour = (new Date(r.completed_at).getUTCHours() + 3) % 24;
+      const eatHour = (new Date(r.ts).getUTCHours() + 3) % 24;
       out[canon] = out[canon] || {};
       out[canon][eatHour] = (out[canon][eatHour] || 0) + 1;
     }
@@ -590,18 +603,19 @@ PAGE_RENDERERS.overview = function () {
 
   const flowHtml = `
     <div class="panel">
-      <h3>Flow framework <span class="meta">Windward parity — A=no-QA, B=QA reviewed, C=completed after QA</span></h3>
+      <h3>Flow framework <span class="meta">v2 — A=no-QA, B=in QA sampling pool, C=completed after QA</span></h3>
       <div class="kpis">
-        <div class="kpi"><div class="label">Flow A — Completed w/o QA</div><div class="value">${t.flow_a_count || 0}</div><div class="delta">Done/Valid, qa_assignee blank</div></div>
-        <div class="kpi"><div class="label">Flow B — QA reviewed</div><div class="value">${t.flow_b_count || 0}</div><div class="delta">qa_assignee + qa_status filled</div></div>
-        <div class="kpi"><div class="label">Flow C — Completed after QA</div><div class="value">${t.flow_c_count || 0}</div><div class="delta">Done/Valid AND has QA</div></div>
-        <div class="kpi"><div class="label">Total completions</div><div class="value">${t.total_completions || 0}</div><div class="delta">Flow A + Flow C</div></div>
+        <div class="kpi"><div class="label">Flow A — Completed W/O QA</div><div class="value">${t.flow_a_today || 0}</div><div class="delta">Done/Valid, no QA involvement</div></div>
+        <div class="kpi"><div class="label">Flow B — Selected for QA Sampling</div><div class="value">${t.flow_b_today || 0}</div><div class="delta">In BO QA pool with reviewer assigned (in-progress)</div></div>
+        <div class="kpi"><div class="label">Flow C — Completed After QA</div><div class="value">${t.flow_c_today || 0}</div><div class="delta">Done/Valid with approve/change recorded</div></div>
+        <div class="kpi"><div class="label">Total Completions (Today)</div><div class="value">${t.total_completions_today || 0}</div><div class="delta">Flow A + Flow C (B excluded — in-progress)</div></div>
       </div>
     </div>`;
 
   const alertsHtml = `
     <div class="panel">
-      <h3>Team Activity Alerts <span class="meta">operational signals, not errors</span></h3>
+      <h3>Team Activity Alerts <span class="meta">data-integrity + workflow signals</span></h3>
+      <div id="flow-alerts"></div>
       <div id="alerts"></div>
     </div>`;
 
@@ -619,7 +633,10 @@ PAGE_RENDERERS.overview = function () {
 
   root.innerHTML = kpiHtml + flowHtml + alertsHtml + trendsHtml;
 
-  // Alerts
+  // Flow Framework v2 alerts (from Supabase flow_alerts table)
+  renderFlowAlerts(t);
+
+  // Team Activity alerts (cache-derived heuristics — kept for back-compat)
   const alerts = computeTeamAlerts();
   const alertsEl = document.getElementById("alerts");
   if (alerts.length === 0) {
@@ -669,6 +686,82 @@ PAGE_RENDERERS.overview = function () {
     });
   }
 };
+
+// Flow Framework v2 alerts — mirror of deploy/index.html. See that file
+// for the full rationale.
+function renderFlowAlerts(t) {
+  const root = document.getElementById("flow-alerts");
+  if (!root) return;
+  const rows = [
+    { type: "missing_qa_assignee", label: "Missing QA assignee",
+      hint: "Records in Selected for BO QA without a reviewer (or Done/Valid with qa_status but no assignee)",
+      count: t?.alerts_missing_qa_assignee || 0 },
+    { type: "missing_qa_status", label: "Missing approve/change decision",
+      hint: "Done/Valid records with qa_assignee but no qa_status recorded",
+      count: t?.alerts_missing_qa_status || 0 },
+    { type: "stuck_in_sampling", label: "Stuck in QA sampling > 24h",
+      hint: "Records sampled into BO QA but not yet completed after the 24h threshold",
+      count: t?.alerts_stuck_in_sampling || 0 },
+  ];
+  const visible = rows.filter(r => r.count > 0);
+  if (!visible.length) {
+    root.innerHTML = `<div class="alert-row"><span class="icon" style="background:rgba(31,111,44,0.12);color:#1f6f2c">✓</span><div>No open data-integrity alerts.</div></div>`;
+    return;
+  }
+  root.innerHTML = visible.map(r => `
+    <div class="alert-row ${r.type === 'stuck_in_sampling' ? 'bad' : 'warn'}">
+      <span class="icon">!</span>
+      <div style="flex:1">
+        <strong>${esc(r.label)}: ${r.count}</strong>
+        <div class="small-mono" style="color:var(--muted)">${esc(r.hint)}</div>
+      </div>
+      <button class="small-mono" data-alert-type="${r.type}"
+              style="padding:4px 10px; cursor:pointer; border:1px solid var(--border); background:var(--surface); border-radius:3px;">View</button>
+    </div>
+    <div id="flow-alert-detail-${r.type}" style="display:none; margin: -2px 0 8px 32px; padding: 8px; background: var(--soft); border-radius: 4px;"></div>
+  `).join("");
+  for (const r of visible) {
+    const btn = root.querySelector(`button[data-alert-type="${r.type}"]`);
+    const det = document.getElementById(`flow-alert-detail-${r.type}`);
+    btn.addEventListener("click", async () => {
+      if (det.style.display === "block") {
+        det.style.display = "none"; btn.textContent = "View"; return;
+      }
+      det.style.display = "block"; btn.textContent = "Hide";
+      if (det.dataset.loaded !== "true") {
+        det.innerHTML = `<div class="small-mono" style="color:var(--muted)">Loading…</div>`;
+        try {
+          const all = [];
+          for (let page = 0; page < 50; page++) {
+            const { data, error } = await sb.from("flow_alerts")
+              .select("airtable_record_id,verification_status,qa_assignee,qa_status,first_seen_at")
+              .eq("alert_type", r.type)
+              .is("resolved_at", null)
+              .order("first_seen_at", { ascending: false })
+              .range(page * 1000, page * 1000 + 999);
+            if (error) throw error;
+            if (!data || !data.length) break;
+            all.push(...data);
+            if (data.length < 1000) break;
+          }
+          if (!all.length) {
+            det.innerHTML = `<div class="empty">No records found (alert may have just resolved).</div>`;
+          } else {
+            det.innerHTML = `
+              <table style="width:100%;font-size:12px">
+                <thead><tr><th style="text-align:left">Airtable record</th><th style="text-align:left">verification_status</th><th style="text-align:left">qa_assignee</th><th style="text-align:left">qa_status</th><th style="text-align:left">First seen</th></tr></thead>
+                <tbody>${all.slice(0, 100).map(row => `<tr><td class="small-mono">${esc(row.airtable_record_id)}</td><td>${esc(row.verification_status || "")}</td><td>${esc(row.qa_assignee || "")}</td><td>${esc(row.qa_status || "")}</td><td class="small-mono">${esc(row.first_seen_at?.slice(0, 16).replace("T", " ") || "")}</td></tr>`).join("")}</tbody>
+              </table>
+              ${all.length > 100 ? `<div class="small-mono" style="color:var(--muted);margin-top:6px">Showing 100 of ${all.length}.</div>` : ""}`;
+          }
+          det.dataset.loaded = "true";
+        } catch (e) {
+          det.innerHTML = `<div class="alert-row bad"><span class="icon">!</span><div>Failed to load: ${esc(String(e))}</div></div>`;
+        }
+      }
+    });
+  }
+}
 
 function computeTeamAlerts() {
   // Two rules per the design: tagged_today == 0, OR drop > 50% from 7-day avg.
