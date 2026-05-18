@@ -27,12 +27,18 @@ from pathlib import Path
 
 try:
     import requests
-    from dotenv import load_dotenv
-except ImportError as e:
-    print(f"Missing dependency: {e.name}", file=sys.stderr)
-    print("Install with: pip install requests python-dotenv --break-system-packages "
-          "(or use a virtualenv)", file=sys.stderr)
+except ImportError:
+    print("Missing dependency: requests. "
+          "pip install requests --break-system-packages (or use a virtualenv)",
+          file=sys.stderr)
     sys.exit(1)
+try:
+    from dotenv import load_dotenv
+except ImportError:
+    # python-dotenv is optional — CI provides env vars directly. Make
+    # `.env.local` loading a no-op when the package isn't installed.
+    def load_dotenv(_path=None):
+        return False
 
 HERE = Path(__file__).resolve().parent
 EAT  = timezone(timedelta(hours=3))
