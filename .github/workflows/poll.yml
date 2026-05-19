@@ -1,27 +1,17 @@
 name: Poll Airtable → Supabase
 
-# Every 15 min during the extended EAT window (Mon–Sat, 06:00–23:00 EAT
-# = 03:00–20:00 UTC). The window was 06:00–20:00 EAT until 2026-05-19,
-# but a 4,662-record client upload at 22:34 EAT on 2026-05-18 fell
-# through the gap — uploaded after the last cron (20:00 EAT) and before
-# the next day's first cron (06:00 EAT), with Fetch B's "Created today
-# EAT" filter never seeing it because by next morning NOW() was a
-# different day. Extending to 23:00 EAT catches late-evening uploads;
-# anything uploaded 23:00–06:00 EAT still falls through but the window
-# is narrower (was 10 hours, now 7 hours).
+# Triggered EXCLUSIVELY by external scheduler (cron-job.org) hitting the
+# workflow_dispatch API every 15 min during the EAT business window.
+# See docs/EXTERNAL_CRON_SETUP.md for the external configuration.
 #
-# Cron syntax notes:
-#   - GitHub Actions schedules run in UTC.
-#   - "3-20" = hours 3..20 inclusive; "*/15" = every 15 min within each hour.
-#   - "1-6"  = Mon..Sat (0=Sun in GitHub's cron impl).
-#   - GitHub may delay scheduled runs under load — actual fire time can drift.
-#
-# Volume: ~72 runs/day × 6 days = ~432 runs/week (was ~360). Still well
-# within the free-tier unlimited-on-public-repos budget.
+# Why no `schedule:` block: GitHub Actions silently drops scheduled events
+# on free-tier public repos. Audit on 2026-05-19 showed only ~4 of ~60
+# expected `*/15 3-20 * * 1-6` firings actually executed over a 22-hour
+# window — schedule events get deprioritized, especially when the same
+# workflow has recent workflow_dispatch activity (which this one does).
+# Moving the trigger out of GitHub's queue eliminates the deprioritization.
 
 on:
-  schedule:
-    - cron: '*/15 3-20 * * 1-6'
   workflow_dispatch:
 
 # Single concurrent run — if a poll is mid-flight, skip the next scheduled fire
