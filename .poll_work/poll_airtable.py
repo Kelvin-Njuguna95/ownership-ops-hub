@@ -167,10 +167,21 @@ def main():
 
     # ---- Fetch A: ownership-team work, past 24h ----
     print("\n=== Fetch A: ownership-team work (recent_p*.json) ===")
+    # Fetch A captures BOTH:
+    #   (a) records modified in past 24h with an ownership-team assignee — the original
+    #       "team's recent work" intent.
+    #   (b) records created in past 24h regardless of assignee — fresh client uploads
+    #       that haven't been picked up yet. Without this, brand-new tasks are invisible
+    #       on the Tasks page until someone gets assigned (see 2026-05-18 incident:
+    #       4,662 CargoChangeIntel18May2026 records uploaded at 22:34 EAT, all with
+    #       empty assignee, missed by every fetch until next-day pickup).
     filter_a = (
         "AND("
         "IS_AFTER({last_modified}, DATEADD(NOW(), -1, 'days')), "
-        f"{_build_roster_or_clause()}"
+        "OR("
+        f"{_build_roster_or_clause()}, "
+        "IS_AFTER({Created}, DATEADD(NOW(), -1, 'days'))"
+        ")"
         ")"
     )
     params_a = {
