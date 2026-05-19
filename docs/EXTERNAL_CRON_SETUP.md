@@ -5,7 +5,7 @@ The `Poll Airtable → Supabase` workflow is triggered by an external scheduler 
 This document covers the two cron-job.org jobs that need to be configured:
 
 1. **Poll trigger** — fires every 5 min during business hours, POSTs to the dispatch API.
-2. **Staleness watchdog** — fires every 30 min during business hours, GETs `last_sync.json` and alerts if it's older than 45 min.
+2. **Staleness watchdog** — fires every 30 min during business hours, GETs `last_sync.json` and alerts if it's older than 15 min.
 
 ## Prerequisites
 
@@ -58,7 +58,7 @@ Detects the next time the trigger silently breaks (PAT revoked, GitHub Actions o
 | Request method | `GET` |
 | Schedule | Every 30 min, `06:30–23:30` EAT, Mon–Sat (offset from Job 1 so we never check at the exact instant of a write). |
 | Response validation | Under "Notifications" → "Notify on": **enable** "Notify if response does not contain expected text". Expected text: `2026-` (year prefix — crude but catches a totally stale file from a prior year if the bucket is wiped). |
-| Threshold check | cron-job.org does not natively parse JSON timestamps, so the recency check is enforced indirectly: if the watchdog has alerted in the past 45 min AND Job 1 has not succeeded since, manually investigate. For a true threshold check, escalate to a tiny serverless function (out of scope for this setup). |
+| Threshold check | cron-job.org does not natively parse JSON timestamps, so the recency check is enforced indirectly: if the watchdog has alerted in the past 15 min AND Job 1 has not succeeded since, manually investigate. At 5-min poll cadence, 15 min = 3 missed firings, which is a strong signal something is wrong. For a true timestamp threshold check, escalate to a tiny serverless function (out of scope for this setup). |
 | Notifications | Enable email on failure AND on response-validation mismatch. |
 
 **Acceptable degradation:** the year-prefix check only catches catastrophic staleness. The real freshness signal lives in the dashboard — kelvin sees the cache age in the UI. The watchdog is the second line of defense.
