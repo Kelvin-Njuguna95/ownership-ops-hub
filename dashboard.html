@@ -1495,7 +1495,7 @@ function sumByTeam(field) {
 }
 
 // -------- Tasks --------
-const TASKS_STATE = { filter: "", view: "all", sortBy: "date_last_modified", sortDir: "desc" };
+const TASKS_STATE = { filter: "", view: "all", sortBy: "date_first_seen", sortDir: "desc" };
 
 PAGE_RENDERERS.tasks = function () {
   const root = document.getElementById("page-tasks");
@@ -1583,7 +1583,8 @@ function _tasksFiltered() {
     else if (k === "qa_coverage") { av = a.qa_coverage_pct || 0; bv = b.qa_coverage_pct || 0; }
     else if (k === "teams")   { av = a.teams_worked.length; bv = b.teams_worked.length; }
     else if (k === "flags")   { av = a.flags.length; bv = b.flags.length; }
-    else /* date_last_modified */ { av = a.date_last_modified || ""; bv = b.date_last_modified || ""; }
+    else if (k === "date_last_modified") { av = a.date_last_modified || ""; bv = b.date_last_modified || ""; }
+    else /* date_first_seen */ { av = a.date_first_seen || ""; bv = b.date_first_seen || ""; }
     if (av < bv) return -1 * dir;
     if (av > bv) return  1 * dir;
     return 0;
@@ -1621,7 +1622,7 @@ function renderTasksTable() {
     ["waiting", "Waiting"], ["tagged", "Tagged"],
     ["completed", "Completed"], ["qa_reviewed", "QA Reviewed"], ["qa_coverage", "QA %"],
     ["donePct", "Properly done %"],
-    ["teams", "Teams"], ["date_last_modified", "Last active"], ["flags", "Flags"],
+    ["teams", "Teams"], ["date_first_seen", "Uploaded"], ["flags", "Flags"],
   ];
   const sortInd = (k) => k === TASKS_STATE.sortBy ? (TASKS_STATE.sortDir === "asc" ? "▲" : "▼") : "";
   const rightCols = new Set(['total','Done','Valid','BO QA','WW QA','waiting','tagged','completed','qa_reviewed','qa_coverage']);
@@ -1646,7 +1647,7 @@ function renderTasksTable() {
       <td class="right"><span class="pill-inline ${(t.qa_coverage_pct || 0) >= 15 ? 'good' : (t.qa_coverage_pct || 0) >= 5 ? 'warn' : 'bad'}">${(t.qa_coverage_pct || 0).toFixed(0)}%</span></td>
       <td class="right"><span class="pill-inline ${pctClass(donePct).replace('warn','warn')}">${donePct.toFixed(0)}%</span></td>
       <td>${esc(teams)}</td>
-      <td class="small-mono">${esc(timeAgo(t.date_last_modified))}</td>
+      <td class="small-mono">${esc(timeAgo(t.date_first_seen))}</td>
       <td>${flagsHtml || '<span class="small-mono">—</span>'}</td>
     </tr>`;
   }).join("");
