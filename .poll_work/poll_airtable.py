@@ -47,7 +47,7 @@ FLD_DONE_SELECTED_TIME = "fldbcTW2CD2HjejGN"
 # above any historical day, and any cap-hit aborts the cycle (exit 2) so
 # truncation can never silently under-report metrics. Bumping the ceiling
 # higher in a real squeeze is preferable to letting bad data ship.
-RECENT_PAGE_CAP        = 200  # Fetch A: ownership-team work in past 24h (bumped from 100 — exceeded 10k on 2026-05-18)
+RECENT_PAGE_CAP        = 300  # Fetch A: 24h team work + 3-day client uploads (~18.5k now; 100→200 on 2026-05-18 >10k; 200→300 on 2026-05-20 for spike headroom — a single big upload day like 05-18's 4,662 batch would otherwise risk truncation)
 INTAKE_PAGE_CAP        = 30   # Fetch B: today's whole-table intake (cache-only, header KPI uses metadata count)
 BOQA_PAGE_CAP          = 30   # Fetch C: current BO QA queue
 TAGGED_PAGE_CAP        = 100  # Fetch D: tagged today
@@ -165,23 +165,36 @@ def main():
     t0 = time.time()
     print(f"Phase F2 poller — read-only against {API_URL}")
 
-    # ---- Fetch A: ownership-team work, past 24h ----
+    # ---- Fetch A: ownership-team work (24h) + fresh client uploads (3-day) ----
     print("\n=== Fetch A: ownership-team work (recent_p*.json) ===")
-    # Fetch A captures BOTH:
-    #   (a) records modified in past 24h with an ownership-team assignee — the original
-    #       "team's recent work" intent.
-    #   (b) records created in past 24h regardless of assignee — fresh client uploads
-    #       that haven't been picked up yet. Without this, brand-new tasks are invisible
-    #       on the Tasks page until someone gets assigned (see 2026-05-18 incident:
-    #       4,662 CargoChangeIntel18May2026 records uploaded at 22:34 EAT, all with
-    #       empty assignee, missed by every fetch until next-day pickup).
+    # Fetch A captures records matching EITHER branch:
+    #   (a) modified in past 24h AND assigned to an ownership-team member — the
+    #       original "team's recent work" intent.
+    #   (b) created in the past 3 days, regardless of assignee or last_modified —
+    #       fresh client uploads that haven't been picked up yet.
+    #
+    # Branch (b) deliberately does NOT require recent last_modified. PR #31 first
+    # added a Created backfill but left it nested under the outer last_modified
+    # filter, so an untouched upload aged out 24h after creation: the 4,662
+    # CargoChangeIntel18May2026 records (created 2026-05-18 22:34 EAT, never
+    # touched) vanished from cache at the 2026-05-19 → 05-20 rollover because
+    # last_modified == Created was then >24h old. Pulling branch (b) out to a
+    # top-level OR with a Created window keeps unclaimed uploads visible while
+    # the team works through them.
+    #
+    # Window sizing: a 7-day window was measured at ~32k records (exceeds even a
+    # 300-page/30k cap) because of the large May 17/18 upload batches. A 3-day
+    # window lands at ~18.5k, comfortably within RECENT_PAGE_CAP=300. Trade-off:
+    # uploads still age out after 3 days if the team never touches them — milder
+    # than the 24h bug, but not eliminated. Revisit the window/cap together if
+    # the paginator starts logging truncation.
     filter_a = (
+        "OR("
         "AND("
         "IS_AFTER({last_modified}, DATEADD(NOW(), -1, 'days')), "
-        "OR("
-        f"{_build_roster_or_clause()}, "
-        "IS_AFTER({Created}, DATEADD(NOW(), -1, 'days'))"
-        ")"
+        f"{_build_roster_or_clause()}"
+        "), "
+        "IS_AFTER({Created}, DATEADD(NOW(), -3, 'days'))"
         ")"
     )
     params_a = {
