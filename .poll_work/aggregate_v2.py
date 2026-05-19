@@ -686,6 +686,45 @@ def compute_qa_done_not_finalized(not_yet_finalized_list):
             if r.get("qa_assignee") and r.get("qa_status")]
 
 
+def compute_add_new_company_records(records, today_eat, ownership_assignees, cap=500):
+    """Records with add_new_company filled — drilldown for the Overview
+    add_new_company_open count. SOP requires 100% QA on every such record;
+    the page exposes a "needing QA" filter (qa_assignee or qa_status empty).
+
+    Returns (list, truncated_bool). Sorted by days_open desc, capped at `cap`.
+    Includes records in any verification_status — the page surfaces the full
+    new-company pipeline, not just open ones (closed-but-missing-QA is also a
+    failure mode worth seeing).
+    """
+    norm = _normalize_ownership(ownership_assignees)
+
+    out = []
+    for info in records:
+        company = (info.get("add_new_company") or "").strip()
+        if not company:
+            continue
+        base = info.get("start_tagging") or info.get("created")
+        base_date = _parse_eat_date(base)
+        days_open = (today_eat - base_date).days if base_date else 0
+        asg = info.get("assignee")
+        team = norm.get((asg or "").strip().lower(), {}).get("team")
+        out.append({
+            "requested_by":        info.get("requested_by"),
+            "imo":                 info.get("imo"),
+            "role":                info.get("role"),
+            "assignee":            asg,
+            "team":                team,
+            "add_new_company":     company,
+            "days_open":           days_open,
+            "qa_assignee":         info.get("qa_assignee"),
+            "qa_status":           info.get("qa_status"),
+            "verification_status": info.get("verification_status"),
+        })
+    out.sort(key=lambda r: -r["days_open"])
+    truncated = len(out) > cap
+    return out[:cap], truncated
+
+
 def aggregate(records, today_eat, ownership_assignees):
     """Build the aggregates_v2 block.
 
@@ -759,6 +798,7 @@ def aggregate(records, today_eat, ownership_assignees):
     qa_reviewers = compute_qa_reviewers(in_scope)
     not_yet_finalized, nyf_truncated = compute_not_yet_finalized(in_scope, today_eat, ownership_assignees)
     qa_done_not_finalized = compute_qa_done_not_finalized(not_yet_finalized)
+    add_new_company_records, anc_truncated = compute_add_new_company_records(in_scope, today_eat, ownership_assignees)
 
     return {
         "date":                       today_eat.isoformat(),
@@ -771,6 +811,8 @@ def aggregate(records, today_eat, ownership_assignees):
         "not_yet_finalized":          not_yet_finalized,
         "not_yet_finalized_truncated": nyf_truncated,
         "qa_done_not_finalized":      qa_done_not_finalized,
+        "add_new_company_records":    add_new_company_records,
+        "add_new_company_records_truncated": anc_truncated,
         "by_team":  {k: compute_metrics(v, today_eat)
                      for k, v in _group(in_scope, lambda r: r.get("team")).items()},
         "by_agent": {k: compute_metrics(v, today_eat)
