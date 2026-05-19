@@ -47,7 +47,7 @@ FLD_DONE_SELECTED_TIME = "fldbcTW2CD2HjejGN"
 # above any historical day, and any cap-hit aborts the cycle (exit 2) so
 # truncation can never silently under-report metrics. Bumping the ceiling
 # higher in a real squeeze is preferable to letting bad data ship.
-RECENT_PAGE_CAP        = 300  # Fetch A: 24h team work + 3-day client uploads (~18.5k now; 100→200 on 2026-05-18 >10k; 200→300 on 2026-05-20 for spike headroom — a single big upload day like 05-18's 4,662 batch would otherwise risk truncation)
+RECENT_PAGE_CAP        = 400  # Fetch A: 24h team work + 7-day client uploads (~32k now after the 7-day window restore on 2026-05-20; bumped 100→200 on 2026-05-18 >10k; 200→300, then 300→400 today as window operational-fit took precedence over cache-fit)
 INTAKE_PAGE_CAP        = 30   # Fetch B: today's whole-table intake (cache-only, header KPI uses metadata count)
 BOQA_PAGE_CAP          = 30   # Fetch C: current BO QA queue
 TAGGED_PAGE_CAP        = 100  # Fetch D: tagged today
@@ -165,12 +165,12 @@ def main():
     t0 = time.time()
     print(f"Phase F2 poller — read-only against {API_URL}")
 
-    # ---- Fetch A: ownership-team work (24h) + fresh client uploads (3-day) ----
+    # ---- Fetch A: ownership-team work (24h) + fresh client uploads (7-day) ----
     print("\n=== Fetch A: ownership-team work (recent_p*.json) ===")
     # Fetch A captures records matching EITHER branch:
     #   (a) modified in past 24h AND assigned to an ownership-team member — the
     #       original "team's recent work" intent.
-    #   (b) created in the past 3 days, regardless of assignee or last_modified —
+    #   (b) created in the past 7 days, regardless of assignee or last_modified —
     #       fresh client uploads that haven't been picked up yet.
     #
     # Branch (b) deliberately does NOT require recent last_modified. PR #31 first
@@ -182,19 +182,20 @@ def main():
     # top-level OR with a Created window keeps unclaimed uploads visible while
     # the team works through them.
     #
-    # Window sizing: a 7-day window was measured at ~32k records (exceeds even a
-    # 300-page/30k cap) because of the large May 17/18 upload batches. A 3-day
-    # window lands at ~18.5k, comfortably within RECENT_PAGE_CAP=300. Trade-off:
-    # uploads still age out after 3 days if the team never touches them — milder
-    # than the 24h bug, but not eliminated. Revisit the window/cap together if
-    # the paginator starts logging truncation.
+    # Window sizing: the 7-day window measures at ~32k live records, which is why
+    # RECENT_PAGE_CAP sits at 400 (40k cap). The shorter 3-day window we tried
+    # earlier (~18.5k) was tighter on the cache but missed the operational reality
+    # that Kelvin's task queue can run 4-7 days deep. Operational visibility wins.
+    # Poll duration is ~6 min at this size, which is longer than the 5-min cron
+    # interval — overlapping polls are expected and explicitly fine (the pipeline
+    # is idempotent via UNIQUE-constraint first-write-wins, per CLAUDE.md).
     filter_a = (
         "OR("
         "AND("
         "IS_AFTER({last_modified}, DATEADD(NOW(), -1, 'days')), "
         f"{_build_roster_or_clause()}"
         "), "
-        "IS_AFTER({Created}, DATEADD(NOW(), -3, 'days'))"
+        "IS_AFTER({Created}, DATEADD(NOW(), -7, 'days'))"
         ")"
     )
     params_a = {
