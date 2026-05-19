@@ -18,6 +18,7 @@ abort the run — partial uploads are better than none.
 
 Run manually after each polling cycle. Phase F2 will automate this.
 """
+import argparse
 import os
 import sys
 import time
@@ -69,6 +70,22 @@ def upload(session, url, key, path, dest, content_type="application/json"):
 
 
 def main():
+    parser = argparse.ArgumentParser(
+        description="Upload the current dashboard data state to Supabase Storage.",
+    )
+    parser.add_argument(
+        "--allow-historical-snapshots",
+        action="store_true",
+        help=(
+            "Allow uploading snapshots/<date>.json files whose date is older "
+            "than today (EAT). Without this flag, historical snapshots are "
+            "skipped to prevent stale-cache regenerations from silently "
+            "clobbering correct Supabase copies (see CLAUDE.md backfill "
+            "guardrails)."
+        ),
+    )
+    args = parser.parse_args()
+
     load_dotenv(HERE / ".env.local")
     url = os.environ.get("SUPABASE_URL")
     key = os.environ.get("SUPABASE_SERVICE_ROLE_KEY")
@@ -100,6 +117,38 @@ def main():
             continue
         for f in sorted(local_dir.glob(glob)):
             plan.append((f, f"{remote_prefix}{f.name}"))
+
+    # Snapshot guardrail: refuse to upload snapshots/<date>.json files whose
+    # date is older than today (EAT) unless --allow-historical-snapshots is set.
+    # Background: on 2026-05-18 a local backfill aggregator run regenerated
+    # snapshots/2026-05-18.json from stale cache and this script uploaded it,
+    # clobbering the correct cron-written copy on Supabase. See CLAUDE.md
+    # "Backfills and historical snapshots — handle with care" section.
+    # The cron's normal behavior is unaffected: every cron-written snapshot is
+    # today's by definition.
+    today_eat = datetime.now(EAT).date()
+    skipped_historical = 0
+    if not args.allow_historical_snapshots:
+        filtered_plan = []
+        for local, dest in plan:
+            if dest.startswith("snapshots/") and dest.endswith(".json"):
+                try:
+                    snap_date = datetime.strptime(Path(dest).stem, "%Y-%m-%d").date()
+                except ValueError:
+                    # Not a date-formatted snapshot filename — preserve old
+                    # behavior (upload it; the guardrail only constrains files
+                    # we can confidently date-tag as historical).
+                    filtered_plan.append((local, dest))
+                    continue
+                if snap_date < today_eat:
+                    print(f"  ⚠️  SKIPPING {dest} — date is older than today ({today_eat} EAT).")
+                    print(f"      This guardrail exists because regenerating historical snapshots from stale local cache")
+                    print(f"      and uploading them silently corrupts Supabase Storage (see CLAUDE.md).")
+                    print(f"      If you really mean to upload this file, re-run with --allow-historical-snapshots.")
+                    skipped_historical += 1
+                    continue
+            filtered_plan.append((local, dest))
+        plan = filtered_plan
 
     if not plan:
         print("Nothing to upload (no files found).")
@@ -145,6 +194,7 @@ def main():
         if folder_counts[k]:
             print(f"  {k:10s} {folder_counts[k]:>4} files  {folder_bytes[k]/1024:>8.1f} KB")
     print(f"  last_sync.json {'uploaded' if ok else 'FAILED'}")
+    print(f"Synced {folder_counts['snapshots']} snapshot file(s). Skipped {skipped_historical} historical files (use --allow-historical-snapshots to include).")
     if failed:
         print(f"  {failed} file(s) failed — see [FAIL] lines above")
         sys.exit(2)
