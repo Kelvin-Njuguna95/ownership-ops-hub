@@ -2,10 +2,11 @@
 
 The `Poll Airtable → Supabase` workflow is triggered by an external scheduler at [cron-job.org](https://cron-job.org), not by GitHub Actions' `schedule:` event. GitHub silently drops scheduled events on free-tier public repos (audit on 2026-05-19: only ~4 of ~60 expected firings executed over 22 hours). The `schedule:` block was removed in PR #24; `workflow_dispatch` remains so manual triggers and the external scheduler both work.
 
-This document covers the two cron-job.org jobs that need to be configured:
+This document covers the three cron-job.org jobs that need to be configured:
 
 1. **Poll trigger** — fires every 5 min during business hours, POSTs to the dispatch API.
 2. **Staleness watchdog** — fires every 30 min during business hours, GETs `last_sync.json` and alerts if it's older than 15 min.
+3. **Overnight gap-closing poll** — fires at 00:30 and 03:30 EAT (Mon–Sat), same payload as Job 1, to catch late-night client uploads that would otherwise sit invisible until 06:00.
 
 ## Prerequisites
 
@@ -63,6 +64,21 @@ Detects the next time the trigger silently breaks (PAT revoked, GitHub Actions o
 
 **Acceptable degradation:** the year-prefix check only catches catastrophic staleness. The real freshness signal lives in the dashboard — kelvin sees the cache age in the UI. The watchdog is the second line of defense.
 
+## Job 3 — Overnight gap-closing poll
+
+| Field | Value |
+| --- | --- |
+| Title | `ownership-ops-hub: overnight gap-closing poll` |
+| URL | Same as Job 1: `https://api.github.com/repos/Kelvin-Njuguna95/ownership-ops-hub/actions/workflows/poll.yml/dispatches` |
+| Request method | `POST` |
+| Schedule | `00:30` and `03:30` EAT, Mon–Sat. In cron-job.org's UI: timezone `Africa/Nairobi`, Custom schedule, crontab expression `30 0,3 * * 1-6`. |
+| Request headers | Same as Job 1: `Accept: application/vnd.github+json`, `X-GitHub-Api-Version: 2022-11-28`, plus `Content-Type: application/json` (required for the JSON body) |
+| Authentication | Add an `Authorization` header with value `Bearer <PAT>` — same PAT as Job 1 |
+| Request body | `{"ref":"main"}` |
+| Notifications | Email on failure |
+
+**Why this exists:** Job 1 only fires 06:00–23:00 EAT to keep cron-job.org's free-tier daily-firings count under control during quiet hours. But the 2026-05-18 CargoChangeIntel incident showed a real client-upload pattern at 22:34 EAT, which means uploads after 23:00 can sit invisible until 06:00 the next day — up to 7 hours of operational blindness. Job 3 reduces worst-case lag from ~7h to ~3h. Sundays are deliberately still uncovered (no client activity expected); revisit if that assumption breaks.
+
 ## Disabling the old GitHub Actions schedule
 
 Already done in PR #24 by removing the `schedule:` block from `.github/workflows/poll.yml`. The workflow still appears as "active" in the Actions tab because `workflow_dispatch` is the active trigger now.
@@ -86,3 +102,4 @@ GitHub fine-grained PATs expire. Set a calendar reminder ~2 weeks before expiry.
 | Airtable API down | Workflow runs but Poll step fails; Sync step never executes; `last_sync.json` stays stale | Watchdog catches stale file; check airtable.statuspage.io |
 | Supabase Storage write fails | Workflow shows success but cache not updated | Investigate Sync step logs; check status.supabase.com |
 | cron-job.org account suspended / outage | No dispatches fire; no failure email (the failure detector is the thing that's down) | Quarterly manual verification: `gh run list ... --limit 10 --json event` should show every recent run as `workflow_dispatch` from the external IP range |
+| cron-job.org Job 3 misfires | Watchdog (Job 2) does not run overnight either, so a Job 3 failure is silent until 06:30 when Job 2 resumes | Manually check cron-job.org's "Execution history" tab on Job 3 each morning until we add a separate overnight watchdog |
