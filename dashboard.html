@@ -1386,9 +1386,9 @@ PAGE_RENDERERS.intake = function () {
       <div id="tasksTodayPanel"></div>
     </div>
     <div class="panel">
-      <h3>7-day intake (whole table, from cache)</h3>
+      <h3>7-day intake (whole table, from snapshots)</h3>
       <div class="chart-wrap"><canvas id="chart-7day-intake"></canvas></div>
-      <div class="footer-note">Derived from .poll_work cache records (capped at the 20-page fetch — see TECH_DEBT.md item 1).</div>
+      <div class="footer-note">Derived from daily snapshots in Supabase Storage (snapshots/YYYY-MM-DD.json). Gray bars = no snapshot exists for that day yet.</div>
     </div>
   `;
 
@@ -1449,29 +1449,49 @@ PAGE_RENDERERS.intake = function () {
     </table>
     <div class="footer-note" style="margin-top:8px">Today's intake is being absorbed by upstream taggers, not the 5 ownership teams. Reflect on whether this is expected per SOP.</div>`;
 
-  // 7-day intake chart from cacheRecords
-  const byDay = {};
-  for (const r of STATE.cacheRecords) {
-    const d = eatDate(r.cellValuesByFieldId?.[F.created]);
-    if (!d) continue;
-    byDay[d] = (byDay[d] || 0) + 1;
-  }
-  const last7 = [];
-  const today = todayEat();
-  for (let i = 6; i >= 0; i--) {
-    const dt = new Date(today + "T00:00:00+03:00");
-    dt.setDate(dt.getDate() - i);
-    const key = dt.toLocaleDateString("en-CA", { timeZone: "Africa/Nairobi" });
-    last7.push({ d: key, n: byDay[key] || 0 });
-  }
-  const ctx = document.getElementById("chart-7day-intake");
-  if (ctx) {
+  // 7-day intake chart — fetch totals.relations_support_intake_today from
+  // the daily snapshots in Supabase Storage. The old implementation derived
+  // this from STATE.cacheRecords, which was capped at the 20-page fetch and
+  // never reflected the true whole-table intake — only today's partial cache.
+  (async () => {
+    const today = todayEat();
+    const dates = [];
+    for (let i = 6; i >= 0; i--) {
+      const dt = new Date(today + "T00:00:00+03:00");
+      dt.setDate(dt.getDate() - i);
+      dates.push(dt.toLocaleDateString("en-CA", { timeZone: "Africa/Nairobi" }));
+    }
+    const last7 = await Promise.all(dates.map(async d => {
+      const snap = await readJson(`snapshots/${d}.json`);
+      const n = snap?.totals?.relations_support_intake_today;
+      return { d, n: (typeof n === "number") ? n : null };  // null = no snapshot found
+    }));
+    const ctx = document.getElementById("chart-7day-intake");
+    if (!ctx) return;
+    if (STATE.charts["chart-7day-intake"]) STATE.charts["chart-7day-intake"].destroy();
     STATE.charts["chart-7day-intake"] = new Chart(ctx, {
       type: "bar",
-      data: { labels: last7.map(x => x.d), datasets: [{ label: "Records created", data: last7.map(x => x.n), backgroundColor: "#1450b3" }] },
-      options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } }
+      data: {
+        labels: last7.map(x => x.d),
+        datasets: [{
+          label: "Records uploaded (whole table)",
+          data: last7.map(x => x.n ?? 0),
+          backgroundColor: last7.map(x => x.n == null ? "#cccccc" : "#1450b3"),
+        }],
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: { display: false },
+          tooltip: { callbacks: { label: c => {
+            const v = last7[c.dataIndex].n;
+            return v == null ? "no snapshot for this day" : v.toLocaleString() + " records";
+          }}},
+        },
+      },
     });
-  }
+  })();
 };
 function sumByTeam(field) {
   let sum = 0;
