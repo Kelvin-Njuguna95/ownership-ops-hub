@@ -111,27 +111,13 @@
   .flag-pill.amber { background: var(--warn-bg); color: var(--warn); }
   .flag-pill.gray  { background: #ececec;        color: var(--muted); }
 
-  #tasksTable { overflow: auto; }
   #tasksTable table { font-size: 12px; }
   #tasksTable th, #tasksTable td { padding: 5px 8px; white-space: nowrap; }
   #tasksTable thead th {
     position: sticky;
-    top: 0;
+    top: 54px; /* matches .topbar height; tune if header overlaps topbar or leaves a visible gap */
     z-index: 3;
     background: var(--soft);
-  }
-  /* Freeze the first column (Task name) */
-  #tasksTable th:first-child,
-  #tasksTable td:first-child {
-    position: sticky;
-    left: 0;
-    background: var(--surface);
-    z-index: 2;
-    box-shadow: 1px 0 0 var(--border);
-  }
-  #tasksTable thead th:first-child {
-    background: var(--soft);
-    z-index: 4;
   }
 
   .drawer-backdrop { position: fixed; inset: 0; background: rgba(0,0,0,0.25); opacity: 0; pointer-events: none; transition: opacity 180ms ease; z-index: 99; }
