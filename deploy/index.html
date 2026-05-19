@@ -274,6 +274,7 @@
       <div id="page-boqa"           class="page" style="display:none"></div>
       <div id="page-intake"         class="page" style="display:none"></div>
       <div id="page-tasks"          class="page" style="display:none"></div>
+      <div id="page-new_companies"  class="page" style="display:none"></div>
       <div id="page-wwqa"           class="page" style="display:none"></div>
       <div id="page-pipeline"       class="page" style="display:none"></div>
       <div id="page-scenarios"      class="page" style="display:none"></div>
@@ -350,6 +351,7 @@ const PAGES = [
   { id: "boqa",           label: "BO QA Console",           tag: "live"   },
   { id: "intake",         label: "Daily Intake",            tag: null     },
   { id: "tasks",          label: "Tasks",                   tag: null     },
+  { id: "new_companies",  label: "New Companies",           tag: null     },
   { id: "wwqa",           label: "WW QA Console",           tag: null     },
   { id: "pipeline",       label: "Pipeline & Lead Time",    tag: "stub"   },
   { id: "scenarios",      label: "Case Scenarios",          tag: "stub"   },
@@ -1985,6 +1987,106 @@ async function fetchTaskRecords(taskName) {
   }).join("");
   const more = all.length > 500 ? `<div class="footer-note">${all.length - 500} more not shown.</div>` : "";
   out.innerHTML = `<table><thead><tr><th>IMO</th><th>Role</th><th>Status</th><th>Company</th><th>Assignees</th><th>Last modified</th><th>Flags</th></tr></thead><tbody>${rows}</tbody></table>${more}`;
+}
+
+// -------- New Companies --------
+const NEW_COMPANIES_STATE = { view: "all", sortBy: "days_open", sortDir: "desc" };
+
+PAGE_RENDERERS.new_companies = function () {
+  const root = document.getElementById("page-new_companies");
+  const records   = STATE.v2?.add_new_company_records || [];
+  const truncated = !!STATE.v2?.add_new_company_records_truncated;
+  NEW_COMPANIES_STATE.view = localStorage.getItem("wqa.newCompaniesView") || "all";
+
+  const needsQa = r => !r.qa_assignee || !r.qa_status;
+  const needsQaCount = records.filter(needsQa).length;
+
+  root.innerHTML = `
+    <h3 style="font-size:18px;font-weight:600;color:var(--ink);margin-bottom:8px">New Companies</h3>
+    <div class="footer-note" style="margin-bottom:10px">Records where <code>add_new_company</code> is filled. SOP requires 100% QA on every such record — use the toggle to see which still need it.</div>
+    <div class="kpis">
+      <div class="kpi"><div class="label">Total with new-company text</div><div class="value">${records.length}</div></div>
+      <div class="kpi ${needsQaCount > 0 ? 'warn' : ''}"><div class="label">Needing QA</div><div class="value">${needsQaCount}</div><div class="delta">qa_assignee or qa_status empty</div></div>
+    </div>
+    <div class="controls-row">
+      <label class="small-mono">View:</label>
+      <select id="newCompaniesView">
+        <option value="all"       ${NEW_COMPANIES_STATE.view === 'all'       ? 'selected' : ''}>All records</option>
+        <option value="needs_qa"  ${NEW_COMPANIES_STATE.view === 'needs_qa'  ? 'selected' : ''}>Needing QA only</option>
+      </select>
+      <span class="small-mono" id="newCompaniesCount"></span>
+    </div>
+    ${truncated ? `<div class="alert-row warn" style="margin-bottom:10px"><span class="icon">!</span><div>Showing 500 of ${records.length}+ records — older entries truncated. Bump the cap in <code>compute_add_new_company_records</code> if you need more.</div></div>` : ""}
+    <div class="panel"><div id="newCompaniesTable"></div></div>
+  `;
+
+  document.getElementById("newCompaniesView").addEventListener("change", (e) => {
+    NEW_COMPANIES_STATE.view = e.target.value;
+    localStorage.setItem("wqa.newCompaniesView", NEW_COMPANIES_STATE.view);
+    renderNewCompaniesTable();
+  });
+  renderNewCompaniesTable();
+};
+
+function _newCompaniesFiltered() {
+  let out = STATE.v2?.add_new_company_records || [];
+  if (NEW_COMPANIES_STATE.view === "needs_qa") {
+    out = out.filter(r => !r.qa_assignee || !r.qa_status);
+  }
+  const k = NEW_COMPANIES_STATE.sortBy, dir = NEW_COMPANIES_STATE.sortDir === "asc" ? 1 : -1;
+  out = [...out].sort((a, b) => {
+    let av, bv;
+    if      (k === "requested_by")        { av = a.requested_by || ""; bv = b.requested_by || ""; }
+    else if (k === "assignee")            { av = a.assignee || "";     bv = b.assignee || ""; }
+    else if (k === "team")                { av = a.team || "";         bv = b.team || ""; }
+    else if (k === "add_new_company")     { av = a.add_new_company || ""; bv = b.add_new_company || ""; }
+    else if (k === "qa_assignee")         { av = a.qa_assignee || "";  bv = b.qa_assignee || ""; }
+    else if (k === "qa_status")           { av = a.qa_status || "";    bv = b.qa_status || ""; }
+    else if (k === "verification_status") { av = a.verification_status || ""; bv = b.verification_status || ""; }
+    else /* days_open */                  { av = a.days_open || 0;     bv = b.days_open || 0; }
+    if (av < bv) return -1 * dir;
+    if (av > bv) return  1 * dir;
+    return 0;
+  });
+  return out;
+}
+
+function renderNewCompaniesTable() {
+  const list = _newCompaniesFiltered();
+  const total = (STATE.v2?.add_new_company_records || []).length;
+  document.getElementById("newCompaniesCount").textContent = `${list.length} of ${total}`;
+  const cols = [
+    ["requested_by",        "Task name"],
+    ["assignee",            "Agent"],
+    ["team",                "Team"],
+    ["add_new_company",     "Company text"],
+    ["days_open",           "Days open"],
+    ["qa_assignee",         "QA assignee"],
+    ["qa_status",           "QA status"],
+    ["verification_status", "Verification status"],
+  ];
+  const rightCols = new Set(["days_open"]);
+  const sortInd = (k) => k === NEW_COMPANIES_STATE.sortBy ? (NEW_COMPANIES_STATE.sortDir === "asc" ? "▲" : "▼") : "";
+  const head = `<thead><tr>${cols.map(([k, lab]) => `<th data-sort="${k}" class="${rightCols.has(k) ? 'right' : ''}">${esc(lab)} <span class="sort-ind">${sortInd(k)}</span></th>`).join("")}</tr></thead>`;
+  const body = list.map(r => `<tr>
+    <td>${esc(r.requested_by || "—")}</td>
+    <td>${esc(r.assignee || "—")}</td>
+    <td>${esc(r.team || "—")}</td>
+    <td>${esc(r.add_new_company || "")}</td>
+    <td class="right">${r.days_open}</td>
+    <td>${esc(r.qa_assignee || "—")}</td>
+    <td>${esc(r.qa_status || "—")}</td>
+    <td>${esc(r.verification_status || "—")}</td>
+  </tr>`).join("");
+  document.getElementById("newCompaniesTable").innerHTML = `<table class="sortable">${head}<tbody>${body || '<tr><td colspan="8" class="empty">No records match.</td></tr>'}</tbody></table>`;
+  document.querySelectorAll("#newCompaniesTable th[data-sort]").forEach(th => {
+    th.addEventListener("click", () => {
+      const k = th.dataset.sort;
+      if (NEW_COMPANIES_STATE.sortBy === k) NEW_COMPANIES_STATE.sortDir = NEW_COMPANIES_STATE.sortDir === "asc" ? "desc" : "asc";
+      else { NEW_COMPANIES_STATE.sortBy = k; NEW_COMPANIES_STATE.sortDir = "desc"; }
+      renderNewCompaniesTable();
+    });
+  });
 }
 
 // -------- WW QA Console --------
