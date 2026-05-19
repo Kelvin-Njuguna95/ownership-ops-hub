@@ -1255,12 +1255,21 @@ def main():
     records = _load_records(work)
     aggs = aggregate(records, today_eat, ownership_assignees)
 
-    # Override the cache-counted intake with the authoritative metadata count
-    # (POLL_PROCEDURE.md Fetch B caps at 30 pages = 3,000 records, but Airtable
-    # tells us the true total on every page's metadata).
-    intake_total, intake_partial = _intake_total_from_metadata(work)
-    if intake_total > 0:
-        aggs["totals"]["relations_support_intake_today"] = intake_total
+    # Pick the larger of cache-counted intake (which sums Fetch A backfill +
+    # Fetch B today-creates) and Fetch B's metadata totalRecordCount.
+    # Background: when Fetch B truncates at the 30-page cap, poll_airtable.py
+    # writes a sentinel 3001 to metadata that just means "at least 3001" — not
+    # the true count. Meanwhile Fetch A's 24h window (with PR #31's fresh-upload
+    # backfill) frequently catches records Fetch B missed, so the combined cache
+    # count can be larger and more accurate. Both are lower bounds; max is the
+    # best estimate. partial=True only when metadata's lower bound exceeds what's
+    # in cache (so the truncation banner only fires when we're actually missing
+    # data we haven't already backfilled via Fetch A).
+    intake_metadata, _meta_truncated = _intake_total_from_metadata(work)
+    cache_count = aggs["totals"]["relations_support_intake_today"]
+    intake_total = max(cache_count, intake_metadata)
+    intake_partial = intake_metadata > cache_count
+    aggs["totals"]["relations_support_intake_today"] = intake_total
     aggs["totals"]["intake_partial"] = intake_partial
 
     # Flow Framework v3 — cache-based A/B/C/D classification of records
