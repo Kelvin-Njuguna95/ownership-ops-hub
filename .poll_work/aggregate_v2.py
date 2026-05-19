@@ -12,6 +12,7 @@ the sister table ``relations_io`` (fldu7T8eOHaDe3uup), so a cross-table
 join is required.
 """
 import json
+import re
 import sys
 from collections import Counter, defaultdict
 from datetime import date, datetime, timedelta, timezone
@@ -870,20 +871,28 @@ def _load_records(work_dir):
 
 
 def _intake_total_from_metadata(work_dir):
-    """Read metadata.totalRecordCount from the first intake_p*.json file.
+    """Read metadata.totalRecordCount from the LAST intake_p*.json file.
 
-    This is the authoritative count of "records created today" — Airtable
-    reports it on every paginated response, so we don't need to count cache
-    records (which is capped at 3,000 per the procedure).
+    The poller writes a running cumulative count on each page (see
+    poll_airtable.py — n_records is the running total), so page 1's
+    metadata is the partial count after page 1 (~100), and only the
+    last page carries the full cumulative count. Lexicographic sort
+    orders intake_p1.json before intake_p10.json, so we natural-sort
+    by the integer page number embedded in the filename to pick the
+    actual last page.
 
     Returns (total, partial_flag). partial_flag is True iff total > 3000
     (the cache page cap), indicating downstream consumers should warn.
     """
-    files = sorted(work_dir.glob("intake_p*.json"))
+    files = list(work_dir.glob("intake_p*.json"))
     if not files:
         return 0, False
+    def _page_num(p):
+        m = re.search(r"intake_p(\d+)\.json$", p.name)
+        return int(m.group(1)) if m else 0
+    last_page = max(files, key=_page_num)
     try:
-        meta = json.loads(files[0].read_text()).get("metadata", {})
+        meta = json.loads(last_page.read_text()).get("metadata", {})
         total = int(meta.get("totalRecordCount", 0))
     except (json.JSONDecodeError, ValueError, OSError):
         return 0, False
