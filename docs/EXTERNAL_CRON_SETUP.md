@@ -4,7 +4,7 @@ The `Poll Airtable → Supabase` workflow is triggered by an external scheduler 
 
 This document covers the two cron-job.org jobs that need to be configured:
 
-1. **Poll trigger** — fires every 15 min during business hours, POSTs to the dispatch API.
+1. **Poll trigger** — fires every 5 min during business hours, POSTs to the dispatch API.
 2. **Staleness watchdog** — fires every 30 min during business hours, GETs `last_sync.json` and alerts if it's older than 45 min.
 
 ## Prerequisites
@@ -21,7 +21,7 @@ This document covers the two cron-job.org jobs that need to be configured:
 | Title | `ownership-ops-hub: poll trigger` |
 | URL | `https://api.github.com/repos/Kelvin-Njuguna95/ownership-ops-hub/actions/workflows/poll.yml/dispatches` |
 | Request method | `POST` |
-| Schedule | Every 15 min, `06:00–23:00` EAT, Mon–Sat. In cron-job.org's UI: set timezone to `Africa/Nairobi`, then check Mon–Sat boxes, hours 6–23, minutes `0, 15, 30, 45`. |
+| Schedule | Every 5 min, `06:00–23:00` EAT, Mon–Sat. In cron-job.org's UI: set timezone to `Africa/Nairobi`, then check Mon–Sat boxes, hours 6–23, minutes `0, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55`. Tighter than the previous 15-min cadence so a single failed run only opens a 5-min visible-gap instead of 15. Free tier supports `*/5` (cron-job.org's free plan allows 1-min minimum). |
 | Request headers | `Accept: application/vnd.github+json`<br>`X-GitHub-Api-Version: 2022-11-28` |
 | Authentication | Bearer token (paste the PAT from Prerequisites) |
 | Request body | `{"ref":"main"}` |
