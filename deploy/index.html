@@ -1733,10 +1733,8 @@ function _tasksFiltered() {
     let av, bv;
     if (k === "name") { av = a.name; bv = b.name; }
     else if (k === "total") { av = a.total_records_in_cache; bv = b.total_records_in_cache; }
-    else if (k === "Done")    { av = a.status_distribution.Done;    bv = b.status_distribution.Done; }
     else if (k === "Valid")   { av = a.status_distribution.Valid;   bv = b.status_distribution.Valid; }
     else if (k === "BO QA")   { av = a.status_distribution["Selected for BO QA "]; bv = b.status_distribution["Selected for BO QA "]; }
-    else if (k === "WW QA")   { av = a.status_distribution["Selected for WW QA"];  bv = b.status_distribution["Selected for WW QA"]; }
     else if (k === "waiting") { av = a.status_distribution.waiting; bv = b.status_distribution.waiting; }
     else if (k === "tagged")  { av = a.status_distribution.tagged;  bv = b.status_distribution.tagged; }
     else if (k === "donePct") {
@@ -1783,14 +1781,14 @@ function renderTasksTable() {
   document.getElementById("tasksCount").textContent = `${list.length} of ${(STATE.v2?.tasks_all || []).length}`;
   const cols = [
     ["name", "Task name"], ["total", "Total"],
-    ["Done", "Done"], ["Valid", "Valid"], ["BO QA", "BO QA"], ["WW QA", "WW QA"],
+    ["Valid", "Valid"], ["BO QA", "BO QA"],
     ["waiting", "Waiting"], ["tagged", "Tagged"],
     ["completed", "Completed"], ["qa_reviewed", "QA Reviewed"], ["qa_coverage", "QA %"],
     ["donePct", "Properly done %"],
     ["teams", "Teams"], ["date_first_seen", "Uploaded"], ["flags", "Flags"],
   ];
   const sortInd = (k) => k === TASKS_STATE.sortBy ? (TASKS_STATE.sortDir === "asc" ? "▲" : "▼") : "";
-  const rightCols = new Set(['total','Done','Valid','BO QA','WW QA','waiting','tagged','completed','qa_reviewed','qa_coverage']);
+  const rightCols = new Set(['total','Valid','BO QA','waiting','tagged','completed','qa_reviewed','qa_coverage']);
   const head = `<thead><tr>${cols.map(([k, lab]) => `<th data-sort="${k}" class="${rightCols.has(k) ? 'right' : ''}">${esc(lab)} <span class="sort-ind">${sortInd(k)}</span></th>`).join("")}</tr></thead>`;
   const body = list.map(t => {
     const s = t.status_distribution;
@@ -1801,10 +1799,8 @@ function renderTasksTable() {
     return `<tr>
       <td><a class="task-name" data-task="${esc(t.name)}">${esc(t.name)}</a></td>
       <td class="right">${total.toLocaleString()}</td>
-      <td class="right">${s.Done}</td>
       <td class="right">${s.Valid}</td>
       <td class="right">${s["Selected for BO QA "]}</td>
-      <td class="right">${s["Selected for WW QA"]}</td>
       <td class="right">${s.waiting}</td>
       <td class="right">${s.tagged}</td>
       <td class="right">${t.completed || 0}</td>
@@ -1816,7 +1812,7 @@ function renderTasksTable() {
       <td>${flagsHtml || '<span class="small-mono">—</span>'}</td>
     </tr>`;
   }).join("");
-  document.getElementById("tasksTable").innerHTML = `<table class="sortable">${head}<tbody>${body || '<tr><td colspan="15" class="empty">No tasks match.</td></tr>'}</tbody></table>`;
+  document.getElementById("tasksTable").innerHTML = `<table class="sortable">${head}<tbody>${body || '<tr><td colspan="13" class="empty">No tasks match.</td></tr>'}</tbody></table>`;
   // Click handlers
   document.querySelectorAll("#tasksTable th[data-sort]").forEach(th => {
     th.addEventListener("click", () => {
