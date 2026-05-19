@@ -109,7 +109,10 @@
   .flag-pill.amber { background: var(--warn-bg); color: var(--warn); }
   .flag-pill.gray  { background: #ececec;        color: var(--muted); }
 
-  #tasksTable { overflow: auto; }
+  #tasksTable {
+    overflow: auto;
+    max-height: calc(100vh - 240px); /* leaves room for topbar + KPI cards + filter row; tune the 240 if the table feels too short or too tall */
+  }
   #tasksTable table { font-size: 12px; }
   #tasksTable th, #tasksTable td { padding: 5px 8px; white-space: nowrap; }
   #tasksTable thead th {
