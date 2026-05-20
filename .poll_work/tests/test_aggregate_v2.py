@@ -407,6 +407,82 @@ class TestAggregateDimensions(unittest.TestCase):
         self.assertNotIn("relations_support_intake_today", self.aggs["by_qa"]["QA1"])
 
 
+class TestLeadTimeTodaySanctionsCohorts(unittest.TestCase):
+    """lead_time_today.by_cohort splits today's completions by
+    is_sanctions(requested_by) — the name-pattern rule. The shared
+    _fixture() has no sanctions task, so this uses a small dedicated set
+    exercising both cohorts."""
+
+    @classmethod
+    def setUpClass(cls):
+        # Three completions today across both cohorts, plus one tagged-only
+        # record (not completed today → must be ignored by lead_time_today).
+        #   - sanctions (Alice/Simba): tagged 09:00 → done 12:00 = 3h = 10800s
+        #   - non-sanctions (Bob/Tembo): tagged 10:00 → done 11:00 = 1h = 3600s
+        #   - non-sanctions via blank requested_by (Carol/Nyati): 1h = 3600s
+        records = [
+            _info(assignee="Alice", requested_by="Vessel Sanctions Screening",
+                  verification_status="Done",
+                  start_tagging=_ts(0, 9), done_selected_time=_ts(0, 12), created=_ts(0, 8)),
+            _info(assignee="Bob", requested_by="Standard ownership task",
+                  verification_status="Done",
+                  start_tagging=_ts(0, 10), done_selected_time=_ts(0, 11), created=_ts(0, 8)),
+            _info(assignee="Carol", requested_by=None,
+                  verification_status="Done",
+                  start_tagging=_ts(0, 10), done_selected_time=_ts(0, 11), created=_ts(0, 8)),
+            _info(assignee="Alice", requested_by="Vessel Sanctions Screening",
+                  verification_status="tagged",
+                  start_tagging=_ts(0, 9), created=_ts(0, 8)),
+        ]
+        cls.ltt = aggregate(records, TODAY, OWNERSHIP_ASSIGNEES)["lead_time_today"]
+
+    def test_by_cohort_present_and_both_cohorts_exercised(self):
+        self.assertIn("by_cohort", self.ltt)
+        self.assertEqual(set(self.ltt["by_cohort"].keys()), {"sanctions", "non_sanctions"})
+
+    def test_by_cohort_counts_sum_to_overall(self):
+        self.assertEqual(self.ltt["count"], 3)
+        cohort_sum = sum(c["count"] for c in self.ltt["by_cohort"].values())
+        self.assertEqual(cohort_sum, self.ltt["count"])
+
+    def test_cohort_percentiles_land_at_fixture_values(self):
+        # Sanctions: single 3h sample. Non-sanctions: two 1h samples
+        # (one named, one with blank requested_by → defaults to non_sanctions).
+        sanc = self.ltt["by_cohort"]["sanctions"]
+        nonsanc = self.ltt["by_cohort"]["non_sanctions"]
+        self.assertEqual((sanc["count"], sanc["p50"], sanc["p90"]), (1, 10800, 10800))
+        self.assertEqual((nonsanc["count"], nonsanc["p50"], nonsanc["p90"]), (2, 3600, 3600))
+
+    def test_zero_count_cohort_omitted(self):
+        # Only non-sanctions completions today → sanctions cohort omitted,
+        # mirroring the by_team empty convention.
+        recs = [
+            _info(assignee="Bob", requested_by="Standard ownership task",
+                  verification_status="Done",
+                  start_tagging=_ts(0, 10), done_selected_time=_ts(0, 11), created=_ts(0, 8)),
+        ]
+        bc = aggregate(recs, TODAY, OWNERSHIP_ASSIGNEES)["lead_time_today"]["by_cohort"]
+        self.assertEqual(set(bc.keys()), {"non_sanctions"})
+
+    def test_name_pattern_drives_cohort(self):
+        """Sanctions cohort is determined by the task name (requested_by)
+        containing 'sanction'/'sanctions' case-insensitively, NOT by any
+        per-record field. 'SanctionChangeIntel20May2026' (singular) matches."""
+        # Records identical except for requested_by — one matches sanctions
+        # pattern, one doesn't, both completed today
+        recs = [
+            _info(assignee="Alice", requested_by="SanctionChangeIntel20May2026",
+                  verification_status="Done",
+                  start_tagging=_ts(0, 10), done_selected_time=_ts(0, 11), created=_ts(0, 8)),
+            _info(assignee="Bob", requested_by="CargoChangeIntel20May2026",
+                  verification_status="Done",
+                  start_tagging=_ts(0, 10), done_selected_time=_ts(0, 11), created=_ts(0, 8)),
+        ]
+        bc = aggregate(recs, TODAY, OWNERSHIP_ASSIGNEES)["lead_time_today"]["by_cohort"]
+        self.assertEqual(bc["sanctions"]["count"], 1)
+        self.assertEqual(bc["non_sanctions"]["count"], 1)
+
+
 class TestCaseInsensitiveAssigneeMatch(unittest.TestCase):
     """Airtable returns assignee names with varying casing
     ('Hellen vigehi' vs the roster's 'Hellen Vigehi'). The aggregator
