@@ -157,9 +157,13 @@ def _lead_time_today(records, today_eat):
     are dropped from the percentile pool but still counted as completions —
     so ``count`` reconciles with ``done_today`` while p50/p90 stay clean.
 
-    Returns ``{p50, p90, count, by_team: {<team>: {p50, p90, count}}}``.
+    Returns ``{p50, p90, count, by_team: {<team>: {p50, p90, count}},
+    by_cohort: {"sanctions"|"non_sanctions": {p50, p90, count}}}``.
     Percentiles are int seconds (or ``None`` when there are no samples).
-    Teams with zero completions today are omitted from ``by_team``.
+    A record's cohort is ``is_sanctions(requested_by)`` — sanctions tasks
+    run 100% QA per SOP, so splitting lead time by cohort surfaces whether
+    that extra QA materially slows completion. Teams/cohorts with zero
+    completions today are omitted (same empty convention as ``by_team``).
     """
     def _stats(recs):
         samples, count = [], 0
@@ -188,6 +192,13 @@ def _lead_time_today(records, today_eat):
         if s["count"]:
             by_team[team] = s
     out["by_team"] = by_team
+    by_cohort = {}
+    cohort_of = lambda r: "sanctions" if is_sanctions(r.get("requested_by")) else "non_sanctions"
+    for cohort, recs in _group(records, cohort_of).items():
+        s = _stats(recs)
+        if s["count"]:
+            by_cohort[cohort] = s
+    out["by_cohort"] = by_cohort
     return out
 
 
