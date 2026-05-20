@@ -2376,6 +2376,26 @@ PAGE_RENDERERS.pipeline = function () {
     ? cohortRow("Sanctions", "sanctions") + cohortRow("Non-sanctions", "non_sanctions")
     : `<tr><td colspan="4" class="empty">No cohort breakdown in this aggregate yet.</td></tr>`;
 
+  // Today's pipeline flow funnel — split tagged_today into the Flow Framework
+  // v3 stages (data already on totals; no fetch). Computed here, before the
+  // template, so the chart (below) and the DOM stage-list (in the template)
+  // read one source of truth. Zero/missing stages stay at 0 (0%), never
+  // hidden — a zero stage is itself a signal.
+  const fTot = STATE.v2?.totals || {};
+  const fNum = (v) => (typeof v === "number" ? v : 0);
+  const fTagged = fNum(fTot.tagged_today);
+  const funnelStages = [
+    { name: "Tagged today",         value: fTagged },
+    { name: "In BO QA (Flow B)",    value: fNum(fTot.flow_b_today) },
+    { name: "Completed (Flow A+C)", value: fNum(fTot.flow_a_today) + fNum(fTot.flow_c_today) },
+    { name: "QA reviewed (Flow C)", value: fNum(fTot.flow_c_today) },
+  ];
+  const funnelPct = (v) => fTagged > 0 ? Math.round(v / fTagged * 100) : 0;
+  const funnelList = funnelStages.map(s => `<li style="margin-bottom:10px">
+            <strong>${esc(s.name)}</strong>
+            <div class="small-mono">${s.value.toLocaleString()} records · ${funnelPct(s.value)}% of tagged today</div>
+          </li>`).join("");
+
   root.innerHTML = `
     <div class="kpis">
       <div class="kpi hero">
@@ -2411,7 +2431,12 @@ PAGE_RENDERERS.pipeline = function () {
     </div>
     <div class="panel">
       <h3>Today's pipeline flow <span class="meta">tagged today by stage reached</span></h3>
-      <div class="chart-wrap"><canvas id="chart-today-funnel"></canvas></div>
+      <div style="display:flex; gap:18px; align-items:flex-start">
+        <div class="chart-wrap" style="flex:1; min-width:0"><canvas id="chart-today-funnel"></canvas></div>
+        <ul style="flex:0 0 220px; list-style:none; margin:0; padding:0">
+          ${funnelList}
+        </ul>
+      </div>
       <div class="footer-note">Stages aren't strictly sequential — Flow A bypasses BO QA, Flow D (in-flight) isn't shown. See Flow Framework v3 in CLAUDE.md for the definitions.</div>
     </div>
     <div class="panel">
@@ -2433,32 +2458,21 @@ PAGE_RENDERERS.pipeline = function () {
     </div>
   `;
 
-  // Today's pipeline flow funnel — splits tagged_today into the Flow
-  // Framework v3 stages (data already on totals; no fetch, render sync). One
-  // color + descending counts give the funnel feel. Each y-axis label carries
-  // the stage's count + % of tagged_today. Zero stages render at 0 (a zero
-  // stage is itself a signal), never hidden.
+  // Today's pipeline flow funnel — one bar per Flow Framework v3 stage,
+  // sharing the funnelStages/funnelPct computed above with the DOM stage-list.
+  // Single color + descending counts give the funnel feel; the count/% now
+  // live in the list beside the chart, so y-axis labels are just stage names.
   (() => {
     const ctx = document.getElementById("chart-today-funnel");
     if (!ctx) return;
-    const tot = STATE.v2?.totals || {};
-    const num = (v) => (typeof v === "number" ? v : 0);
-    const tagged = num(tot.tagged_today);
-    const stages = [
-      { name: "Tagged today",         value: tagged },
-      { name: "In BO QA (Flow B)",    value: num(tot.flow_b_today) },
-      { name: "Completed (Flow A+C)", value: num(tot.flow_a_today) + num(tot.flow_c_today) },
-      { name: "QA reviewed (Flow C)", value: num(tot.flow_c_today) },
-    ];
-    const pct = (v) => tagged > 0 ? Math.round(v / tagged * 100) : 0;
     if (STATE.charts["chart-today-funnel"]) STATE.charts["chart-today-funnel"].destroy();
     STATE.charts["chart-today-funnel"] = new Chart(ctx, {
       type: "bar",
       data: {
-        labels: stages.map(s => [s.name, `${s.value.toLocaleString()} (${pct(s.value)}%)`]),
+        labels: funnelStages.map(s => s.name),
         datasets: [{
           label: "records",
-          data: stages.map(s => s.value),
+          data: funnelStages.map(s => s.value),
           backgroundColor: "#1450b3",
         }],
       },
@@ -2470,8 +2484,8 @@ PAGE_RENDERERS.pipeline = function () {
         plugins: {
           legend: { display: false },
           tooltip: { callbacks: { label: c => {
-            const v = stages[c.dataIndex].value;
-            return `${v.toLocaleString()} records (${pct(v)}% of tagged today)`;
+            const v = funnelStages[c.dataIndex].value;
+            return `${v.toLocaleString()} records (${funnelPct(v)}% of tagged today)`;
           }}},
         },
       },
