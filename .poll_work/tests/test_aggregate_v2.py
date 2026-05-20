@@ -409,7 +409,7 @@ class TestAggregateDimensions(unittest.TestCase):
 
 class TestLeadTimeTodaySanctionsCohorts(unittest.TestCase):
     """lead_time_today.by_cohort splits today's completions by
-    task_name_is_sanctions(requested_by) — the name-pattern rule. The shared
+    is_sanctions(requested_by) — the name-pattern rule. The shared
     _fixture() has no sanctions task, so this uses a small dedicated set
     exercising both cohorts."""
 

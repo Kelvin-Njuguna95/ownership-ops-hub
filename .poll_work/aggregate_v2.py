@@ -26,7 +26,6 @@ from extract_v2 import (  # noqa: E402
     extract,
     is_properly_completed,
     is_sanctions,
-    task_name_is_sanctions,
 )
 
 EAT = timezone(timedelta(hours=3))
@@ -161,12 +160,13 @@ def _lead_time_today(records, today_eat):
     Returns ``{p50, p90, count, by_team: {<team>: {p50, p90, count}},
     by_cohort: {"sanctions"|"non_sanctions": {p50, p90, count}}}``.
     Percentiles are int seconds (or ``None`` when there are no samples).
-    A record's cohort is ``task_name_is_sanctions(requested_by)`` — the
-    operational name rule (task name contains 'sanction'/'sanctions',
-    case-insensitive). Sanctions tasks run 100% QA per SOP, so splitting
-    lead time by cohort surfaces whether that extra QA materially slows
-    completion. Teams/cohorts with zero completions today are omitted
-    (same empty convention as ``by_team``).
+    A record's cohort is ``is_sanctions(requested_by)`` — the single
+    dashboard-wide name rule (task name contains 'sanction'/'sanctions',
+    case-insensitive), the same definition that drives the QA-sampling %
+    cohorts and the Tasks-page badge. Sanctions tasks run 100% QA per SOP,
+    so splitting lead time by cohort surfaces whether that extra QA
+    materially slows completion. Teams/cohorts with zero completions today
+    are omitted (same empty convention as ``by_team``).
     """
     def _stats(recs):
         samples, count = [], 0
@@ -196,7 +196,7 @@ def _lead_time_today(records, today_eat):
             by_team[team] = s
     out["by_team"] = by_team
     by_cohort = {}
-    cohort_of = lambda r: "sanctions" if task_name_is_sanctions(r.get("requested_by")) else "non_sanctions"
+    cohort_of = lambda r: "sanctions" if is_sanctions(r.get("requested_by")) else "non_sanctions"
     for cohort, recs in _group(records, cohort_of).items():
         s = _stats(recs)
         if s["count"]:
