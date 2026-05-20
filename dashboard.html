@@ -1031,7 +1031,7 @@ PAGE_RENDERERS.hourly = function () {
     </div>
     <div class="panel">
       <div id="hourlyGrid"></div>
-      <div class="footer-note">Cells = records the detector stamped as complete during that EAT hour (source: <code>ownership_completions.completed_at</code>, not Airtable's batch timestamp). Data auto-refreshes when the browser tab regains focus; tap Refresh to fetch immediately.</div>
+      <div class="footer-note">Cells = records each agent moved waiting→tagged during that EAT hour (source: <code>ownership_completions</code>, bucketed by detector observation time — accurate to ≈5 min at the 5-min poll cadence). The Total covers all 24 hours; the grid shows the 06:00–23:00 business window (* = the agent also has rows tagged outside it, e.g. overnight). Data auto-refreshes when the browser tab regains focus; tap Refresh to fetch immediately.</div>
     </div>`;
 
   const sel = document.getElementById("hourlyTeamSelect");
@@ -1072,16 +1072,23 @@ function renderHourlyGrid(filterTeam) {
     for (const m of members) {
       const buckets = STATE.completions?.[m.name] || {};
       const counts = hours.map(h => buckets[h] ?? buckets[String(h)] ?? 0);
-      const total = counts.reduce((a, b) => a + b, 0);
+      // Total covers ALL 24 hours (incl. overnight cron ticks ~00:30 / 03:30
+      // EAT), not just the visible 6–23 columns. `outside` = rows whose EAT
+      // hour falls outside that window — flagged with a * on the Total.
+      const total = Object.values(buckets).reduce((a, b) => a + b, 0);
+      const outside = total - counts.reduce((a, b) => a + b, 0);
       gridMax = Math.max(gridMax, ...counts);
-      rows.push({ kind: "agent", team, name: m.name, counts, total });
+      rows.push({ kind: "agent", team, name: m.name, counts, total, outside });
     }
     rows.push({ kind: "divider", team });
   }
 
-  // Sum-across-all-visible-agents row
-  const colSums = hours.map((_, i) => rows.filter(r => r.kind === "agent").reduce((s, r) => s + r.counts[i], 0));
-  const grand = colSums.reduce((a, b) => a + b, 0);
+  // Sum-across-all-visible-agents row (per visible hour 6–23 for the cells)
+  const agentRows = rows.filter(r => r.kind === "agent");
+  const colSums = hours.map((_, i) => agentRows.reduce((s, r) => s + r.counts[i], 0));
+  // Grand total covers all 24h (sum of the per-agent 24h totals), not just visible cells.
+  const grand = agentRows.reduce((s, r) => s + r.total, 0);
+  const grandOutside = agentRows.reduce((s, r) => s + r.outside, 0);
 
   const cellHtml = (v, h, scale) => {
     if (v === 0) return `<div class="cell z" title="${h}:00 EAT">0</div>`;
@@ -1104,7 +1111,8 @@ function renderHourlyGrid(filterTeam) {
     }
     html += `<div class="label">${esc(r.name)}</div>`;
     html += r.counts.map((v, i) => cellHtml(v, hours[i], gridMax)).join("");
-    html += `<div class="cell" style="background:#f0eee8;color:#1a1a1a;font-weight:600;">${r.total}</div>`;
+    const outTip = r.outside > 0 ? ` title="includes ${r.outside} record${r.outside === 1 ? "" : "s"} tagged outside 06:00–23:00 EAT"` : "";
+    html += `<div class="cell" style="background:#f0eee8;color:#1a1a1a;font-weight:600;"${outTip}>${r.total}${r.outside > 0 ? "*" : ""}</div>`;
   }
   // Footer "All agents" sum row
   html += `<div class="hourly-spacer"></div>`;
@@ -1115,7 +1123,8 @@ function renderHourlyGrid(filterTeam) {
     const alpha = (0.2 + 0.8 * (v / colMax)).toFixed(2);
     return `<div class="cell" style="background:rgba(31,111,44,${alpha});" title="${hours[i]}:00 EAT total → ${v}">${v}</div>`;
   }).join("");
-  html += `<div class="cell" style="background:#1a1a1a;color:#fff;font-weight:600;">${grand}</div>`;
+  const grandTip = grandOutside > 0 ? ` title="includes ${grandOutside} record${grandOutside === 1 ? "" : "s"} tagged outside 06:00–23:00 EAT"` : "";
+  html += `<div class="cell" style="background:#1a1a1a;color:#fff;font-weight:600;"${grandTip}>${grand}${grandOutside > 0 ? "*" : ""}</div>`;
 
   document.getElementById("hourlyGrid").innerHTML = `
     <div class="hourly-heatmap" style="grid-template-columns: 180px repeat(${hours.length}, 1fr) 70px;">
