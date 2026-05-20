@@ -16,6 +16,13 @@ Flow Framework v2 (feat-flow-framework-v2):
   - Pre-Flow (vs in tagged / need to be update): existing rule, flow=NULL on insert
     (these are first-contact records; they get a flow value if/when caught
     in a later terminal state, via the PATCH-on-NULL UPSERT path below.)
+  - Tagging-row guarantee (capture-gap closure): EVERY tagged-or-beyond record
+    (any state in COMPLETIONS_STATES) gets an ownership_completions row, even
+    when classify() routes it elsewhere. A record first observed already in BO
+    QA used to land only in ownership_qa_sampling and never appear on the
+    Hourly Output (tagging) heatmap; route_record() now also writes it a
+    flow=NULL tagging row alongside its sampling row. Idempotent + flow NULL→A/C
+    upgrade still apply, so this only ADDS coverage.
 
 Total Completions = Flow A + Flow C (B excluded — in-progress, not done).
 
@@ -61,6 +68,14 @@ NEED_TO_BE_UPDATE   = "need to be update"
 SELECTED_FOR_BO_QA  = "Selected for BO QA "  # trailing space, intentional
 DONE                = "Done"
 VALID               = "Valid"
+
+# "Tagged-or-beyond" — every state in which the agent has already moved the
+# record waiting→tagged. The Hourly Output heatmap (a tagging-output chart)
+# must have an ownership_completions row for every such record, regardless of
+# how classify() routes it (completion / sampling / alert / pre-flow). These
+# are exactly the states fetch_flow_records() pulls, so any fetched record is
+# tagged-or-beyond. (Selected for WW QA is NOT fetched — see module notes.)
+COMPLETIONS_STATES  = {TAGGED, NEED_TO_BE_UPDATE, SELECTED_FOR_BO_QA, DONE, VALID}
 
 # Stuck-in-QA-sampling threshold per the v2 spec.
 STUCK_HOURS = 24
@@ -268,6 +283,56 @@ def build_alert_row(rec, alert_type):
         "qa_status":           _name(fields.get(FLD_QA_STATUS)),
         "raw_payload":         fields,
     }
+
+
+def needs_tagging_row(fields):
+    """True if this record is tagged-or-beyond, so the Hourly Output heatmap
+    must have an ownership_completions row for it — independent of how
+    classify() routes it (e.g. a record first observed already in BO QA goes
+    only to ownership_qa_sampling and would otherwise be invisible)."""
+    return _name(fields.get(FLD_VERIFICATION_STATUS)) in COMPLETIONS_STATES
+
+
+def route_record(rec, now_utc):
+    """Decide every row a single observed record yields, in one place so the
+    routing is unit-testable without network I/O.
+
+    Returns ``(target, detail, completion_row|None, sampling_row|None,
+    alert_row|None)`` where ``target``/``detail`` are exactly what
+    ``classify()`` returned (so callers can keep their existing counters).
+
+    On top of the Flow v2 classify() routing it guarantees a **tagging row**
+    in ownership_completions for every tagged-or-beyond record (capture-gap
+    closure): if classify() did not already produce a completion row and the
+    record is tagged-or-beyond, emit a ``flow=NULL`` pre-flow tagging row
+    (completed_at = NOW, completed_by = the tagger via resolve_completed_by).
+    This ADDS a row alongside any sampling/alert write — it never moves or
+    removes them — and the row is inserted idempotently (on_conflict
+    ignore-duplicates), so existing rows and their completed_at/flow are
+    never disturbed, and a later Done/Valid still upgrades flow NULL→A/C via
+    the existing PATCH-on-NULL path.
+    """
+    fields = rec.get("fields") or rec.get("cellValuesByFieldId") or {}
+    target, detail = classify(fields)
+    completion = sampling = alert = None
+
+    if target == "completion":
+        completion, _ = build_completion_row(rec, now_utc, flow=detail)
+    elif target == "pre_flow":
+        completion, _ = build_completion_row(rec, now_utc, flow=None)
+    elif target == "sampling":
+        sampling = build_sampling_row(rec, now_utc)
+    elif target == "alert":
+        alert = build_alert_row(rec, detail)
+
+    # Capture-gap closure: ensure a tagging row for every tagged-or-beyond
+    # record that classify() didn't already give a completion row (sampling /
+    # alert / skip-of-a-tagged-record). build_completion_row returns None when
+    # unattributable, so the column's NOT-NULL invariant holds.
+    if completion is None and needs_tagging_row(fields):
+        completion, _ = build_completion_row(rec, now_utc, flow=None)
+
+    return target, detail, completion, sampling, alert
 
 
 # ----------------------------------------------------------------------
@@ -569,37 +634,39 @@ def main():
     skipped         = {"skip": 0, "no_attribution": 0}
     by_class        = {"A": 0, "B": 0, "C": 0, "pre_flow": 0,
                        "missing_qa_assignee": 0, "missing_qa_status": 0}
+    tagging_fill    = 0   # tagging rows added by capture-gap closure (sampling/alert/skip records)
 
     for rec in records:
         fields = rec.get("fields") or rec.get("cellValuesByFieldId") or {}
-        target, detail = classify(fields)
-        if target == "skip":
-            skipped["skip"] += 1
-            continue
+        target, detail, comp, samp, alert = route_record(rec, now_utc)
+
+        # classify-target counters (unchanged semantics)
         if target == "completion":
-            row, _ = build_completion_row(rec, now_utc, flow=detail)
-            if not row:
-                skipped["no_attribution"] += 1
-                continue
-            completion_rows.append(row)
             by_class[detail] += 1
         elif target == "sampling":
-            row = build_sampling_row(rec, now_utc)
-            if not row:
-                skipped["no_attribution"] += 1
-                continue
-            sampling_rows.append(row)
             by_class["B"] += 1
         elif target == "alert":
-            alert_rows.append(build_alert_row(rec, detail))
             by_class[detail] += 1
         elif target == "pre_flow":
-            row, _ = build_completion_row(rec, now_utc, flow=None)
-            if not row:
-                skipped["no_attribution"] += 1
-                continue
-            completion_rows.append(row)
             by_class["pre_flow"] += 1
+        elif target == "skip":
+            skipped["skip"] += 1
+
+        # An expected sampling/completion row that built to None = unattributable.
+        if samp is None and target == "sampling":
+            skipped["no_attribution"] += 1
+        if comp is None and target in ("completion", "pre_flow"):
+            skipped["no_attribution"] += 1
+
+        if comp:
+            completion_rows.append(comp)
+            # A completion row on a non-completion target == capture-gap fill.
+            if target in ("sampling", "alert", "skip"):
+                tagging_fill += 1
+        if samp:
+            sampling_rows.append(samp)
+        if alert:
+            alert_rows.append(alert)
 
     # Stuck-in-sampling detection — query the existing sampling table.
     stuck_alerts = detect_stuck_in_sampling(supabase_url, service_key, now_utc)
@@ -622,7 +689,8 @@ def main():
           f"pre_flow={by_class['pre_flow']} skipped={skipped['skip']}")
     print(f"  completions:       new={comp_result['inserted']} "
           f"flow_upserted={comp_result['flow_upserted']} "
-          f"dup_no_flow={comp_result['duplicates_no_flow']}")
+          f"dup_no_flow={comp_result['duplicates_no_flow']} "
+          f"tagging_fill={tagging_fill}")
     print(f"  qa_sampling:       new={samp_new}")
     print(f"  alerts:            "
           f"missing_qa_assignee={by_class['missing_qa_assignee']} "
