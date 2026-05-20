@@ -2601,6 +2601,11 @@ PAGE_RENDERERS.pipeline = function () {
       <div class="footer-note">Sanctions tasks require 100% QA per SOP — watch this row for material drift vs non-sanctions.</div>
     </div>
     <div class="panel">
+      <h3>Today's pipeline flow <span class="meta">tagged today by stage reached</span></h3>
+      <div class="chart-wrap"><canvas id="chart-today-funnel"></canvas></div>
+      <div class="footer-note">Stages aren't strictly sequential — Flow A bypasses BO QA, Flow D (in-flight) isn't shown. See Flow Framework v3 in CLAUDE.md for the definitions.</div>
+    </div>
+    <div class="panel">
       <h3>7-day p50 lead-time trend <span class="meta">from snapshots</span></h3>
       <div class="chart-wrap"><canvas id="chart-7day-leadtime"></canvas></div>
       <div class="footer-note">p50 lead time = median time from start_tagging to completion. Derived from daily snapshots in Supabase Storage (snapshots/YYYY-MM-DD.json). Gray bars = no snapshot (or no lead-time data) for that day.</div>
@@ -2618,6 +2623,51 @@ PAGE_RENDERERS.pipeline = function () {
       <div class="footer-note">Per-stage p50/p90 in hours, across the whole cache window (not today-scoped) — shows where pipeline time accrues.</div>
     </div>
   `;
+
+  // Today's pipeline flow funnel — splits tagged_today into the Flow
+  // Framework v3 stages (data already on totals; no fetch, render sync). One
+  // color + descending counts give the funnel feel. Each y-axis label carries
+  // the stage's count + % of tagged_today. Zero stages render at 0 (a zero
+  // stage is itself a signal), never hidden.
+  (() => {
+    const ctx = document.getElementById("chart-today-funnel");
+    if (!ctx) return;
+    const tot = STATE.v2?.totals || {};
+    const num = (v) => (typeof v === "number" ? v : 0);
+    const tagged = num(tot.tagged_today);
+    const stages = [
+      { name: "Tagged today",         value: tagged },
+      { name: "In BO QA (Flow B)",    value: num(tot.flow_b_today) },
+      { name: "Completed (Flow A+C)", value: num(tot.flow_a_today) + num(tot.flow_c_today) },
+      { name: "QA reviewed (Flow C)", value: num(tot.flow_c_today) },
+    ];
+    const pct = (v) => tagged > 0 ? Math.round(v / tagged * 100) : 0;
+    if (STATE.charts["chart-today-funnel"]) STATE.charts["chart-today-funnel"].destroy();
+    STATE.charts["chart-today-funnel"] = new Chart(ctx, {
+      type: "bar",
+      data: {
+        labels: stages.map(s => [s.name, `${s.value.toLocaleString()} (${pct(s.value)}%)`]),
+        datasets: [{
+          label: "records",
+          data: stages.map(s => s.value),
+          backgroundColor: "#1450b3",
+        }],
+      },
+      options: {
+        indexAxis: "y",
+        responsive: true,
+        maintainAspectRatio: false,
+        scales: { x: { beginAtZero: true } },
+        plugins: {
+          legend: { display: false },
+          tooltip: { callbacks: { label: c => {
+            const v = stages[c.dataIndex].value;
+            return `${v.toLocaleString()} records (${pct(v)}% of tagged today)`;
+          }}},
+        },
+      },
+    });
+  })();
 
   // 7-day p50 lead-time chart — mirrors the Daily Intake 7-day pattern: fetch
   // lead_time_today.p50 from the daily snapshots in Supabase Storage, in
