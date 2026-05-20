@@ -238,3 +238,21 @@ def is_sanctions(requested_by):
     if not requested_by:
         return False
     return "sanctions" in str(requested_by).lower()
+
+
+def task_name_is_sanctions(name):
+    """True if the task name (requested_by) flags a sanctions task.
+
+    Operational rule (clarified by Kelvin): the client uploads sanctions
+    tasks with 'sanction'/'sanctions' in the task name — e.g.
+    'SanctionChangeIntel20May2026' or 'CargoSanctionsCheck17Apr2026'.
+    Matching the singular substring 'sanction' (case-insensitive) catches
+    both forms; 'sanctions' contains 'sanction', so the plural is covered.
+    Empty / None → False (treated as non-sanctions).
+
+    Distinct from ``is_sanctions`` above, which matches only the full word
+    'sanctions' and still drives the QA-sampling cohort metrics and the
+    Tasks-page badge. This broader name rule is used by the Pipeline & Lead
+    Time page to split lead time into sanctions vs non-sanctions cohorts.
+    """
+    return bool(name) and "sanction" in str(name).lower()

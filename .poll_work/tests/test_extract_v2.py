@@ -12,6 +12,7 @@ from extract_v2 import (
     is_properly_completed,
     is_sanctions,
     resolve_qa,
+    task_name_is_sanctions,
 )
 
 
@@ -240,6 +241,30 @@ class TestIsSanctions(unittest.TestCase):
     def test_none_and_empty(self):
         self.assertFalse(is_sanctions(None))
         self.assertFalse(is_sanctions(""))
+
+
+class TestTaskNameIsSanctions(unittest.TestCase):
+    """Broader name rule used by the Pipeline cohort split: matches the
+    singular substring 'sanction', so both 'Sanction...' and 'Sanctions...'
+    task names count as sanctions."""
+
+    def test_singular_sanction_matches(self):
+        # is_sanctions (plural) would return False for this; the broader rule True.
+        self.assertTrue(task_name_is_sanctions("SanctionChangeIntel20May2026"))
+        self.assertFalse(is_sanctions("SanctionChangeIntel20May2026"))
+
+    def test_plural_sanctions_matches(self):
+        self.assertTrue(task_name_is_sanctions("CargoSanctionsCheck17Apr2026"))
+
+    def test_case_insensitive(self):
+        self.assertTrue(task_name_is_sanctions("CargoSANCTION"))
+
+    def test_non_sanctions_task_name(self):
+        self.assertFalse(task_name_is_sanctions("CargoChangeIntel20May2026"))
+
+    def test_none_and_empty(self):
+        self.assertFalse(task_name_is_sanctions(None))
+        self.assertFalse(task_name_is_sanctions(""))
 
 
 class TestRawRestShapes(unittest.TestCase):

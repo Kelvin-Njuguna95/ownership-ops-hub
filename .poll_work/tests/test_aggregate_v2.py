@@ -409,8 +409,9 @@ class TestAggregateDimensions(unittest.TestCase):
 
 class TestLeadTimeTodaySanctionsCohorts(unittest.TestCase):
     """lead_time_today.by_cohort splits today's completions by
-    is_sanctions(requested_by). The shared _fixture() has no sanctions task,
-    so this uses a small dedicated set exercising both cohorts."""
+    task_name_is_sanctions(requested_by) — the name-pattern rule. The shared
+    _fixture() has no sanctions task, so this uses a small dedicated set
+    exercising both cohorts."""
 
     @classmethod
     def setUpClass(cls):
@@ -462,6 +463,24 @@ class TestLeadTimeTodaySanctionsCohorts(unittest.TestCase):
         ]
         bc = aggregate(recs, TODAY, OWNERSHIP_ASSIGNEES)["lead_time_today"]["by_cohort"]
         self.assertEqual(set(bc.keys()), {"non_sanctions"})
+
+    def test_name_pattern_drives_cohort(self):
+        """Sanctions cohort is determined by the task name (requested_by)
+        containing 'sanction'/'sanctions' case-insensitively, NOT by any
+        per-record field. 'SanctionChangeIntel20May2026' (singular) matches."""
+        # Records identical except for requested_by — one matches sanctions
+        # pattern, one doesn't, both completed today
+        recs = [
+            _info(assignee="Alice", requested_by="SanctionChangeIntel20May2026",
+                  verification_status="Done",
+                  start_tagging=_ts(0, 10), done_selected_time=_ts(0, 11), created=_ts(0, 8)),
+            _info(assignee="Bob", requested_by="CargoChangeIntel20May2026",
+                  verification_status="Done",
+                  start_tagging=_ts(0, 10), done_selected_time=_ts(0, 11), created=_ts(0, 8)),
+        ]
+        bc = aggregate(recs, TODAY, OWNERSHIP_ASSIGNEES)["lead_time_today"]["by_cohort"]
+        self.assertEqual(bc["sanctions"]["count"], 1)
+        self.assertEqual(bc["non_sanctions"]["count"], 1)
 
 
 class TestCaseInsensitiveAssigneeMatch(unittest.TestCase):
