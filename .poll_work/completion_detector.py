@@ -177,25 +177,39 @@ def classify(fields):
 
 
 # ----------------------------------------------------------------------
-# completed_by attribution — last_modified_by → qa_assignee → assignee.
-# Names in NON_HUMAN_LAST_MODIFIED are skipped (Automations bot etc.) so
-# completion is credited to the human who did the work.
+# completed_by attribution — the TAGGER (assignee) → last_modified_by → qa_assignee.
+# `completed_by` feeds the Hourly Output heatmap, which is a *tagging output*
+# chart: each row must be credited to whoever moved the record waiting→tagged,
+# i.e. the assignee. _name() on the collaborator list returns the FIRST
+# assignee, so a multi-assignee record credits its primary (first) tagger.
+# The old last_modified_by → qa_assignee chain is kept ONLY as a fallback for
+# the rare record with no assignee, so the NOT-NULL column is never blank.
+# Names in NON_HUMAN_LAST_MODIFIED are skipped (Automations bot etc.).
+# (Was: last_modified_by → qa_assignee → assignee, which drifted tagging
+# credit to QA reviewers / last editors — see
+# docs/hourly_audit_james_maina_2026-05-20.md.)
 # ----------------------------------------------------------------------
 
 NON_HUMAN_LAST_MODIFIED = {"Automations"}
 
 
 def resolve_completed_by(fields):
-    """Return (name, source) — first non-blank in the chain, or (None, None)."""
+    """Return (name, source). `completed_by` means THE TAGGER (first assignee).
+
+    Resolution order: assignee (first in the list) → last_modified_by →
+    qa_assignee. The last two are fallbacks only when the record has no
+    assignee at all, so this NOT-NULL column is never blank. ``Automations``
+    is skipped as a non-human last-modifier.
+    """
+    n = _name(fields.get(FLD_ASSIGNEE))
+    if n:
+        return n, "assignee"
     n = _name(fields.get(FLD_LAST_MODIFIED_BY))
     if n and n not in NON_HUMAN_LAST_MODIFIED:
         return n, "last_modified_by"
     n = _name(fields.get(FLD_QA_ASSIGNEE))
     if n:
         return n, "qa_assignee"
-    n = _name(fields.get(FLD_ASSIGNEE))
-    if n:
-        return n, "assignee"
     return None, None
 
 

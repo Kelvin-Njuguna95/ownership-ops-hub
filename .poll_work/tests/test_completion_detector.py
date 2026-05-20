@@ -169,28 +169,48 @@ class TestClassification(unittest.TestCase):
 
 
 # ============================================================================
-# completed_by attribution chain — unchanged from v1.
+# completed_by attribution chain — the TAGGER (assignee) wins.
+# completed_by feeds the Hourly Output (tagging) heatmap, so credit goes to
+# the assignee, falling back to last_modified_by → qa_assignee only when the
+# record has no assignee. (Reversed from v1's last_modified_by-first chain —
+# see docs/hourly_audit_james_maina_2026-05-20.md.)
 # ============================================================================
 class TestResolveCompletedBy(unittest.TestCase):
-    def test_prefers_last_modified_by(self):
+    def test_prefers_assignee_over_last_modified_by_and_qa(self):
+        # The whole point of the fix: assignee (tagger) wins even when a
+        # different person last-modified the record or is the QA reviewer.
         f = _fields(last_modified_by={"id": "u1", "name": "Last Mod"},
                     qa_assignee={"id": "q1", "name": "QA"},
                     assignee=[{"id": "a1", "name": "Agent"}])
+        self.assertEqual(resolve_completed_by(f), ("Agent", "assignee"))
+
+    def test_last_modified_by_differing_from_assignee_credits_assignee(self):
+        # Regression for the James→Selah drift: Selah last-edited James's
+        # tagged record; credit must stay with James (the assignee).
+        f = _fields(assignee=[{"id": "j", "name": "JAMES MAINA"}],
+                    last_modified_by={"id": "s", "name": "Selah Nabiswa"})
+        self.assertEqual(resolve_completed_by(f), ("JAMES MAINA", "assignee"))
+
+    def test_multi_assignee_credits_first(self):
+        # Tagger = the FIRST assignee in the list.
+        f = _fields(assignee=[{"id": "a1", "name": "First Tagger"},
+                              {"id": "a2", "name": "Second"}])
+        self.assertEqual(resolve_completed_by(f), ("First Tagger", "assignee"))
+
+    def test_falls_back_to_last_modified_by_when_no_assignee(self):
+        f = _fields(last_modified_by={"id": "u1", "name": "Last Mod"},
+                    qa_assignee={"id": "q1", "name": "QA"})
         self.assertEqual(resolve_completed_by(f), ("Last Mod", "last_modified_by"))
 
-    def test_falls_back_to_qa_assignee(self):
-        f = _fields(qa_assignee={"id": "q1", "name": "QA"},
-                    assignee=[{"id": "a1", "name": "Agent"}])
+    def test_falls_back_to_qa_assignee_when_no_assignee_or_lmb(self):
+        f = _fields(qa_assignee={"id": "q1", "name": "QA"})
         self.assertEqual(resolve_completed_by(f), ("QA", "qa_assignee"))
-
-    def test_falls_back_to_assignee(self):
-        f = _fields(assignee=[{"id": "a1", "name": "Agent"}])
-        self.assertEqual(resolve_completed_by(f), ("Agent", "assignee"))
 
     def test_none_when_all_blank(self):
         self.assertEqual(resolve_completed_by(_fields()), (None, None))
 
-    def test_automations_skipped(self):
+    def test_automations_skipped_in_fallback(self):
+        # No assignee → fallback chain; Automations last-modifier is skipped.
         f = _fields(last_modified_by={"id": "s", "name": "Automations"},
                     qa_assignee={"id": "q1", "name": "Real Person"})
         self.assertEqual(resolve_completed_by(f), ("Real Person", "qa_assignee"))
