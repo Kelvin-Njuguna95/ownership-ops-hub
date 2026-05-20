@@ -368,6 +368,14 @@ class TestAggregateDimensions(unittest.TestCase):
     def test_qa_dimension(self):
         self.assertEqual(set(self.aggs["by_qa"].keys()), {"QA1", "QA2", "QA3"})
 
+    def test_by_qa_exposes_bo_qa_backlog(self):
+        # Per-reviewer assigned BO QA queue (for the Per-reviewer BO QA load
+        # panel). Alice 2 (QA1) and Bob 2 (QA2) are SELECTED_FOR_BO_QA; Carol
+        # (QA3) has none.
+        self.assertEqual(self.aggs["by_qa"]["QA1"]["bo_qa_backlog"], 1)
+        self.assertEqual(self.aggs["by_qa"]["QA2"]["bo_qa_backlog"], 1)
+        self.assertEqual(self.aggs["by_qa"]["QA3"]["bo_qa_backlog"], 0)
+
     def test_ww_qa_dimension(self):
         self.assertEqual(set(self.aggs["by_ww_qa"].keys()), {"WW1", "WW2"})
         # WW1 reviewed 3 records: Alice 3 (approve), Alice 4 (change), Carol 5 (approve).
