@@ -42,6 +42,7 @@ DONE_LIKE = {"Done", "Valid"}
 # don't make sense at that dimension (e.g. a QA's daily_intake is always 0).
 QA_KEYS = {
     "counts_by_qa_status",                    # approve / changed split
+    "bo_qa_backlog",                          # records in this reviewer's BO QA queue (assigned)
     "qa_inspected_today",                     # BO QA throughput (combined)
     "qa_changed_today",
     "qa_inspected_today_sanctions",
