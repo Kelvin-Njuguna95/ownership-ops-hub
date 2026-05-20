@@ -141,6 +141,56 @@ def _lead_times(records):
     }
 
 
+def _lead_time_today(records, today_eat):
+    """Lead time (start_tagging → completion) for records completed today.
+
+    The three-transition ``_lead_times`` block above is computed over the
+    whole in-scope cache and split at BO QA, so it can't answer "how long
+    did the work finished *today* take, end to end". This helper fills that
+    gap for the Pipeline & Lead Time page.
+
+    "Completed today" mirrors the ``done_today`` metric exactly: a record
+    whose ``done_selected_time`` OR ``valid_selected_time`` lands on
+    ``today_eat`` (EAT). The lead-time sample is the elapsed seconds from
+    ``start_tagging`` to that completion timestamp. Samples missing
+    ``start_tagging``, or where completion precedes tagging (clock skew),
+    are dropped from the percentile pool but still counted as completions —
+    so ``count`` reconciles with ``done_today`` while p50/p90 stay clean.
+
+    Returns ``{p50, p90, count, by_team: {<team>: {p50, p90, count}}}``.
+    Percentiles are int seconds (or ``None`` when there are no samples).
+    Teams with zero completions today are omitted from ``by_team``.
+    """
+    def _stats(recs):
+        samples, count = [], 0
+        for info in recs:
+            comp = None
+            for field in ("done_selected_time", "valid_selected_time"):
+                ts = _parse_iso(info.get(field))
+                if ts and ts.astimezone(EAT).date() == today_eat:
+                    comp = ts if comp is None else min(comp, ts)
+            if comp is None:
+                continue
+            count += 1
+            tagged = _parse_iso(info.get("start_tagging"))
+            if tagged and comp >= tagged:
+                samples.append((comp - tagged).total_seconds())
+        return {
+            "p50":   _percentile(samples, 50),
+            "p90":   _percentile(samples, 90),
+            "count": count,
+        }
+
+    out = _stats(records)
+    by_team = {}
+    for team, recs in _group(records, lambda r: r.get("team")).items():
+        s = _stats(recs)
+        if s["count"]:
+            by_team[team] = s
+    out["by_team"] = by_team
+    return out
+
+
 def compute_metrics(records, today_eat):
     """Compute the full metric block for a slice of records.
 
@@ -807,6 +857,10 @@ def aggregate(records, today_eat, ownership_assignees):
         "sampling_target_pct":        SAMPLING_TARGET_PCT,
         "reject_threshold":           REJECT_THRESHOLD,
         "totals":                     totals,
+        # Pipeline & Lead Time page — end-to-end (start_tagging → completion)
+        # lead time for records completed today, overall + per ownership team.
+        # Computed over in_scope so count reconciles with totals.done_today.
+        "lead_time_today":            _lead_time_today(in_scope, today_eat),
         "tasks_all":                  tasks_all,
         "qa_reviewers":               qa_reviewers,
         "not_yet_finalized":          not_yet_finalized,

@@ -254,7 +254,7 @@ const PAGES = [
   { id: "tasks",          label: "Tasks",                   tag: null     },
   { id: "new_companies",  label: "New Companies",           tag: null     },
   { id: "wwqa",           label: "WW QA Console",           tag: null     },
-  { id: "pipeline",       label: "Pipeline & Lead Time",    tag: "stub"   },
+  { id: "pipeline",       label: "Pipeline & Lead Time",    tag: null     },
   { id: "scenarios",      label: "Case Scenarios",          tag: "stub"   },
   { id: "weekly",         label: "Weekly Report",           tag: null     },
 ];
@@ -2335,31 +2335,117 @@ function _rollupClientSide(dayList) {
 // -------- Pipeline & Lead Time (stub) --------
 PAGE_RENDERERS.pipeline = function () {
   const root = document.getElementById("page-pipeline");
-  const lt = STATE.v2?.totals?.lead_time_seconds || {};
-  const fmt = (s) => s == null ? "<em>awaiting more cache history</em>" : `${(s / 3600).toFixed(1)} h`;
+  // Today-scoped, end-to-end lead time (start_tagging → completion). Added to
+  // the aggregator as the top-level `lead_time_today` key. Falls back to {}
+  // for aggregates written before that key shipped — every tile/row degrades
+  // to "—" / empty-state rather than throwing.
+  const ltt   = STATE.v2?.lead_time_today || {};
+  // Per-stage breakdown over the whole cache window (NOT today-scoped). Kept
+  // from the previous stub — answers "where does pipeline time accrue", which
+  // the today-scoped tiles above don't.
+  const stage = STATE.v2?.totals?.lead_time_seconds || {};
+  const hrs    = (s) => (s == null) ? "—" : (s / 3600).toFixed(1);          // bare number, 1dp
+  const hrsKpi = (s) => (s == null) ? "—" : `${(s / 3600).toFixed(1)} h`;   // with unit, for tiles
+  const completed = (typeof ltt.count === "number") ? ltt.count : null;
+
+  // Per-team rows: only teams with completions today, most completions first.
+  const teamRows = Object.entries(ltt.by_team || {})
+    .sort((a, b) => b[1].count - a[1].count)
+    .map(([team, s]) => `<tr>
+      <td><strong>${esc(team)}</strong></td>
+      <td class="right">${s.count}</td>
+      <td class="right">${hrs(s.p50)}</td>
+      <td class="right">${hrs(s.p90)}</td>
+    </tr>`).join("");
+
   root.innerHTML = `
-    <div class="stub-card">
-      <h2>Pipeline & Lead Time</h2>
-      <p>Coming in <strong>Phase D</strong>. Planned widgets:</p>
-      <ul>
-        <li>Funnel chart: Waiting → Tagged → BO QA → Done → Valid</li>
-        <li>p50 / p90 hours per transition (table + bar chart)</li>
-        <li>Stuck records: in-stage for &gt; X days</li>
-        <li>Per-team funnel comparison</li>
-      </ul>
+    <div class="kpis">
+      <div class="kpi hero">
+        <div class="label">Lead time p50 (today)</div>
+        <div class="value">${hrsKpi(ltt.p50)}</div>
+        <div class="delta">median start_tagging → completion</div>
+      </div>
+      <div class="kpi">
+        <div class="label">Lead time p90 (today)</div>
+        <div class="value">${hrsKpi(ltt.p90)}</div>
+        <div class="delta">90th percentile</div>
+      </div>
+      <div class="kpi">
+        <div class="label">Records completed today</div>
+        <div class="value">${completed == null ? "—" : completed.toLocaleString()}</div>
+        <div class="delta">done or valid today (5 ownership teams)</div>
+      </div>
     </div>
-    <div class="panel" style="margin-top:18px">
-      <h3>What we have today <span class="meta">from aggregates_v2.totals.lead_time_seconds</span></h3>
+    <div class="panel">
+      <h3>Per-team lead time <span class="meta">records completed today, start_tagging → completion</span></h3>
       <table>
-        <tr><td>created → tagged (p50)</td><td class="right">${fmt(lt.created_to_tagged_p50)}</td></tr>
-        <tr><td>created → tagged (p90)</td><td class="right">${fmt(lt.created_to_tagged_p90)}</td></tr>
-        <tr><td>tagged → BO QA (p50)</td><td class="right">${fmt(lt.tagged_to_bo_qa_p50)}</td></tr>
-        <tr><td>tagged → BO QA (p90)</td><td class="right">${fmt(lt.tagged_to_bo_qa_p90)}</td></tr>
-        <tr><td>BO QA → Done (p50)</td><td class="right">${fmt(lt.bo_qa_to_done_p50)}</td></tr>
-        <tr><td>BO QA → Done (p90)</td><td class="right">${fmt(lt.bo_qa_to_done_p90)}</td></tr>
+        <thead><tr><th>Team</th><th class="right">Completed today</th><th class="right">p50 (h)</th><th class="right">p90 (h)</th></tr></thead>
+        <tbody>${teamRows || `<tr><td colspan="4" class="empty">No records completed yet today.</td></tr>`}</tbody>
       </table>
     </div>
+    <div class="panel">
+      <h3>7-day p50 lead-time trend <span class="meta">from snapshots</span></h3>
+      <div class="chart-wrap"><canvas id="chart-7day-leadtime"></canvas></div>
+      <div class="footer-note">p50 lead time = median time from start_tagging to completion. Derived from daily snapshots in Supabase Storage (snapshots/YYYY-MM-DD.json). Gray bars = no snapshot (or no lead-time data) for that day.</div>
+    </div>
+    <div class="panel">
+      <h3>Stage breakdown <span class="meta">all cached records, from aggregates_v2.totals.lead_time_seconds</span></h3>
+      <table>
+        <tr><td>created → tagged (p50)</td><td class="right">${hrs(stage.created_to_tagged_p50)}</td></tr>
+        <tr><td>created → tagged (p90)</td><td class="right">${hrs(stage.created_to_tagged_p90)}</td></tr>
+        <tr><td>tagged → BO QA (p50)</td><td class="right">${hrs(stage.tagged_to_bo_qa_p50)}</td></tr>
+        <tr><td>tagged → BO QA (p90)</td><td class="right">${hrs(stage.tagged_to_bo_qa_p90)}</td></tr>
+        <tr><td>BO QA → Done (p50)</td><td class="right">${hrs(stage.bo_qa_to_done_p50)}</td></tr>
+        <tr><td>BO QA → Done (p90)</td><td class="right">${hrs(stage.bo_qa_to_done_p90)}</td></tr>
+      </table>
+      <div class="footer-note">Per-stage p50/p90 in hours, across the whole cache window (not today-scoped) — shows where pipeline time accrues.</div>
+    </div>
   `;
+
+  // 7-day p50 lead-time chart — mirrors the Daily Intake 7-day pattern: fetch
+  // lead_time_today.p50 from the daily snapshots in Supabase Storage, in
+  // parallel. Days whose snapshot is missing (or predates the lead_time_today
+  // key) render as a gray zero bar with a "no snapshot" tooltip.
+  (async () => {
+    const today = todayEat();
+    const dates = [];
+    for (let i = 6; i >= 0; i--) {
+      const dt = new Date(today + "T00:00:00+03:00");
+      dt.setDate(dt.getDate() - i);
+      dates.push(dt.toLocaleDateString("en-CA", { timeZone: "Africa/Nairobi" }));
+    }
+    const last7 = await Promise.all(dates.map(async d => {
+      const snap = await readJson(`snapshots/${d}.json`);
+      const p50 = snap?.lead_time_today?.p50;   // int seconds, or undefined
+      return { d, h: (typeof p50 === "number") ? +(p50 / 3600).toFixed(1) : null };  // null = no data
+    }));
+    const ctx = document.getElementById("chart-7day-leadtime");
+    if (!ctx) return;
+    if (STATE.charts["chart-7day-leadtime"]) STATE.charts["chart-7day-leadtime"].destroy();
+    STATE.charts["chart-7day-leadtime"] = new Chart(ctx, {
+      type: "bar",
+      data: {
+        labels: last7.map(x => x.d),
+        datasets: [{
+          label: "p50 lead time (h)",
+          data: last7.map(x => x.h ?? 0),
+          backgroundColor: last7.map(x => x.h == null ? "#cccccc" : "#1450b3"),
+        }],
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        scales: { y: { beginAtZero: true, title: { display: true, text: "hours" } } },
+        plugins: {
+          legend: { display: false },
+          tooltip: { callbacks: { label: c => {
+            const v = last7[c.dataIndex].h;
+            return v == null ? "no snapshot for this day" : v.toFixed(1) + " h";
+          }}},
+        },
+      },
+    });
+  })();
 };
 
 // -------- Case Scenarios (stub) --------

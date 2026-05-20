@@ -340,6 +340,25 @@ class TestAggregateDimensions(unittest.TestCase):
         self.assertEqual(self.aggs["by_team"]["Tembo"]["tagged_today"], 3)
         self.assertEqual(self.aggs["by_team"]["Nyati"]["tagged_today"], 4)
 
+    def test_lead_time_today(self):
+        # start_tagging → completion for records completed today. Five in-scope
+        # records have a done_selected_time of today (Alice 3,4 / Bob 3 / Carol
+        # 4,5 — same set as done_today=5), each tagged exactly 2h before being
+        # done, so every sample is 7200s and count reconciles with done_today.
+        lt = self.aggs["lead_time_today"]
+        self.assertEqual(lt["count"], 5)
+        self.assertEqual(lt["count"], self.aggs["totals"]["done_today"])
+        self.assertEqual(lt["p50"], 7200)
+        self.assertEqual(lt["p90"], 7200)
+        # Per-team breakdown: Simba (Alice 3,4) = 2, Tembo (Bob 3) = 1,
+        # Nyati (Carol 4,5) = 2. Bob 4 was done yesterday, so Tembo is 1 not 2.
+        self.assertEqual(set(lt["by_team"].keys()), {"Simba", "Tembo", "Nyati"})
+        self.assertEqual(lt["by_team"]["Simba"]["count"], 2)
+        self.assertEqual(lt["by_team"]["Tembo"]["count"], 1)
+        self.assertEqual(lt["by_team"]["Nyati"]["count"], 2)
+        self.assertEqual(lt["by_team"]["Simba"]["p50"], 7200)
+        self.assertEqual(lt["by_team"]["Nyati"]["p90"], 7200)
+
     def test_agent_dimension(self):
         self.assertEqual(set(self.aggs["by_agent"].keys()), {"Alice", "Bob", "Carol"})
         self.assertEqual(self.aggs["by_agent"]["Alice"]["team_routed_intake_today"], 5)
