@@ -2,11 +2,12 @@
 
 The `Poll Airtable → Supabase` workflow is triggered by an external scheduler at [cron-job.org](https://cron-job.org), not by GitHub Actions' `schedule:` event. GitHub silently drops scheduled events on free-tier public repos (audit on 2026-05-19: only ~4 of ~60 expected firings executed over 22 hours). The `schedule:` block was removed in PR #24; `workflow_dispatch` remains so manual triggers and the external scheduler both work.
 
-This document covers the three cron-job.org jobs that need to be configured:
+This document covers the cron-job.org jobs that need to be configured:
 
 1. **Poll trigger** — fires every 5 min during business hours, POSTs to the dispatch API.
 2. **Staleness watchdog** — fires every 30 min during business hours, GETs `last_sync.json` and alerts if it's older than 15 min.
 3. **Overnight gap-closing poll** — fires at 00:30 and 03:30 EAT (Mon–Sat), same payload as Job 1, to catch late-night client uploads that would otherwise sit invisible until 06:00.
+4. **Stale-uploads alert** — fires once daily at 06:30 EAT (Mon–Sat), POSTs to the `stale-uploads-alert.yml` dispatch API; the workflow posts a Slack digest of uploads unclaimed >3 days.
 
 ## Prerequisites
 
@@ -78,6 +79,32 @@ Detects the next time the trigger silently breaks (PAT revoked, GitHub Actions o
 | Notifications | Email on failure |
 
 **Why this exists:** Job 1 only fires 06:00–23:00 EAT to keep cron-job.org's free-tier daily-firings count under control during quiet hours. But the 2026-05-18 CargoChangeIntel incident showed a real client-upload pattern at 22:34 EAT, which means uploads after 23:00 can sit invisible until 06:00 the next day — up to 7 hours of operational blindness. Job 3 reduces worst-case lag from ~7h to ~3h. Sundays are deliberately still uncovered (no client activity expected); revisit if that assumption breaks.
+
+## Job 4 — stale-uploads alert
+
+Fires the `Stale uploads alert` workflow once each morning. The workflow posts a Slack digest (to #windward-team-leaders) of client uploads still unclaimed (`verification_status` = `waiting` or blank, never tagged) more than 3 days after upload — records that otherwise age out of the dashboard's windows with no warning. Same dispatch mechanism, headers, auth, and body as Job 1; only the workflow file and schedule differ.
+
+| Field | Value |
+| --- | --- |
+| Title | `ownership-ops-hub: stale-uploads alert` |
+| URL | `https://api.github.com/repos/Kelvin-Njuguna95/ownership-ops-hub/actions/workflows/stale-uploads-alert.yml/dispatches` |
+| Request method | `POST` |
+| Schedule | `06:30` EAT, Mon–Sat. In cron-job.org's UI: timezone `Africa/Nairobi`, Custom schedule, crontab expression `30 6 * * 1-6`. (Once daily — runs just after Job 1 resumes, so the snapshot is fresh.) |
+| Request headers | Same as Job 1: `Accept: application/vnd.github+json`, `X-GitHub-Api-Version: 2022-11-28`, plus `Content-Type: application/json` (required for the JSON body) |
+| Authentication | Bearer token — same PAT as Job 1 (needs `Actions: Read and write` on this repo) |
+| Request body | `{"ref":"main"}` |
+| Body content type | `application/json` |
+| Notifications | Email on failure |
+
+**Expected response:** GitHub returns `204 No Content` on success (same as Job 1).
+
+**Prerequisite — Slack credential (one-time, by Kelvin).** The repo has **no** Slack secret yet, so the workflow can't post until one is added:
+
+1. Create a Slack **incoming webhook** bound to **#windward-team-leaders**: https://api.slack.com/apps → (create or pick an app) → *Incoming Webhooks* → *Add New Webhook to Workspace* → choose `#windward-team-leaders` → copy the `https://hooks.slack.com/services/…` URL.
+2. Add it as a GitHub Actions repo secret named **`SLACK_WEBHOOK_URL`** (Settings → Secrets and variables → Actions → New repository secret). The workflow already reads `secrets.SLACK_WEBHOOK_URL`.
+3. (Alternative — bot token.) If you'd rather use a Slack app/bot, set repo secrets `SLACK_BOT_TOKEN` (and optionally `SLACK_CHANNEL`, default `windward-team-leaders`) and swap the `env:` block in `.github/workflows/stale-uploads-alert.yml` accordingly — the script supports either path.
+
+Until the secret exists the workflow run will fail at the post step with a clear "No Slack credential" error (it never touches Slack without one). Sanity-check the dispatch the same way as Job 1 (`curl -i …/stale-uploads-alert.yml/dispatches` → expect `HTTP/2 204`), then confirm a message lands in the channel.
 
 ## Disabling the old GitHub Actions schedule
 

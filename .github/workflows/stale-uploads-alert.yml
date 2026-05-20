@@ -1,0 +1,39 @@
+name: Stale uploads alert
+
+# Once-daily Slack digest of client uploads sitting unclaimed > 3 days
+# (verification_status waiting/blank, never tagged). Posts to
+# #windward-team-leaders.
+#
+# workflow_dispatch-only — same rationale as poll.yml: GitHub Actions silently
+# drops scheduled events on free-tier public repos, so the trigger lives in
+# cron-job.org (Job 4, 06:30 EAT Mon–Sat). See docs/EXTERNAL_CRON_SETUP.md.
+#
+# Requires repo secrets: AIRTABLE_PAT (existing) and SLACK_WEBHOOK_URL (new —
+# an incoming webhook bound to #windward-team-leaders; create it before this
+# can post). To use a bot token instead, swap SLACK_WEBHOOK_URL for
+# SLACK_BOT_TOKEN (+ optional SLACK_CHANNEL) below.
+
+on:
+  workflow_dispatch:
+
+jobs:
+  alert:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install dependencies
+        run: pip install requests
+
+      - name: Post stale-uploads digest to Slack
+        env:
+          AIRTABLE_PAT:      ${{ secrets.AIRTABLE_PAT }}
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+        run: python3 alerts/stale_uploads_alert.py
