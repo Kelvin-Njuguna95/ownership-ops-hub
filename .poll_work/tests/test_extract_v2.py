@@ -227,13 +227,23 @@ class TestIsProperlyCompleted(unittest.TestCase):
 
 
 class TestIsSanctions(unittest.TestCase):
+    """is_sanctions is the single dashboard-wide rule: a task name containing
+    the singular substring 'sanction' (case-insensitive) — so both
+    'Sanction...' and 'Sanctions...' names count as sanctions."""
+
     def test_non_sanctions_task_name(self):
         self.assertFalse(is_sanctions("CargoChangeIntel17Apr2026_task2"))
+        self.assertFalse(is_sanctions("CargoChangeIntel20May2026"))
 
-    def test_sanctions_in_name(self):
+    def test_singular_sanction_matches(self):
+        # Previously False under the plural-only rule; now True.
+        self.assertTrue(is_sanctions("SanctionChangeIntel20May2026"))
+
+    def test_plural_sanctions_matches(self):
         self.assertTrue(is_sanctions("CargoSanctionsCheck17Apr2026"))
 
     def test_case_insensitive(self):
+        self.assertTrue(is_sanctions("CargoSANCTION"))
         self.assertTrue(is_sanctions("CargoSANCTIONS"))
         self.assertTrue(is_sanctions("sanctions"))
 

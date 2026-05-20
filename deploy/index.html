@@ -2549,6 +2549,24 @@ PAGE_RENDERERS.pipeline = function () {
       <td class="right">${hrs(s.p90)}</td>
     </tr>`).join("");
 
+  // Sanctions vs non-sanctions cohorts. by_cohort omits count=0 cohorts (same
+  // empty convention as by_team), so always render both fixed rows and default
+  // a missing cohort to count 0 / "—". by_cohort itself is absent on aggregates
+  // written before the split shipped → single empty-state row.
+  const bc = ltt.by_cohort;
+  const cohortRow = (label, key) => {
+    const s = bc && bc[key];
+    return `<tr>
+      <td><strong>${label}</strong></td>
+      <td class="right">${s ? s.count : 0}</td>
+      <td class="right">${hrs(s && s.p50)}</td>
+      <td class="right">${hrs(s && s.p90)}</td>
+    </tr>`;
+  };
+  const cohortRows = bc
+    ? cohortRow("Sanctions", "sanctions") + cohortRow("Non-sanctions", "non_sanctions")
+    : `<tr><td colspan="4" class="empty">No cohort breakdown in this aggregate yet.</td></tr>`;
+
   root.innerHTML = `
     <div class="kpis">
       <div class="kpi hero">
@@ -2573,6 +2591,14 @@ PAGE_RENDERERS.pipeline = function () {
         <thead><tr><th>Team</th><th class="right">Completed today</th><th class="right">p50 (h)</th><th class="right">p90 (h)</th></tr></thead>
         <tbody>${teamRows || `<tr><td colspan="4" class="empty">No records completed yet today.</td></tr>`}</tbody>
       </table>
+    </div>
+    <div class="panel">
+      <h3>Sanctions vs non-sanctions <span class="meta">records completed today</span></h3>
+      <table>
+        <thead><tr><th>Cohort</th><th class="right">Completed today</th><th class="right">p50 (h)</th><th class="right">p90 (h)</th></tr></thead>
+        <tbody>${cohortRows}</tbody>
+      </table>
+      <div class="footer-note">Sanctions tasks require 100% QA per SOP — watch this row for material drift vs non-sanctions.</div>
     </div>
     <div class="panel">
       <h3>7-day p50 lead-time trend <span class="meta">from snapshots</span></h3>
