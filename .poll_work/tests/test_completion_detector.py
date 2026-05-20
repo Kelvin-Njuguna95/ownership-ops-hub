@@ -37,7 +37,10 @@ from completion_detector import (  # noqa: E402
     build_alert_row,
     classify,
     is_complete,
+    needs_tagging_row,
     resolve_completed_by,
+    route_record,
+    supabase_insert_completions,
 )
 
 
@@ -522,6 +525,138 @@ class TestTotalCompletionsContract(unittest.TestCase):
         self.assertEqual(target, "sampling",
                          "Flow B must NEVER classify as completion target")
         self.assertNotEqual(target, "completion")
+
+
+# ============================================================================
+# Capture-gap closure — every tagged-or-beyond record gets a tagging row.
+# ============================================================================
+class TestNeedsTaggingRow(unittest.TestCase):
+    def test_tagged_or_beyond_states_need_a_row(self):
+        for vs in (TAGGED, NEED_TO_BE_UPDATE, SELECTED_FOR_BO_QA, DONE, VALID):
+            self.assertTrue(needs_tagging_row(_fields(verification_status=vs)), vs)
+
+    def test_waiting_and_blank_do_not(self):
+        self.assertFalse(needs_tagging_row(_fields(verification_status="waiting")))
+        self.assertFalse(needs_tagging_row(_fields()))  # blank vs
+
+
+class TestCaptureGapClosure(unittest.TestCase):
+    NOW = datetime(2026, 5, 20, 17, 0, 0, tzinfo=timezone.utc)
+
+    def _route(self, **kw):
+        return route_record({"id": kw.pop("rid", "recX"), "fields": _fields(**kw)}, self.NOW)
+
+    # (a) A record first observed already in BO QA now gets a tagging row.
+    def test_sbo_first_seen_gets_tagging_row_and_keeps_sampling(self):
+        target, _, comp, samp, alert = self._route(
+            verification_status=SELECTED_FOR_BO_QA,
+            assignee=[{"id": "j", "name": "JAMES MAINA"}],
+            qa_assignee={"id": "q", "name": "Selah Nabiswa"})
+        self.assertEqual(target, "sampling")
+        self.assertIsNotNone(samp, "sampling row must still be written")
+        self.assertEqual(samp["qa_assignee"], "Selah Nabiswa")
+        self.assertIsNotNone(comp, "NEW: a tagging completions row is added")
+        self.assertIsNone(comp["flow"], "tagging row is pre-flow (flow=NULL)")
+        self.assertEqual(comp["completed_by"], "JAMES MAINA", "credited to the tagger")
+        self.assertEqual(comp["verification_status"], SELECTED_FOR_BO_QA)
+
+    def test_sbo_without_qa_assignee_alert_still_gets_tagging_row(self):
+        target, detail, comp, samp, alert = self._route(
+            verification_status=SELECTED_FOR_BO_QA,
+            assignee=[{"id": "j", "name": "JAMES MAINA"}])
+        self.assertEqual((target, detail), ("alert", "missing_qa_assignee"))
+        self.assertIsNotNone(alert)
+        self.assertIsNone(samp)
+        self.assertIsNotNone(comp)
+        self.assertIsNone(comp["flow"])
+        self.assertEqual(comp["completed_by"], "JAMES MAINA")
+
+    def test_done_missing_qa_status_alert_gets_tagging_row(self):
+        # Done/Valid with a QA-integrity alert was also a capture gap.
+        target, detail, comp, samp, alert = self._route(
+            verification_status=VALID,
+            assignee=[{"id": "j", "name": "JAMES MAINA"}],
+            qa_assignee={"id": "q", "name": "Reviewer"})  # qa_status blank
+        self.assertEqual((target, detail), ("alert", "missing_qa_status"))
+        self.assertIsNotNone(alert)
+        self.assertIsNotNone(comp)
+        self.assertIsNone(comp["flow"])
+        self.assertEqual(comp["completed_by"], "JAMES MAINA")
+
+    def test_tagged_without_company_skip_still_gets_tagging_row(self):
+        # Previously skipped (is_complete False); it's still a tagged record.
+        target, _, comp, samp, alert = self._route(
+            verification_status=TAGGED,
+            assignee=[{"id": "j", "name": "JAMES MAINA"}])
+        self.assertEqual(target, "skip")
+        self.assertIsNotNone(comp)
+        self.assertIsNone(comp["flow"])
+        self.assertEqual(comp["completed_by"], "JAMES MAINA")
+
+    # No double-rowing: completion / pre_flow targets still yield exactly one row.
+    def test_flow_a_completion_not_double_rowed(self):
+        target, detail, comp, samp, alert = self._route(
+            verification_status=DONE, assignee=[{"id": "j", "name": "JAMES MAINA"}])
+        self.assertEqual((target, detail), ("completion", "A"))
+        self.assertIsNotNone(comp)
+        self.assertEqual(comp["flow"], "A", "keeps its real flow, not overwritten with NULL")
+
+    def test_pre_flow_single_row(self):
+        target, _, comp, samp, alert = self._route(
+            verification_status=TAGGED, company_id_and_name=["recCo"],
+            assignee=[{"id": "j", "name": "JAMES MAINA"}])
+        self.assertEqual(target, "pre_flow")
+        self.assertIsNotNone(comp)
+        self.assertIsNone(comp["flow"])
+
+    # (c) waiting / blank produce no completions row.
+    def test_waiting_produces_no_completion_row(self):
+        _, _, comp, _, _ = self._route(
+            verification_status="waiting", assignee=[{"id": "j", "name": "JAMES MAINA"}])
+        self.assertIsNone(comp)
+
+    def test_blank_vs_produces_no_completion_row(self):
+        _, _, comp, _, _ = self._route(assignee=[{"id": "j", "name": "JAMES MAINA"}])
+        self.assertIsNone(comp)
+
+    def test_no_assignee_unattributable_yields_no_row(self):
+        # A tagged-or-beyond record with no assignee/lmb/qa stays unattributable
+        # (NOT-NULL invariant preserved — no row rather than a null completed_by).
+        _, _, comp, _, _ = self._route(verification_status=SELECTED_FOR_BO_QA)
+        self.assertIsNone(comp)
+
+    # (b) Idempotency: a gap-fill tagging row (flow=NULL) never modifies an
+    # existing row — as a duplicate it takes the no-PATCH path.
+    def test_gap_fill_row_is_idempotent_no_patch_on_duplicate(self):
+        _, _, comp, _, _ = self._route(
+            verification_status=SELECTED_FOR_BO_QA,
+            assignee=[{"id": "j", "name": "JAMES MAINA"}],
+            qa_assignee={"id": "q", "name": "Selah Nabiswa"})
+        with patch.object(det, "requests") as mock_req:
+            mock_req.post.return_value = MagicMock(status_code=201, json=lambda: [], text="[]")
+            result = supabase_insert_completions("https://x", "key", [comp])
+            mock_req.patch.assert_not_called()
+            self.assertEqual(result["duplicates_no_flow"], 1)
+
+    # (d) A gap-filled flow=NULL row still upgrades to A/C when the record completes.
+    def test_gap_filled_row_upgrades_to_flow_a_when_completed(self):
+        _, _, comp_sbo, _, _ = self._route(
+            rid="recGap", verification_status=SELECTED_FOR_BO_QA,
+            assignee=[{"id": "j", "name": "JAMES MAINA"}],
+            qa_assignee={"id": "q", "name": "Selah Nabiswa"})
+        self.assertIsNone(comp_sbo["flow"])
+        # Later cycle: same record reaches Done (Flow A).
+        _, detail, comp_done, _, _ = self._route(
+            rid="recGap", verification_status=DONE,
+            assignee=[{"id": "j", "name": "JAMES MAINA"}])
+        self.assertEqual((detail, comp_done["flow"]), ("A", "A"))
+        with patch.object(det, "requests") as mock_req:
+            mock_req.post.return_value = MagicMock(status_code=201, json=lambda: [], text="[]")  # dup
+            mock_req.patch.return_value = MagicMock(
+                status_code=200, json=lambda: [{"id": "u", "airtable_record_id": "recGap"}], text="[]")
+            result = supabase_insert_completions("https://x", "key", [comp_done])
+            self.assertEqual(result["flow_upserted"], 1)
+            self.assertIn("flow=is.null", mock_req.patch.call_args.args[0])
 
 
 if __name__ == "__main__":
