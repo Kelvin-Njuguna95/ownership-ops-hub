@@ -1224,14 +1224,19 @@ PAGE_RENDERERS.boqa = function () {
     <div class="panel">
       <h3>Today's tagged worklist <span class="meta">live from Airtable (read-only)</span></h3>
       <div class="controls-row">
-        <button class="btn primary" id="loadBoqaBtn">Load live worklist</button>
+        <button class="btn primary" id="loadBoqaBtn">Refresh</button>
         <span class="small-mono" id="boqaStatus"></span>
       </div>
-      <div id="boqaWorklist"></div>
+      <div id="boqaWorklist"><div class="empty"><span class="spinning-icon">↻</span> Loading worklist…</div></div>
     </div>
     <div class="panel">
       <h3>5/5/5 stratification helper <span class="meta">recommended sample per agent</span></h3>
-      <div id="boqaStrat" class="empty">Load the worklist above to compute.</div>
+      <div id="boqaStrat" class="empty">Loading…</div>
+    </div>
+    <div class="panel">
+      <h3>Per-reviewer BO QA load <span class="meta">assigned vs reviewed today</span></h3>
+      <div id="boqaReviewerLoad"></div>
+      <div class="footer-note">Coverage % = reviewed today / assigned. Sustained low coverage on heavily-assigned reviewers = bottleneck.</div>
     </div>
     <div class="panel">
       <h3>add_new_company queue — 100% QA required</h3>
@@ -1240,19 +1245,26 @@ PAGE_RENDERERS.boqa = function () {
   `;
   document.getElementById("loadBoqaBtn").addEventListener("click", loadBoqa);
   renderAddNewCompanyFromCache();
+  renderQaReviewerLoad();
+  loadBoqa();  // auto-fetch the worklist on render (Refresh button re-fetches)
 };
 
 async function loadBoqa() {
   const status = document.getElementById("boqaStatus");
   if (!HAS_COWORK) {
     status.textContent = "Cowork required for live fetch (browser mode can only serve cached JSON).";
+    const wl = document.getElementById("boqaWorklist");
+    if (wl) wl.innerHTML = `<div class="empty">Live worklist needs Cowork — browser mode serves cached aggregates only. The per-reviewer panel below still works.</div>`;
+    const st = document.getElementById("boqaStrat");
+    if (st) st.innerHTML = `<div class="empty">Live worklist unavailable in browser mode.</div>`;
     return;
   }
+  const btn = document.getElementById("loadBoqaBtn");
   status.textContent = "fetching from Airtable…";
-  document.getElementById("loadBoqaBtn").disabled = true;
+  if (btn) { btn.disabled = true; btn.innerHTML = `<span class="spinning-icon">↻</span> Refreshing…`; }
   STATE.liveBoQa = await liveFetchBoQaQueue();
   status.textContent = `fetched ${STATE.liveBoQa.length} tagged records`;
-  document.getElementById("loadBoqaBtn").disabled = false;
+  if (btn) { btn.disabled = false; btn.textContent = "Refresh"; }
   renderBoqaWorklist();
 }
 
@@ -1323,6 +1335,40 @@ function renderBoqaWorklist() {
   document.getElementById("boqaStrat").innerHTML = `<table>
     <thead><tr><th>Team</th><th>Agent</th><th class="right">Tagged today</th><th class="right">QA sample target</th><th>Suggested IMOs (top/mid/bot)</th></tr></thead>
     <tbody>${stratRows}</tbody></table>`;
+}
+
+// Per-reviewer BO QA load — from the cached snapshot's by_qa block (works in
+// browser + Cowork, today + historical). assigned = bo_qa_backlog (records in
+// this reviewer's BO QA queue), reviewed = qa_inspected_today. Skips reviewers
+// with no assigned and no reviews; coverage capped at 100%.
+function renderQaReviewerLoad() {
+  const root = document.getElementById("boqaReviewerLoad");
+  if (!root) return;
+  const byQa = STATE.v2?.by_qa || {};
+  const rows = Object.entries(byQa)
+    .map(([name, m]) => ({
+      name,
+      assigned: (typeof m.bo_qa_backlog === "number") ? m.bo_qa_backlog : 0,
+      reviewed: (typeof m.qa_inspected_today === "number") ? m.qa_inspected_today : 0,
+    }))
+    .filter(r => r.assigned > 0 || r.reviewed > 0)
+    .sort((a, b) => (b.assigned - a.assigned) || (b.reviewed - a.reviewed));
+  if (rows.length === 0) {
+    root.innerHTML = `<div class="empty">No QA reviewers have assigned or reviewed records yet.</div>`;
+    return;
+  }
+  const cov = (r) => r.assigned > 0
+    ? Math.min(100, Math.round((r.reviewed / r.assigned) * 100))
+    : (r.reviewed > 0 ? 100 : 0);
+  const body = rows.map(r => `<tr>
+      <td>${esc(r.name)}</td>
+      <td class="right">${r.assigned.toLocaleString()}</td>
+      <td class="right">${r.reviewed.toLocaleString()}</td>
+      <td class="right">${cov(r)}%</td>
+    </tr>`).join("");
+  root.innerHTML = `<table>
+    <thead><tr><th>Reviewer</th><th class="right">Assigned (BO QA queue)</th><th class="right">Reviewed today</th><th class="right">Coverage %</th></tr></thead>
+    <tbody>${body}</tbody></table>`;
 }
 
 function renderAddNewCompanyFromCache() {
