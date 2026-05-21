@@ -2092,6 +2092,14 @@ function openTaskDrawer(taskName) {
   const flagsHtml = t.flags.map(f => `<span class="flag-pill ${FLAG_STYLES[f] || 'gray'}">${esc(f)}</span>`).join("") || '<span class="small-mono">no flags</span>';
   const sd = t.status_distribution;
 
+  // QA metrics — task-lifetime cumulative (by current qa_status). Null-guarded:
+  // qa_changed / per-agent qa_checked/qa_changed predate older snapshots.
+  const qaReviewed = t.qa_reviewed || 0;
+  const qaChanged = t.qa_changed || 0;
+  const qaCoverage = t.qa_coverage_pct || 0;
+  const qaChangeRate = qaReviewed > 0 ? Math.round((qaChanged / qaReviewed) * 100) : null;
+  const qaRateCls = qaChangeRate == null ? "" : (qaChangeRate < 10 ? "good" : qaChangeRate < 30 ? "warn" : "bad");
+
   drawer.innerHTML = `
     <div class="drawer-header">
       <button class="drawer-close" id="drawerCloseBtn" title="Close">×</button>
@@ -2131,12 +2139,21 @@ function openTaskDrawer(taskName) {
         </div>
       </div>
 
+      <div class="panel">
+        <h3>QA metrics <span class="meta">task-lifetime · by current QA status</span></h3>
+        <table>
+          <tr><td>Checked <span class="small-mono">% of completed work QA-checked</span></td><td class="right"><strong>${qaCoverage.toFixed(0)}%</strong> <span class="small-mono">(${qaReviewed} of ${t.completed || 0} completed)</span></td></tr>
+          <tr><td>Changed <span class="small-mono">records QA bounced back</span></td><td class="right">${qaChanged}</td></tr>
+          <tr><td>Change rate <span class="small-mono">changed / checked</span></td><td class="right">${qaChangeRate == null ? '<span class="small-mono">—</span>' : `<span class="pill-inline ${qaRateCls}">${qaChangeRate}%</span>`}</td></tr>
+        </table>
+      </div>
+
       <div class="row equal">
         <div class="panel">
           <h3>Agents working this task <span class="meta">multi-assignee aware</span></h3>
           <table>
-            <thead><tr><th>Agent</th><th>Team</th><th class="right">Records touched</th></tr></thead>
-            <tbody>${t.agents_worked.map(a => `<tr><td class="agent-name">${esc(a.name)}</td><td>${esc(a.team || '—')}</td><td class="right">${a.records}</td></tr>`).join("") || '<tr><td colspan="3" class="empty">no assignees in cache window</td></tr>'}</tbody>
+            <thead><tr><th>Agent</th><th>Team</th><th class="right">Records touched</th><th class="right">Checked</th><th class="right">Changed</th></tr></thead>
+            <tbody>${t.agents_worked.map(a => `<tr><td class="agent-name">${esc(a.name)}</td><td>${esc(a.team || '—')}</td><td class="right">${a.records}</td><td class="right">${a.qa_checked || 0}</td><td class="right">${a.qa_changed || 0}</td></tr>`).join("") || '<tr><td colspan="5" class="empty">no assignees in cache window</td></tr>'}</tbody>
           </table>
         </div>
         <div class="panel">

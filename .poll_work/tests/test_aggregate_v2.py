@@ -760,6 +760,40 @@ class TestComputeTaskBreakdowns(unittest.TestCase):
         self.assertEqual(teams["Simba"]["records"], 2)
         self.assertEqual(teams["Tembo"]["records"], 2)
 
+    def test_qa_checked_changed_per_agent_and_task_level(self):
+        # Mix of QA outcomes; task-lifetime cumulative (by current qa_status).
+        recs = [
+            # Alice solo, QA approved → checked, not changed.
+            _info(requested_by="QA1", assignees=["Alice"], verification_status="Valid",
+                  qa_assignee="Q1", qa_status="approve"),
+            # Alice solo, QA changed → checked + changed.
+            _info(requested_by="QA1", assignees=["Alice"], verification_status="Done",
+                  qa_assignee="Q1", qa_status="changed"),
+            # Bob solo, QA changed → checked + changed.
+            _info(requested_by="QA1", assignees=["Bob"], verification_status="Done",
+                  qa_assignee="Q1", qa_status="changed"),
+            # Alice + Bob co-assigned, QA changed → BOTH credited checked + changed.
+            _info(requested_by="QA1", assignees=["Alice", "Bob"], verification_status="Done",
+                  qa_assignee="Q2", qa_status="changed"),
+            # Carol solo, unreviewed → no QA credit.
+            _info(requested_by="QA1", assignees=["Carol"], verification_status="tagged"),
+        ]
+        tasks = compute_task_breakdowns(recs, TODAY, self._build_norm_ownership())
+        t = next(x for x in tasks if x["name"] == "QA1")
+        # Task level: 4 reviewed, 3 changed (rec2 + rec3 + co-assigned rec4).
+        self.assertEqual(t["qa_reviewed"], 4)
+        self.assertEqual(t["qa_changed"], 3)
+        agents = {a["name"]: a for a in t["agents_worked"]}
+        # Alice: 3 records checked, 2 changed (her changed rec + the co-assigned changed rec).
+        self.assertEqual(agents["Alice"]["qa_checked"], 3)
+        self.assertEqual(agents["Alice"]["qa_changed"], 2)
+        # Bob: solo + co-assigned, both checked, both changed (multi-assignee credit).
+        self.assertEqual(agents["Bob"]["qa_checked"], 2)
+        self.assertEqual(agents["Bob"]["qa_changed"], 2)
+        # Carol: unreviewed.
+        self.assertEqual(agents["Carol"]["qa_checked"], 0)
+        self.assertEqual(agents["Carol"]["qa_changed"], 0)
+
     def test_status_distribution_zero_filled(self):
         recs = [_info(requested_by="T1", assignees=["Alice"], verification_status="Done")]
         tasks = compute_task_breakdowns(recs, TODAY, self._build_norm_ownership())
