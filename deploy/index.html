@@ -109,11 +109,21 @@
   .flag-pill.amber { background: var(--warn-bg); color: var(--warn); }
   .flag-pill.gray  { background: #ececec;        color: var(--muted); }
 
+  /* The Tasks table is its own scroll region: it scrolls horizontally (to reach the
+     Turn-around / Flags columns) and vertically (through the rows) while the header
+     row and the Task-name column stay pinned. The bounded max-height is essential —
+     an overflow container with no height cap lets the page (not the table) own the
+     scroll, and position:sticky then has nothing to resolve against. That was the
+     PR #28 regression: both sticky directions only work because they resolve against
+     this one bounded container. The 400px offset reserves room for the topbar, page
+     padding, the heading, KPI cards and the search/filter row so the page itself never
+     scrolls (measured: ~384px needed at 1300px width; 400 leaves a small safety margin). */
+  #tasksTable { overflow: auto; max-height: calc(100vh - 400px); }
   #tasksTable table { font-size: 12px; }
   #tasksTable th, #tasksTable td { padding: 5px 8px; white-space: nowrap; }
   #tasksTable thead th {
     position: sticky;
-    top: 54px; /* matches .topbar height; tune if header overlaps topbar or leaves a visible gap */
+    top: 0; /* sticky resolves against the #tasksTable scroll container, so the offset is 0 */
     z-index: 3;
     background: var(--soft);
   }
