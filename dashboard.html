@@ -107,6 +107,11 @@
   .panel h3 { font-size: 14px; margin: 0 0 12px; font-weight: 600; letter-spacing: -0.01em; display: flex; justify-content: space-between; align-items: center; }
   .panel h3 .meta { font-size: 11px; color: var(--muted); font-weight: 400; letter-spacing: 0; }
   .panel .empty { padding: 24px; text-align: center; color: var(--muted); font-style: italic; }
+  /* Section header — structural divider between content groups (Phase 6).
+     Larger/stronger than a panel h3, quieter than the page title; hairline rule. */
+  .section-head { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; font-size: 15px; font-weight: 650; letter-spacing: -0.012em; color: var(--ink); margin: 30px 0 14px; padding-bottom: 8px; border-bottom: 1px solid var(--border); }
+  .section-head:first-child { margin-top: 4px; }
+  .section-head .meta { font-size: 11px; color: var(--muted); font-weight: 400; letter-spacing: 0; white-space: nowrap; }
 
   .row { display: grid; grid-template-columns: 2fr 1fr; gap: 16px; align-items: start; }
   .row.equal { grid-template-columns: 1fr 1fr; }
@@ -438,7 +443,7 @@ const PAGES = [
   { id: "pipeline",       label: "Pipeline & Lead Time",    tag: null,   group: "Operations" },
   { id: "scenarios",      label: "Case Scenarios",          tag: null,   group: "Operations" },
   { id: "qa_performance", label: "QA Performance",          tag: null,   group: "Quality"    },
-  { id: "boqa",           label: "BO QA Console",           tag: "live", group: "Quality"    },
+  { id: "boqa",           label: "BO QA Console",           tag: null,   group: "Quality"    },
   { id: "wwqa",           label: "WW QA Console",           tag: null,   group: "Quality"    },
   { id: "agent",          label: "Agent Scorecard",         tag: null,   group: "People"     },
   { id: "experts",        label: "Ownership Experts",        tag: null,   group: "People"     },
@@ -807,7 +812,6 @@ PAGE_RENDERERS.overview = function () {
   const flowPct = (n) => taggedTotal > 0 ? (n / taggedTotal * 100) : 0;
   const flowHtml = `
     <div class="panel">
-      <h3>Operational flow <span class="meta">today · 5 teams · Flow A + B + C + D = tagged</span></h3>
       <div class="flow-strip">
         <div class="flow-node">
           <div class="flow-count">${intake.toLocaleString()}</div>
@@ -873,7 +877,10 @@ PAGE_RENDERERS.overview = function () {
       </div>
     </div>`;
 
-  root.innerHTML = kpiHtml + flowHtml + alertsHtml + trendsHtml;
+  root.innerHTML =
+      `<h2 class="section-head">Executive summary</h2>` + kpiHtml
+    + `<h2 class="section-head">Operational flow <span class="meta">today · 5 teams · Flow A + B + C + D = tagged</span></h2>` + flowHtml
+    + `<h2 class="section-head">Team activity &amp; alerts</h2>` + alertsHtml + trendsHtml;
 
   // Flow Framework v2 alerts (from Supabase flow_alerts table)
   renderFlowAlerts(t);
