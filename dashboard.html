@@ -78,11 +78,25 @@
   .kpi .label { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.05em; font-weight: 500; }
   .kpi .value { font-size: 28px; font-weight: 650; margin-top: 4px; letter-spacing: -0.02em; color: var(--ink); }
   .kpi .delta { font-size: 11px; color: var(--muted); margin-top: 3px; }
+  /* Hero — the single headline KPI: spans two columns, dominant value, resting elevation. */
+  .kpi.hero { grid-column: span 2; padding: 18px 22px; box-shadow: var(--shadow-md); }
+  .kpi.hero .value { font-size: 46px; font-weight: 700; margin-top: 6px; line-height: 1.05; }
+  .kpi.hero .delta { font-size: 12px; margin-top: 4px; }
+  .kpi.hero:hover { box-shadow: var(--shadow-lg); }
+  /* Secondary — compact, muted, recessive: contextual / low-priority metrics that should
+     sit behind the operational ones. Still flows in the same .kpis auto-fit grid. */
+  .kpi.secondary { background: var(--soft); box-shadow: none; }
+  .kpi.secondary .value { font-size: 20px; font-weight: 600; color: var(--muted); margin-top: 2px; }
+  .kpi.secondary:hover { box-shadow: var(--shadow-sm); transform: none; }
+  /* Semantic attention — restrained. .good stays calm (the coloured value is enough);
+     .warn / .bad get a thin inset left stripe (no reflow) so cards needing attention pop. */
   .kpi.good .value { color: var(--good); }
   .kpi.warn .value { color: var(--warn); }
   .kpi.bad .value { color: var(--bad); }
-  .kpi.hero { grid-column: span 2; }
-  .kpi.hero .value { font-size: 40px; }
+  .kpi.warn { box-shadow: inset 3px 0 0 var(--warn), var(--shadow-sm); }
+  .kpi.bad  { box-shadow: inset 3px 0 0 var(--bad),  var(--shadow-sm); }
+  .kpi.warn:hover { box-shadow: inset 3px 0 0 var(--warn), var(--shadow-md); }
+  .kpi.bad:hover  { box-shadow: inset 3px 0 0 var(--bad),  var(--shadow-md); }
 
   /* Panels — shadow-led; a restrained shadow deepen on hover (no transform here, to
      avoid touching the sticky/frozen scroll regions some panels contain) */
@@ -702,16 +716,16 @@ PAGE_RENDERERS.overview = function () {
         <div class="delta">relations_support intake — all assignees</div></div>
       <div class="kpi"><div class="label">Tagged today (5 teams)</div><div class="value">${t.tagged_today || 0}</div></div>
       <div class="kpi"><div class="label">Done today (5 teams)</div><div class="value">${t.done_today || 0}</div></div>
-      <div class="kpi"><div class="label">Unique IMOs (cache)</div><div class="value">${(t.unique_imos || 0).toLocaleString()}</div><div class="delta">distinct vessels in window</div></div>
+      <div class="kpi secondary"><div class="label">Unique IMOs (cache)</div><div class="value">${(t.unique_imos || 0).toLocaleString()}</div><div class="delta">distinct vessels in window</div></div>
       <div class="kpi" title="Properly completed = start_date filled AND (company_id filled OR Dead vessel ticked). Dead-vessel is the operational alternative when no company exists to link."><div class="label">Properly completed today</div><div class="value">${t.properly_completed_today || 0}</div><div class="delta">${(t.tagged_today || 0) - (t.properly_completed_today || 0) > 0 ? `${(t.tagged_today || 0) - (t.properly_completed_today || 0)} tagged but not yet complete` : "&nbsp;"}</div></div>
-      <div class="kpi"><div class="label">Dead vessels today</div><div class="value">${t.dead_vessels_today || 0}</div><div class="delta">checkbox-ticked, tagged today</div></div>
+      <div class="kpi secondary"><div class="label">Dead vessels today</div><div class="value">${t.dead_vessels_today || 0}</div><div class="delta">checkbox-ticked, tagged today</div></div>
       <div class="kpi"><div class="label">BO QA backlog</div><div class="value">${t.bo_qa_backlog || 0}</div><div class="delta">in queue, any age</div></div>
       <div class="kpi"><div class="label">WW QA backlog</div><div class="value">${t.ww_qa_backlog || 0}</div><div class="delta">awaiting WW review</div></div>
       <div class="kpi ${(STATE.v2?.qa_done_not_finalized?.length || 0) > 0 ? 'warn' : ''}" title="Records where QA has reviewed (qa_assignee + qa_status both filled) but verification_status is still incomplete. Operational red flag — QA touched it, ops hasn't closed it."><div class="label">QA'd but not closed</div><div class="value">${(STATE.v2?.qa_done_not_finalized?.length || 0)}</div><div class="delta">QA reviewed, awaiting ops close-out</div></div>
       <div class="kpi ${sampNsClass}"><div class="label">Sampling % — Non-sanctions</div><div class="value">${t.sampling_non_sanctions_pct.toFixed(1)}%</div><div class="delta">target ≥ ${t.sampling_target_non_sanctions_pct}% (of ${t.tagged_today_non_sanctions || 0} tagged)</div></div>
       <div class="kpi ${sampSClass}"><div class="label">Sampling % — Sanctions</div><div class="value">${t.sampling_sanctions_pct.toFixed(1)}%</div><div class="delta">target ≥ ${t.sampling_target_sanctions_pct}% (of ${t.tagged_today_sanctions || 0} tagged)</div></div>
       <div class="kpi ${rejectClass}"><div class="label">Reject %</div><div class="value">${t.reject_rate.toFixed(1)}%</div><div class="delta">threshold ${t.reject_threshold}%</div></div>
-      <div class="kpi"><div class="label">Silent changes today</div><div class="value">${silent}</div><div class="delta">from legacy poll block</div></div>
+      <div class="kpi secondary"><div class="label">Silent changes today</div><div class="value">${silent}</div><div class="delta">from legacy poll block</div></div>
     </div>`;
 
   const flowA = t.flow_a_today || 0;
