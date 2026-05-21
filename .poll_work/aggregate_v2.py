@@ -21,9 +21,11 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from extract_v2 import (  # noqa: E402
     COMMENT_VALUES,
+    EXPERT_NAMES,
     NO_IMO_FOUND_COMMENTS,
     SELECTED_FOR_BO_QA,
     SELECTED_FOR_WW_QA,
+    classify_task_type,
     extract,
     is_properly_completed,
     is_sanctions,
@@ -941,6 +943,102 @@ def compute_ww_qa_reviews(records, today_eat, ownership_assignees, cap=500):
     return out[:cap], truncated
 
 
+def compute_expert_activity(records, today_eat):
+    """Ownership Experts page — tracks the two experts in EXPERT_NAMES who handle
+    sensitive OFAC / World Check / Sanctions tagging. They are NOT in the team
+    roster, so they never appear in by_agent; this scans the FULL record set by
+    name (case-insensitive). A record co-assigned to both experts counts for both.
+    There is no "shared by" field, so task hand-overs are not tracked.
+
+    Returns {"experts": [...], "tasks": [...]}:
+      experts — one object per expert (both always emitted, even with zero records).
+      tasks   — one object per distinct requested_by across both experts' records,
+                sorted by record count desc.
+
+    Modelled on compute_case_scenarios (full-records scan, per-record classify).
+    """
+    DISPLAY = {"irene njuguna": "Irene Njuguna", "simon francis": "Simon Francis"}
+    # 7 EAT dates ending today_eat (oldest first) for the per-expert output chart.
+    week_iso = [(today_eat - timedelta(days=i)).isoformat() for i in range(6, -1, -1)]
+
+    def _blank_expert(key):
+        return {
+            "name": DISPLAY.get(key, key),
+            "records": 0, "tasks": 0, "completed": 0, "completion_pct": 0.0,
+            "qa_checked": 0, "qa_changed": 0, "reject_rate": 0.0,
+            "status_distribution": {k: 0 for k in STATUS_KEYS},
+            "by_type": {"OFAC": 0, "World Check": 0, "Sanctions": 0, "Other": 0},
+            "daily": [{"date": iso, "records": 0} for iso in week_iso],
+        }
+
+    experts = {key: _blank_expert(key) for key in EXPERT_NAMES}
+    expert_tasks = {key: set() for key in EXPERT_NAMES}   # distinct requested_by per expert
+    task_acc = {}   # requested_by -> {records, completed, qa_checked, qa_changed, experts:set}
+
+    for info in records:
+        rec_experts = {(asg or "").strip().lower()
+                       for asg in (info.get("assignees") or [])} & EXPERT_NAMES
+        if not rec_experts:
+            continue
+        vs = info.get("verification_status")
+        is_done = vs in ("Done", "Valid")
+        qreviewed = bool(info.get("qa_assignee") and info.get("qa_status"))
+        qchanged = qreviewed and info.get("qa_status") == "changed"
+        tname = info.get("requested_by") or "(no task name)"
+        ttype = classify_task_type(info.get("requested_by"))
+        sd_eat = _parse_eat_date(info.get("start_tagging"))
+        sd_iso = sd_eat.isoformat() if sd_eat is not None else None
+
+        for key in rec_experts:
+            e = experts[key]
+            e["records"] += 1
+            expert_tasks[key].add(tname)
+            if is_done:    e["completed"] += 1
+            if qreviewed:  e["qa_checked"] += 1
+            if qchanged:   e["qa_changed"] += 1
+            if vs in e["status_distribution"]:
+                e["status_distribution"][vs] += 1
+            e["by_type"][ttype] += 1
+            if sd_iso is not None:
+                for d in e["daily"]:
+                    if d["date"] == sd_iso:
+                        d["records"] += 1
+                        break
+
+        # One row per task; a record co-assigned to both experts counts once for
+        # the task but unions both experts onto it.
+        t = task_acc.get(tname)
+        if t is None:
+            t = task_acc[tname] = {"records": 0, "completed": 0, "qa_checked": 0,
+                                   "qa_changed": 0, "experts": set()}
+        t["records"] += 1
+        if is_done:   t["completed"] += 1
+        if qreviewed: t["qa_checked"] += 1
+        if qchanged:  t["qa_changed"] += 1
+        t["experts"] |= rec_experts
+
+    expert_list = []
+    for key in sorted(EXPERT_NAMES):   # Irene then Simon — deterministic
+        e = experts[key]
+        e["tasks"] = len(expert_tasks[key])
+        e["completion_pct"] = round(e["completed"] / e["records"] * 100, 1) if e["records"] else 0.0
+        e["reject_rate"] = round(e["qa_changed"] / e["qa_checked"] * 100, 1) if e["qa_checked"] else 0.0
+        expert_list.append(e)
+
+    task_list = [{
+        "name": tname,
+        "type": classify_task_type(tname if tname != "(no task name)" else None),
+        "experts": sorted(DISPLAY.get(k, k) for k in t["experts"]),
+        "records": t["records"],
+        "completed": t["completed"],
+        "qa_checked": t["qa_checked"],
+        "qa_changed": t["qa_changed"],
+    } for tname, t in task_acc.items()]
+    task_list.sort(key=lambda x: -x["records"])
+
+    return {"experts": expert_list, "tasks": task_list}
+
+
 def aggregate(records, today_eat, ownership_assignees):
     """Build the aggregates_v2 block.
 
@@ -1017,6 +1115,8 @@ def aggregate(records, today_eat, ownership_assignees):
     add_new_company_records, anc_truncated = compute_add_new_company_records(in_scope, today_eat, ownership_assignees)
     case_gap, case_gap_trunc, case_no_imo, case_no_imo_trunc = compute_case_scenarios(in_scope, today_eat, ownership_assignees)
     ww_qa_reviews, ww_qa_reviews_trunc = compute_ww_qa_reviews(in_scope, today_eat, ownership_assignees)
+    # Experts aren't in the roster, so scan the FULL record set by name (not in_scope).
+    expert_activity = compute_expert_activity(records, today_eat)
 
     # Yesterday-cohort BO QA coverage. Under the next-day review model the work
     # reviewed "today" was tagged yesterday, so coverage is measured against
@@ -1058,6 +1158,7 @@ def aggregate(records, today_eat, ownership_assignees):
         "bo_qa_coverage":             bo_qa_coverage,
         "ww_qa_review_records":           ww_qa_reviews,
         "ww_qa_review_records_truncated": ww_qa_reviews_trunc,
+        "expert_activity":            expert_activity,
         "by_team":  {k: compute_metrics(v, today_eat)
                      for k, v in _group(in_scope, lambda r: r.get("team")).items()},
         "by_agent": {k: compute_metrics(v, today_eat)
