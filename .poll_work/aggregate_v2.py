@@ -350,20 +350,32 @@ def compute_metrics(records, today_eat):
                 if san: need_to_be_update_today_sanctions += 1
                 else:   need_to_be_update_today_non_sanctions += 1
             if qs in ("approve", "changed"):
+                # Keep the sampled flag for the sampling-% calc (which is scoped to
+                # work tagged today), but do NOT count the review here. BO QA happens
+                # the day AFTER tagging, so a record tagged today is almost never
+                # reviewed today — counting reviews in this block read ~zero. Reviews
+                # are bucketed by review date (qa_status_ts) in the separate pass below.
                 sampled = True
-                qa_inspected_today += 1
-                if san: qa_inspected_today_sanctions += 1
-                else:   qa_inspected_today_non_sanctions += 1
-                if qs == "changed":
-                    qa_changed_today += 1
-                    if san: qa_changed_today_sanctions += 1
-                    else:   qa_changed_today_non_sanctions += 1
             if sampled:
                 sampled_today_ids.add(idx)
                 if san:
                     sampled_today_sanctions_ids.add(idx)
                 else:
                     sampled_today_non_sanctions_ids.add(idx)
+
+        # BO QA reviews counted by REVIEW date, not tag date. Under the next-day
+        # review model (a record tagged on day N is reviewed on N+1), "today's
+        # reviews" means verdicts whose qa_status_ts is today — i.e. reviews of the
+        # prior day's work. Deliberately a separate pass: independent of start_tagging.
+        if qs in ("approve", "changed") and _parse_eat_date(info.get("qa_status_ts")) == today_eat:
+            san_rev = is_sanctions(info.get("requested_by"))
+            qa_inspected_today += 1
+            if san_rev: qa_inspected_today_sanctions += 1
+            else:       qa_inspected_today_non_sanctions += 1
+            if qs == "changed":
+                qa_changed_today += 1
+                if san_rev: qa_changed_today_sanctions += 1
+                else:       qa_changed_today_non_sanctions += 1
 
         # Hourly Tagging Output — independent of the today-scoped block above.
         # A record contributes to hour H for an agent on the EAT day of its
@@ -878,6 +890,39 @@ def compute_case_scenarios(records, today_eat, ownership_assignees, cap=500):
     return gap[:cap], len(gap) > cap, no_imo[:cap], len(no_imo) > cap
 
 
+def compute_ww_qa_reviews(records, today_eat, ownership_assignees, cap=500):
+    """Per-record WW QA review list. WW QA has no review-timestamp field, so its
+    throughput stays a cumulative count (see ww_qa_throughput); this list surfaces
+    the underlying reviewed records. Every record with a ww_qa verdict set, newest-
+    modified first. last_modified is the best-available "when reviewed" proxy.
+
+    Modelled on compute_add_new_company_records (same norm team lookup, per-record
+    dict shape, cap + truncated flag). Returns (list, truncated_bool).
+    """
+    norm = _normalize_ownership(ownership_assignees)
+
+    out = []
+    for info in records:
+        verdict = info.get("ww_qa")
+        if not verdict:
+            continue
+        asg = info.get("assignee")
+        team = norm.get((asg or "").strip().lower(), {}).get("team")
+        out.append({
+            "requested_by":   info.get("requested_by"),
+            "imo":            info.get("imo"),
+            "assignee":       asg,
+            "team":           team,
+            "ww_qa_assignee": info.get("ww_qa_assignee"),
+            "ww_qa":          verdict,
+            "last_modified":  info.get("last_modified"),
+        })
+    # ISO timestamps sort lexicographically = chronologically; newest first.
+    out.sort(key=lambda r: r["last_modified"] or "", reverse=True)
+    truncated = len(out) > cap
+    return out[:cap], truncated
+
+
 def aggregate(records, today_eat, ownership_assignees):
     """Build the aggregates_v2 block.
 
@@ -953,6 +998,23 @@ def aggregate(records, today_eat, ownership_assignees):
     qa_done_not_finalized = compute_qa_done_not_finalized(not_yet_finalized)
     add_new_company_records, anc_truncated = compute_add_new_company_records(in_scope, today_eat, ownership_assignees)
     case_gap, case_gap_trunc, case_no_imo, case_no_imo_trunc = compute_case_scenarios(in_scope, today_eat, ownership_assignees)
+    ww_qa_reviews, ww_qa_reviews_trunc = compute_ww_qa_reviews(in_scope, today_eat, ownership_assignees)
+
+    # Yesterday-cohort BO QA coverage. Under the next-day review model the work
+    # reviewed "today" was tagged yesterday, so coverage is measured against
+    # yesterday's cohort: records tagged yesterday that entered the BO QA pipeline
+    # (Selected for BO QA, or any qa_status already set). reviewed = those with a
+    # qa_status verdict. Lets the console show "X went to BO QA → Y reviewed".
+    yesterday = today_eat - timedelta(days=1)
+    bo_cohort = bo_reviewed = 0
+    for r in in_scope:
+        if _parse_eat_date(r.get("start_tagging")) != yesterday:
+            continue
+        if r.get("verification_status") == SELECTED_FOR_BO_QA or r.get("qa_status"):
+            bo_cohort += 1
+            if r.get("qa_status"):
+                bo_reviewed += 1
+    bo_qa_coverage = {"date": yesterday.isoformat(), "cohort": bo_cohort, "reviewed": bo_reviewed}
 
     return {
         "date":                       today_eat.isoformat(),
@@ -975,6 +1037,9 @@ def aggregate(records, today_eat, ownership_assignees):
         "case_company_gap_truncated": case_gap_trunc,
         "case_no_imo_records":        case_no_imo,
         "case_no_imo_truncated":      case_no_imo_trunc,
+        "bo_qa_coverage":             bo_qa_coverage,
+        "ww_qa_review_records":           ww_qa_reviews,
+        "ww_qa_review_records_truncated": ww_qa_reviews_trunc,
         "by_team":  {k: compute_metrics(v, today_eat)
                      for k, v in _group(in_scope, lambda r: r.get("team")).items()},
         "by_agent": {k: compute_metrics(v, today_eat)
