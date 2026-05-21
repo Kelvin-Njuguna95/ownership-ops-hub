@@ -139,6 +139,34 @@
   #tasksTable thead th:first-child { z-index: 4; background: var(--soft); } /* top-left corner: above row header + frozen column */
   #tasksTable tbody tr:hover td:first-child { background: var(--soft); }     /* keep hover shade consistent on the frozen cell */
 
+  /* The New Companies table is its own scroll region — same pattern as #tasksTable
+     above (PR #50). It previously had no scroll container and no sticky header, so the
+     column headers scrolled out of view on the long (up to 500-row) list. The bounded
+     max-height is what makes position:sticky work: without a height cap the page owns
+     the scroll and the sticky header silently breaks (the PR #28 regression). Offset
+     measured in headless Chrome with the worst-case chrome present (heading, footer note,
+     2 KPI cards, controls row AND the 500+ truncated alert). On the production build the
+     topbar carries extra controls that wrap at <=1300px, pushing the table top to ~390px,
+     so ~469px is the minimum that keeps the page itself from scrolling — 490 leaves a
+     safety margin. (Larger than Tasks' 400px because this page's header area — footer
+     note + truncated alert + a wrapping topbar — is taller, not shorter.) */
+  #newCompaniesTable { overflow: auto; max-height: calc(100vh - 490px); }
+  #newCompaniesTable thead th {
+    position: sticky;
+    top: 0; /* sticky resolves against the #newCompaniesTable scroll container */
+    z-index: 3;
+    background: var(--soft);
+  }
+  #newCompaniesTable tbody td:first-child,
+  #newCompaniesTable thead th:first-child {
+    position: sticky;
+    left: 0;
+    z-index: 2;
+    background: var(--surface);
+  }
+  #newCompaniesTable thead th:first-child { z-index: 4; background: var(--soft); } /* top-left corner: above row header + frozen column */
+  #newCompaniesTable tbody tr:hover td:first-child { background: var(--soft); }     /* keep hover shade consistent on the frozen cell */
+
   .drawer-backdrop { position: fixed; inset: 0; background: rgba(0,0,0,0.25); opacity: 0; pointer-events: none; transition: opacity 180ms ease; z-index: 99; }
   .drawer-backdrop.open { opacity: 1; pointer-events: auto; }
   .drawer { position: fixed; top: 0; right: 0; bottom: 0; width: 70vw; max-width: 1100px; background: var(--surface); border-left: 1px solid var(--border); box-shadow: -8px 0 24px rgba(0,0,0,0.08); overflow-y: auto; transform: translateX(100%); transition: transform 220ms ease; z-index: 100; }
