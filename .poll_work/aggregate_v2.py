@@ -21,6 +21,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from extract_v2 import (  # noqa: E402
     COMMENT_VALUES,
+    NO_IMO_FOUND_COMMENTS,
     SELECTED_FOR_BO_QA,
     SELECTED_FOR_WW_QA,
     extract,
@@ -826,6 +827,57 @@ def compute_add_new_company_records(records, today_eat, ownership_assignees, cap
     return out[:cap], truncated
 
 
+def compute_case_scenarios(records, today_eat, ownership_assignees, cap=500):
+    """Case Scenarios drilldown — splits records into two operational lists by
+    their `comment` (a singleSelect of 11 fixed case-scenario values):
+
+      no_imo:    every record whose comment is one of the five NO_IMO_FOUND_COMMENTS
+                 (any verification_status). For these a blank company is *correct*
+                 — no IMO means there is nothing to attach — so they are NOT gaps.
+      gap:       Done/Valid records with an empty company that are not dead vessels
+                 AND whose comment is not a no-IMO comment. These are genuine
+                 company gaps that need attention.
+
+    The elif below guarantees a no-IMO record never also lands in the gap list —
+    the no-IMO comment excuses the blank company.
+
+    Modelled on compute_add_new_company_records: same norm team lookup, same
+    days_open derivation, same per-record dict shape, same sort-by-days_open-desc
+    + cap + truncated flag. Returns (gap_list, gap_truncated, no_imo_list,
+    no_imo_truncated).
+    """
+    norm = _normalize_ownership(ownership_assignees)
+
+    gap, no_imo = [], []
+    for info in records:
+        comment = info.get("comment")
+        vs = info.get("verification_status")
+        base = info.get("start_tagging") or info.get("created")
+        base_date = _parse_eat_date(base)
+        days_open = (today_eat - base_date).days if base_date else 0
+        asg = info.get("assignee")
+        team = norm.get((asg or "").strip().lower(), {}).get("team")
+        row = {
+            "requested_by":        info.get("requested_by"),
+            "imo":                 info.get("imo"),
+            "assignee":            asg,
+            "team":                team,
+            "comment":             comment,
+            "verification_status": vs,
+            "days_open":           days_open,
+        }
+        if comment in NO_IMO_FOUND_COMMENTS:
+            no_imo.append(row)
+        elif (vs in ("Done", "Valid")
+              and not info.get("company_id")
+              and info.get("dead_vessel") is not True):
+            gap.append(row)
+
+    gap.sort(key=lambda r: -r["days_open"])
+    no_imo.sort(key=lambda r: -r["days_open"])
+    return gap[:cap], len(gap) > cap, no_imo[:cap], len(no_imo) > cap
+
+
 def aggregate(records, today_eat, ownership_assignees):
     """Build the aggregates_v2 block.
 
@@ -900,6 +952,7 @@ def aggregate(records, today_eat, ownership_assignees):
     not_yet_finalized, nyf_truncated = compute_not_yet_finalized(in_scope, today_eat, ownership_assignees)
     qa_done_not_finalized = compute_qa_done_not_finalized(not_yet_finalized)
     add_new_company_records, anc_truncated = compute_add_new_company_records(in_scope, today_eat, ownership_assignees)
+    case_gap, case_gap_trunc, case_no_imo, case_no_imo_trunc = compute_case_scenarios(in_scope, today_eat, ownership_assignees)
 
     return {
         "date":                       today_eat.isoformat(),
@@ -918,6 +971,10 @@ def aggregate(records, today_eat, ownership_assignees):
         "qa_done_not_finalized":      qa_done_not_finalized,
         "add_new_company_records":    add_new_company_records,
         "add_new_company_records_truncated": anc_truncated,
+        "case_company_gap_records":   case_gap,
+        "case_company_gap_truncated": case_gap_trunc,
+        "case_no_imo_records":        case_no_imo,
+        "case_no_imo_truncated":      case_no_imo_trunc,
         "by_team":  {k: compute_metrics(v, today_eat)
                      for k, v in _group(in_scope, lambda r: r.get("team")).items()},
         "by_agent": {k: compute_metrics(v, today_eat)

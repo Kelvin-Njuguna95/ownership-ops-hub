@@ -61,6 +61,20 @@ COMMENT_VALUES = (
     "Document Not Available",
 )
 
+# The five comment values that mean the vessel's IMO could not be located. When
+# one is set, a blank company id/name is correct (no IMO => nothing to attach), so
+# the record is legitimately complete — NOT a company gap. Sliced from
+# COMMENT_VALUES (indices 1–5) so the two stay in sync; asserted below to catch any
+# reordering of COMMENT_VALUES.
+NO_IMO_FOUND_COMMENTS = frozenset(COMMENT_VALUES[1:6])
+assert NO_IMO_FOUND_COMMENTS == {
+    "IMO searched but not found",
+    "IMO not found, has positional data",
+    "IMO Never Existed, No positional data",
+    "IMO not found on Nexis/Equasis, No positional data",
+    "IMO not found on Nexis/Equasis/WW",
+}, "NO_IMO_FOUND_COMMENTS drifted from COMMENT_VALUES — re-check the slice indices"
+
 # Self-referential garbage choice on the 'role' singleSelect (sel id selyNKujjYLS03W1A).
 ROLE_GARBAGE_VALUES = {"role"}
 
