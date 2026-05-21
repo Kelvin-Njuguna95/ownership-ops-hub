@@ -779,6 +779,44 @@ class TestComputeTaskBreakdowns(unittest.TestCase):
         self.assertEqual(tasks[0]["name"], "(no task name)")
         self.assertEqual(tasks[0]["total_records_in_cache"], 3)
 
+    def test_lifecycle_completed_and_aging(self):
+        # `aging` keys off real wall-clock NOW (like the "stuck" rule), so the
+        # in-progress task's `created` is anchored to now() to stay deterministic.
+        now = datetime.now(EAT)
+        completed = [
+            # 2/2 Valid → 100% → is_completed. Earliest created = start (08:00);
+            # the later of the two Valid last_modified tips it across 95% (12:00).
+            _info(requested_by="DONE", assignees=["Alice"], verification_status="Valid",
+                  company_id="recC1", start_date="2024-01-01",
+                  created="2026-05-19T08:00:00.000+03:00",
+                  last_modified="2026-05-19T10:00:00.000+03:00"),
+            _info(requested_by="DONE", assignees=["Alice"], verification_status="Valid",
+                  company_id="recC2", start_date="2024-01-01",
+                  created="2026-05-19T08:00:00.000+03:00",
+                  last_modified="2026-05-19T12:00:00.000+03:00"),
+        ]
+        old = (now - timedelta(days=4)).isoformat()
+        aging = [
+            # 0% Valid and first seen >3 days ago → not completed, aging flag.
+            _info(requested_by="AGING", assignees=["Alice"], verification_status="tagged",
+                  created=old, last_modified=old),
+        ]
+        tasks = compute_task_breakdowns(completed + aging, TODAY, self._build_norm_ownership())
+        done = next(t for t in tasks if t["name"] == "DONE")
+        age  = next(t for t in tasks if t["name"] == "AGING")
+
+        self.assertTrue(done["is_completed"])
+        self.assertEqual(done["valid_pct"], 100.0)
+        self.assertIsNotNone(done["end_time"])
+        self.assertEqual(done["tat_hours"], 4.0)         # 12:00 − 08:00
+        self.assertNotIn("aging", done["flags"])
+
+        self.assertFalse(age["is_completed"])
+        self.assertEqual(age["valid_pct"], 0.0)
+        self.assertIsNone(age["end_time"])
+        self.assertIsNone(age["tat_hours"])
+        self.assertIn("aging", age["flags"])
+
 
 class TestTaskFlags(unittest.TestCase):
     """One test per flag rule. last_modified must be within the past 24h of

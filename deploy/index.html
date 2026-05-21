@@ -117,6 +117,17 @@
     z-index: 3;
     background: var(--soft);
   }
+  /* Freeze the Task-name column so it stays readable while the wide table
+     scrolls horizontally. Opaque backgrounds hide cells sliding underneath. */
+  #tasksTable tbody td:first-child,
+  #tasksTable thead th:first-child {
+    position: sticky;
+    left: 0;
+    z-index: 2;
+    background: var(--surface);
+  }
+  #tasksTable thead th:first-child { z-index: 4; background: var(--soft); } /* top-left corner: above row header + frozen column */
+  #tasksTable tbody tr:hover td:first-child { background: var(--soft); }     /* keep hover shade consistent on the frozen cell */
 
   .drawer-backdrop { position: fixed; inset: 0; background: rgba(0,0,0,0.25); opacity: 0; pointer-events: none; transition: opacity 180ms ease; z-index: 99; }
   .drawer-backdrop.open { opacity: 1; pointer-events: auto; }
@@ -1754,6 +1765,8 @@ PAGE_RENDERERS.tasks = function () {
   const kpiIncomplete  = tasks.filter(t => t.flags.includes("incomplete")).length;
   const kpiStuck       = tasks.filter(t => t.flags.includes("stuck")).length;
   const kpiCompanyGap  = tasks.filter(t => t.flags.includes("company-gap")).length;
+  const tatVals        = tasks.filter(t => t.is_completed && t.tat_hours != null).map(t => t.tat_hours);
+  const kpiMedianTat   = median(tatVals);  // hours, or null when nothing completed yet
 
   root.innerHTML = `
     <h3 style="font-size:18px;font-weight:600;color:var(--ink);margin-bottom:8px">Task Lifecycle Tracking</h3>
@@ -1762,6 +1775,7 @@ PAGE_RENDERERS.tasks = function () {
       <div class="kpi ${kpiIncomplete > 0 ? 'warn' : ''}"><div class="label">Incomplete tasks</div><div class="value">${kpiIncomplete}</div></div>
       <div class="kpi ${kpiStuck > 0 ? 'warn' : ''}"><div class="label">Stuck tasks</div><div class="value">${kpiStuck}</div><div class="delta">no activity in 24h</div></div>
       <div class="kpi ${kpiCompanyGap > 0 ? 'bad' : ''}"><div class="label">Company-gap tasks</div><div class="value">${kpiCompanyGap}</div><div class="delta">Done w/o company &amp; not dead vessel</div></div>
+      <div class="kpi"><div class="label">Median turn-around</div><div class="value">${formatDuration(kpiMedianTat)}</div><div class="delta">${tatVals.length} tasks completed</div></div>
     </div>
     <div class="controls-row">
       <label class="small-mono">Search:</label>
@@ -1772,6 +1786,8 @@ PAGE_RENDERERS.tasks = function () {
         <option value="today"      ${TASKS_STATE.view === 'today'      ? 'selected' : ''}>Today's only</option>
         <option value="incomplete" ${TASKS_STATE.view === 'incomplete' ? 'selected' : ''}>Incomplete only</option>
         <option value="stuck"      ${TASKS_STATE.view === 'stuck'      ? 'selected' : ''}>Stuck only</option>
+        <option value="completed"  ${TASKS_STATE.view === 'completed'  ? 'selected' : ''}>Completed only</option>
+        <option value="aging"      ${TASKS_STATE.view === 'aging'      ? 'selected' : ''}>Aging only</option>
         <option value="flagged"    ${TASKS_STATE.view === 'flagged'    ? 'selected' : ''}>Has flags</option>
       </select>
       <span class="small-mono" id="tasksCount"></span>
@@ -1805,6 +1821,10 @@ function _tasksFiltered() {
     out = out.filter(t => t.flags.includes("incomplete"));
   } else if (TASKS_STATE.view === "stuck") {
     out = out.filter(t => t.flags.includes("stuck"));
+  } else if (TASKS_STATE.view === "completed") {
+    out = out.filter(t => t.is_completed);
+  } else if (TASKS_STATE.view === "aging") {
+    out = out.filter(t => (t.flags || []).includes("aging"));
   } else if (TASKS_STATE.view === "flagged") {
     out = out.filter(t => t.flags.length > 0);
   }
@@ -1827,6 +1847,12 @@ function _tasksFiltered() {
     else if (k === "qa_coverage") { av = a.qa_coverage_pct || 0; bv = b.qa_coverage_pct || 0; }
     else if (k === "teams")   { av = a.teams_worked.length; bv = b.teams_worked.length; }
     else if (k === "flags")   { av = a.flags.length; bv = b.flags.length; }
+    else if (k === "tat") {
+      // Completed → turn-around hours; in-progress → current age. Mixed on one
+      // numeric axis so the column sorts sensibly across both kinds of row.
+      av = a.is_completed && a.tat_hours != null ? a.tat_hours : (ageHours(a.date_first_seen) || 0);
+      bv = b.is_completed && b.tat_hours != null ? b.tat_hours : (ageHours(b.date_first_seen) || 0);
+    }
     else if (k === "date_last_modified") { av = a.date_last_modified || ""; bv = b.date_last_modified || ""; }
     else /* date_first_seen */ { av = a.date_first_seen || ""; bv = b.date_first_seen || ""; }
     if (av < bv) return -1 * dir;
@@ -1842,6 +1868,7 @@ const FLAG_STYLES = {
   "incomplete":  "amber",
   "high-waiting":"amber",
   "stuck":       "gray",
+  "aging":       "amber",
 };
 
 function timeAgo(iso) {
@@ -1857,6 +1884,50 @@ function timeAgo(iso) {
 }
 function pctClass(pct) { return pct >= 95 ? "good" : pct >= 70 ? "warn" : "bad"; }
 
+// Compact human duration from a count of hours: 30m / 5h / 2d 4h / — (null).
+function formatDuration(hours) {
+  if (hours == null || isNaN(hours)) return "—";
+  if (hours < 1)  return `${Math.max(1, Math.round(hours * 60))}m`;
+  if (hours < 24) return `${Math.round(hours)}h`;
+  const d = Math.floor(hours / 24);
+  const h = Math.round(hours % 24);
+  return h ? `${d}d ${h}h` : `${d}d`;
+}
+// Hours elapsed since an ISO timestamp (float), or null if missing/unparseable.
+function ageHours(iso) {
+  if (!iso) return null;
+  const ms = Date.now() - new Date(iso).getTime();
+  return isNaN(ms) ? null : ms / 3600000;
+}
+// "19 May" short date, rendered in EAT to match the rest of the dashboard.
+function shortDate(iso) {
+  if (!iso) return "—";
+  const d = new Date(iso);
+  if (isNaN(d.getTime())) return "—";
+  return d.toLocaleDateString("en-GB", { timeZone: "Africa/Nairobi", day: "numeric", month: "short" });
+}
+function median(arr) {
+  if (!arr || !arr.length) return null;
+  const s = [...arr].sort((a, b) => a - b);
+  const m = Math.floor(s.length / 2);
+  return s.length % 2 ? s[m] : (s[m - 1] + s[m]) / 2;
+}
+// Turn-around table cell — compact 2 lines. Completed tasks show the duration
+// plus a muted start→end range; in-progress tasks show a running age coloured
+// amber (1–3d) / red (>3d) plus a muted "since <date>". Degrades to an age-only
+// view for historical snapshots that predate the lifecycle fields.
+function tatCell(t) {
+  if (t.is_completed && t.tat_hours != null) {
+    const range = `${shortDate(t.date_first_seen)} → ${shortDate(t.end_time)}`;
+    return `<div>${esc(formatDuration(t.tat_hours))}</div><div class="small-mono">${esc(range)}</div>`;
+  }
+  const age = ageHours(t.date_first_seen);
+  if (age == null) return '<span class="small-mono">—</span>';
+  const days = age / 24;
+  const col = days > 3 ? "var(--bad)" : days >= 1 ? "var(--warn)" : "var(--muted)";
+  return `<div style="color:${col};font-weight:600">${esc(formatDuration(age))} open</div><div class="small-mono">since ${esc(shortDate(t.date_first_seen))}</div>`;
+}
+
 function renderTasksTable() {
   const list = _tasksFiltered();
   document.getElementById("tasksCount").textContent = `${list.length} of ${(STATE.v2?.tasks_all || []).length}`;
@@ -1866,7 +1937,7 @@ function renderTasksTable() {
     ["waiting", "Waiting"], ["tagged", "Tagged"],
     ["completed", "Completed"], ["qa_reviewed", "QA Reviewed"], ["qa_coverage", "QA %"],
     ["donePct", "Properly done %"],
-    ["teams", "Teams"], ["date_first_seen", "Uploaded"], ["flags", "Flags"],
+    ["teams", "Teams"], ["tat", "Turn-around"], ["flags", "Flags"],
   ];
   const sortInd = (k) => k === TASKS_STATE.sortBy ? (TASKS_STATE.sortDir === "asc" ? "▲" : "▼") : "";
   const rightCols = new Set(['total','Valid','BO QA','waiting','tagged','completed','qa_reviewed','qa_coverage']);
@@ -1889,7 +1960,7 @@ function renderTasksTable() {
       <td class="right"><span class="pill-inline ${(t.qa_coverage_pct || 0) >= 15 ? 'good' : (t.qa_coverage_pct || 0) >= 5 ? 'warn' : 'bad'}">${(t.qa_coverage_pct || 0).toFixed(0)}%</span></td>
       <td class="right"><span class="pill-inline ${pctClass(donePct).replace('warn','warn')}">${donePct.toFixed(0)}%</span></td>
       <td>${esc(teams)}</td>
-      <td class="small-mono">${esc(timeAgo(t.date_first_seen))}</td>
+      <td>${tatCell(t)}</td>
       <td>${flagsHtml || '<span class="small-mono">—</span>'}</td>
     </tr>`;
   }).join("");
@@ -1933,6 +2004,15 @@ function openTaskDrawer(taskName) {
       <div style="margin-top:6px">${flagsHtml}</div>
     </div>
     <div class="drawer-body">
+
+      <div class="panel">
+        <h3>Lifecycle <span class="meta">client upload → 95% Valid</span></h3>
+        <table>
+          <tr><td>Started <span class="small-mono">client upload</span></td><td class="right">${t.date_first_seen ? esc(fmtEatDateTime(t.date_first_seen)) : '<span class="small-mono">—</span>'}</td></tr>
+          <tr><td>Finished <span class="small-mono">crossed 95% Valid</span></td><td class="right">${t.is_completed && t.end_time ? esc(fmtEatDateTime(t.end_time)) : '<span class="small-mono">in progress</span>'}</td></tr>
+          <tr><td>Turn-around</td><td class="right"><strong>${t.is_completed && t.tat_hours != null ? esc(formatDuration(t.tat_hours)) : esc(formatDuration(ageHours(t.date_first_seen))) + ' open so far'}</strong></td></tr>
+        </table>
+      </div>
 
       <div class="row equal">
         <div class="panel">

@@ -541,6 +541,7 @@ def compute_task_breakdowns(records, today_eat, ownership_assignees):
     """
     norm = _normalize_ownership(ownership_assignees)
     cutoff_24h = datetime.now(EAT) - timedelta(hours=24)
+    cutoff_3d  = datetime.now(EAT) - timedelta(hours=72)
 
     by_task = defaultdict(list)
     for r in records:
@@ -570,8 +571,33 @@ def compute_task_breakdowns(records, today_eat, ownership_assignees):
         # Dates
         created_dts  = [d for d in (_parse_iso(info.get("created")) for info in recs) if d]
         last_mod_dts = [d for d in (_parse_iso(info.get("last_modified")) for info in recs) if d]
-        date_first_seen    = min(created_dts).isoformat()  if created_dts  else None
+        # Start = client upload = earliest Airtable `created` across the task's records.
+        start_dt           = min(created_dts) if created_dts else None
+        date_first_seen    = start_dt.isoformat()          if start_dt     else None
         date_last_modified = max(last_mod_dts).isoformat() if last_mod_dts else None
+
+        # Turn-around lifecycle.
+        # Finished = the moment the task crossed 95% of records in Valid status.
+        valid_pct    = round(status["Valid"] / total * 100, 1) if total else 0.0
+        is_completed = total > 0 and valid_pct >= 95.0
+        end_dt = None
+        if is_completed:
+            valid_mods = []
+            for info in recs:
+                if info.get("verification_status") == "Valid":
+                    d = _parse_iso(info.get("last_modified"))
+                    if d:
+                        valid_mods.append(d)
+            valid_mods.sort()
+            # Integer ceil of 0.95 × total: the record whose Valid timestamp
+            # tipped the task across the 95% line.
+            threshold = max(1, (95 * total + 99) // 100)
+            if len(valid_mods) >= threshold:
+                end_dt = valid_mods[threshold - 1]
+        end_time = end_dt.isoformat() if end_dt else None
+        tat_hours = None
+        if end_dt and start_dt and end_dt >= start_dt:
+            tat_hours = round((end_dt - start_dt).total_seconds() / 3600, 2)
 
         # Agents worked — multi-assignee aware. Each assignee on each record
         # gets credit for that record.
@@ -610,6 +636,11 @@ def compute_task_breakdowns(records, today_eat, ownership_assignees):
         # "stuck" — NO record had last_modified in past 24h.
         if not last_mod_dts or all(d < cutoff_24h for d in last_mod_dts):
             flags.append("stuck")
+        # "aging" — first seen (client upload) >72h ago and still not finished.
+        # Distinct from "stuck": stuck = no recent activity; aging = simply in
+        # the system too long without crossing 95% Valid.
+        if start_dt and start_dt < cutoff_3d and not is_completed:
+            flags.append("aging")
         # "company-gap" — any record marked Done/Valid but with no company AND not a dead vessel.
         for info in recs:
             if info.get("verification_status") in ("Done", "Valid") \
@@ -628,6 +659,10 @@ def compute_task_breakdowns(records, today_eat, ownership_assignees):
             "total_records_in_cache": total,
             "date_first_seen": date_first_seen,
             "date_last_modified": date_last_modified,
+            "valid_pct": valid_pct,
+            "is_completed": is_completed,
+            "end_time": end_time,
+            "tat_hours": tat_hours,
             "status_distribution": status,
             "properly_completed": properly_completed,
             "with_company": with_company,
