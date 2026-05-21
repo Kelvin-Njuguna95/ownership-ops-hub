@@ -348,6 +348,39 @@
 
 <script>
 // ============================================================================
+//  Chart.js global defaults — Phase 4 premium, consistent chart styling. Runs after
+//  the chart.js CDN <script> (above) and before any chart renders; per-chart options
+//  still override these, so the defaults only fill in the gaps. Wrapped so a version
+//  mismatch in any defaults path can never break the app's charts.
+// ============================================================================
+if (window.Chart) { try {
+  const CD = Chart.defaults;
+  CD.font.family = "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif";
+  CD.font.size = 12;
+  CD.color = "#69707d";                 /* --muted: ticks, legend, default text */
+  CD.borderColor = "#e7e9ef";           /* --border */
+  CD.animation.duration = 320;
+  CD.animation.easing = "easeOutQuart";
+  CD.layout.padding = 8;
+  /* Legend — refined, point-style markers, comfortable padding */
+  Object.assign(CD.plugins.legend.labels, { usePointStyle: true, pointStyle: "circle", boxWidth: 7, boxHeight: 7, padding: 14, color: "#1b2027", font: { size: 11 } });
+  /* Tooltip — modern dark, rounded, generous padding */
+  Object.assign(CD.plugins.tooltip, { backgroundColor: "rgba(20,24,31,0.95)", titleColor: "#f4f6fa", bodyColor: "#cbd2dd", borderColor: "rgba(255,255,255,0.06)", borderWidth: 1, padding: 10, cornerRadius: 8, boxPadding: 5, usePointStyle: true, titleFont: { size: 12, weight: "600" }, bodyFont: { size: 12 } });
+  /* Bars — rounded tops, sensible thickness/spacing */
+  Object.assign(CD.elements.bar, { borderRadius: 4, borderSkipped: "bottom" });
+  Object.assign(CD.datasets.bar, { maxBarThickness: 46, categoryPercentage: 0.7, barPercentage: 0.9 });
+  /* Lines, points, arcs — calm */
+  Object.assign(CD.elements.line, { borderWidth: 2, tension: 0.3 });
+  Object.assign(CD.elements.point, { radius: 2.5, hoverRadius: 4, hitRadius: 8 });
+  Object.assign(CD.elements.arc, { borderWidth: 2, borderColor: "#ffffff" });
+  /* Axes & gridlines last — clean Stripe-analytics feel: faint horizontal guides, no
+     heavy axis border line, tidy ticks. Defensive across Chart.js v4 scale-default paths. */
+  CD.scale.grid = Object.assign(CD.scale.grid || {}, { color: "rgba(27,32,39,0.06)", tickColor: "rgba(27,32,39,0.06)", drawTicks: false });
+  CD.scale.border = Object.assign(CD.scale.border || {}, { display: false });
+  CD.scale.ticks = Object.assign(CD.scale.ticks || {}, { color: "#69707d", padding: 8, font: { size: 11 } });
+} catch (e) { /* never let chart-default styling break the app */ } }
+
+// ============================================================================
 //  Constants
 // ============================================================================
 const BASH_TOOL    = "mcp__workspace__bash";
@@ -885,7 +918,7 @@ PAGE_RENDERERS.overview = function () {
   if (ctx) {
     STATE.charts["chart-tagged-by-team"] = new Chart(ctx, {
       type: "bar",
-      data: { labels, datasets: [{ label: "Tagged today", data: tagged, backgroundColor: "#1a1a1a" }] },
+      data: { labels, datasets: [{ label: "Tagged today", data: tagged, backgroundColor: "#3d63dd" }] },
       options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } }
     });
   }
@@ -1106,7 +1139,7 @@ function renderAgentBody(agentName) {
       type: "bar",
       data: {
         labels: cmEntries.map(e => e[0]),
-        datasets: [{ data: cmEntries.map(e => e[1]), backgroundColor: "#1450b3" }]
+        datasets: [{ data: cmEntries.map(e => e[1]), backgroundColor: "#3d63dd" }]
       },
       options: { indexAxis: "y", responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } }
     });
@@ -1123,7 +1156,7 @@ function renderAgentBody(agentName) {
       type: "doughnut",
       data: {
         labels: rmEntries.map(e => e[0]),
-        datasets: [{ data: rmEntries.map(e => e[1]), backgroundColor: ["#1a1a1a","#4a4a4a","#1450b3","#1f6f2c","#856404","#9b2222","#7b3aa1"] }]
+        datasets: [{ data: rmEntries.map(e => e[1]), backgroundColor: ["#2b3440","#8a93a3","#3d63dd","#1a7a55","#9a6a12","#bb4338","#7c5cbf"] }]
       },
       options: { responsive: true, maintainAspectRatio: false }
     });
@@ -1144,9 +1177,9 @@ function renderAgentBody(agentName) {
       data: {
         labels: [esc(agentName)],
         datasets: [
-          { label: `Flow A — Completed w/o QA (${m.flow_a_count || 0})`, data: [m.flow_a_count || 0], backgroundColor: "#d48a3a" },
-          { label: `Flow B — QA reviewed (${m.flow_b_count || 0})`,       data: [m.flow_b_count || 0], backgroundColor: "#1450b3" },
-          { label: `Flow C — Completed after QA (${m.flow_c_count || 0})`,data: [m.flow_c_count || 0], backgroundColor: "#1f6f2c" },
+          { label: `Flow A — Completed w/o QA (${m.flow_a_count || 0})`, data: [m.flow_a_count || 0], backgroundColor: "#c98a3f" },
+          { label: `Flow B — QA reviewed (${m.flow_b_count || 0})`,       data: [m.flow_b_count || 0], backgroundColor: "#3d63dd" },
+          { label: `Flow C — Completed after QA (${m.flow_c_count || 0})`,data: [m.flow_c_count || 0], backgroundColor: "#1a7a55" },
         ],
       },
       options: {
@@ -1251,7 +1284,7 @@ PAGE_RENDERERS.experts = function () {
       type: "bar",
       data: {
         labels: daily.map(d => shortDate(d.date)),
-        datasets: [{ label: "Records", data: daily.map(d => d.records || 0), backgroundColor: "#1450b3" }],
+        datasets: [{ label: "Records", data: daily.map(d => d.records || 0), backgroundColor: "#3d63dd" }],
       },
       options: {
         responsive: true, maintainAspectRatio: false,
@@ -1406,7 +1439,7 @@ async function renderExpertsWeekly() {
         datasets: [{
           label: "Records",
           data: weekKeys.map(k => weeks[k]["Irene Njuguna"] + weeks[k]["Simon Francis"]),
-          backgroundColor: weekKeys.map(k => isFull(k) ? "#1450b3" : "#9aa7bd"),  // grey = not a full week (in progress or partial)
+          backgroundColor: weekKeys.map(k => isFull(k) ? "#3d63dd" : "#9aa7bd"),  // grey = not a full week (in progress or partial)
         }],
       },
       options: {
@@ -1647,7 +1680,7 @@ PAGE_RENDERERS.qa_performance = function () {
       type: "bar",
       data: {
         labels: reviewers.map(r => r.name),
-        datasets: [{ label: "Reviews", data: reviewers.map(r => r.reviews), backgroundColor: "#1450b3" }],
+        datasets: [{ label: "Reviews", data: reviewers.map(r => r.reviews), backgroundColor: "#3d63dd" }],
       },
       options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } },
     });
@@ -1951,7 +1984,7 @@ PAGE_RENDERERS.intake = function () {
         datasets: [{
           label: "Records uploaded (whole table)",
           data: last7.map(x => x.n ?? 0),
-          backgroundColor: last7.map(x => x.n == null ? "#cccccc" : "#1450b3"),
+          backgroundColor: last7.map(x => x.n == null ? "#cccccc" : "#3d63dd"),
         }],
       },
       options: {
@@ -2336,7 +2369,7 @@ function openTaskDrawer(taskName) {
     if (STATE.charts["drawerStatusChart"]) STATE.charts["drawerStatusChart"].destroy();
     STATE.charts["drawerStatusChart"] = new Chart(ctx, {
       type: "doughnut",
-      data: { labels, datasets: [{ data, backgroundColor: ["#1450b3","#856404","#9b2222","#1f6f2c","#4a4a4a","#7b3aa1","#d48a3a"] }] },
+      data: { labels, datasets: [{ data, backgroundColor: ["#3d63dd","#9a6a12","#bb4338","#1a7a55","#8a93a3","#7c5cbf","#c98a3f"] }] },
       options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: "right", labels: { font: { size: 10 } } } } }
     });
   }
@@ -2820,7 +2853,7 @@ async function renderWeeklyBody(startISO, endISO) {
   const teamCtx = document.getElementById("weekly-team-chart");
   if (teamCtx) {
     const teams = Object.keys(STATE.roster || {}).sort();
-    const colors = ["#1f6f2c", "#856404", "#9b2222", "#1450b3", "#7b3aa1"];
+    const colors = ["#1a7a55", "#9a6a12", "#bb4338", "#3d63dd", "#7c5cbf"];
     if (STATE.charts["weekly-team-chart"]) STATE.charts["weekly-team-chart"].destroy();
     STATE.charts["weekly-team-chart"] = new Chart(teamCtx, {
       type: "bar",
@@ -2848,9 +2881,9 @@ async function renderWeeklyBody(startISO, endISO) {
       data: {
         labels: rollup.per_day.map(d => d.date),
         datasets: [
-          { type: "bar", label: "Flow A — Completed w/o QA",  data: rollup.per_day.map(d => d.flow_a), backgroundColor: "#d48a3a", stack: "comp" },
-          { type: "bar", label: "Flow C — Completed after QA", data: rollup.per_day.map(d => d.flow_c), backgroundColor: "#1f6f2c", stack: "comp" },
-          { type: "line", label: "Flow B — QA reviewed",        data: rollup.per_day.map(d => d.flow_b), borderColor: "#1450b3", backgroundColor: "#1450b3", tension: 0.3 },
+          { type: "bar", label: "Flow A — Completed w/o QA",  data: rollup.per_day.map(d => d.flow_a), backgroundColor: "#c98a3f", stack: "comp" },
+          { type: "bar", label: "Flow C — Completed after QA", data: rollup.per_day.map(d => d.flow_c), backgroundColor: "#1a7a55", stack: "comp" },
+          { type: "line", label: "Flow B — QA reviewed",        data: rollup.per_day.map(d => d.flow_b), borderColor: "#3d63dd", backgroundColor: "#3d63dd", tension: 0.3 },
         ],
       },
       options: {
@@ -3083,7 +3116,7 @@ PAGE_RENDERERS.pipeline = function () {
         datasets: [{
           label: "records",
           data: funnelStages.map(s => s.value),
-          backgroundColor: "#1450b3",
+          backgroundColor: "#3d63dd",
         }],
       },
       options: {
@@ -3129,7 +3162,7 @@ PAGE_RENDERERS.pipeline = function () {
         datasets: [{
           label: "p50 lead time (h)",
           data: last7.map(x => x.h ?? 0),
-          backgroundColor: last7.map(x => x.h == null ? "#cccccc" : "#1450b3"),
+          backgroundColor: last7.map(x => x.h == null ? "#cccccc" : "#3d63dd"),
         }],
       },
       options: {
