@@ -1372,33 +1372,52 @@ async function renderExpertsWeekly() {
   }
   const currentWeek = _mondayOf(anchor);
   const weekKeys = Object.keys(weeks).sort();           // ascending (oldest first)
-  const completed = weekKeys.filter(k => k !== currentWeek);
 
-  // Weekly average across COMPLETED weeks only (exclude the in-progress week).
+  // Coverage: how many of each week's 7 calendar days actually have data. The ~35-day
+  // window starts mid-week, so the oldest week (and any week straddling a snapshot gap)
+  // is only partially covered. A week counts toward the average ONLY if it's fully
+  // covered (7/7 days) and not the current in-progress week — otherwise a partial week
+  // is averaged in at full weight and drags the mean down.
+  const daysCovered = {};
+  for (const wk of weekKeys) {
+    const mon = new Date(wk + "T12:00:00Z");
+    let n = 0;
+    for (let i = 0; i < 7; i++) {
+      const d = new Date(mon); d.setUTCDate(d.getUTCDate() + i);
+      if (dayMap[d.toISOString().slice(0, 10)]) n++;
+    }
+    daysCovered[wk] = n;
+  }
+  const isFull = (k) => daysCovered[k] === 7 && k !== currentWeek;
+  const fullWeeks = weekKeys.filter(isFull);
+
+  // Weekly average across full 7-day weeks only.
   const avg = { "Irene Njuguna": 0, "Simon Francis": 0, total: 0 };
-  if (completed.length) {
-    for (const k of completed) {
+  if (fullWeeks.length) {
+    for (const k of fullWeeks) {
       avg["Irene Njuguna"] += weeks[k]["Irene Njuguna"];
       avg["Simon Francis"] += weeks[k]["Simon Francis"];
     }
-    avg["Irene Njuguna"] = Math.round(avg["Irene Njuguna"] / completed.length);
-    avg["Simon Francis"] = Math.round(avg["Simon Francis"] / completed.length);
+    avg["Irene Njuguna"] = Math.round(avg["Irene Njuguna"] / fullWeeks.length);
+    avg["Simon Francis"] = Math.round(avg["Simon Francis"] / fullWeeks.length);
     avg.total = avg["Irene Njuguna"] + avg["Simon Francis"];
   }
 
   const body = [...weekKeys].reverse().map(k => {       // most recent week first
     const irene = weeks[k]["Irene Njuguna"], simon = weeks[k]["Simon Francis"];
-    const inProg = k === currentWeek;
+    let tag = "";
+    if (k === currentWeek) tag = ' <span class="pill-inline warn">in progress</span>';
+    else if (daysCovered[k] < 7) tag = ` <span class="pill-inline warn">partial · ${daysCovered[k]}/7 days</span>`;
     return `<tr>
-      <td>${esc(_weekLabel(k))}${inProg ? ' <span class="pill-inline warn">in progress</span>' : ''}</td>
+      <td>${esc(_weekLabel(k))}${tag}</td>
       <td class="right">${irene}</td>
       <td class="right">${simon}</td>
       <td class="right"><strong>${irene + simon}</strong></td>
     </tr>`;
   }).join("");
-  const avgRow = completed.length
-    ? `<tr style="border-top:2px solid var(--border)"><td><strong>Weekly average</strong> <span class="small-mono">completed weeks (${completed.length})</span></td><td class="right"><strong>${avg["Irene Njuguna"]}</strong></td><td class="right"><strong>${avg["Simon Francis"]}</strong></td><td class="right"><strong>${avg.total}</strong></td></tr>`
-    : `<tr><td colspan="4" class="small-mono">No completed weeks yet — the average appears once a full week is in.</td></tr>`;
+  const avgRow = fullWeeks.length
+    ? `<tr style="border-top:2px solid var(--border)"><td><strong>Weekly average</strong> <span class="small-mono">completed weeks (${fullWeeks.length})</span></td><td class="right"><strong>${avg["Irene Njuguna"]}</strong></td><td class="right"><strong>${avg["Simon Francis"]}</strong></td><td class="right"><strong>${avg.total}</strong></td></tr>`
+    : `<tr><td colspan="4" class="small-mono">No completed weeks yet — the average appears once a full 7-day week is in.</td></tr>`;
 
   root.innerHTML = `
     <div class="chart-wrap small" style="margin-bottom:10px"><canvas id="expertsWeeklyChart"></canvas></div>
@@ -1417,12 +1436,17 @@ async function renderExpertsWeekly() {
         datasets: [{
           label: "Records",
           data: weekKeys.map(k => weeks[k]["Irene Njuguna"] + weeks[k]["Simon Francis"]),
-          backgroundColor: weekKeys.map(k => k === currentWeek ? "#9aa7bd" : "#1450b3"),
+          backgroundColor: weekKeys.map(k => isFull(k) ? "#1450b3" : "#9aa7bd"),  // grey = not a full week (in progress or partial)
         }],
       },
       options: {
         responsive: true, maintainAspectRatio: false,
-        plugins: { legend: { display: false }, tooltip: { callbacks: { afterLabel: c => c.label === _weekLabel(currentWeek) ? "in progress" : "" } } },
+        plugins: { legend: { display: false }, tooltip: { callbacks: { afterLabel: c => {
+          const k = weekKeys[c.dataIndex];
+          if (k === currentWeek) return "in progress";
+          if (daysCovered[k] < 7) return "partial — " + daysCovered[k] + "/7 days";
+          return "";
+        } } } },
         scales: { y: { beginAtZero: true, ticks: { precision: 0 } } },
       },
     });
