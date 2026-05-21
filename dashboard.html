@@ -517,37 +517,6 @@ async function loadAll() {
   return true;
 }
 
-async function liveFetchBoQaQueue() {
-  // Today's records currently in "tagged" (waiting to be picked into BO QA).
-  // We DON'T pass fieldIds — let Airtable return all fields. Read-only.
-  const args = {
-    baseId: BASE_ID,
-    tableId: TABLE_ID,
-    pageSize: 100,
-    filters: {
-      operator: "and",
-      operands: [
-        { operator: "=", operands: [F.verification_status, VS.tagged] }
-      ]
-    },
-    sort: [{ fieldId: F.start_tagging_date, direction: "asc" }]
-  };
-  const all = [];
-  let cursor;
-  for (let i = 0; i < 5; i++) {
-    if (cursor) args.cursor = cursor; else delete args.cursor;
-    let result;
-    try { result = await window.cowork.callMcpTool(AIRTABLE_TOOL, args); }
-    catch (e) { console.error("BO QA live fetch failed:", e); break; }
-    const payload = unwrapJson(result);
-    if (!payload || !payload.records) break;
-    all.push(...payload.records);
-    if (!payload.nextCursor) break;
-    cursor = payload.nextCursor;
-  }
-  return all;
-}
-
 // ============================================================================
 //  Helpers
 // ============================================================================
@@ -1302,131 +1271,129 @@ PAGE_RENDERERS.boqa = function () {
       <div class="footer-note">A record tagged on day N is reviewed on day N+1, so coverage tracks how much of yesterday's work has been reviewed.</div>
     </div>`;
   }
+  const reviews = t.qa_inspected_today || 0;
+  const changes = t.qa_changed_today || 0;
+  const rejectToday = reviews > 0 ? (changes / reviews * 100) : null;
   root.innerHTML = `
     <div class="kpis">
-      <div class="kpi"><div class="label">Tagged today (5 teams)</div><div class="value">${t?.tagged_today || 0}</div><div class="delta">Sanctions: ${t?.tagged_today_sanctions || 0} · Non-sanctions: ${t?.tagged_today_non_sanctions || 0}</div></div>
-      <div class="kpi"><div class="label">BO QA backlog</div><div class="value">${t?.bo_qa_backlog || 0}</div></div>
-      <div class="kpi"><div class="label">New companies proposed today</div><div class="value">${t?.add_new_company_open || 0}</div><div class="delta">Records tagged today with add_new_company filled</div></div>
-      <div class="kpi"><div class="label">Today's reviews</div><div class="value">${(t?.qa_inspected_today || 0)}</div><div class="delta">${t?.qa_changed_today || 0} changed · verdicts set today (yesterday's work)</div></div>
+      <div class="kpi"><div class="label">Today's reviews</div><div class="value">${reviews}</div><div class="delta">verdicts set today (yesterday's work)</div></div>
+      <div class="kpi"><div class="label">Today's changes</div><div class="value">${changes}</div><div class="delta">QA bounced back</div></div>
+      <div class="kpi"><div class="label">Today's reject rate</div><div class="value">${rejectToday == null ? "—" : rejectToday.toFixed(1) + "%"}</div><div class="delta">changes ÷ reviews</div></div>
+      <div class="kpi"><div class="label">BO QA backlog</div><div class="value">${t.bo_qa_backlog || 0}</div></div>
     </div>
     ${covPanel}
     <div class="panel">
-      <h3>Yesterday's tagged worklist <span class="meta">live from Airtable (read-only) — the work BO QA reviews today</span></h3>
-      <div class="controls-row">
-        <button class="btn primary" id="loadBoqaBtn">Refresh</button>
-        <span class="small-mono" id="boqaStatus"></span>
-      </div>
-      <div id="boqaWorklist"><div class="empty"><span class="spinning-icon">↻</span> Loading worklist…</div></div>
+      <h3>Team QA scoreboard <span class="meta">last 7 days · best first (lowest reject rate)</span></h3>
+      <div id="boqaTeamScore"><div class="empty"><span class="spinning-icon">↻</span> Loading 7-day window…</div></div>
     </div>
     <div class="panel">
-      <h3>5/5/5 stratification helper <span class="meta">recommended sample per agent</span></h3>
-      <div id="boqaStrat" class="empty">Loading…</div>
+      <h3>Agent error leaderboard <span class="meta">last 7 days · worst first · min 10 reviews</span></h3>
+      <div class="case-scroll" id="boqaAgentLeader"><div class="empty"><span class="spinning-icon">↻</span> Loading…</div></div>
+    </div>
+    <div class="panel">
+      <h3>7-day reject-rate heatmap <span class="meta">by team · higher reject rate = redder</span></h3>
+      <div id="boqaRejectHeatmap"><div class="empty"><span class="spinning-icon">↻</span> Loading…</div></div>
     </div>
     <div class="panel">
       <h3>Per-reviewer BO QA load <span class="meta">assigned vs reviewed today</span></h3>
       <div id="boqaReviewerLoad"></div>
       <div class="footer-note">Coverage % = reviewed today / assigned. Sustained low coverage on heavily-assigned reviewers = bottleneck.</div>
     </div>
-    <div class="panel">
-      <h3>add_new_company queue — 100% QA required</h3>
-      <div id="addNewCompany"></div>
-    </div>
   `;
-  document.getElementById("loadBoqaBtn").addEventListener("click", loadBoqa);
-  renderAddNewCompanyFromCache();
   renderQaReviewerLoad();
-  loadBoqa();  // auto-fetch the worklist on render (Refresh button re-fetches)
+  renderBoqa7Day();  // async — fills the team scoreboard, agent leaderboard and heatmap
 };
 
-async function loadBoqa() {
-  const status = document.getElementById("boqaStatus");
-  if (!HAS_COWORK) {
-    status.textContent = "Cowork required for live fetch (browser mode can only serve cached JSON).";
-    const wl = document.getElementById("boqaWorklist");
-    if (wl) wl.innerHTML = `<div class="empty">Live worklist needs Cowork — browser mode serves cached aggregates only. The per-reviewer panel below still works.</div>`;
-    const st = document.getElementById("boqaStrat");
-    if (st) st.innerHTML = `<div class="empty">Live worklist unavailable in browser mode.</div>`;
-    return;
+// 7-day QA window: sum qa_inspected_today / qa_changed_today (reviews are bucketed
+// by review date — PR #54 — so summing review-day counts across the window is the
+// right rolling lens) across the viewed date + 6 prior days. The viewed date's data
+// is STATE.v2; the 6 prior come from snapshots/<date>.json (same approach as the
+// Case Scenarios 7-day heatmap). Fills the team scoreboard, agent leaderboard and
+// reject-rate heatmap. Fully snapshot-based — works in browser mode, no Cowork.
+async function renderBoqa7Day() {
+  const anchor = STATE.v2?.date || todayEat();
+  const dates = [];
+  for (let i = 6; i >= 0; i--) {
+    const dt = new Date(anchor + "T00:00:00+03:00");
+    dt.setDate(dt.getDate() - i);
+    dates.push(dt.toLocaleDateString("en-CA", { timeZone: "Africa/Nairobi" }));
   }
-  const btn = document.getElementById("loadBoqaBtn");
-  status.textContent = "fetching from Airtable…";
-  if (btn) { btn.disabled = true; btn.innerHTML = `<span class="spinning-icon">↻</span> Refreshing…`; }
-  STATE.liveBoQa = await liveFetchBoQaQueue();
-  status.textContent = `fetched ${STATE.liveBoQa.length} tagged records`;
-  if (btn) { btn.disabled = false; btn.textContent = "Refresh"; }
-  renderBoqaWorklist();
-}
+  const snaps = await Promise.all(dates.map(async d => {
+    if (d === anchor) return { d, agg: STATE.v2 || null };
+    return { d, agg: await readJson(`snapshots/${d}.json`) };  // null if missing
+  }));
+  const threshold = (typeof STATE.v2?.reject_threshold === "number") ? STATE.v2.reject_threshold : 30;
+  const rejCls = (rate) => rate >= threshold ? "bad" : "good";
+  const rate = (chg, rev) => rev > 0 ? (chg / rev * 100) : null;
 
-function renderBoqaWorklist() {
-  const root = document.getElementById("boqaWorklist");
-  if (!STATE.liveBoQa) { root.innerHTML = `<div class="empty">Not loaded.</div>`; return; }
-  const yest = eatYesterday();
-  // Group by assignee, only ownership-team agents, only YESTERDAY's tags — that's
-  // the work BO QA reviews today under the next-day review model. The live fetch
-  // (verification_status == tagged, sorted start_tagging asc, no date cutoff) reaches
-  // yesterday's records.
-  const groups = {};
-  for (const r of STATE.liveBoQa) {
-    const c = r.cellValuesByFieldId || {};
-    const asg = (c[F.assignee] || [])[0]?.name;
-    if (!asg) continue;
-    const team = teamForAgent(asg);
-    if (!team) continue;
-    const st = c[F.start_tagging_date];
-    if (eatDate(st) !== yest) continue;
-    const a = canonicalAgent(asg);
-    groups[a] = groups[a] || { team, records: [] };
-    groups[a].records.push({ id: r.id, imo: c[F.imo], company: (c[F.company_id_and_name] || [])[0]?.name, role: c[F.role]?.name, st });
-  }
-  const agents = Object.keys(groups).sort();
-  if (agents.length === 0) {
-    root.innerHTML = `<div class="empty">No agents tagged records yesterday in the live "tagged" queue. (BO QA reviews yesterday's tagged work — anything already moved into the BO QA queue or reviewed won't appear here.)</div>`;
-    document.getElementById("boqaStrat").innerHTML = `<div class="empty">No agents tagged yesterday.</div>`;
-    return;
-  }
-  // Worklist table
-  const rows = [];
-  for (const a of agents) {
-    for (const rec of groups[a].records) {
-      rows.push(`<tr>
-        <td>${esc(groups[a].team)}</td>
-        <td class="agent-name">${esc(a)}</td>
-        <td class="mono">${esc(rec.imo || "")}</td>
-        <td>${esc(rec.role || "")}</td>
-        <td>${esc(rec.company || "")}</td>
-        <td class="mono">${rec.st ? new Date(rec.st).toLocaleTimeString("en-GB", { timeZone: "Africa/Nairobi", hour12: false }) : ""}</td>
-      </tr>`);
+  // Sum across the window, per team and per agent.
+  const teamAgg = {}, agentAgg = {};
+  for (const s of snaps) {
+    for (const [team, m] of Object.entries(s.agg?.by_team || {})) {
+      const a = (teamAgg[team] = teamAgg[team] || { reviews: 0, changes: 0 });
+      a.reviews += m.qa_inspected_today || 0; a.changes += m.qa_changed_today || 0;
+    }
+    for (const [agent, m] of Object.entries(s.agg?.by_agent || {})) {
+      const a = (agentAgg[agent] = agentAgg[agent] || { reviews: 0, changes: 0 });
+      a.reviews += m.qa_inspected_today || 0; a.changes += m.qa_changed_today || 0;
     }
   }
-  root.innerHTML = `<table>
-    <thead><tr><th>Team</th><th>Agent</th><th>IMO</th><th>Role</th><th>Company</th><th>Tagged at</th></tr></thead>
-    <tbody>${rows.join("")}</tbody></table>`;
 
-  // 5/5/5 stratification — naive: by record-creation order (already sorted by start_tagging_date asc from the fetch)
-  const stratRows = agents.map(a => {
-    const recs = groups[a].records;
-    const n = recs.length;
-    const pickN = Math.max(1, Math.round(n * 0.25));
-    const slice = (arr, where) => {
-      const k = Math.min(5, Math.ceil(pickN / 3));
-      if (where === "top") return arr.slice(0, k);
-      if (where === "bot") return arr.slice(-k);
-      const mid = Math.floor(arr.length / 2);
-      return arr.slice(Math.max(0, mid - Math.floor(k / 2)), Math.max(0, mid - Math.floor(k / 2)) + k);
-    };
-    const sample = [...slice(recs, "top"), ...slice(recs, "mid"), ...slice(recs, "bot")];
-    const sampleImos = sample.map(r => r.imo).filter(Boolean).join(", ");
-    return `<tr>
-      <td>${esc(groups[a].team)}</td>
-      <td class="agent-name">${esc(a)}</td>
-      <td class="right">${n}</td>
-      <td class="right">${pickN} (25%)</td>
-      <td class="mono">${esc(sampleImos)}</td>
-    </tr>`;
-  }).join("");
-  document.getElementById("boqaStrat").innerHTML = `<table>
-    <thead><tr><th>Team</th><th>Agent</th><th class="right">Tagged yesterday</th><th class="right">QA sample target</th><th>Suggested IMOs (top/mid/bot)</th></tr></thead>
-    <tbody>${stratRows}</tbody></table>`;
+  // Team scoreboard — best first (lowest reject rate; no-review teams sort last).
+  const teamRows = Object.entries(teamAgg)
+    .map(([team, a]) => ({ team, ...a, rate: rate(a.changes, a.reviews) }))
+    .sort((x, y) => (x.rate == null ? Infinity : x.rate) - (y.rate == null ? Infinity : y.rate));
+  const teamScore = document.getElementById("boqaTeamScore");
+  if (teamScore) {
+    teamScore.innerHTML = teamRows.length === 0
+      ? `<div class="empty">No QA reviews in the last 7 days.</div>`
+      : `<table><thead><tr><th>Team</th><th class="right">Reviews</th><th class="right">Changes</th><th class="right">Reject rate</th></tr></thead><tbody>${
+          teamRows.map(r => `<tr><td>${esc(r.team)}</td><td class="right">${r.reviews}</td><td class="right">${r.changes}</td><td class="right">${r.rate == null ? '<span class="small-mono">—</span>' : `<span class="pill-inline ${rejCls(r.rate)}">${r.rate.toFixed(1)}%</span>`}</td></tr>`).join("")
+        }</tbody></table>`;
+  }
+
+  // Agent error leaderboard — worst first, only agents with >= 10 reviews over the window.
+  const MIN_REVIEWS = 10;
+  const agentRows = Object.entries(agentAgg)
+    .map(([agent, a]) => ({ agent, ...a, rate: rate(a.changes, a.reviews) }))
+    .filter(r => r.reviews >= MIN_REVIEWS)
+    .sort((x, y) => (y.rate || 0) - (x.rate || 0));
+  const agentLeader = document.getElementById("boqaAgentLeader");
+  if (agentLeader) {
+    agentLeader.innerHTML = agentRows.length === 0
+      ? `<div class="empty">No agents with ≥${MIN_REVIEWS} reviews in the last 7 days.</div>`
+      : `<table><thead><tr><th>Agent</th><th>Team</th><th class="right">Reviews</th><th class="right">Changes</th><th class="right">Reject rate</th></tr></thead><tbody>${
+          agentRows.map(r => `<tr><td class="agent-name">${esc(r.agent)}</td><td>${esc(teamForAgent(r.agent) || "—")}</td><td class="right">${r.reviews}</td><td class="right">${r.changes}</td><td class="right"><span class="pill-inline ${rejCls(r.rate)}">${r.rate.toFixed(1)}%</span></td></tr>`).join("")
+        }</tbody></table>`;
+  }
+
+  // 7-day reject-rate heatmap — rows = teams, cols = days; intensity by rate (redder
+  // = higher). A day with no snapshot or no reviews renders muted.
+  let teams = Object.keys(STATE.roster || {}).sort();
+  if (!teams.length) teams = Object.keys(teamAgg).sort();
+  const hm = document.getElementById("boqaRejectHeatmap");
+  if (hm) {
+    if (!teams.length) {
+      hm.innerHTML = `<div class="empty">No teams to chart.</div>`;
+    } else {
+      const shortDay = d => new Date(d + "T00:00:00+03:00").toLocaleDateString("en-GB", { timeZone: "Africa/Nairobi", day: "numeric", month: "short" });
+      const headerCells = snaps.map(s => `<div class="header">${esc(shortDay(s.d))}</div>`).join("");
+      const rows = teams.map(team => {
+        const cells = snaps.map(s => {
+          if (!s.agg) return `<div class="cell z" title="${esc(s.d)}: no snapshot"></div>`;
+          const m = s.agg.by_team?.[team];
+          const rev = m?.qa_inspected_today || 0;
+          if (rev === 0) return `<div class="cell z" title="${esc(team)} · ${esc(s.d)}: no reviews"></div>`;
+          const chg = m?.qa_changed_today || 0;
+          const rt = chg / rev * 100;
+          const alpha = (0.2 + 0.8 * Math.min(1, rt / 50)).toFixed(2);
+          return `<div class="cell" style="background:rgba(155,34,34,${alpha})" title="${esc(team)} · ${esc(s.d)}: ${chg}/${rev} = ${rt.toFixed(0)}%">${rt.toFixed(0)}%</div>`;
+        }).join("");
+        return `<div class="label">${esc(team)}</div>${cells}`;
+      }).join("");
+      hm.innerHTML = `<div class="heatmap" style="grid-template-columns: 120px repeat(7, minmax(40px, 1fr));"><div class="header"></div>${headerCells}${rows}</div>`;
+    }
+  }
 }
 
 // Per-reviewer BO QA load — from the cached snapshot's by_qa block (works in
@@ -1461,37 +1428,6 @@ function renderQaReviewerLoad() {
   root.innerHTML = `<table>
     <thead><tr><th>Reviewer</th><th class="right">Assigned (BO QA queue)</th><th class="right">Reviewed today</th><th class="right">Coverage %</th></tr></thead>
     <tbody>${body}</tbody></table>`;
-}
-
-function renderAddNewCompanyFromCache() {
-  const root = document.getElementById("addNewCompany");
-  // Use cache records (in-scope only, non-empty add_new_company, NOT done/valid)
-  const items = [];
-  for (const r of STATE.cacheRecords) {
-    const c = r.cellValuesByFieldId || {};
-    const asg = (c[F.assignee] || [])[0]?.name;
-    const team = teamForAgent(asg);
-    if (!team) continue;
-    const anc = c[F.add_new_company];
-    if (!anc) continue;
-    const vs = c[F.verification_status]?.name;
-    if (vs === "Done" || vs === "Valid") continue;
-    items.push({ id: r.id, imo: c[F.imo], team, agent: canonicalAgent(asg), anc, vs, st: c[F.start_tagging_date] });
-  }
-  if (items.length === 0) {
-    root.innerHTML = `<div class="empty">No open add_new_company items in the cached window.</div>`;
-    return;
-  }
-  items.sort((a, b) => (a.team + a.agent).localeCompare(b.team + b.agent));
-  const rows = items.slice(0, 100).map(i => `<tr>
-    <td>${esc(i.team)}</td>
-    <td class="agent-name">${esc(i.agent)}</td>
-    <td class="mono">${esc(i.imo || "")}</td>
-    <td>${esc(i.vs || "")}</td>
-    <td>${esc(String(i.anc).slice(0, 80))}${String(i.anc).length > 80 ? "…" : ""}</td>
-  </tr>`).join("");
-  root.innerHTML = `<div class="footer-note">Showing first 100 of ${items.length} open. Each requires 100% QA review per SOP.</div>
-    <table><thead><tr><th>Team</th><th>Agent</th><th>IMO</th><th>Status</th><th>add_new_company text</th></tr></thead><tbody>${rows}</tbody></table>`;
 }
 
 // -------- Daily Intake & Assignments --------
