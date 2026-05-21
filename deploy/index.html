@@ -1258,6 +1258,10 @@ PAGE_RENDERERS.experts = function () {
       ${expertPanel(experts[1])}
     </div>
     <div class="panel">
+      <h3>Weekly output <span class="meta">records per ISO week (Mon–Sun) · rolled up from daily snapshots</span></h3>
+      <div id="expertsWeekly"><div class="empty"><span class="spinning-icon">↻</span> Loading weekly history…</div></div>
+    </div>
+    <div class="panel">
       <h3>Tasks handled <span class="meta">${tasks.length} task${tasks.length === 1 ? '' : 's'} across both experts</span></h3>
       <div class="case-scroll" id="expertsTasksTable">
         <table><thead><tr><th>Task</th><th>Type</th><th>Expert(s)</th><th class="right">Records</th><th class="right">Completed</th><th class="right">QA checked</th><th class="right">QA changed</th></tr></thead>
@@ -1286,7 +1290,144 @@ PAGE_RENDERERS.experts = function () {
       },
     });
   });
+
+  renderExpertsWeekly();  // async — fills the "Weekly output" panel from snapshots
 };
+
+const EXPERT_DISPLAY = ["Irene Njuguna", "Simon Francis"];
+// Monday (ISO week start, YYYY-MM-DD) of the week containing the given date. Uses
+// noon-UTC so it's pure calendar-date math, immune to TZ/DST day-boundary shifts.
+function _mondayOf(iso) {
+  const d = new Date(iso + "T12:00:00Z");
+  const dow = (d.getUTCDay() + 6) % 7;          // 0=Mon … 6=Sun
+  d.setUTCDate(d.getUTCDate() - dow);
+  return d.toISOString().slice(0, 10);
+}
+// "19–25 May" (same month) or "28 Apr–4 May" (spanning) for a Monday-start week.
+function _weekLabel(mondayIso) {
+  const mon = new Date(mondayIso + "T12:00:00Z");
+  const sun = new Date(mon); sun.setUTCDate(sun.getUTCDate() + 6);
+  const day = (d) => d.getUTCDate();
+  const mo3 = (d) => d.toLocaleDateString("en-GB", { timeZone: "UTC", month: "short" });
+  return mo3(mon) === mo3(sun)
+    ? `${day(mon)}–${day(sun)} ${mo3(sun)}`
+    : `${day(mon)} ${mo3(mon)}–${day(sun)} ${mo3(sun)}`;
+}
+
+// "Weekly output" — multi-week record counts per expert. The live cache only holds
+// ~7 days, so history comes from accumulated daily snapshots: step back 7 days at a
+// time from the viewed date and take each snapshot's per-expert `daily` 7-day window
+// (5 windows tile ~35 days with no gaps). Keyed by date so overlapping windows
+// dedupe. expert_activity is new (PR #57), so older snapshots roll up to nothing —
+// guarded with a tidy empty state. Async, mirroring the Case Scenarios heatmap.
+async function renderExpertsWeekly() {
+  const root = document.getElementById("expertsWeekly");
+  if (!root) return;
+  const anchor = STATE.v2?.date || todayEat();
+  const stepDates = [0, 7, 14, 21, 28].map(off => {
+    const d = new Date(anchor + "T00:00:00+03:00");
+    d.setDate(d.getDate() - off);
+    return d.toLocaleDateString("en-CA", { timeZone: "Africa/Nairobi" });
+  });
+  // Anchor uses STATE.v2 directly; the rest read snapshots with ±1/±2 day fallback.
+  const fetchSnap = async (iso, isAnchor) => {
+    if (isAnchor) return STATE.v2 || null;
+    for (const delta of [0, -1, 1, -2, 2]) {
+      const d = new Date(iso + "T00:00:00+03:00");
+      d.setDate(d.getDate() + delta);
+      const ds = d.toLocaleDateString("en-CA", { timeZone: "Africa/Nairobi" });
+      const snap = await readJson(`snapshots/${ds}.json`);
+      if (snap) return snap;
+    }
+    return null;
+  };
+  const snaps = await Promise.all(stepDates.map((iso, i) => fetchSnap(iso, i === 0)));
+
+  // date -> { expertName: records }  (keyed by date so overlapping windows dedupe)
+  const dayMap = {};
+  for (const snap of snaps) {
+    const ea = snap?.expert_activity;
+    if (!ea || !Array.isArray(ea.experts)) continue;  // predates PR #57
+    for (const e of ea.experts) {
+      if (!EXPERT_DISPLAY.includes(e.name)) continue;
+      for (const d of (e.daily || [])) {
+        if (!d || !d.date) continue;
+        (dayMap[d.date] = dayMap[d.date] || {})[e.name] = d.records || 0;
+      }
+    }
+  }
+
+  const dates = Object.keys(dayMap);
+  if (dates.length === 0) {
+    root.innerHTML = `<div class="empty">Weekly history is still accumulating. Expert tracking is new, so snapshots recorded before it carry no per-day data to roll up — this fills in as daily snapshots build up.</div>`;
+    return;
+  }
+
+  // Bucket into ISO weeks (Mon–Sun); sum each expert's records per week.
+  const weeks = {};  // mondayIso -> { "Irene Njuguna", "Simon Francis" }
+  for (const date of dates) {
+    const wk = _mondayOf(date);
+    const w = (weeks[wk] = weeks[wk] || { "Irene Njuguna": 0, "Simon Francis": 0 });
+    for (const name of EXPERT_DISPLAY) w[name] += (dayMap[date][name] || 0);
+  }
+  const currentWeek = _mondayOf(anchor);
+  const weekKeys = Object.keys(weeks).sort();           // ascending (oldest first)
+  const completed = weekKeys.filter(k => k !== currentWeek);
+
+  // Weekly average across COMPLETED weeks only (exclude the in-progress week).
+  const avg = { "Irene Njuguna": 0, "Simon Francis": 0, total: 0 };
+  if (completed.length) {
+    for (const k of completed) {
+      avg["Irene Njuguna"] += weeks[k]["Irene Njuguna"];
+      avg["Simon Francis"] += weeks[k]["Simon Francis"];
+    }
+    avg["Irene Njuguna"] = Math.round(avg["Irene Njuguna"] / completed.length);
+    avg["Simon Francis"] = Math.round(avg["Simon Francis"] / completed.length);
+    avg.total = avg["Irene Njuguna"] + avg["Simon Francis"];
+  }
+
+  const body = [...weekKeys].reverse().map(k => {       // most recent week first
+    const irene = weeks[k]["Irene Njuguna"], simon = weeks[k]["Simon Francis"];
+    const inProg = k === currentWeek;
+    return `<tr>
+      <td>${esc(_weekLabel(k))}${inProg ? ' <span class="pill-inline warn">in progress</span>' : ''}</td>
+      <td class="right">${irene}</td>
+      <td class="right">${simon}</td>
+      <td class="right"><strong>${irene + simon}</strong></td>
+    </tr>`;
+  }).join("");
+  const avgRow = completed.length
+    ? `<tr style="border-top:2px solid var(--border)"><td><strong>Weekly average</strong> <span class="small-mono">completed weeks (${completed.length})</span></td><td class="right"><strong>${avg["Irene Njuguna"]}</strong></td><td class="right"><strong>${avg["Simon Francis"]}</strong></td><td class="right"><strong>${avg.total}</strong></td></tr>`
+    : `<tr><td colspan="4" class="small-mono">No completed weeks yet — the average appears once a full week is in.</td></tr>`;
+
+  root.innerHTML = `
+    <div class="chart-wrap small" style="margin-bottom:10px"><canvas id="expertsWeeklyChart"></canvas></div>
+    <table>
+      <thead><tr><th>Week</th><th class="right">Irene</th><th class="right">Simon</th><th class="right">Total</th></tr></thead>
+      <tbody>${body}${avgRow}</tbody>
+    </table>`;
+
+  const ctx = document.getElementById("expertsWeeklyChart");
+  if (ctx) {
+    destroyChart("expertsWeeklyChart");
+    STATE.charts["expertsWeeklyChart"] = new Chart(ctx, {
+      type: "bar",
+      data: {
+        labels: weekKeys.map(_weekLabel),
+        datasets: [{
+          label: "Records",
+          data: weekKeys.map(k => weeks[k]["Irene Njuguna"] + weeks[k]["Simon Francis"]),
+          backgroundColor: weekKeys.map(k => k === currentWeek ? "#9aa7bd" : "#1450b3"),
+        }],
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: { legend: { display: false }, tooltip: { callbacks: { afterLabel: c => c.label === _weekLabel(currentWeek) ? "in progress" : "" } } },
+        scales: { y: { beginAtZero: true, ticks: { precision: 0 } } },
+      },
+    });
+  }
+}
 
 // -------- Hourly Output --------
 PAGE_RENDERERS.hourly = function () {
