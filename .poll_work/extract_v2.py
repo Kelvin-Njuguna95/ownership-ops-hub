@@ -81,6 +81,12 @@ ROLE_GARBAGE_VALUES = {"role"}
 # Garbage values from old projects on the 'status' singleSelect. Ops will clean up separately.
 STATUS_GARBAGE_VALUES = {"Cargill_Bulk_Carrier_2023-2", "Leopard"}
 
+# The two Ownership Experts who handle sensitive OFAC / World Check / Sanctions
+# tagging tasks. They are NOT in the team roster, so they never appear in by_agent;
+# the Ownership Experts page scans the full record set by these names instead.
+# Stored lower-cased for case-insensitive assignee matching.
+EXPERT_NAMES = frozenset({"irene njuguna", "simon francis"})
+
 
 def _name(val):
     """Read a 'name' value from a cell, transparent across both record shapes.
@@ -260,3 +266,23 @@ def is_sanctions(requested_by):
     if not requested_by:
         return False
     return "sanction" in str(requested_by).lower()
+
+
+def classify_task_type(name):
+    """Classify a task name (requested_by) into a sensitive-task type for the
+    Ownership Experts page: "OFAC" / "World Check" / "Sanctions" / "Other".
+
+    Checked in priority order so OFAC wins over an embedded "sanc", etc.:
+    'ofac' substring → OFAC; else 'world' / 'wc_' / starts-with 'wc' → World Check;
+    else 'sanc' substring → Sanctions; else Other. Examples:
+    WC_190526 → World Check, OFAC_Sanc_190526 → OFAC,
+    SanctionChangeIntel20May2026 → Sanctions.
+    """
+    n = (name or "").lower()
+    if "ofac" in n:
+        return "OFAC"
+    if "world" in n or "wc_" in n or n.startswith("wc"):
+        return "World Check"
+    if "sanc" in n:
+        return "Sanctions"
+    return "Other"

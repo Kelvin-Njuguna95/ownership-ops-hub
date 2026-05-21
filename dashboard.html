@@ -238,6 +238,7 @@
     <div id="pageContainer">
       <div id="page-overview"       class="page" style="display:none"></div>
       <div id="page-agent"          class="page" style="display:none"></div>
+      <div id="page-experts"        class="page" style="display:none"></div>
       <div id="page-hourly"         class="page" style="display:none"></div>
       <div id="page-qa_performance" class="page" style="display:none"></div>
       <div id="page-boqa"           class="page" style="display:none"></div>
@@ -305,6 +306,7 @@ const VS = {
 const PAGES = [
   { id: "overview",       label: "Overview",                tag: null     },
   { id: "agent",          label: "Agent Scorecard",         tag: null     },
+  { id: "experts",        label: "Ownership Experts",        tag: null     },
   { id: "hourly",         label: "Hourly Output",           tag: null     },
   { id: "qa_performance", label: "QA Performance",          tag: null     },
   { id: "boqa",           label: "BO QA Console",           tag: "live"   },
@@ -1021,6 +1023,106 @@ function renderAgentBody(agentName) {
     });
   }
 }
+
+// -------- Ownership Experts --------
+// Tracks the two sensitive-task experts (Irene Njuguna / Simon Francis). They are
+// not on the team roster, so the data comes from STATE.v2.expert_activity (a full-
+// record scan by name), not by_agent. Null-guarded for snapshots predating it.
+const _expChartId = (name) => "expChart-" + String(name).replace(/\W+/g, "_");
+PAGE_RENDERERS.experts = function () {
+  const root = document.getElementById("page-experts");
+  const ea = STATE.v2?.expert_activity;
+  const heading = `<h3 style="font-size:18px;font-weight:600;color:var(--ink);margin-bottom:8px">Ownership Experts</h3>
+    <div class="footer-note" style="margin-bottom:10px">Tracks the two Ownership Experts — <strong>Irene Njuguna</strong> and <strong>Simon Francis</strong> — who handle sensitive OFAC / World Check / Sanctions tagging tasks. They're not on the team roster, so they don't appear in the per-agent views.</div>`;
+  if (!ea || !Array.isArray(ea.experts)) {
+    root.innerHTML = `${heading}<div class="empty-state"><div class="title">No expert data in this snapshot</div>This snapshot predates Ownership Experts tracking — it will populate on the next aggregator run.</div>`;
+    return;
+  }
+  const experts = ea.experts || [];
+  const tasks = ea.tasks || [];
+  const threshold = (typeof STATE.v2?.reject_threshold === "number") ? STATE.v2.reject_threshold : 30;
+  const rejCls = (r) => r == null ? "" : (r >= threshold ? "bad" : "good");
+
+  // Overall KPIs across both experts.
+  const totRecords = experts.reduce((s, e) => s + (e.records || 0), 0);
+  const totCompleted = experts.reduce((s, e) => s + (e.completed || 0), 0);
+  const totChecked = experts.reduce((s, e) => s + (e.qa_checked || 0), 0);
+  const totChanged = experts.reduce((s, e) => s + (e.qa_changed || 0), 0);
+  const sensitiveTasks = tasks.filter(t => t.type && t.type !== "Other").length;
+  const overallCompletion = totRecords ? Math.round(totCompleted / totRecords * 100) : 0;
+  const overallReject = totChecked ? (totChanged / totChecked * 100) : null;
+
+  const expertPanel = (e) => {
+    if (!e) return `<div class="panel"><div class="empty">No expert.</div></div>`;
+    const rr = e.qa_checked ? (e.qa_changed / e.qa_checked * 100) : null;
+    const bt = e.by_type || {};
+    return `<div class="panel">
+      <h3>${esc(e.name)} <span class="meta">${e.records || 0} records · ${e.tasks || 0} tasks</span></h3>
+      <table>
+        <tr><td>Records</td><td class="right"><strong>${e.records || 0}</strong></td></tr>
+        <tr><td>Tasks</td><td class="right">${e.tasks || 0}</td></tr>
+        <tr><td>Completed</td><td class="right">${e.completed || 0} <span class="small-mono">(${(e.completion_pct || 0).toFixed(0)}%)</span></td></tr>
+        <tr><td>QA checked</td><td class="right">${e.qa_checked || 0}</td></tr>
+        <tr><td>QA changed</td><td class="right">${e.qa_changed || 0}</td></tr>
+        <tr><td>Reject rate</td><td class="right">${rr == null ? '<span class="small-mono">—</span>' : `<span class="pill-inline ${rejCls(rr)}">${rr.toFixed(1)}%</span>`}</td></tr>
+      </table>
+      <div class="footer-note" style="margin-top:8px">By type — OFAC ${bt.OFAC || 0} · World Check ${bt["World Check"] || 0} · Sanctions ${bt.Sanctions || 0} · Other ${bt.Other || 0}</div>
+      <div class="chart-wrap small" style="margin-top:6px"><canvas id="${esc(_expChartId(e.name))}"></canvas></div>
+    </div>`;
+  };
+
+  const taskRows = tasks.map(t => `<tr>
+    <td>${esc(t.name)}</td>
+    <td>${esc(t.type || "Other")}</td>
+    <td>${esc((t.experts || []).join(", ") || "—")}</td>
+    <td class="right">${t.records || 0}</td>
+    <td class="right">${t.completed || 0}</td>
+    <td class="right">${t.qa_checked || 0}</td>
+    <td class="right">${t.qa_changed || 0}</td>
+  </tr>`).join("");
+
+  root.innerHTML = `
+    ${heading}
+    <div class="kpis">
+      <div class="kpi"><div class="label">Records handled</div><div class="value">${totRecords}</div><div class="delta">both experts</div></div>
+      <div class="kpi"><div class="label">Sensitive tasks</div><div class="value">${sensitiveTasks}</div><div class="delta">OFAC / World Check / Sanctions</div></div>
+      <div class="kpi"><div class="label">Completion</div><div class="value">${overallCompletion}%</div><div class="delta">${totCompleted} of ${totRecords}</div></div>
+      <div class="kpi ${rejCls(overallReject)}"><div class="label">QA reject rate</div><div class="value">${overallReject == null ? "—" : overallReject.toFixed(1) + "%"}</div><div class="delta">${totChanged} of ${totChecked} checked</div></div>
+    </div>
+    <div class="row equal">
+      ${expertPanel(experts[0])}
+      ${expertPanel(experts[1])}
+    </div>
+    <div class="panel">
+      <h3>Tasks handled <span class="meta">${tasks.length} task${tasks.length === 1 ? '' : 's'} across both experts</span></h3>
+      <div class="case-scroll" id="expertsTasksTable">
+        <table><thead><tr><th>Task</th><th>Type</th><th>Expert(s)</th><th class="right">Records</th><th class="right">Completed</th><th class="right">QA checked</th><th class="right">QA changed</th></tr></thead>
+        <tbody>${taskRows || '<tr><td colspan="7" class="empty">No expert tasks in this snapshot.</td></tr>'}</tbody></table>
+      </div>
+    </div>
+  `;
+
+  // 7-day output bar chart per expert (Chart.js).
+  experts.forEach(e => {
+    const id = _expChartId(e.name);
+    const ctx = document.getElementById(id);
+    if (!ctx) return;
+    destroyChart(id);
+    const daily = e.daily || [];
+    STATE.charts[id] = new Chart(ctx, {
+      type: "bar",
+      data: {
+        labels: daily.map(d => shortDate(d.date)),
+        datasets: [{ label: "Records", data: daily.map(d => d.records || 0), backgroundColor: "#1450b3" }],
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: { legend: { display: false } },
+        scales: { y: { beginAtZero: true, ticks: { precision: 0 } } },
+      },
+    });
+  });
+};
 
 // -------- Hourly Output --------
 PAGE_RENDERERS.hourly = function () {
