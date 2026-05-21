@@ -27,6 +27,7 @@ from aggregate_v2 import (  # noqa: E402
     compute_qa_reviewers,
     compute_task_breakdowns,
     compute_weekly_rollup,
+    compute_ww_qa_reviews,
     load_snapshots,
 )
 from extract_v2 import COMMENT_VALUES, SELECTED_FOR_BO_QA, SELECTED_FOR_WW_QA  # noqa: E402
@@ -1273,17 +1274,19 @@ class TestSanctionsSampling(unittest.TestCase):
                   verification_status=SELECTED_FOR_BO_QA),
             _info(assignee="Alice", requested_by="CargoSanctionsCheck_B", start_tagging=today_ts(9),
                   verification_status=SELECTED_FOR_BO_QA),
+            # Reviewed records carry qa_status_ts today — reviews are now counted by
+            # review date (these are same-day reviews); without it they wouldn't count.
             _info(assignee="Alice", requested_by="CargoSanctionsCheck_C", start_tagging=today_ts(10),
-                  verification_status="Done", qa_status="approve"),
+                  verification_status="Done", qa_status="approve", qa_status_ts=today_ts(14)),
             _info(assignee="Alice", requested_by="CargoSanctionsCheck_D", start_tagging=today_ts(11),
                   verification_status="tagged"),
             # 6 non-sanctions
             _info(assignee="Bob", requested_by="CargoChangeIntel_1", start_tagging=today_ts(8),
                   verification_status=SELECTED_FOR_BO_QA),
             _info(assignee="Bob", requested_by="CargoChangeIntel_2", start_tagging=today_ts(9),
-                  verification_status="Done", qa_status="approve"),
+                  verification_status="Done", qa_status="approve", qa_status_ts=today_ts(14)),
             _info(assignee="Bob", requested_by="CargoChangeIntel_3", start_tagging=today_ts(10),
-                  verification_status="Done", qa_status="changed"),
+                  verification_status="Done", qa_status="changed", qa_status_ts=today_ts(15)),
             _info(assignee="Bob", requested_by="CargoChangeIntel_4", start_tagging=today_ts(11),
                   verification_status="tagged"),
             _info(assignee="Bob", requested_by=None, start_tagging=today_ts(12),
@@ -1593,11 +1596,72 @@ class TestComputeCaseScenarios(unittest.TestCase):
         self.assertFalse(no_imo_trunc)
 
 
+class TestNextDayQaReviewBucketing(unittest.TestCase):
+    """BO QA reviews are counted by REVIEW date (qa_status_ts), not tag date.
+    Under the next-day review model a record tagged on day N is reviewed on N+1,
+    so a record tagged yesterday but reviewed today counts toward today's reviews,
+    and a record tagged today but not yet reviewed does not."""
+
+    def test_review_counted_by_qa_status_ts_not_start_tagging(self):
+        recs = [
+            # Tagged YESTERDAY, verdict set TODAY → counts in today's reviews.
+            # (The old code, gated on start_tagging == today, missed this.)
+            _info(assignee="Alice", requested_by="T1", verification_status="Done",
+                  qa_status="approve", qa_status_ts=_ts(0, 12), start_tagging=_ts(-1, 9)),
+            # Tagged TODAY, not yet reviewed → does NOT count.
+            _info(assignee="Alice", requested_by="T2", verification_status=SELECTED_FOR_BO_QA,
+                  qa_status=None, qa_status_ts=None, start_tagging=_ts(0, 9)),
+            # Reviewed YESTERDAY → belongs to yesterday's count, not today's.
+            _info(assignee="Alice", requested_by="T3", verification_status="Done",
+                  qa_status="changed", qa_status_ts=_ts(-1, 12), start_tagging=_ts(-2, 9)),
+        ]
+        m = compute_metrics(recs, TODAY)
+        self.assertEqual(m["qa_inspected_today"], 1, "only the verdict-set-today review counts")
+        self.assertEqual(m["qa_changed_today"], 0, "the only today-review was an approve")
+
+    def test_changed_verdict_today_counts_in_changed(self):
+        recs = [
+            _info(assignee="Bob", requested_by="T4", verification_status="Done",
+                  qa_status="changed", qa_status_ts=_ts(0, 10), start_tagging=_ts(-1, 9)),
+        ]
+        m = compute_metrics(recs, TODAY)
+        self.assertEqual(m["qa_inspected_today"], 1)
+        self.assertEqual(m["qa_changed_today"], 1)
+
+
+class TestComputeWwQaReviews(unittest.TestCase):
+    """compute_ww_qa_reviews lists every record with a ww_qa verdict, with the
+    agent/team/reviewer/verdict and a last_modified 'when reviewed' proxy."""
+
+    def test_lists_records_with_ww_qa_set(self):
+        recs = [
+            _info(assignee="Alice", requested_by="WTask", imo="9501234",
+                  ww_qa="approve", ww_qa_assignee="WW1", last_modified=_ts(0, 14)),
+            _info(assignee="Bob", requested_by="WTask2", imo="9505678",
+                  ww_qa="change", ww_qa_assignee="WW2", last_modified=_ts(0, 16)),
+            # No ww_qa verdict → excluded.
+            _info(assignee="Carol", requested_by="NoReview", ww_qa=None),
+        ]
+        out, trunc = compute_ww_qa_reviews(recs, TODAY, OWNERSHIP_ASSIGNEES)
+        self.assertFalse(trunc)
+        self.assertEqual(len(out), 2)
+        # Sorted by last_modified desc → WTask2 (16:00) first.
+        self.assertEqual(out[0]["requested_by"], "WTask2")
+        first = out[1]
+        self.assertEqual(first["requested_by"], "WTask")
+        self.assertEqual(first["imo"], "9501234")
+        self.assertEqual(first["assignee"], "Alice")
+        self.assertEqual(first["team"], "Simba")
+        self.assertEqual(first["ww_qa_assignee"], "WW1")
+        self.assertEqual(first["ww_qa"], "approve")
+        self.assertEqual(first["last_modified"], _ts(0, 14))
+
+
 class TestSamplingNoDoubleCount(unittest.TestCase):
     def test_sampling_union_counts_record_once(self):
         recs = [
             _info(assignee="Alice", verification_status="need to be update",
-                  qa_assignee="Q1", qa_status="changed",
+                  qa_assignee="Q1", qa_status="changed", qa_status_ts=f"{TODAY.isoformat()}T14:00:00.000+03:00",
                   start_tagging=f"{TODAY.isoformat()}T09:00:00.000+03:00"),
             _info(assignee="Alice", verification_status="tagged",
                   start_tagging=f"{TODAY.isoformat()}T10:00:00.000+03:00"),

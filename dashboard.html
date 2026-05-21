@@ -566,6 +566,13 @@ function eatHour(s) {
 function todayEat() {
   return new Date().toLocaleDateString("en-CA", { timeZone: "Africa/Nairobi" });
 }
+// Yesterday in EAT (YYYY-MM-DD). BO QA reviews the prior day's tagged work, so the
+// console's worklist/stratification are scoped to this, not today.
+function eatYesterday() {
+  const d = new Date(todayEat() + "T00:00:00+03:00");
+  d.setDate(d.getDate() - 1);
+  return d.toLocaleDateString("en-CA", { timeZone: "Africa/Nairobi" });
+}
 function fmtEatDateTime(s) {
   if (!s) return "";
   try { return new Date(s).toLocaleString("en-GB", { timeZone: "Africa/Nairobi", hour12: false }); }
@@ -1281,15 +1288,30 @@ PAGE_RENDERERS.qa_performance = function () {
 PAGE_RENDERERS.boqa = function () {
   const root = document.getElementById("page-boqa");
   const t = STATE.v2?.totals;
+  // Yesterday-cohort coverage. BO QA reviews the prior day's tagged work, so coverage
+  // is measured against yesterday's cohort. Guarded — absent on snapshots predating it.
+  const cov = STATE.v2?.bo_qa_coverage;
+  let covPanel = "";
+  if (cov && typeof cov.cohort === "number") {
+    const pct = cov.cohort > 0 ? Math.round((cov.reviewed / cov.cohort) * 100) : 0;
+    const cls = pct >= 90 ? "good" : pct >= 60 ? "warn" : "bad";
+    covPanel = `
+    <div class="panel">
+      <h3>BO QA coverage <span class="meta">next-day review — yesterday's cohort</span></h3>
+      <div>Yesterday (<strong>${esc(cov.date)}</strong>): <strong>${cov.cohort}</strong> records went to BO QA → <strong>${cov.reviewed}</strong> reviewed → <span class="pill-inline ${cls}">${pct}% covered</span></div>
+      <div class="footer-note">A record tagged on day N is reviewed on day N+1, so coverage tracks how much of yesterday's work has been reviewed.</div>
+    </div>`;
+  }
   root.innerHTML = `
     <div class="kpis">
       <div class="kpi"><div class="label">Tagged today (5 teams)</div><div class="value">${t?.tagged_today || 0}</div><div class="delta">Sanctions: ${t?.tagged_today_sanctions || 0} · Non-sanctions: ${t?.tagged_today_non_sanctions || 0}</div></div>
       <div class="kpi"><div class="label">BO QA backlog</div><div class="value">${t?.bo_qa_backlog || 0}</div></div>
       <div class="kpi"><div class="label">New companies proposed today</div><div class="value">${t?.add_new_company_open || 0}</div><div class="delta">Records tagged today with add_new_company filled</div></div>
-      <div class="kpi"><div class="label">Today's reviews</div><div class="value">${(t?.qa_inspected_today || 0)}</div><div class="delta">${t?.qa_changed_today || 0} changed</div></div>
+      <div class="kpi"><div class="label">Today's reviews</div><div class="value">${(t?.qa_inspected_today || 0)}</div><div class="delta">${t?.qa_changed_today || 0} changed · verdicts set today (yesterday's work)</div></div>
     </div>
+    ${covPanel}
     <div class="panel">
-      <h3>Today's tagged worklist <span class="meta">live from Airtable (read-only)</span></h3>
+      <h3>Yesterday's tagged worklist <span class="meta">live from Airtable (read-only) — the work BO QA reviews today</span></h3>
       <div class="controls-row">
         <button class="btn primary" id="loadBoqaBtn">Refresh</button>
         <span class="small-mono" id="boqaStatus"></span>
@@ -1338,8 +1360,11 @@ async function loadBoqa() {
 function renderBoqaWorklist() {
   const root = document.getElementById("boqaWorklist");
   if (!STATE.liveBoQa) { root.innerHTML = `<div class="empty">Not loaded.</div>`; return; }
-  const today = todayEat();
-  // Group by assignee, only ownership-team agents, only today
+  const yest = eatYesterday();
+  // Group by assignee, only ownership-team agents, only YESTERDAY's tags — that's
+  // the work BO QA reviews today under the next-day review model. The live fetch
+  // (verification_status == tagged, sorted start_tagging asc, no date cutoff) reaches
+  // yesterday's records.
   const groups = {};
   for (const r of STATE.liveBoQa) {
     const c = r.cellValuesByFieldId || {};
@@ -1348,15 +1373,15 @@ function renderBoqaWorklist() {
     const team = teamForAgent(asg);
     if (!team) continue;
     const st = c[F.start_tagging_date];
-    if (eatDate(st) !== today) continue;
+    if (eatDate(st) !== yest) continue;
     const a = canonicalAgent(asg);
     groups[a] = groups[a] || { team, records: [] };
     groups[a].records.push({ id: r.id, imo: c[F.imo], company: (c[F.company_id_and_name] || [])[0]?.name, role: c[F.role]?.name, st });
   }
   const agents = Object.keys(groups).sort();
   if (agents.length === 0) {
-    root.innerHTML = `<div class="empty">No agents have tagged records today yet. (BO QA's 25% pick happens once tags exist.)</div>`;
-    document.getElementById("boqaStrat").innerHTML = `<div class="empty">No agents have tagged today.</div>`;
+    root.innerHTML = `<div class="empty">No agents tagged records yesterday in the live "tagged" queue. (BO QA reviews yesterday's tagged work — anything already moved into the BO QA queue or reviewed won't appear here.)</div>`;
+    document.getElementById("boqaStrat").innerHTML = `<div class="empty">No agents tagged yesterday.</div>`;
     return;
   }
   // Worklist table
@@ -1400,7 +1425,7 @@ function renderBoqaWorklist() {
     </tr>`;
   }).join("");
   document.getElementById("boqaStrat").innerHTML = `<table>
-    <thead><tr><th>Team</th><th>Agent</th><th class="right">Tagged today</th><th class="right">QA sample target</th><th>Suggested IMOs (top/mid/bot)</th></tr></thead>
+    <thead><tr><th>Team</th><th>Agent</th><th class="right">Tagged yesterday</th><th class="right">QA sample target</th><th>Suggested IMOs (top/mid/bot)</th></tr></thead>
     <tbody>${stratRows}</tbody></table>`;
 }
 
@@ -2140,6 +2165,8 @@ PAGE_RENDERERS.wwqa = function () {
   const throughput = t?.ww_qa_throughput || 0;
   const changeRate = t?.ww_qa_change_rate || 0;
   const wwqaPeople = Object.keys(STATE.v2?.by_ww_qa || {});
+  const wwReviews = STATE.v2?.ww_qa_review_records || [];
+  const wwReviewsTrunc = !!STATE.v2?.ww_qa_review_records_truncated;
 
   root.innerHTML = `
     <div class="kpis">
@@ -2166,6 +2193,12 @@ PAGE_RENDERERS.wwqa = function () {
         <div id="wwqaBacklogList"></div>
         <div class="footer-note">Filter records to verification_status = "Selected for WW QA". Currently ${backlog} in queue.</div>
       </div>
+    </div>
+    <div class="panel">
+      <h3>WW QA reviews <span class="meta">every record carrying a WW QA verdict</span></h3>
+      ${wwReviewsTrunc ? `<div class="alert-row warn" style="margin-bottom:10px"><span class="icon">!</span><div>Showing the first ${wwReviews.length} records — older entries truncated. Bump the cap in <code>compute_ww_qa_reviews</code> if you need more.</div></div>` : ""}
+      <div class="case-scroll" id="wwqaReviewsTable"></div>
+      <div class="footer-note">WW QA has no review-timestamp field, so "Reviewed (approx)" shows <code>last_modified</code> as a best-available proxy for when the verdict was set.</div>
     </div>
   `;
 
@@ -2194,6 +2227,19 @@ PAGE_RENDERERS.wwqa = function () {
   document.getElementById("wwqaBacklogList").innerHTML = backlogRows.length
     ? `<table><thead><tr><th>IMO</th><th>Tagged by</th><th>WW QA</th><th>Last modified</th></tr></thead><tbody>${backlogRows.join("")}</tbody></table>`
     : `<div class="empty">No Selected for WW QA records in cache window.</div>`;
+
+  // WW QA reviews — per-record list from the aggregator (every record with a ww_qa
+  // verdict). Reviewed (approx) = last_modified, since WW QA has no review-timestamp.
+  const revBody = wwReviews.map(r => `<tr>
+    <td>${esc(r.requested_by || "—")}</td>
+    <td class="mono">${esc(r.imo || "—")}</td>
+    <td>${esc(r.assignee || "—")}</td>
+    <td>${esc(r.team || "—")}</td>
+    <td>${esc(r.ww_qa_assignee || "—")}</td>
+    <td>${esc(r.ww_qa || "—")}</td>
+    <td class="mono">${esc(r.last_modified ? fmtEatDateTime(r.last_modified) : "—")}</td>
+  </tr>`).join("");
+  document.getElementById("wwqaReviewsTable").innerHTML = `<table><thead><tr><th>Task</th><th>IMO</th><th>Agent</th><th>Team</th><th>WW QA reviewer</th><th>Verdict</th><th>Reviewed (approx)</th></tr></thead><tbody>${revBody || '<tr><td colspan="7" class="empty">No WW QA reviews in the cache window.</td></tr>'}</tbody></table>`;
 };
 
 // -------- Weekly Report --------
