@@ -579,6 +579,10 @@ def compute_task_breakdowns(records, today_eat, ownership_assignees):
         completed_task     = sum(1 for info in recs if info.get("verification_status") in ("Done", "Valid"))
         qa_reviewed_task   = sum(1 for info in recs
                                  if info.get("qa_assignee") and info.get("qa_status"))
+        # Task-lifetime QA changes (records QA bounced back). Cumulative — by the
+        # record's CURRENT qa_status, not day-bucketed.
+        qa_changed_task    = sum(1 for info in recs
+                                 if info.get("qa_assignee") and info.get("qa_status") == "changed")
         qa_coverage_pct    = round((qa_reviewed_task / max(completed_task, 1)) * 100, 1)
 
         # Dates
@@ -613,18 +617,31 @@ def compute_task_breakdowns(records, today_eat, ownership_assignees):
             tat_hours = round((end_dt - start_dt).total_seconds() / 3600, 2)
 
         # Agents worked — multi-assignee aware. Each assignee on each record
-        # gets credit for that record.
+        # gets credit for that record, and (in parallel) for whether that record
+        # was QA-checked / QA-changed — so the drawer can show whose work bounces.
         agent_counts = Counter()
+        agent_qa_checked = Counter()
+        agent_qa_changed = Counter()
         for info in recs:
+            qreviewed = bool(info.get("qa_assignee") and info.get("qa_status"))
+            qchanged = qreviewed and info.get("qa_status") == "changed"
             for asg in (info.get("assignees") or []):
                 key = (asg or "").strip().lower()
                 canonical = norm.get(key, {}).get("canonical", asg)
                 if canonical:
                     agent_counts[canonical] += 1
+                    if qreviewed:
+                        agent_qa_checked[canonical] += 1
+                    if qchanged:
+                        agent_qa_changed[canonical] += 1
         agents_worked = []
         for agent, cnt in agent_counts.most_common():
             team = norm.get(agent.strip().lower(), {}).get("team")
-            agents_worked.append({"name": agent, "team": team, "records": cnt})
+            agents_worked.append({
+                "name": agent, "team": team, "records": cnt,
+                "qa_checked": agent_qa_checked[agent],
+                "qa_changed": agent_qa_changed[agent],
+            })
 
         # Teams worked — count DISTINCT records per team (a record co-assigned
         # to Alice/Simba and Bob/Tembo counts once for Simba and once for Tembo).
@@ -684,6 +701,7 @@ def compute_task_breakdowns(records, today_eat, ownership_assignees):
             "with_reminder": with_reminder,
             "completed": completed_task,
             "qa_reviewed": qa_reviewed_task,
+            "qa_changed": qa_changed_task,
             "qa_coverage_pct": qa_coverage_pct,
             "agents_worked": agents_worked,
             "teams_worked": teams_worked,
