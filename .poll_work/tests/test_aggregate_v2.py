@@ -20,6 +20,7 @@ from aggregate_v2 import (  # noqa: E402
     _load_records,
     _save_snapshot,
     aggregate,
+    compute_case_scenarios,
     compute_metrics,
     compute_not_yet_finalized,
     compute_qa_done_not_finalized,
@@ -1553,6 +1554,43 @@ class TestAddNewCompanyBroaderDefinition(unittest.TestCase):
         self.assertEqual(aggs["by_team"]["Nyati"]["add_new_company_open"], 0)
         # by_team also exposes the add_new_company_today alias
         self.assertEqual(aggs["by_team"]["Simba"]["add_new_company_today"], 2)
+
+
+class TestComputeCaseScenarios(unittest.TestCase):
+    """compute_case_scenarios splits records into the no-IMO-found list and the
+    company-gap list. A no-IMO comment excuses a blank company (elif), so such a
+    record never also lands in the gap list."""
+
+    def test_no_imo_and_gap_split(self):
+        recs = [
+            # No-IMO-found: blank company is correct, so this belongs in no_imo and
+            # must NOT appear in the gap list — even though it's Done with no company.
+            _info(requested_by="T1", assignee="Alice", verification_status="Done",
+                  company_id=None, dead_vessel=False,
+                  comment="IMO searched but not found",
+                  start_tagging=_ts(0, 9)),
+            # Genuine company gap: Done, blank company, not dead, non-no-IMO comment.
+            _info(requested_by="T2", assignee="Bob", verification_status="Done",
+                  company_id=None, dead_vessel=False,
+                  comment="Document Not Available",
+                  start_tagging=_ts(0, 9)),
+        ]
+        gap, gap_trunc, no_imo, no_imo_trunc = compute_case_scenarios(recs, TODAY, OWNERSHIP_ASSIGNEES)
+        no_imo_names = {r["requested_by"] for r in no_imo}
+        gap_names = {r["requested_by"] for r in gap}
+
+        # T1 lands in no-IMO only.
+        self.assertIn("T1", no_imo_names)
+        self.assertNotIn("T1", gap_names)
+        # T2 is a real company gap.
+        self.assertIn("T2", gap_names)
+        self.assertNotIn("T2", no_imo_names)
+        # Per-record shape: team resolved from the assignee roster, comment carried.
+        t1 = next(r for r in no_imo if r["requested_by"] == "T1")
+        self.assertEqual(t1["team"], "Simba")
+        self.assertEqual(t1["comment"], "IMO searched but not found")
+        self.assertFalse(gap_trunc)
+        self.assertFalse(no_imo_trunc)
 
 
 class TestSamplingNoDoubleCount(unittest.TestCase):

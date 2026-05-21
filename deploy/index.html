@@ -166,6 +166,16 @@
   #newCompaniesTable thead th:first-child { z-index: 4; background: var(--soft); } /* top-left corner: above row header + frozen column */
   #newCompaniesTable tbody tr:hover td:first-child { background: var(--soft); }     /* keep hover shade consistent on the frozen cell */
 
+  /* Case Scenarios — the two section tables share this scroll-region pattern
+     (same as #newCompaniesTable / #tasksTable): sticky header + frozen first
+     column. Fixed ~40vh each so neither section dominates the page. */
+  .case-scroll { overflow: auto; max-height: 40vh; }
+  .case-scroll thead th { position: sticky; top: 0; z-index: 3; background: var(--soft); }
+  .case-scroll tbody td:first-child,
+  .case-scroll thead th:first-child { position: sticky; left: 0; z-index: 2; background: var(--surface); }
+  .case-scroll thead th:first-child { z-index: 4; background: var(--soft); } /* top-left corner */
+  .case-scroll tbody tr:hover td:first-child { background: var(--soft); }     /* hover consistency on the frozen cell */
+
   .drawer-backdrop { position: fixed; inset: 0; background: rgba(0,0,0,0.25); opacity: 0; pointer-events: none; transition: opacity 180ms ease; z-index: 99; }
   .drawer-backdrop.open { opacity: 1; pointer-events: auto; }
   .drawer { position: fixed; top: 0; right: 0; bottom: 0; width: 70vw; max-width: 1100px; background: var(--surface); border-left: 1px solid var(--border); box-shadow: -8px 0 24px rgba(0,0,0,0.08); overflow-y: auto; transform: translateX(100%); transition: transform 220ms ease; z-index: 100; }
@@ -402,7 +412,7 @@ const PAGES = [
   { id: "new_companies",  label: "New Companies",           tag: null     },
   { id: "wwqa",           label: "WW QA Console",           tag: null     },
   { id: "pipeline",       label: "Pipeline & Lead Time",    tag: null     },
-  { id: "scenarios",      label: "Case Scenarios",          tag: "stub"   },
+  { id: "scenarios",      label: "Case Scenarios",          tag: null     },
   { id: "weekly",         label: "Weekly Report",           tag: null     },
 ];
 
@@ -2934,32 +2944,143 @@ PAGE_RENDERERS.pipeline = function () {
 };
 
 // -------- Case Scenarios (stub) --------
+// The 11 fixed comment values (mirrors extract_v2.COMMENT_VALUES, same order).
+// Five of them — indices 1..5 — mean the IMO could not be located.
+const CASE_COMMENT_VALUES = [
+  "suspected zombie vessel",
+  "IMO searched but not found",
+  "IMO not found, has positional data",
+  "IMO Never Existed, No positional data",
+  "IMO not found on Nexis/Equasis, No positional data",
+  "IMO not found on Nexis/Equasis/WW",
+  "IMO found, No positional data on WW",
+  "No Longer updated by (LRF) IHSF",
+  "Role not found",
+  "Cancelled before construction",
+  "Document Not Available",
+];
+const CASE_STATE = { team: "all" };
+
 PAGE_RENDERERS.scenarios = function () {
   const root = document.getElementById("page-scenarios");
-  const cd = STATE.v2?.totals?.comment_distribution || {};
-  const nonzero = Object.entries(cd).filter(([_, v]) => v > 0).sort((a, b) => b[1] - a[1]);
-  const totalComments = nonzero.reduce((s, [_, v]) => s + v, 0);
+  const gaps       = STATE.v2?.case_company_gap_records || [];
+  const noImo      = STATE.v2?.case_no_imo_records || [];
+  const gapTrunc   = !!STATE.v2?.case_company_gap_truncated;
+  const noImoTrunc = !!STATE.v2?.case_no_imo_truncated;
+  const teams      = Object.keys(STATE.roster || {}).sort();
+  CASE_STATE.team  = localStorage.getItem("wqa.caseTeam") || "all";
+
   root.innerHTML = `
-    <div class="stub-card">
-      <h2>Case Scenarios</h2>
-      <p>Coming in <strong>Phase C</strong>. Planned widgets:</p>
-      <ul>
-        <li>Per-agent × comment heatmap</li>
-        <li>Per-day comment distribution trend</li>
-        <li>Anomaly flags (e.g. "Document Not Available" without a reminder)</li>
-        <li>Cross-table joins to <code>relations_io.reason_for_the_change</code></li>
-      </ul>
+    <h3 style="font-size:18px;font-weight:600;color:var(--ink);margin-bottom:8px">Case Scenarios</h3>
+    <div class="footer-note" style="margin-bottom:10px">The <code>comment</code> field is a fixed set of 11 case-scenario values. Five of them mean the vessel's IMO could not be located — for those a blank company id/name is correct (no IMO ⇒ nothing to attach), so those records are listed separately rather than flagged as gaps.</div>
+    <div class="kpis">
+      <div class="kpi ${gaps.length > 0 ? 'warn' : ''}"><div class="label">Company-gap records</div><div class="value">${gaps.length}${gapTrunc ? '+' : ''}</div><div class="delta">Done/Valid · no company · not dead · not no-IMO</div></div>
+      <div class="kpi"><div class="label">No-IMO-found records</div><div class="value">${noImo.length}${noImoTrunc ? '+' : ''}</div><div class="delta">blank company is correct here</div></div>
     </div>
-    <div class="panel" style="margin-top:18px">
-      <h3>Today's comment mix <span class="meta">${totalComments} comments across 5 teams</span></h3>
-      ${nonzero.length === 0 ? `<div class="empty">No comments on cached records today.</div>` : `
-        <table>
-          <thead><tr><th>Comment</th><th class="right">Count</th><th class="right">Share</th></tr></thead>
-          <tbody>${nonzero.map(([k, v]) => `<tr><td>${esc(k)}</td><td class="right">${v}</td><td class="right">${(v/totalComments*100).toFixed(0)}%</td></tr>`).join("")}</tbody>
-        </table>`}
+
+    <div class="panel">
+      <h3>7-day case-type trend <span class="meta">whole team · from daily snapshots</span></h3>
+      <div id="caseTrendHeatmap"><div class="empty">Loading 7-day trend…</div></div>
+    </div>
+
+    <div class="controls-row">
+      <label class="small-mono">Team:</label>
+      <select id="caseTeamFilter">
+        <option value="all" ${CASE_STATE.team === 'all' ? 'selected' : ''}>All teams</option>
+        ${teams.map(t => `<option value="${esc(t)}" ${CASE_STATE.team === t ? 'selected' : ''}>${esc(t)}</option>`).join("")}
+      </select>
+      <span class="small-mono">filters both lists below</span>
+    </div>
+
+    <div class="panel">
+      <h3>Company gaps — need attention <span class="meta" id="caseGapCount"></span></h3>
+      ${gapTrunc ? `<div class="alert-row warn" style="margin-bottom:10px"><span class="icon">!</span><div>Showing the first ${gaps.length} records — older entries truncated. Bump the cap in <code>compute_case_scenarios</code> if you need more.</div></div>` : ""}
+      <div class="case-scroll" id="caseGapTable"></div>
+    </div>
+
+    <div class="panel">
+      <h3>No-IMO-found records <span class="meta" id="caseNoImoCount"></span></h3>
+      ${noImoTrunc ? `<div class="alert-row warn" style="margin-bottom:10px"><span class="icon">!</span><div>Showing the first ${noImo.length} records — older entries truncated. Bump the cap in <code>compute_case_scenarios</code> if you need more.</div></div>` : ""}
+      <div class="case-scroll" id="caseNoImoTable"></div>
     </div>
   `;
+
+  document.getElementById("caseTeamFilter").addEventListener("change", (e) => {
+    CASE_STATE.team = e.target.value;
+    localStorage.setItem("wqa.caseTeam", CASE_STATE.team);
+    renderCaseTables();
+  });
+
+  renderCaseTables();
+  renderCaseTrendHeatmap();
 };
+
+function _caseFilter(rows) {
+  return CASE_STATE.team === "all" ? rows : rows.filter(r => r.team === CASE_STATE.team);
+}
+function _caseTableHtml(rows) {
+  const cols = ["Task name", "IMO", "Agent", "Team", "Comment", "Status", "Days open"];
+  const head = `<thead><tr>${cols.map(c => `<th class="${c === 'Days open' ? 'right' : ''}">${esc(c)}</th>`).join("")}</tr></thead>`;
+  const body = rows.map(r => `<tr>
+    <td>${esc(r.requested_by || "—")}</td>
+    <td class="mono">${esc(r.imo || "—")}</td>
+    <td>${esc(r.assignee || "—")}</td>
+    <td>${esc(r.team || "—")}</td>
+    <td>${esc(r.comment || "—")}</td>
+    <td>${esc(r.verification_status || "—")}</td>
+    <td class="right">${r.days_open ?? 0}</td>
+  </tr>`).join("");
+  return `<table>${head}<tbody>${body || '<tr><td colspan="7" class="empty">No records.</td></tr>'}</tbody></table>`;
+}
+function renderCaseTables() {
+  const gaps  = _caseFilter(STATE.v2?.case_company_gap_records || []);
+  const noImo = _caseFilter(STATE.v2?.case_no_imo_records || []);
+  const gapEl = document.getElementById("caseGapTable");
+  const noImoEl = document.getElementById("caseNoImoTable");
+  if (gapEl)  gapEl.innerHTML  = _caseTableHtml(gaps);
+  if (noImoEl) noImoEl.innerHTML = _caseTableHtml(noImo);
+  const gc = document.getElementById("caseGapCount");  if (gc) gc.textContent  = `${gaps.length} shown`;
+  const nc = document.getElementById("caseNoImoCount"); if (nc) nc.textContent = `${noImo.length} shown`;
+}
+
+// 7-day case-type heatmap: rows = the 11 comment values, columns = the last 7
+// EAT days, each cell = that comment's count that day. Read from the daily
+// snapshots' totals.comment_distribution (same approach as the Daily Intake
+// 7-day chart). Whole-team — per-team history isn't in old snapshots. Days with
+// no snapshot render as a muted blank cell.
+async function renderCaseTrendHeatmap() {
+  const wrap = document.getElementById("caseTrendHeatmap");
+  if (!wrap) return;
+  const today = todayEat();
+  const dates = [];
+  for (let i = 6; i >= 0; i--) {
+    const dt = new Date(today + "T00:00:00+03:00");
+    dt.setDate(dt.getDate() - i);
+    dates.push(dt.toLocaleDateString("en-CA", { timeZone: "Africa/Nairobi" }));
+  }
+  const snaps = await Promise.all(dates.map(async d => {
+    const snap = await readJson(`snapshots/${d}.json`);
+    return { d, cd: snap?.totals?.comment_distribution || null };  // null = no snapshot
+  }));
+  let max = 1;
+  for (const s of snaps) if (s.cd) for (const c of CASE_COMMENT_VALUES) max = Math.max(max, s.cd[c] || 0);
+  const shortDay = d => new Date(d + "T00:00:00+03:00").toLocaleDateString("en-GB", { timeZone: "Africa/Nairobi", day: "numeric", month: "short" });
+  const headerCells = snaps.map(s => `<div class="header">${esc(shortDay(s.d))}</div>`).join("");
+  const rows = CASE_COMMENT_VALUES.map(c => {
+    const cells = snaps.map(s => {
+      if (!s.cd) return `<div class="cell z" title="${esc(s.d)}: no snapshot"></div>`;
+      const v = s.cd[c] || 0;
+      if (v === 0) return `<div class="cell z" title="${esc(c)} · ${esc(s.d)}: 0">0</div>`;
+      const alpha = (0.2 + 0.8 * (v / max)).toFixed(2);
+      return `<div class="cell" style="background:rgba(20,80,179,${alpha})" title="${esc(c)} · ${esc(s.d)}: ${v}">${v}</div>`;
+    }).join("");
+    return `<div class="label">${esc(c)}</div>${cells}`;
+  }).join("");
+  wrap.innerHTML = `<div class="heatmap" style="grid-template-columns: 280px repeat(7, minmax(40px, 1fr));">
+    <div class="header"></div>${headerCells}
+    ${rows}
+  </div>`;
+}
 
 // ============================================================================
 //  Init
