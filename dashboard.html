@@ -35,9 +35,11 @@
   nav.side { background: #181a20; color: #abb1bd; padding: 16px 0; position: sticky; top: 0; height: 100vh; overflow-y: auto; }
   nav.side h1 { font-size: 12px; padding: 4px 18px 16px; margin: 0; letter-spacing: 0.08em; text-transform: uppercase; color: #767d8c; font-weight: 600; }
   nav.side ul { list-style: none; padding: 0; margin: 0; }
-  nav.side li button { width: 100%; text-align: left; background: none; border: 0; color: #abb1bd; padding: 9px 18px; font-size: 13px; cursor: pointer; font-family: inherit; border-left: 2px solid transparent; display: flex; justify-content: space-between; align-items: center; transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease; }
-  nav.side li button:hover { background: #212531; color: #f3f5f9; }
+  nav.side li.nav-section { font-size: 10px; text-transform: uppercase; letter-spacing: 0.08em; color: #5f6675; font-weight: 600; padding: 16px 18px 5px; margin: 0; pointer-events: none; user-select: none; }
+  nav.side li button { width: 100%; text-align: left; background: none; border: 0; color: #abb1bd; padding: 8px 18px; font-size: 13px; cursor: pointer; font-family: inherit; border-left: 2px solid transparent; display: flex; justify-content: space-between; align-items: center; transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease; }
+  nav.side li button:hover { background: #212531; color: #f3f5f9; border-left-color: #3a4150; }
   nav.side li button.active { background: #262b37; color: #f3f5f9; border-left-color: var(--accent); font-weight: 500; }
+  nav.side li button.active:hover { border-left-color: var(--accent); }
   nav.side li button .tag { font-size: 9px; letter-spacing: 0.04em; text-transform: uppercase; font-weight: 600; background: #2c313d; padding: 2px 6px; border-radius: 999px; color: #8b93a3; }
   nav.side li button .tag.stub { background: #3a3320; color: #e8c479; }
   nav.side li button .tag.live { background: #1d3640; color: #79cfd6; }
@@ -428,19 +430,19 @@ const VS = {
 
 // Pages
 const PAGES = [
-  { id: "overview",       label: "Overview",                tag: null     },
-  { id: "agent",          label: "Agent Scorecard",         tag: null     },
-  { id: "experts",        label: "Ownership Experts",        tag: null     },
-  { id: "hourly",         label: "Hourly Output",           tag: null     },
-  { id: "qa_performance", label: "QA Performance",          tag: null     },
-  { id: "boqa",           label: "BO QA Console",           tag: "live"   },
-  { id: "intake",         label: "Daily Intake",            tag: null     },
-  { id: "tasks",          label: "Tasks",                   tag: null     },
-  { id: "new_companies",  label: "New Companies",           tag: null     },
-  { id: "wwqa",           label: "WW QA Console",           tag: null     },
-  { id: "pipeline",       label: "Pipeline & Lead Time",    tag: null     },
-  { id: "scenarios",      label: "Case Scenarios",          tag: null     },
-  { id: "weekly",         label: "Weekly Report",           tag: null     },
+  { id: "overview",       label: "Overview",                tag: null,   group: null         },
+  { id: "hourly",         label: "Hourly Output",           tag: null,   group: "Operations" },
+  { id: "intake",         label: "Daily Intake",            tag: null,   group: "Operations" },
+  { id: "tasks",          label: "Tasks",                   tag: null,   group: "Operations" },
+  { id: "new_companies",  label: "New Companies",           tag: null,   group: "Operations" },
+  { id: "pipeline",       label: "Pipeline & Lead Time",    tag: null,   group: "Operations" },
+  { id: "scenarios",      label: "Case Scenarios",          tag: null,   group: "Operations" },
+  { id: "qa_performance", label: "QA Performance",          tag: null,   group: "Quality"    },
+  { id: "boqa",           label: "BO QA Console",           tag: "live", group: "Quality"    },
+  { id: "wwqa",           label: "WW QA Console",           tag: null,   group: "Quality"    },
+  { id: "agent",          label: "Agent Scorecard",         tag: null,   group: "People"     },
+  { id: "experts",        label: "Ownership Experts",        tag: null,   group: "People"     },
+  { id: "weekly",         label: "Weekly Report",           tag: null,   group: "Reports"    },
 ];
 
 // ============================================================================
@@ -720,10 +722,13 @@ function teamForAgent(name) {
 // ============================================================================
 function renderNav() {
   const ul = document.getElementById("navList");
+  let lastGroup = null;
   ul.innerHTML = PAGES.map(p => {
     const tagHtml = p.tag === "stub" ? `<span class="tag stub">stub</span>`
                   : p.tag === "live" ? `<span class="tag live">live</span>` : "";
-    return `<li><button data-page="${p.id}" class="${STATE.currentPage === p.id ? "active" : ""}">${p.label}${tagHtml}</button></li>`;
+    const header = (p.group && p.group !== lastGroup) ? `<li class="nav-section">${p.group}</li>` : "";
+    lastGroup = p.group;
+    return `${header}<li><button data-page="${p.id}" class="${STATE.currentPage === p.id ? "active" : ""}">${p.label}${tagHtml}</button></li>`;
   }).join("");
   ul.querySelectorAll("button[data-page]").forEach(b => b.addEventListener("click", () => goto(b.dataset.page)));
 }
