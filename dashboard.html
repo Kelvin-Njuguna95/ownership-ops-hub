@@ -347,6 +347,7 @@
       <div id="page-pipeline"       class="page" style="display:none"></div>
       <div id="page-scenarios"      class="page" style="display:none"></div>
       <div id="page-weekly"         class="page" style="display:none"></div>
+      <div id="page-comparison"     class="page" style="display:none"></div>
       <div id="taskDrawerBackdrop" class="drawer-backdrop"></div>
       <div id="taskDrawer"         class="drawer"></div>
     </div>
@@ -446,6 +447,7 @@ const PAGES = [
   { id: "boqa",           label: "BO QA Console",           tag: null,   group: "Quality"    },
   { id: "wwqa",           label: "WW QA Console",           tag: null,   group: "Quality"    },
   { id: "agent",          label: "Agent Scorecard",         tag: null,   group: "People"     },
+  { id: "comparison",     label: "Comparison",              tag: null,   group: "People"     },
   { id: "experts",        label: "Ownership Experts",        tag: null,   group: "People"     },
   { id: "weekly",         label: "Weekly Report",           tag: null,   group: "Reports"    },
 ];
@@ -1466,6 +1468,175 @@ async function renderExpertsWeekly() {
       },
     });
   }
+}
+
+// -------- 7-Day Comparison --------
+// 7-day rolling comparison across teams and agents in one view. Count metrics
+// (tagged, properly_completed, qa_inspected, qa_changed) are SUMMED over the
+// window; rate metrics are RECOMPUTED from the summed components — never the
+// average of daily percentages. The viewed date uses STATE.v2; the 6 prior
+// days come from snapshots/<date>.json (same window approach as renderBoqa7Day).
+const COMPARISON_STATE = { sortBy: "tagged", sortDir: "desc", team: "all", data: null };
+
+PAGE_RENDERERS.comparison = function () {
+  const root = document.getElementById("page-comparison");
+  if (!STATE.v2?.by_team && !STATE.v2?.by_agent) {
+    root.innerHTML = noDataHtml("by_team / by_agent not in aggregates_v2 — run aggregate_v2.py");
+    return;
+  }
+  COMPARISON_STATE.data = null;  // reload the window on every visit
+  const teams = Object.keys(STATE.roster || {}).sort();
+  root.innerHTML = `
+    <h2 class="section-head">7-day performance comparison <span class="meta">rolling window · all teams &amp; agents</span></h2>
+    <div class="footer-note" style="margin-top:0;margin-bottom:14px">
+      Counts (Tagged, Completed, QA reviewed) are summed across the last 7 days. Rates are recomputed from the
+      summed components — Completion&nbsp;% = Σcompleted ÷ Σtagged, Reject&nbsp;% = Σchanged ÷ Σreviewed — never an
+      average of daily rates. Sampling&nbsp;% is approximate: the raw sampled count isn't stored, so it's backed out
+      per day as each day's sampling&nbsp;% × tagged, summed, ÷ Σtagged.
+    </div>
+
+    <div class="panel">
+      <h3>By team <span class="meta" id="cmpTeamMeta"></span></h3>
+      <div id="cmpTeamTable"><div class="empty"><span class="spinning-icon">↻</span> Loading 7-day window…</div></div>
+    </div>
+
+    <div class="panel">
+      <h3>By agent <span class="meta">sortable — click a metric header</span></h3>
+      <div class="controls-row">
+        <label class="small-mono">Team:</label>
+        <select id="cmpTeamFilter">
+          <option value="all" ${COMPARISON_STATE.team === "all" ? "selected" : ""}>All teams</option>
+          ${teams.map(t => `<option value="${esc(t)}" ${COMPARISON_STATE.team === t ? "selected" : ""}>${esc(t)}</option>`).join("")}
+        </select>
+        <span class="small-mono" id="cmpAgentCount"></span>
+      </div>
+      <div class="case-scroll" id="cmpAgentTable"><div class="empty"><span class="spinning-icon">↻</span> Loading…</div></div>
+    </div>
+  `;
+  document.getElementById("cmpTeamFilter").addEventListener("change", (e) => {
+    COMPARISON_STATE.team = e.target.value;
+    renderComparisonAgents();
+  });
+  loadComparison7Day();
+};
+
+async function loadComparison7Day() {
+  const anchor = STATE.v2?.date || todayEat();
+  const dates = [];
+  for (let i = 6; i >= 0; i--) {
+    const dt = new Date(anchor + "T00:00:00+03:00");
+    dt.setDate(dt.getDate() - i);
+    dates.push(dt.toLocaleDateString("en-CA", { timeZone: "Africa/Nairobi" }));
+  }
+  const snaps = await Promise.all(dates.map(async d => {
+    if (d === anchor) return { d, agg: STATE.v2 || null };
+    return { d, agg: await readJson(`snapshots/${d}.json`) };  // null if missing
+  }));
+  const present = snaps.filter(s => s.agg);
+
+  // Sum the raw components per team and per agent across the window.
+  const acc = (store, key, m) => {
+    const a = (store[key] = store[key] || { tagged: 0, completed: 0, reviews: 0, changes: 0, sampled: 0 });
+    const tagged = m.tagged_today || 0;
+    a.tagged    += tagged;
+    a.completed += m.properly_completed_today || 0;
+    a.reviews   += m.qa_inspected_today || 0;
+    a.changes   += m.qa_changed_today || 0;
+    // The sampled count isn't stored — back it out from the day's sampling % × tagged.
+    a.sampled   += (m.sampling_actual_pct || 0) / 100 * tagged;
+  };
+  const teamStore = {}, agentStore = {};
+  for (const s of present) {
+    for (const [team, m] of Object.entries(s.agg.by_team || {})) acc(teamStore, team, m);
+    for (const [agent, m] of Object.entries(s.agg.by_agent || {})) acc(agentStore, agent, m);
+  }
+
+  // Recompute rates from the summed components — never average daily %s.
+  const finalize = (name, a, withTeam) => {
+    const row = {
+      name, tagged: a.tagged, completed: a.completed, reviews: a.reviews, changes: a.changes,
+      completionPct: a.tagged > 0 ? a.completed / a.tagged * 100 : null,
+      rejectPct:     a.reviews > 0 ? a.changes / a.reviews * 100 : null,
+      samplingPct:   a.tagged > 0 ? a.sampled / a.tagged * 100 : null,
+    };
+    if (withTeam) row.team = teamForAgent(name) || "—";
+    return row;
+  };
+  COMPARISON_STATE.data = {
+    days: present.length,
+    threshold: (typeof STATE.v2?.reject_threshold === "number") ? STATE.v2.reject_threshold : 30,
+    teams:  Object.entries(teamStore).map(([k, a]) => finalize(k, a, false)),
+    agents: Object.entries(agentStore).map(([k, a]) => finalize(k, a, true)),
+  };
+  renderComparisonTeams();
+  renderComparisonAgents();
+}
+
+// Rate cell — green/red against the reject threshold only for Reject %; other
+// rates render plain. Null (no denominator in the window) renders as a dash.
+function cmpRateCell(pct, threshold, colourReject) {
+  if (pct == null) return '<span class="small-mono">—</span>';
+  if (!colourReject) return `${pct.toFixed(1)}%`;
+  return `<span class="pill-inline ${pct >= threshold ? "bad" : "good"}">${pct.toFixed(1)}%</span>`;
+}
+
+function renderComparisonTeams() {
+  const data = COMPARISON_STATE.data; if (!data) return;
+  const meta = document.getElementById("cmpTeamMeta");
+  if (meta) meta.textContent = `${data.days} of 7 days with data`;
+  const el = document.getElementById("cmpTeamTable"); if (!el) return;
+  const rows = data.teams.slice().sort((a, b) => b.tagged - a.tagged);  // Tagged desc
+  if (!rows.length) { el.innerHTML = `<div class="empty">No team data in the last 7 days.</div>`; return; }
+  el.innerHTML = `<table><thead><tr>
+      <th>Team</th><th class="right">Tagged</th><th class="right">Completed</th><th class="right">Completion %</th>
+      <th class="right">QA reviewed</th><th class="right">Reject %</th><th class="right">Sampling %</th>
+    </tr></thead><tbody>${rows.map(r => `<tr>
+      <td>${esc(r.name)}</td>
+      <td class="right">${r.tagged.toLocaleString()}</td>
+      <td class="right">${r.completed.toLocaleString()}</td>
+      <td class="right">${cmpRateCell(r.completionPct, data.threshold, false)}</td>
+      <td class="right">${r.reviews.toLocaleString()}</td>
+      <td class="right">${cmpRateCell(r.rejectPct, data.threshold, true)}</td>
+      <td class="right">${cmpRateCell(r.samplingPct, data.threshold, false)}</td>
+    </tr>`).join("")}</tbody></table>`;
+}
+
+function renderComparisonAgents() {
+  const data = COMPARISON_STATE.data; if (!data) return;
+  const el = document.getElementById("cmpAgentTable"); if (!el) return;
+  let rows = data.agents.slice();
+  if (COMPARISON_STATE.team !== "all") rows = rows.filter(r => r.team === COMPARISON_STATE.team);
+  const k = COMPARISON_STATE.sortBy, dir = COMPARISON_STATE.sortDir === "asc" ? 1 : -1;
+  rows.sort((a, b) => ((a[k] ?? -1) - (b[k] ?? -1)) * dir);  // all sort keys are numeric
+  const cnt = document.getElementById("cmpAgentCount");
+  if (cnt) cnt.textContent = `${rows.length} agent${rows.length === 1 ? "" : "s"}`;
+  if (!rows.length) { el.innerHTML = `<div class="empty">No agent data for this filter in the last 7 days.</div>`; return; }
+  const cols = [
+    ["tagged", "Tagged"], ["completed", "Completed"], ["completionPct", "Completion %"],
+    ["reviews", "QA reviewed"], ["rejectPct", "Reject %"], ["samplingPct", "Sampling %"],
+  ];
+  const sortInd = (key) => key === COMPARISON_STATE.sortBy ? (COMPARISON_STATE.sortDir === "asc" ? "▲" : "▼") : "";
+  const head = `<thead><tr><th>Agent</th><th>Team</th>${cols.map(([key, lab]) =>
+      `<th data-sort="${key}" class="right">${esc(lab)} <span class="sort-ind">${sortInd(key)}</span></th>`).join("")}</tr></thead>`;
+  const body = rows.map(r => `<tr>
+      <td class="agent-name">${esc(r.name)}</td>
+      <td>${esc(r.team)}</td>
+      <td class="right">${r.tagged.toLocaleString()}</td>
+      <td class="right">${r.completed.toLocaleString()}</td>
+      <td class="right">${cmpRateCell(r.completionPct, data.threshold, false)}</td>
+      <td class="right">${r.reviews.toLocaleString()}</td>
+      <td class="right">${cmpRateCell(r.rejectPct, data.threshold, true)}</td>
+      <td class="right">${cmpRateCell(r.samplingPct, data.threshold, false)}</td>
+    </tr>`).join("");
+  el.innerHTML = `<table class="sortable">${head}<tbody>${body}</tbody></table>`;
+  el.querySelectorAll("th[data-sort]").forEach(th => {
+    th.addEventListener("click", () => {
+      const key = th.dataset.sort;
+      if (COMPARISON_STATE.sortBy === key) COMPARISON_STATE.sortDir = COMPARISON_STATE.sortDir === "asc" ? "desc" : "asc";
+      else { COMPARISON_STATE.sortBy = key; COMPARISON_STATE.sortDir = "desc"; }
+      renderComparisonAgents();
+    });
+  });
 }
 
 // -------- Hourly Output --------
