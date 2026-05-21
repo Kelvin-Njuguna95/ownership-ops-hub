@@ -110,6 +110,27 @@
   .row.equal { grid-template-columns: 1fr 1fr; }
   @media (max-width: 1100px) { .row, .row.equal { grid-template-columns: 1fr; } }
 
+  /* Operational flow (Overview) — a stage strip + a composition bar, calm & shadow-led */
+  .flow-strip { display: flex; align-items: center; gap: 4px; flex-wrap: wrap; }
+  .flow-node { flex: 1 1 140px; min-width: 130px; padding: 4px 6px; }
+  .flow-node .flow-count { font-size: 30px; font-weight: 650; letter-spacing: -0.02em; color: var(--ink); line-height: 1.05; }
+  .flow-node .flow-name { font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--muted); font-weight: 600; margin-top: 5px; }
+  .flow-node .flow-sub { font-size: 11px; color: var(--muted); margin-top: 2px; }
+  .flow-node .flow-extra { font-size: 11px; color: var(--warn); font-weight: 500; margin-top: 3px; }
+  .flow-connector { flex: 0 0 auto; color: #c2c7d0; font-size: 20px; line-height: 1; padding: 0 2px; align-self: center; }
+  .flow-bar-wrap { margin-top: 18px; }
+  .flow-bar { display: flex; height: 10px; border-radius: 999px; overflow: hidden; background: var(--soft); }
+  .flow-seg { height: 100%; transition: width 0.3s ease; }
+  .flow-seg.a, .flow-legend .swatch.a { background: #aab2c0; }   /* Flow A — done, no QA (neutral) */
+  .flow-seg.b, .flow-legend .swatch.b { background: var(--accent); } /* Flow B — in BO QA */
+  .flow-seg.c, .flow-legend .swatch.c { background: var(--good); }   /* Flow C — done after QA */
+  .flow-seg.d, .flow-legend .swatch.d { background: var(--warn); }   /* Flow D — in flight (bottleneck cue) */
+  .flow-legend { display: flex; flex-wrap: wrap; gap: 8px 18px; margin-top: 12px; font-size: 12px; }
+  .flow-legend .item { display: flex; align-items: center; gap: 6px; color: var(--muted); }
+  .flow-legend .swatch { width: 9px; height: 9px; border-radius: 3px; flex: 0 0 auto; }
+  .flow-legend .lname { color: var(--ink); }
+  .flow-legend .lcount { color: var(--muted); font-variant-numeric: tabular-nums; }
+
   /* Tables */
   table { width: 100%; border-collapse: collapse; font-size: 13px; }
   th, td { padding: 8px 10px; text-align: left; border-bottom: 1px solid var(--border); }
@@ -737,19 +758,62 @@ PAGE_RENDERERS.overview = function () {
   const taggedTotal = t.tagged_today || 0;
   const sumABCD = flowA + flowB + flowC + flowD;
   const reconcileOk = sumABCD === taggedTotal;
+  // Operational flow — stage strip (current count per stage) + composition bar
+  // (how today's tagged cohort splits across Flow A/B/C/D). All from STATE.v2.totals.
+  // No conversion %s on connectors: Intake is whole-table, Tagged is the 5 teams, so a
+  // drop-off there would be a false signal — this is a stage view, not a funnel.
+  const intake = t.relations_support_intake_today || 0;
+  const inQA = flowB;
+  const completed = t.total_completions_today || 0;
+  const backlog = t.bo_qa_backlog || 0;
+  const flowPct = (n) => taggedTotal > 0 ? (n / taggedTotal * 100) : 0;
   const flowHtml = `
     <div class="panel">
-      <h3>Flow framework <span class="meta">v3 — A + B + C + D = today's tagged tasks (5 teams)</span></h3>
-      <div class="kpis">
-        <div class="kpi"><div class="label">Flow A — Completed W/O QA</div><div class="value">${flowA}</div><div class="delta">Done/Valid, no QA involvement</div></div>
-        <div class="kpi"><div class="label">Flow B — Selected for QA Sampling</div><div class="value">${flowB}</div><div class="delta">In BO QA pool with reviewer assigned (in-progress)</div></div>
-        <div class="kpi"><div class="label">Flow C — Completed After QA</div><div class="value">${flowC}</div><div class="delta">Done/Valid with approve/change recorded</div></div>
-        <div class="kpi"><div class="label">Flow D — In Flight</div><div class="value">${flowD}</div><div class="delta">Tagged today, not yet in A/B/C — still in tagged / need to be update, or pending QA assignment</div></div>
-        <div class="kpi"><div class="label">Total Completions (Today)</div><div class="value">${t.total_completions_today || 0}</div><div class="delta">Flow A + Flow C (B excluded — in-progress; D excluded — in-flight)</div></div>
+      <h3>Operational flow <span class="meta">today · 5 teams · Flow A + B + C + D = tagged</span></h3>
+      <div class="flow-strip">
+        <div class="flow-node">
+          <div class="flow-count">${intake.toLocaleString()}</div>
+          <div class="flow-name">Intake</div>
+          <div class="flow-sub">uploaded today · whole table</div>
+        </div>
+        <div class="flow-connector">&rarr;</div>
+        <div class="flow-node">
+          <div class="flow-count">${taggedTotal.toLocaleString()}</div>
+          <div class="flow-name">Tagged</div>
+          <div class="flow-sub">by the 5 teams</div>
+        </div>
+        <div class="flow-connector">&rarr;</div>
+        <div class="flow-node">
+          <div class="flow-count">${inQA.toLocaleString()}</div>
+          <div class="flow-name">In QA</div>
+          <div class="flow-sub">in BO QA</div>
+          ${backlog > 0 ? `<div class="flow-extra">+${backlog.toLocaleString()} in backlog</div>` : ""}
+        </div>
+        <div class="flow-connector">&rarr;</div>
+        <div class="flow-node">
+          <div class="flow-count">${completed.toLocaleString()}</div>
+          <div class="flow-name">Completed</div>
+          <div class="flow-sub">Flow A + C today</div>
+        </div>
       </div>
-      <div class="small-mono" style="color:var(--muted);margin-top:10px;">
-        Reconciles with Tagged Today: ${flowA} + ${flowB} + ${flowC} + ${flowD} = ${sumABCD} ${reconcileOk ? "✓" : `⚠ (expected ${taggedTotal})`}
-      </div>
+      ${taggedTotal > 0 ? `
+      <div class="flow-bar-wrap">
+        <div class="flow-bar">
+          <div class="flow-seg a" style="width:${flowPct(flowA)}%" title="Flow A — done, no QA: ${flowA}"></div>
+          <div class="flow-seg b" style="width:${flowPct(flowB)}%" title="Flow B — in BO QA: ${flowB}"></div>
+          <div class="flow-seg c" style="width:${flowPct(flowC)}%" title="Flow C — done after QA: ${flowC}"></div>
+          <div class="flow-seg d" style="width:${flowPct(flowD)}%" title="Flow D — in flight: ${flowD}"></div>
+        </div>
+        <div class="flow-legend">
+          <div class="item"><span class="swatch a"></span><span class="lname">Flow A · done, no QA</span> <span class="lcount">${flowA}</span></div>
+          <div class="item"><span class="swatch b"></span><span class="lname">Flow B · in BO QA</span> <span class="lcount">${flowB}</span></div>
+          <div class="item"><span class="swatch c"></span><span class="lname">Flow C · done after QA</span> <span class="lcount">${flowC}</span></div>
+          <div class="item"><span class="swatch d"></span><span class="lname">Flow D · in flight</span> <span class="lcount">${flowD}</span></div>
+        </div>
+        <div class="small-mono" style="color:var(--muted);margin-top:10px;">
+          A + B + C + D = ${sumABCD} of ${taggedTotal} tagged ${reconcileOk ? "✓" : `⚠ (expected ${taggedTotal})`}
+        </div>
+      </div>` : `<div class="empty" style="margin-top:14px;">No work tagged today yet — the flow fills in as the 5 teams tag records.</div>`}
     </div>`;
 
   const alertsHtml = `
