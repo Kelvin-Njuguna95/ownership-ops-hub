@@ -21,6 +21,7 @@ from aggregate_v2 import (  # noqa: E402
     _save_snapshot,
     aggregate,
     compute_case_scenarios,
+    compute_expert_activity,
     compute_metrics,
     compute_not_yet_finalized,
     compute_qa_done_not_finalized,
@@ -1628,6 +1629,68 @@ class TestComputeCaseScenarios(unittest.TestCase):
         self.assertEqual(t1["comment"], "IMO searched but not found")
         self.assertFalse(gap_trunc)
         self.assertFalse(no_imo_trunc)
+
+
+class TestComputeExpertActivity(unittest.TestCase):
+    """compute_expert_activity scans the full record set by expert name (the two
+    experts aren't in the roster), credits a co-assigned record to both, excludes
+    non-expert records, and classifies task types."""
+
+    def test_expert_attribution_types_and_exclusion(self):
+        recs = [
+            # Irene solo — World Check, completed, QA approved.
+            _info(assignees=["Irene Njuguna"], requested_by="WC_190526",
+                  verification_status="Valid", qa_assignee="Q1", qa_status="approve",
+                  start_tagging=_ts(0, 9)),
+            # Co-assigned to BOTH (case-insensitive) — OFAC, completed, QA changed.
+            _info(assignees=["irene njuguna", "Simon Francis"], requested_by="OFAC_Sanc_190526",
+                  verification_status="Done", qa_assignee="Q1", qa_status="changed",
+                  start_tagging=_ts(0, 10)),
+            # Simon solo — Sanctions, not completed.
+            _info(assignees=["Simon Francis"], requested_by="SanctionChangeIntel20May2026",
+                  verification_status="tagged", start_tagging=_ts(0, 11)),
+            # Non-expert record — must be excluded entirely.
+            _info(assignees=["Some Other Agent"], requested_by="CargoChangeIntel20May2026",
+                  verification_status="Done"),
+        ]
+        ea = compute_expert_activity(recs, TODAY)
+        experts = {e["name"]: e for e in ea["experts"]}
+        # Both experts always emitted.
+        self.assertEqual(set(experts), {"Irene Njuguna", "Simon Francis"})
+
+        irene = experts["Irene Njuguna"]
+        simon = experts["Simon Francis"]
+        # Co-assigned OFAC record counts for BOTH.
+        self.assertEqual(irene["records"], 2)   # WC + co-assigned OFAC
+        self.assertEqual(simon["records"], 2)   # co-assigned OFAC + Sanctions
+        self.assertEqual(irene["by_type"], {"OFAC": 1, "World Check": 1, "Sanctions": 0, "Other": 0})
+        self.assertEqual(simon["by_type"], {"OFAC": 1, "World Check": 0, "Sanctions": 1, "Other": 0})
+        # Irene: both records done (100%), both QA-checked, one changed → 50% reject.
+        self.assertEqual(irene["completed"], 2)
+        self.assertEqual(irene["completion_pct"], 100.0)
+        self.assertEqual(irene["qa_checked"], 2)
+        self.assertEqual(irene["qa_changed"], 1)
+        self.assertEqual(irene["reject_rate"], 50.0)
+
+        # Tasks: the three expert task names appear; the non-expert one does not.
+        tasks = {t["name"]: t for t in ea["tasks"]}
+        self.assertEqual(set(tasks), {"WC_190526", "OFAC_Sanc_190526", "SanctionChangeIntel20May2026"})
+        self.assertNotIn("CargoChangeIntel20May2026", tasks)
+        self.assertEqual(tasks["WC_190526"]["type"], "World Check")
+        self.assertEqual(tasks["OFAC_Sanc_190526"]["type"], "OFAC")
+        self.assertEqual(tasks["SanctionChangeIntel20May2026"]["type"], "Sanctions")
+        # The co-assigned task lists both experts and counts the record once.
+        self.assertEqual(tasks["OFAC_Sanc_190526"]["experts"], ["Irene Njuguna", "Simon Francis"])
+        self.assertEqual(tasks["OFAC_Sanc_190526"]["records"], 1)
+
+    def test_both_experts_emitted_when_no_records(self):
+        ea = compute_expert_activity([_info(assignees=["Some Other Agent"])], TODAY)
+        self.assertEqual({e["name"] for e in ea["experts"]}, {"Irene Njuguna", "Simon Francis"})
+        for e in ea["experts"]:
+            self.assertEqual(e["records"], 0)
+            self.assertEqual(e["reject_rate"], 0.0)
+            self.assertEqual(len(e["daily"]), 7)
+        self.assertEqual(ea["tasks"], [])
 
 
 class TestNextDayQaReviewBucketing(unittest.TestCase):
