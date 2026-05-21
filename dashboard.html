@@ -117,10 +117,11 @@
      an overflow container with no height cap lets the page (not the table) own the
      scroll, and position:sticky then has nothing to resolve against. That was the
      PR #28 regression: both sticky directions only work because they resolve against
-     this one bounded container. The 400px offset reserves room for the topbar, page
-     padding, the heading, KPI cards and the search/filter row so the page itself never
-     scrolls (measured: ~384px needed at 1300px width; 400 leaves a small safety margin). */
-  #tasksTable { overflow: auto; max-height: calc(100vh - 400px); }
+     this one bounded container. The exact height is set at runtime by fitTableHeight()
+     in JS, which measures the table down to the bottom of the viewport so it fills the
+     screen on any size (replacing the old fixed calc(100vh - Npx) guess). The 70vh here
+     is only a fallback for the case where JS hasn't run. */
+  #tasksTable { overflow: auto; max-height: 70vh; }
   #tasksTable table { font-size: 12px; }
   #tasksTable th, #tasksTable td { padding: 5px 8px; white-space: nowrap; }
   #tasksTable thead th {
@@ -142,17 +143,15 @@
   #tasksTable tbody tr:hover td:first-child { background: var(--soft); }     /* keep hover shade consistent on the frozen cell */
 
   /* The New Companies table is its own scroll region — same pattern as #tasksTable
-     above (PR #50). It previously had no scroll container and no sticky header, so the
-     column headers scrolled out of view on the long (up to 500-row) list. The bounded
-     max-height is what makes position:sticky work: without a height cap the page owns
-     the scroll and the sticky header silently breaks (the PR #28 regression). Offset
-     measured in headless Chrome with the worst-case chrome present (heading, footer note,
-     2 KPI cards, controls row AND the 500+ truncated alert). On the production build the
-     topbar carries extra controls that wrap at <=1300px, pushing the table top to ~390px,
-     so ~469px is the minimum that keeps the page itself from scrolling — 490 leaves a
-     safety margin. (Larger than Tasks' 400px because this page's header area — footer
-     note + truncated alert + a wrapping topbar — is taller, not shorter.) */
-  #newCompaniesTable { overflow: auto; max-height: calc(100vh - 490px); }
+     above (PR #50/#51). It previously had no scroll container and no sticky header, so
+     the column headers scrolled out of view on the long (up to 500-row) list. The bounded
+     max-height is what makes position:sticky work: without a height cap the page owns the
+     scroll and the sticky header silently breaks (the PR #28 regression). The exact height
+     is set at runtime by fitTableHeight() in JS, which measures the table down to the
+     bottom of the viewport (adapting to the topbar wrap and the truncated alert) so it
+     fills the screen on any size — replacing the old fixed calc(100vh - Npx) guess. The
+     70vh here is only a fallback for the case where JS hasn't run. */
+  #newCompaniesTable { overflow: auto; max-height: 70vh; }
   #newCompaniesTable thead th {
     position: sticky;
     top: 0; /* sticky resolves against the #newCompaniesTable scroll container */
@@ -1736,6 +1735,32 @@ function timeAgo(iso) {
 }
 function pctClass(pct) { return pct >= 95 ? "good" : pct >= 70 ? "warn" : "bad"; }
 
+// Size a scroll-region table to fill the viewport down to the bottom of its
+// page, so the table (not the page) owns the scroll. Replaces the old fixed
+// calc(100vh - Npx) guesses — adapts to topbar wrap, alerts, any screen size.
+function fitTableHeight(tableEl) {
+  if (!tableEl || !tableEl.offsetParent) return;            // not visible — skip
+  const pageEl = tableEl.closest(".page");
+  const tRect  = tableEl.getBoundingClientRect();
+  // Fixed chrome below the table (panel + page bottom padding). Measured live;
+  // scroll-independent because both rects move together.
+  const belowChrome = pageEl ? Math.max(0, pageEl.getBoundingClientRect().bottom - tRect.bottom) : 60;
+  const docTop = tRect.top + window.scrollY;                 // table's distance from document top
+  const h = window.innerHeight - docTop - belowChrome - 8;   // 8px breathing room
+  tableEl.style.maxHeight = Math.max(h, 220) + "px";         // floor: never absurdly short
+}
+// Re-fit on window resize (rAF-throttled). Registered once at parse time; the
+// offsetParent guard inside fitTableHeight means only the visible table resizes.
+let _fitRaf = null;
+window.addEventListener("resize", () => {
+  if (_fitRaf) return;
+  _fitRaf = requestAnimationFrame(() => {
+    _fitRaf = null;
+    fitTableHeight(document.getElementById("tasksTable"));
+    fitTableHeight(document.getElementById("newCompaniesTable"));
+  });
+});
+
 // Compact human duration from a count of hours: 30m / 5h / 2d 4h / — (null).
 function formatDuration(hours) {
   if (hours == null || isNaN(hours)) return "—";
@@ -1829,6 +1854,7 @@ function renderTasksTable() {
   document.querySelectorAll(".task-name").forEach(a => {
     a.addEventListener("click", () => openTaskDrawer(a.dataset.task));
   });
+  fitTableHeight(document.getElementById("tasksTable"));
 }
 
 // ----- Task detail drawer -----
@@ -2093,6 +2119,7 @@ function renderNewCompaniesTable() {
       renderNewCompaniesTable();
     });
   });
+  fitTableHeight(document.getElementById("newCompaniesTable"));
 }
 
 // -------- WW QA Console --------
