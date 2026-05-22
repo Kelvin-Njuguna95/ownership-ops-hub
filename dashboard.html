@@ -1294,9 +1294,9 @@ function renderAgentBody(agentName) {
       data: {
         labels: [esc(agentName)],
         datasets: [
-          { label: `Flow A — Completed w/o QA (${m.flow_a_count || 0})`, data: [m.flow_a_count || 0], backgroundColor: "#c98a3f" },
-          { label: `Flow B — QA reviewed (${m.flow_b_count || 0})`,       data: [m.flow_b_count || 0], backgroundColor: "#3d63dd" },
-          { label: `Flow C — Completed after QA (${m.flow_c_count || 0})`,data: [m.flow_c_count || 0], backgroundColor: "#1a7a55" },
+          { label: `Flow A — Completed w/o QA (${m.flow_a_today || 0})`, data: [m.flow_a_today || 0], backgroundColor: "#c98a3f" },
+          { label: `Flow B — QA reviewed (${m.flow_b_today || 0})`,       data: [m.flow_b_today || 0], backgroundColor: "#3d63dd" },
+          { label: `Flow C — Completed after QA (${m.flow_c_today || 0})`,data: [m.flow_c_today || 0], backgroundColor: "#1a7a55" },
         ],
       },
       options: {
@@ -1456,7 +1456,7 @@ async function renderExpertsWeekly() {
       const d = new Date(iso + "T00:00:00+03:00");
       d.setDate(d.getDate() + delta);
       const ds = d.toLocaleDateString("en-CA", { timeZone: "Africa/Nairobi" });
-      const snap = await readJson(`snapshots/${ds}.json`);
+      const snap = await readJson(`.poll_work/snapshots/${ds}.json`);
       if (snap) return snap;
     }
     return null;
@@ -1633,7 +1633,7 @@ async function loadComparison7Day() {
   }
   const snaps = await Promise.all(dates.map(async d => {
     if (d === anchor) return { d, agg: STATE.v2 || null };
-    return { d, agg: await readJson(`snapshots/${d}.json`) };  // null if missing
+    return { d, agg: await readJson(`.poll_work/snapshots/${d}.json`) };  // null if missing
   }));
   const present = snaps.filter(s => s.agg);
 
@@ -2052,7 +2052,7 @@ async function computeStaleTasks() {
   for (let back = 1; back <= 10; back++) {
     const d = new Date(anchorDate.getTime() - back * 86400000);
     const ds = d.toISOString().slice(0, 10);
-    const snap = await readJson(`snapshots/${ds}.json`);
+    const snap = await readJson(`.poll_work/snapshots/${ds}.json`);
     if (!snap) continue;
     const snapMs = new Date(snap.computed_at || (ds + "T23:59:59Z")).getTime();
     if (!isNaN(snapMs) && anchorMs - snapMs >= 24 * 3600 * 1000) {
@@ -2092,7 +2092,7 @@ async function renderBoqa7Day() {
   }
   const snaps = await Promise.all(dates.map(async d => {
     if (d === anchor) return { d, agg: STATE.v2 || null };
-    return { d, agg: await readJson(`snapshots/${d}.json`) };  // null if missing
+    return { d, agg: await readJson(`.poll_work/snapshots/${d}.json`) };  // null if missing
   }));
   const threshold = (typeof STATE.v2?.reject_threshold === "number") ? STATE.v2.reject_threshold : 30;
   const rejCls = (rate) => rate >= threshold ? "bad" : "good";
@@ -2309,7 +2309,7 @@ PAGE_RENDERERS.intake = function () {
       dates.push(dt.toLocaleDateString("en-CA", { timeZone: "Africa/Nairobi" }));
     }
     const last7 = await Promise.all(dates.map(async d => {
-      const snap = await readJson(`snapshots/${d}.json`);
+      const snap = await readJson(`.poll_work/snapshots/${d}.json`);
       const n = snap?.totals?.relations_support_intake_today;
       return { d, n: (typeof n === "number") ? n : null };  // null = no snapshot found
     }));
@@ -3409,7 +3409,7 @@ async function renderWeeklyBody(startISO, endISO) {
     <div class="kpis">
       <div class="kpi hero"><div class="label">Total records</div><div class="value">${rollup.totals.tagged.toLocaleString()}</div><div class="delta">sum of tagged across ${rollup.days_with_data} day${rollup.days_with_data === 1 ? "" : "s"}</div></div>
       <div class="kpi"><div class="label">Active agents (avg/day)</div><div class="value">${rollup.totals.active_agents_avg.toFixed(1)}</div></div>
-      <div class="kpi" title="Sum of per-day unique IMOs — may double-count IMOs worked on multiple days."><div class="label">Unique IMOs (sum)</div><div class="value">${rollup.totals.unique_imos_union.toLocaleString()}</div><div class="delta">may double-count across days</div></div>
+      <div class="kpi" title="Sum of per-day unique IMOs — may double-count IMOs worked on multiple days."><div class="label">Unique IMOs (sum-of-daily)</div><div class="value">${rollup.totals.unique_imos_sum.toLocaleString()}</div><div class="delta">may double-count across days</div></div>
       <div class="kpi"><div class="label">Daily avg</div><div class="value">${dailyAvg.toFixed(0)}</div></div>
       <div class="kpi"><div class="label">Flow A</div><div class="value">${rollup.totals.flow_a}</div><div class="delta">w/o QA</div></div>
       <div class="kpi"><div class="label">Flow B</div><div class="value">${rollup.totals.flow_b}</div><div class="delta">QA reviewed</div></div>
@@ -3476,8 +3476,8 @@ async function renderWeeklyBody(startISO, endISO) {
     const isToday = d.date === todayISO;
     const snap = STATE.weeklySnapshots[d.date];
     const byAgent = snap?.by_agent || {};
-    const flowAleaders = Object.entries(byAgent).sort((a, b) => (b[1].flow_a_count || 0) - (a[1].flow_a_count || 0)).slice(0, 5);
-    const flowCleaders = Object.entries(byAgent).sort((a, b) => (b[1].flow_c_count || 0) - (a[1].flow_c_count || 0)).slice(0, 5);
+    const flowAleaders = Object.entries(byAgent).sort((a, b) => (b[1].flow_a_in_cache || 0) - (a[1].flow_a_in_cache || 0)).slice(0, 5);
+    const flowCleaders = Object.entries(byAgent).sort((a, b) => (b[1].flow_c_in_cache || 0) - (a[1].flow_c_in_cache || 0)).slice(0, 5);
     return `
     <details class="panel" ${isToday ? "open" : ""}>
       <summary style="cursor:pointer;font-weight:600;font-size:14px">${esc(d.date)}${isToday ? " (today)" : ""} — Tagged: ${d.tagged} · Done: ${d.done} · Flow A/B/C: ${d.flow_a}/${d.flow_b}/${d.flow_c} · Completions: ${d.total_completions}</summary>
@@ -3486,13 +3486,13 @@ async function renderWeeklyBody(startISO, endISO) {
           <div>
             <h4 style="font-size:13px;color:var(--muted);margin:8px 0">Flow A leaders (completed w/o QA)</h4>
             <table><thead><tr><th>Agent</th><th class="right">Flow A</th></tr></thead><tbody>
-              ${flowAleaders.length ? flowAleaders.map(([n, a]) => `<tr><td>${esc(n)}</td><td class="right">${a.flow_a_count || 0}</td></tr>`).join("") : '<tr><td colspan="2" class="empty">no records</td></tr>'}
+              ${flowAleaders.length ? flowAleaders.map(([n, a]) => `<tr><td>${esc(n)}</td><td class="right">${a.flow_a_in_cache || 0}</td></tr>`).join("") : '<tr><td colspan="2" class="empty">no records</td></tr>'}
             </tbody></table>
           </div>
           <div>
             <h4 style="font-size:13px;color:var(--muted);margin:8px 0">Flow C leaders (completed after QA)</h4>
             <table><thead><tr><th>Agent</th><th class="right">Flow C</th></tr></thead><tbody>
-              ${flowCleaders.length ? flowCleaders.map(([n, a]) => `<tr><td>${esc(n)}</td><td class="right">${a.flow_c_count || 0}</td></tr>`).join("") : '<tr><td colspan="2" class="empty">no records</td></tr>'}
+              ${flowCleaders.length ? flowCleaders.map(([n, a]) => `<tr><td>${esc(n)}</td><td class="right">${a.flow_c_in_cache || 0}</td></tr>`).join("") : '<tr><td colspan="2" class="empty">no records</td></tr>'}
             </tbody></table>
           </div>
         </div>
@@ -3572,14 +3572,14 @@ function _rollupClientSide(dayList) {
     const tt = aggs.totals || {};
     const byAgent = aggs.by_agent || {};
     const activeAgents = Object.values(byAgent).filter(m =>
-      (m.tagged_today || 0) + (m.total_completions || 0) > 0).length;
+      (m.tagged_today || 0) + ((m.total_completions_today ?? m.total_completions) || 0) > 0).length;
     return {
       date: day,
       tagged: tt.tagged_today || 0,
       done: tt.done_today || 0,
-      flow_a: tt.flow_a_count || 0,
-      flow_b: tt.flow_b_count || 0,
-      flow_c: tt.flow_c_count || 0,
+      flow_a: (tt.flow_a_in_cache ?? tt.flow_a_count) || 0,
+      flow_b: (tt.flow_b_in_cache ?? tt.flow_b_count) || 0,
+      flow_c: (tt.flow_c_in_cache ?? tt.flow_c_count) || 0,
       total_completions: tt.total_completions || 0,
       active_agents: activeAgents,
       by_team: Object.fromEntries(Object.entries(aggs.by_team || {}).map(([t, m]) => [t, m.tagged_today || 0])),
@@ -3592,7 +3592,7 @@ function _rollupClientSide(dayList) {
     flow_b:            perDay.reduce((s, d) => s + d.flow_b, 0),
     flow_c:            perDay.reduce((s, d) => s + d.flow_c, 0),
     total_completions: perDay.reduce((s, d) => s + d.total_completions, 0),
-    unique_imos_union: snaps.reduce((s, [_, a]) => s + (a.totals?.unique_imos || 0), 0),
+    unique_imos_sum: snaps.reduce((s, [_, a]) => s + (a.totals?.unique_imos || 0), 0),
     qa_reviews:        snaps.reduce((s, [_, a]) => s + (a.qa_reviewers || []).reduce((x, r) => x + (r.reviews || 0), 0), 0),
     qa_changes:        snaps.reduce((s, [_, a]) => s + (a.qa_reviewers || []).reduce((x, r) => x + (r.changes || 0), 0), 0),
     active_agents_avg: perDay.length ? perDay.reduce((s, d) => s + d.active_agents, 0) / perDay.length : 0,
@@ -3624,7 +3624,7 @@ function _rollupClientSide(dayList) {
       const missing = [];
       for (const [day, aggs] of snaps) {
         const rec = (aggs.by_agent || {})[member.name];
-        if (!rec || ((rec.tagged_today || 0) + (rec.total_completions || 0)) === 0) {
+        if (!rec || ((rec.tagged_today || 0) + ((rec.total_completions_today ?? rec.total_completions) || 0)) === 0) {
           missing.push(day);
         }
       }
@@ -3817,7 +3817,7 @@ PAGE_RENDERERS.pipeline = function () {
       dates.push(dt.toLocaleDateString("en-CA", { timeZone: "Africa/Nairobi" }));
     }
     const last7 = await Promise.all(dates.map(async d => {
-      const snap = await readJson(`snapshots/${d}.json`);
+      const snap = await readJson(`.poll_work/snapshots/${d}.json`);
       const p50 = snap?.lead_time_today?.p50;   // int seconds, or undefined
       return { d, h: (typeof p50 === "number") ? +(p50 / 3600).toFixed(1) : null };  // null = no data
     }));
@@ -3966,7 +3966,7 @@ async function renderCaseTrendHeatmap() {
     dates.push(dt.toLocaleDateString("en-CA", { timeZone: "Africa/Nairobi" }));
   }
   const snaps = await Promise.all(dates.map(async d => {
-    const snap = await readJson(`snapshots/${d}.json`);
+    const snap = await readJson(`.poll_work/snapshots/${d}.json`);
     return { d, cd: snap?.totals?.comment_distribution || null };  // null = no snapshot
   }));
   let max = 1;
