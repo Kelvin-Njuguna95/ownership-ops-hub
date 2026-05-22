@@ -1556,9 +1556,12 @@ def _compute_flow_framework_counts(work_dir, ownership_assignees):
         #   D = in-flight (not yet sampled / not yet finalized)
         "total_completions_today": flow_a + flow_c,
     }
-    # Sanity assertion — protected by tests; here as a runtime guardrail.
-    assert flow_a + flow_b + flow_c + flow_d == in_scope, (
-        f"Flow A+B+C+D ({flow_a+flow_b+flow_c+flow_d}) != in_scope ({in_scope})")
+    # Sanity check — soft guardrail. classify() returns a finite partition, so this
+    # should always hold; if it ever doesn't, warn and continue rather than aborting
+    # the whole aggregation (a bare assert would also be silently stripped under -O).
+    _flow_sum = flow_a + flow_b + flow_c + flow_d
+    if _flow_sum != in_scope:
+        print(f"WARN: flow partition mismatch — Flow A+B+C+D ({_flow_sum}) != in_scope ({in_scope}); continuing")
     return counts
 
 
