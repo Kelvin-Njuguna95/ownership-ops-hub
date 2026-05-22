@@ -661,6 +661,22 @@ def compute_task_breakdowns(records, today_eat, ownership_assignees):
             for team, ids in sorted(team_record_ids.items(), key=lambda x: (-len(x[1]), x[0]))
         ]
 
+        # QA reviewers — per-task QA assignee attribution (mirrors agents_worked).
+        # A reviewer is credited for a record once it has both a qa_assignee and
+        # a qa_status verdict; "changed" = the reviewer bounced that record back.
+        qa_counts = Counter()
+        qa_changed_counts = Counter()
+        for info in recs:
+            qa = (info.get("qa_assignee") or "").strip()
+            if qa and info.get("qa_status"):
+                qa_counts[qa] += 1
+                if info.get("qa_status") == "changed":
+                    qa_changed_counts[qa] += 1
+        qa_reviewers = [
+            {"name": qa, "reviewed": cnt, "changed": qa_changed_counts[qa]}
+            for qa, cnt in qa_counts.most_common()
+        ]
+
         # Flags
         flags = []
         if any(info.get("verification_status") in INCOMPLETE_STATUSES for info in recs):
@@ -705,6 +721,7 @@ def compute_task_breakdowns(records, today_eat, ownership_assignees):
             "qa_reviewed": qa_reviewed_task,
             "qa_changed": qa_changed_task,
             "qa_coverage_pct": qa_coverage_pct,
+            "qa_reviewers": qa_reviewers,
             "agents_worked": agents_worked,
             "teams_worked": teams_worked,
             "flags": flags,
@@ -1591,6 +1608,100 @@ def _fetch_alerts_counts():
     }
 
 
+def _write_task_history(aggs):
+    """Upsert every task in aggs['tasks_all'] into the ownership_task_history
+    Supabase table — one row per (task_name, snapshot_date). This is what lets
+    the dashboard show tasks that have completed and aged out of the rolling
+    poll cache.
+
+    No-op (with a printed note) when the Supabase env vars are missing, so the
+    aggregator stays runnable in local dev.
+
+    Guardrail: only writes when aggs['date'] is today's EAT date. A local
+    aggregator run with an overridden historical today_eat must NOT clobber the
+    ledger's historical rows — this mirrors the snapshot-backfill guardrail
+    documented in CLAUDE.md."""
+    import os
+    try:
+        import requests
+    except ImportError:
+        print("  WARN _write_task_history: requests not available, skipping")
+        return
+    url = os.environ.get("SUPABASE_URL")
+    key = os.environ.get("SUPABASE_SERVICE_ROLE_KEY")
+    if not (url and key):
+        print("  _write_task_history: SUPABASE env not set, skipping (local dev)")
+        return
+
+    snapshot_date = aggs.get("date")
+    today = datetime.now(EAT).date().isoformat()
+    if snapshot_date != today:
+        print(f"  WARN _write_task_history: aggs date {snapshot_date} != today "
+              f"{today}; skipping ledger write to protect historical rows")
+        return
+
+    computed_at = aggs.get("computed_at")
+    rows = []
+    for t in aggs.get("tasks_all", []):
+        name = t.get("name")
+        # Skip the synthetic "(no task name)" bucket — it is not a real task.
+        if not name or name == "(no task name)":
+            continue
+        rows.append({
+            "task_name":           name,
+            "snapshot_date":       snapshot_date,
+            "computed_at":         computed_at,
+            "is_sanctions":        t.get("is_sanctions"),
+            "total_records":       t.get("total_records_in_cache"),
+            "date_first_seen":     t.get("date_first_seen"),
+            "date_last_modified":  t.get("date_last_modified"),
+            "valid_pct":           t.get("valid_pct"),
+            "is_completed":        t.get("is_completed"),
+            "end_time":            t.get("end_time"),
+            "tat_hours":           t.get("tat_hours"),
+            "status_distribution": t.get("status_distribution"),
+            "properly_completed":  t.get("properly_completed"),
+            "with_company":        t.get("with_company"),
+            "without_company":     t.get("without_company"),
+            "dead_vessels":        t.get("dead_vessels"),
+            "with_reminder":       t.get("with_reminder"),
+            "completed":           t.get("completed"),
+            "qa_reviewed":         t.get("qa_reviewed"),
+            "qa_changed":          t.get("qa_changed"),
+            "qa_coverage_pct":     t.get("qa_coverage_pct"),
+            "agents_worked":       t.get("agents_worked"),
+            "teams_worked":        t.get("teams_worked"),
+            "qa_reviewers":        t.get("qa_reviewers"),
+            "flags":               t.get("flags"),
+            "source":              "pipeline",
+        })
+    if not rows:
+        print("  _write_task_history: no tasks to write")
+        return
+
+    endpoint = (f"{url.rstrip('/')}/rest/v1/ownership_task_history"
+                f"?on_conflict=task_name,snapshot_date")
+    headers = {
+        "apikey":        key,
+        "Authorization": f"Bearer {key}",
+        "Content-Type":  "application/json",
+        # merge-duplicates: a later cycle on the same day OVERWRITES the row
+        # with the latest end-of-day state (same semantics as _save_snapshot).
+        "Prefer":        "resolution=merge-duplicates,return=minimal",
+    }
+    try:
+        r = requests.post(endpoint, headers=headers,
+                          data=json.dumps(rows), timeout=60)
+        if r.status_code not in (200, 201, 204):
+            print(f"  WARN _write_task_history: HTTP {r.status_code} "
+                  f"{r.text[:300]}")
+        else:
+            print(f"  _write_task_history: upserted {len(rows)} task rows into "
+                  f"ownership_task_history for {snapshot_date}")
+    except Exception as e:
+        print(f"  WARN _write_task_history: {e}")
+
+
 def main():
     here = Path(__file__).resolve().parent.parent
     work = here / ".poll_work"
@@ -1645,6 +1756,11 @@ def main():
     # Phase E — persist a per-day snapshot so the Weekly Report can render
     # historical days as cycles accumulate.
     _save_snapshot(aggs, work)
+
+    # PR #70 — also record every task into the ownership_task_history Supabase
+    # table so completed tasks remain queryable after they age out of the
+    # rolling poll cache.
+    _write_task_history(aggs)
 
     print(f"aggregates_v2 written: {len(records)} records, "
           f"{len(aggs['by_team'])} teams, {len(aggs['by_agent'])} agents, "
