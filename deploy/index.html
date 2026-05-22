@@ -2111,6 +2111,7 @@ PAGE_RENDERERS.qa_performance = function () {
 PAGE_RENDERERS.boqa = function () {
   const root = document.getElementById("page-boqa");
   const t = STATE.v2?.totals;
+  if (!t) { root.innerHTML = noDataHtml("aggregates_v2 not in daily_aggregates.json — run aggregate_v2.py"); return; }
   // Yesterday-cohort coverage. BO QA reviews the prior day's tagged work, so coverage
   // is measured against yesterday's cohort. Guarded — absent on snapshots predating it.
   const cov = STATE.v2?.bo_qa_coverage;
