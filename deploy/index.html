@@ -417,6 +417,7 @@
       <div id="page-boqa"           class="page" style="display:none"></div>
       <div id="page-intake"         class="page" style="display:none"></div>
       <div id="page-tasks"          class="page" style="display:none"></div>
+      <div id="page-completed"      class="page" style="display:none"></div>
       <div id="page-new_companies"  class="page" style="display:none"></div>
       <div id="page-wwqa"           class="page" style="display:none"></div>
       <div id="page-pipeline"       class="page" style="display:none"></div>
@@ -425,6 +426,8 @@
       <div id="page-comparison"     class="page" style="display:none"></div>
       <div id="taskDrawerBackdrop" class="drawer-backdrop"></div>
       <div id="taskDrawer"         class="drawer"></div>
+      <div id="completedDrawerBackdrop" class="drawer-backdrop"></div>
+      <div id="completedDrawer"         class="drawer"></div>
     </div>
   </main>
 </div>
@@ -525,6 +528,7 @@ const PAGES = [
   { id: "hourly",         label: "Hourly Output",           tag: null,   group: "Operations" },
   { id: "intake",         label: "Daily Intake",            tag: null,   group: "Operations" },
   { id: "tasks",          label: "Tasks",                   tag: null,   group: "Operations" },
+  { id: "completed",      label: "Completed Tasks",         tag: null,   group: "Operations" },
   { id: "new_companies",  label: "New Companies",           tag: null,   group: "Operations" },
   { id: "pipeline",       label: "Pipeline & Lead Time",    tag: null,   group: "Operations" },
   { id: "scenarios",      label: "Case Scenarios",          tag: null,   group: "Operations" },
@@ -679,6 +683,50 @@ async function loadCompletions(dateStr) {
   } catch (e) {
     console.error("loadCompletions:", e);
   }
+}
+
+// Load the full ownership_task_history ledger (PR #70 + #71). Paginated via
+// .range() — a single .limit() would silently cap at 1,000 rows. Cached on
+// STATE so re-renders and drawer opens don't refetch.
+async function loadTaskHistory() {
+  if (STATE.taskHistory) return STATE.taskHistory;
+  const all = [];
+  for (let page = 0; page < 50; page++) {
+    const { data, error } = await sb.from("ownership_task_history")
+      .select("*")
+      .order("snapshot_date", { ascending: true })
+      .range(page * 1000, page * 1000 + 999);
+    if (error) { console.error("loadTaskHistory:", error); return null; }
+    if (!data || !data.length) break;
+    all.push(...data);
+    if (data.length < 1000) break;
+  }
+  STATE.taskHistory = all;
+  return all;
+}
+
+// Group flat ownership_task_history rows into one summary per task.
+function groupTaskHistory(rows) {
+  const byName = {};
+  for (const r of rows) {
+    (byName[r.task_name] = byName[r.task_name] || []).push(r);
+  }
+  const tasks = [];
+  for (const [name, hist] of Object.entries(byName)) {
+    hist.sort((a, b) => (a.snapshot_date < b.snapshot_date ? -1 : 1));
+    const latest = hist[hist.length - 1];
+    const trueTotal = Math.max(...hist.map(h => h.total_records || 0));
+    tasks.push({
+      name,
+      history: hist,                       // chronological — the day-by-day trace
+      latest,                              // most recent row — current/final state
+      trueTotal,                           // MAX records ever seen = real size
+      isCompleted: !!latest.is_completed,
+      firstSeen: hist[0].snapshot_date,
+      lastRecorded: latest.snapshot_date,
+    });
+  }
+  return tasks;
 }
 
 // Map an Airtable collaborator name to the roster's canonical member name.
@@ -3071,6 +3119,309 @@ function _enumerateDays(startISO, endISO) {
     d.setDate(d.getDate() + 1);
   }
   return out;
+}
+
+// ============================================================================
+//  Completed Tasks — the task history archive (PR #72)
+//  Reads the ownership_task_history ledger (PR #70 records every task forward;
+//  PR #71 recovered the back-catalogue from daily snapshots). Renders a
+//  permanent archive: per task a day-by-day lifecycle trace plus a scorecard of
+//  who worked it and which QA reviewed it.
+// ============================================================================
+const COMPLETED_STATE = { filter: "", view: "completed", sortBy: "lastRecorded", sortDir: "desc" };
+
+// status_distribution keys → legend label → stacked-bar colour (lifecycle trace).
+const TRACE_STATUSES = [
+  ["waiting",              "Waiting",      "#8a93a3"],
+  ["tagged",               "Tagged",       "#3d63dd"],
+  ["Selected for BO QA ",  "BO QA",        "#9a6a12"],
+  ["Selected for WW QA",   "WW QA",        "#7c5cbf"],
+  ["Done",                 "Done",         "#2a9d6f"],
+  ["Valid",                "Valid",        "#1a7a55"],
+  ["need to be update",    "Needs update", "#bb4338"],
+];
+
+PAGE_RENDERERS.completed = async function () {
+  const root = document.getElementById("page-completed");
+  COMPLETED_STATE.filter = localStorage.getItem("wqa.completedFilter") || "";
+  COMPLETED_STATE.view   = localStorage.getItem("wqa.completedView") || "completed";
+
+  root.innerHTML = `
+    <h3 style="font-size:18px;font-weight:600;color:var(--ink);margin-bottom:8px">Completed Tasks <span class="meta" style="font-weight:400;color:var(--muted)">— permanent task history archive</span></h3>
+    <div id="completedBody"><div class="empty">Loading task history…</div></div>
+  `;
+
+  const rows = await loadTaskHistory();
+  const body = document.getElementById("completedBody");
+  if (rows === null) {
+    body.innerHTML = `<div class="empty-state"><div class="title">Couldn't load task history</div>The ownership_task_history table could not be read. Check your connection and try again.</div>`;
+    return;
+  }
+  if (!rows.length) {
+    body.innerHTML = `<div class="empty-state"><div class="title">No task history yet</div>Nothing has been recorded into ownership_task_history.</div>`;
+    return;
+  }
+
+  const tasks = groupTaskHistory(rows);
+  STATE.completedTasks = tasks;   // cache the grouped list for the drawer lookup
+
+  // KPIs
+  const kpiTotal     = tasks.length;
+  const kpiCompleted = tasks.filter(t => t.isCompleted).length;
+  const kpiOpen      = kpiTotal - kpiCompleted;
+  const tatVals      = tasks.filter(t => t.isCompleted && t.latest.tat_hours != null).map(t => t.latest.tat_hours);
+  const kpiMedianTat = median(tatVals);
+  const earliest     = tasks.reduce((m, t) => (t.firstSeen && t.firstSeen < m ? t.firstSeen : m), tasks[0].firstSeen);
+
+  body.innerHTML = `
+    <div class="kpis">
+      <div class="kpi"><div class="label">Tasks recorded</div><div class="value">${kpiTotal}</div><div class="delta">since ${esc(shortDate(earliest))}</div></div>
+      <div class="kpi"><div class="label">Completed</div><div class="value">${kpiCompleted}</div></div>
+      <div class="kpi ${kpiOpen > 0 ? 'warn' : ''}"><div class="label">Open</div><div class="value">${kpiOpen}</div></div>
+      <div class="kpi"><div class="label">Median turn-around</div><div class="value">${formatDuration(kpiMedianTat)}</div><div class="delta">${tatVals.length} completed tasks</div></div>
+    </div>
+    <div class="controls-row">
+      <label class="small-mono">Search:</label>
+      <input id="completedSearch" type="text" placeholder="task name…" value="${esc(COMPLETED_STATE.filter)}" style="font-family:inherit;font-size:13px;padding:7px 12px;border:1px solid var(--border);background:var(--surface);border-radius:6px;color:var(--ink);min-width:240px"/>
+      <label class="small-mono">View:</label>
+      <select id="completedView">
+        <option value="completed" ${COMPLETED_STATE.view === 'completed' ? 'selected' : ''}>Completed</option>
+        <option value="open"      ${COMPLETED_STATE.view === 'open'      ? 'selected' : ''}>Open</option>
+        <option value="all"       ${COMPLETED_STATE.view === 'all'       ? 'selected' : ''}>All</option>
+      </select>
+      <span class="small-mono" id="completedCount"></span>
+    </div>
+    <div class="panel"><div id="completedTable"></div></div>
+  `;
+
+  document.getElementById("completedSearch").addEventListener("input", (e) => {
+    COMPLETED_STATE.filter = e.target.value;
+    localStorage.setItem("wqa.completedFilter", COMPLETED_STATE.filter);
+    renderCompletedTable();
+  });
+  document.getElementById("completedView").addEventListener("change", (e) => {
+    COMPLETED_STATE.view = e.target.value;
+    localStorage.setItem("wqa.completedView", COMPLETED_STATE.view);
+    renderCompletedTable();
+  });
+  renderCompletedTable();
+};
+
+function _completedFiltered() {
+  let out = STATE.completedTasks || [];
+  if (COMPLETED_STATE.filter) {
+    const f = COMPLETED_STATE.filter.toLowerCase();
+    out = out.filter(t => t.name.toLowerCase().includes(f));
+  }
+  if (COMPLETED_STATE.view === "completed")  out = out.filter(t => t.isCompleted);
+  else if (COMPLETED_STATE.view === "open")  out = out.filter(t => !t.isCompleted);
+  // Sort
+  const k = COMPLETED_STATE.sortBy, dir = COMPLETED_STATE.sortDir === "asc" ? 1 : -1;
+  out = [...out].sort((a, b) => {
+    let av, bv;
+    if (k === "name") { av = a.name; bv = b.name; }
+    else if (k === "type")    { av = a.latest.is_sanctions ? 1 : 0; bv = b.latest.is_sanctions ? 1 : 0; }
+    else if (k === "records") { av = a.trueTotal; bv = b.trueTotal; }
+    else if (k === "status")  { av = a.isCompleted ? 1 : 0; bv = b.isCompleted ? 1 : 0; }
+    else if (k === "donePct") {
+      av = a.latest.total_records ? (a.latest.properly_completed || 0) / a.latest.total_records : 0;
+      bv = b.latest.total_records ? (b.latest.properly_completed || 0) / b.latest.total_records : 0;
+    }
+    else if (k === "qa_coverage") { av = a.latest.qa_coverage_pct || 0; bv = b.latest.qa_coverage_pct || 0; }
+    else if (k === "teams")   { av = (a.latest.teams_worked || []).length; bv = (b.latest.teams_worked || []).length; }
+    else if (k === "firstSeen") { av = a.firstSeen || ""; bv = b.firstSeen || ""; }
+    else /* lastRecorded */   { av = a.lastRecorded || ""; bv = b.lastRecorded || ""; }
+    if (av < bv) return -1 * dir;
+    if (av > bv) return  1 * dir;
+    return 0;
+  });
+  return out;
+}
+
+function renderCompletedTable() {
+  const list = _completedFiltered();
+  document.getElementById("completedCount").textContent = `${list.length} of ${(STATE.completedTasks || []).length}`;
+  const cols = [
+    ["name", "Task name"], ["type", "Type"], ["records", "Records"],
+    ["status", "Status"], ["donePct", "Properly done %"], ["qa_coverage", "QA coverage %"],
+    ["teams", "Teams"], ["firstSeen", "First seen"], ["lastRecorded", "Last recorded"],
+  ];
+  const sortInd = (k) => k === COMPLETED_STATE.sortBy ? (COMPLETED_STATE.sortDir === "asc" ? "▲" : "▼") : "";
+  const rightCols = new Set(['records']);
+  const head = `<thead><tr>${cols.map(([k, lab]) => `<th data-sort="${k}" class="${rightCols.has(k) ? 'right' : ''}">${esc(lab)} <span class="sort-ind">${sortInd(k)}</span></th>`).join("")}</tr></thead>`;
+  const body = list.map(t => {
+    const L = t.latest;
+    const total = L.total_records || 0;
+    const donePct = total ? ((L.properly_completed || 0) / total) * 100 : 0;
+    const cov = L.qa_coverage_pct || 0;
+    const teams = (L.teams_worked || []).map(x => x.team).join(", ") || "—";
+    return `<tr>
+      <td><a class="completed-task-name" data-task="${esc(t.name)}">${esc(t.name)}</a></td>
+      <td><span class="pill-inline ${L.is_sanctions ? 'bad' : 'good'}">${L.is_sanctions ? 'Sanctions' : 'Standard'}</span></td>
+      <td class="right">${t.trueTotal.toLocaleString()}</td>
+      <td><span class="pill-inline ${t.isCompleted ? 'good' : 'warn'}">${t.isCompleted ? 'Completed' : 'Open'}</span></td>
+      <td><span class="pill-inline ${pctClass(donePct)}">${donePct.toFixed(0)}%</span></td>
+      <td><span class="pill-inline ${cov >= 15 ? 'good' : cov >= 5 ? 'warn' : 'bad'}">${cov.toFixed(0)}%</span></td>
+      <td>${esc(teams)}</td>
+      <td>${esc(shortDate(t.firstSeen))}</td>
+      <td>${esc(shortDate(t.lastRecorded))}</td>
+    </tr>`;
+  }).join("");
+  document.getElementById("completedTable").innerHTML = `<table class="sortable">${head}<tbody>${body || '<tr><td colspan="9" class="empty">No tasks match.</td></tr>'}</tbody></table>`;
+  document.querySelectorAll("#completedTable th[data-sort]").forEach(th => {
+    th.addEventListener("click", () => {
+      const k = th.dataset.sort;
+      if (COMPLETED_STATE.sortBy === k) COMPLETED_STATE.sortDir = COMPLETED_STATE.sortDir === "asc" ? "desc" : "asc";
+      else { COMPLETED_STATE.sortBy = k; COMPLETED_STATE.sortDir = "desc"; }
+      renderCompletedTable();
+    });
+  });
+  document.querySelectorAll(".completed-task-name").forEach(a => {
+    a.addEventListener("click", () => openCompletedTaskDrawer(a.dataset.task));
+  });
+  fitTableHeight(document.getElementById("completedTable"));
+}
+
+// ----- Completed-task detail drawer -----
+function openCompletedTaskDrawer(taskName) {
+  const t = (STATE.completedTasks || []).find(x => x.name === taskName);
+  if (!t) return;
+  const drawer = document.getElementById("completedDrawer");
+  const backdrop = document.getElementById("completedDrawerBackdrop");
+  const L = t.latest;
+  const hist = t.history;
+
+  const flagsHtml = (L.flags || []).map(f => `<span class="flag-pill ${FLAG_STYLES[f] || 'gray'}">${esc(f)}</span>`).join("") || '<span class="small-mono">no flags</span>';
+
+  // Turn-around: completed → tat_hours; still open → running age + " open".
+  const tatStr = t.isCompleted && L.tat_hours != null
+    ? formatDuration(L.tat_hours)
+    : formatDuration(ageHours(L.date_first_seen)) + " open";
+
+  // Lifecycle day-by-day rows. Every status_distribution access is null-guarded
+  // — older recovered rows can have a thinner shape.
+  const traceRows = hist.map(h => {
+    const sd = h.status_distribution || {};
+    return `<tr>
+      <td>${esc(shortDate(h.snapshot_date))}</td>
+      <td class="right">${(h.total_records || 0).toLocaleString()}</td>
+      <td class="right">${sd.waiting || 0}</td>
+      <td class="right">${sd.tagged || 0}</td>
+      <td class="right">${sd["Selected for BO QA "] || 0}</td>
+      <td class="right">${sd.Valid || 0}</td>
+      <td class="right">${h.completed || 0}</td>
+      <td class="right">${h.qa_reviewed || 0}</td>
+    </tr>`;
+  }).join("");
+
+  const agentsRows = (L.agents_worked || []).map(a =>
+    `<tr><td class="agent-name">${esc(a.name)}</td><td>${esc(a.team || '—')}</td><td class="right">${a.records || 0}</td><td class="right">${a.qa_checked || 0}</td><td class="right">${a.qa_changed || 0}</td></tr>`
+  ).join("") || '<tr><td colspan="5" class="empty">no agent attribution recorded</td></tr>';
+
+  // QA reviewers — qa_reviewers is null on tasks whose latest row was recovered
+  // from a pre-PR#70 snapshot; fall back to the reviewed/changed totals.
+  let qaReviewersHtml;
+  if (Array.isArray(L.qa_reviewers)) {
+    const rev = L.qa_reviewers.map(q =>
+      `<tr><td>${esc(q.name)}</td><td class="right">${q.reviewed || 0}</td><td class="right">${q.changed || 0}</td></tr>`
+    ).join("") || '<tr><td colspan="3" class="empty">no QA reviewers recorded</td></tr>';
+    qaReviewersHtml = `<table>
+            <thead><tr><th>QA reviewer</th><th class="right">Reviewed</th><th class="right">Changed</th></tr></thead>
+            <tbody>${rev}</tbody>
+          </table>`;
+  } else {
+    qaReviewersHtml = `<table>
+            <tr><td>Reviewed</td><td class="right"><strong>${L.qa_reviewed || 0}</strong></td></tr>
+            <tr><td>Changed</td><td class="right">${L.qa_changed || 0}</td></tr>
+          </table>
+          <div class="footer-note">Per-reviewer breakdown isn't recorded for this task (it predates the task-history ledger).</div>`;
+  }
+
+  drawer.innerHTML = `
+    <div class="drawer-header">
+      <button class="drawer-close" id="completedDrawerCloseBtn" title="Close">×</button>
+      <h2>${esc(t.name)}</h2>
+      <div>
+        <span class="pill-inline ${L.is_sanctions ? 'bad' : 'good'}">${L.is_sanctions ? 'Sanctions' : 'Standard'}</span>
+        <span class="pill-inline ${t.isCompleted ? 'good' : 'warn'}">${t.isCompleted ? 'Completed' : 'Open'}</span>
+        <span class="small-mono"> · ${t.trueTotal.toLocaleString()} records · first seen ${esc(shortDate(t.firstSeen))} · last recorded ${esc(shortDate(t.lastRecorded))}</span>
+      </div>
+      <div style="margin-top:6px">${flagsHtml}</div>
+    </div>
+    <div class="drawer-body">
+
+      <div class="panel">
+        <h3>Lifecycle trace <span class="meta">day-by-day, from the history ledger</span></h3>
+        <div class="chart-wrap"><canvas id="completedTraceChart"></canvas></div>
+        <table style="margin-top:14px">
+          <thead><tr><th>Date</th><th class="right">Records</th><th class="right">Waiting</th><th class="right">Tagged</th><th class="right">BO QA</th><th class="right">Valid</th><th class="right">Completed</th><th class="right">QA reviewed</th></tr></thead>
+          <tbody>${traceRows}</tbody>
+        </table>
+        <div class="footer-note">Counts are the records visible in the dashboard's cache that day; the total shrinks as finished records age out — the task's true size is the peak (shown above).</div>
+      </div>
+
+      <div class="panel">
+        <h3>Scorecard <span class="meta">from the latest recorded day</span></h3>
+        <table>
+          <tr><td>Turn-around</td><td class="right"><strong>${esc(tatStr)}</strong></td></tr>
+          <tr><td>Properly completed</td><td class="right"><strong>${L.properly_completed || 0}</strong> / ${(L.total_records || 0).toLocaleString()}</td></tr>
+          <tr><td>With company</td><td class="right">${L.with_company || 0}</td></tr>
+          <tr><td>Without company</td><td class="right">${L.without_company || 0}</td></tr>
+          <tr><td>Dead vessels</td><td class="right">${L.dead_vessels || 0}</td></tr>
+          <tr><td>On reminder</td><td class="right">${L.with_reminder || 0}</td></tr>
+        </table>
+      </div>
+
+      <div class="row equal">
+        <div class="panel">
+          <h3>Agents who worked this task</h3>
+          <table>
+            <thead><tr><th>Agent</th><th>Team</th><th class="right">Records</th><th class="right">Checked</th><th class="right">Changed</th></tr></thead>
+            <tbody>${agentsRows}</tbody>
+          </table>
+        </div>
+        <div class="panel">
+          <h3>QA reviewers</h3>
+          ${qaReviewersHtml}
+        </div>
+      </div>
+
+    </div>
+  `;
+
+  // Lifecycle trace chart — stacked bar of status_distribution over time.
+  const traceCtx = document.getElementById("completedTraceChart");
+  if (traceCtx) {
+    if (STATE.charts["completedTraceChart"]) STATE.charts["completedTraceChart"].destroy();
+    STATE.charts["completedTraceChart"] = new Chart(traceCtx, {
+      type: "bar",
+      data: {
+        labels: hist.map(h => shortDate(h.snapshot_date)),
+        datasets: TRACE_STATUSES.map(([key, label, color]) => ({
+          label,
+          data: hist.map(h => (h.status_distribution || {})[key] || 0),
+          backgroundColor: color,
+        })),
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        scales: { x: { stacked: true }, y: { stacked: true } },
+        plugins: { legend: { position: "bottom", labels: { font: { size: 10 } } } },
+      },
+    });
+  }
+
+  document.getElementById("completedDrawerCloseBtn").addEventListener("click", closeCompletedTaskDrawer);
+  document.getElementById("completedDrawerBackdrop").addEventListener("click", closeCompletedTaskDrawer);
+
+  drawer.classList.add("open");
+  backdrop.classList.add("open");
+}
+
+function closeCompletedTaskDrawer() {
+  document.getElementById("completedDrawer").classList.remove("open");
+  document.getElementById("completedDrawerBackdrop").classList.remove("open");
+  if (STATE.charts["completedTraceChart"]) { STATE.charts["completedTraceChart"].destroy(); delete STATE.charts["completedTraceChart"]; }
 }
 
 PAGE_RENDERERS.weekly = async function () {
