@@ -2024,45 +2024,46 @@ function renderHourlyGrid(filterTeam) {
 }
 
 // -------- QA Hourly Output --------
-// QA-side equivalent of the agent Hourly Output page. Renders purely from
-// STATE.v2.qa_hourly ({qa_name: {hour: count}}) in the snapshot, so it follows
-// the global date picker automatically. Flat QA list — no team grouping/filter,
-// no Supabase read. (Companies-created-per-hour heatmap is a later PR.)
+// Two heatmaps: QA reviews per hour (qa_hourly) and companies created per hour
+// (companies_hourly). Both render purely from the snapshot (STATE.v2), so they
+// follow the global date picker automatically. Flat lists — no team
+// grouping/filter, no Supabase read. Each section owns its own empty-state.
 PAGE_RENDERERS.qa_hourly = function () {
   const root = document.getElementById("page-qa_hourly");
   const date = STATE.v2?.date || "—";
-  const qaHourly = STATE.v2?.qa_hourly || {};
-
-  // Empty state: qa_hourly missing or no QA reviewed anything for this date.
-  if (!qaHourly || Object.keys(qaHourly).length === 0) {
-    root.innerHTML = `
-      <div class="controls-row">
-        <span class="small-mono">QA Hourly Output — review actions by hour — ${esc(date)}</span>
-      </div>
-      <div class="panel">
-        <div class="empty-state">
-          <div class="title">No QA reviews recorded yet</div>
-          No QA set a record to approve/changed for <strong>${esc(date)}</strong> yet. Each poll cycle stamps <code>QA_status_ts</code> as QAs review BO QA records; the heatmap populates as those land.
-        </div>
-      </div>`;
-    return;
-  }
-
   root.innerHTML = `
     <div class="controls-row">
-      <span class="small-mono">QA Hourly Output — review actions by hour — ${esc(date)}</span>
+      <span class="small-mono">QA Hourly Output — ${esc(date)}</span>
     </div>
     <div class="panel">
+      <h3>QA reviews by hour</h3>
       <div id="qaHourlyGrid"></div>
       <div class="footer-note">Cells = records each QA set to approve/changed during that EAT hour (source: <code>QA_status_ts</code>, the dedicated last-modified-time field watching <code>QA_status</code>). The Total covers all 24 hours; the grid shows the 06:00–23:00 business window (* = the QA also has reviews stamped outside it).</div>
+    </div>
+    <div class="panel">
+      <h3>Companies created by hour</h3>
+      <div id="companiesHourlyGrid"></div>
+      <div class="footer-note">Cells = companies each person created during that EAT hour (source: the companies table — <code>created_at</code> / <code>created_by</code>). The Total covers all 24 hours; the grid shows the 06:00–23:00 window.</div>
     </div>`;
 
   renderQaHourlyGrid();
+  renderCompaniesHourlyGrid();
 };
 
 function renderQaHourlyGrid() {
-  const hours = Array.from({ length: 18 }, (_, i) => i + 6);  // 6..23
+  const date = STATE.v2?.date || "—";
   const qaHourly = STATE.v2?.qa_hourly || {};
+  // Empty-state lives here now — the page renderer no longer early-returns,
+  // because it must still render the companies section below.
+  if (!qaHourly || Object.keys(qaHourly).length === 0) {
+    document.getElementById("qaHourlyGrid").innerHTML = `
+      <div class="empty-state">
+        <div class="title">No QA reviews recorded yet</div>
+        No QA set a record to approve/changed for <strong>${esc(date)}</strong> yet.
+      </div>`;
+    return;
+  }
+  const hours = Array.from({ length: 18 }, (_, i) => i + 6);  // 6..23
   const names = Object.keys(qaHourly).sort((a, b) => a.localeCompare(b));
 
   // First pass: gather rows so we can compute the global max for intensity scaling.
@@ -2110,6 +2111,73 @@ function renderQaHourlyGrid() {
   html += `<div class="cell" style="background:#1a1a1a;color:#fff;font-weight:600;"${grandTip}>${grand}${grandOutside > 0 ? "*" : ""}</div>`;
 
   document.getElementById("qaHourlyGrid").innerHTML = `
+    <div class="hourly-heatmap" style="grid-template-columns: 180px repeat(${hours.length}, 1fr) 70px;">
+      <div class="header"></div>${headers}<div class="header">Total</div>
+      ${html}
+    </div>`;
+}
+
+// Companies-created-per-hour heatmap — clone of renderQaHourlyGrid: reads
+// STATE.v2.companies_hourly, writes #companiesHourlyGrid, "All creators" footer.
+function renderCompaniesHourlyGrid() {
+  const date = STATE.v2?.date || "—";
+  const companiesHourly = STATE.v2?.companies_hourly || {};
+  if (!companiesHourly || Object.keys(companiesHourly).length === 0) {
+    document.getElementById("companiesHourlyGrid").innerHTML = `
+      <div class="empty-state">
+        <div class="title">No companies created yet</div>
+        No companies were created for <strong>${esc(date)}</strong> yet.
+      </div>`;
+    return;
+  }
+  const hours = Array.from({ length: 18 }, (_, i) => i + 6);  // 6..23
+  const names = Object.keys(companiesHourly).sort((a, b) => a.localeCompare(b));
+
+  // First pass: gather rows so we can compute the global max for intensity scaling.
+  const rows = [];
+  let gridMax = 0;
+  for (const name of names) {
+    const buckets = companiesHourly[name] || {};
+    const counts = hours.map(h => buckets[h] ?? buckets[String(h)] ?? 0);
+    // Total covers ALL 24 hours, not just the visible 6–23 columns. `outside` =
+    // companies whose EAT hour falls outside that window — flagged with a * on the Total.
+    const total = Object.values(buckets).reduce((a, b) => a + b, 0);
+    const outside = total - counts.reduce((a, b) => a + b, 0);
+    gridMax = Math.max(gridMax, ...counts);
+    rows.push({ name, counts, total, outside });
+  }
+
+  const colSums = hours.map((_, i) => rows.reduce((s, r) => s + r.counts[i], 0));
+  const grand = rows.reduce((s, r) => s + r.total, 0);
+  const grandOutside = rows.reduce((s, r) => s + r.outside, 0);
+
+  const cellHtml = (v, h, scale) => {
+    if (v === 0) return `<div class="cell z" title="${h}:00 EAT">0</div>`;
+    const alpha = scale === 0 ? 0 : (0.2 + 0.8 * (v / scale)).toFixed(2);
+    return `<div class="cell" style="background:rgba(20,80,179,${alpha});" title="${h}:00 EAT → ${v}">${v}</div>`;
+  };
+  const headers = hours.map(h => `<div class="header">${h}</div>`).join("");
+
+  let html = "";
+  for (const r of rows) {
+    html += `<div class="label">${esc(r.name)}</div>`;
+    html += r.counts.map((v, i) => cellHtml(v, hours[i], gridMax)).join("");
+    const outTip = r.outside > 0 ? ` title="includes ${r.outside} compan${r.outside === 1 ? "y" : "ies"} created outside 06:00–23:00 EAT"` : "";
+    html += `<div class="cell" style="background:#f0eee8;color:#1a1a1a;font-weight:600;"${outTip}>${r.total}${r.outside > 0 ? "*" : ""}</div>`;
+  }
+  // Footer "All creators" sum row
+  html += `<div class="hourly-spacer"></div>`;
+  html += `<div class="label" style="font-weight:600;">All creators</div>`;
+  html += colSums.map((v, i) => {
+    if (v === 0) return `<div class="cell z" title="${hours[i]}:00 EAT total">0</div>`;
+    const colMax = Math.max(1, ...colSums);
+    const alpha = (0.2 + 0.8 * (v / colMax)).toFixed(2);
+    return `<div class="cell" style="background:rgba(31,111,44,${alpha});" title="${hours[i]}:00 EAT total → ${v}">${v}</div>`;
+  }).join("");
+  const grandTip = grandOutside > 0 ? ` title="includes ${grandOutside} compan${grandOutside === 1 ? "y" : "ies"} created outside 06:00–23:00 EAT"` : "";
+  html += `<div class="cell" style="background:#1a1a1a;color:#fff;font-weight:600;"${grandTip}>${grand}${grandOutside > 0 ? "*" : ""}</div>`;
+
+  document.getElementById("companiesHourlyGrid").innerHTML = `
     <div class="hourly-heatmap" style="grid-template-columns: 180px repeat(${hours.length}, 1fr) 70px;">
       <div class="header"></div>${headers}<div class="header">Total</div>
       ${html}

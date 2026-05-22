@@ -33,6 +33,8 @@ ROOT     = HERE.parent
 BASE_ID  = "REDACTED_BASE_ID"
 TABLE_ID = "tblpj9aJP4ExhYCZF"
 API_URL  = f"https://api.airtable.com/v0/{BASE_ID}/{TABLE_ID}"
+COMPANIES_TABLE_ID = "tbl7U8RQM71Yil652"
+COMPANIES_URL      = f"https://api.airtable.com/v0/{BASE_ID}/{COMPANIES_TABLE_ID}"
 
 # Field IDs (mirror extract_v2.FIELD_IDS for sort/filter param values).
 FLD_LAST_MODIFIED      = "fld0hZzdjksTCKJ09"
@@ -54,6 +56,7 @@ TAGGED_PAGE_CAP        = 100  # Fetch D: tagged today
 DONE_PAGE_CAP          = 100  # Fetch E: done OR valid today
 QA_REVIEWED_PAGE_CAP   = 100  # Fetch F: qa_status_ts today
 WW_QA_BACKLOG_PAGE_CAP = 30   # Fetch G: assigned-to-WW-QA-but-not-reviewed
+COMPANIES_PAGE_CAP     = 30   # Fetch H: companies created today (small — today's new companies only)
 
 
 def _wipe(glob):
@@ -94,7 +97,7 @@ def _build_roster_or_clause():
     return "OR(" + ", ".join(finds) + ")"
 
 
-def _paginate(headers, params, file_prefix, page_cap, label, on_truncate="error"):
+def _paginate(headers, params, file_prefix, page_cap, label, on_truncate="error", url=API_URL):
     """Page through the Airtable API and save each page as
     .poll_work/<prefix>_p<N>.json. Returns (n_pages_saved, n_records_total,
     hit_cap_with_more_remaining).
@@ -116,7 +119,7 @@ def _paginate(headers, params, file_prefix, page_cap, label, on_truncate="error"
         q = dict(params)
         if offset:
             q["offset"] = offset
-        r = requests.get(API_URL, headers=headers, params=q, timeout=60)
+        r = requests.get(url, headers=headers, params=q, timeout=60)
         if r.status_code != 200:
             print(f"  [FAIL {r.status_code}] {label} page {n_pages + 1}: "
                   f"{r.text[:200]}", file=sys.stderr)
@@ -325,11 +328,23 @@ def main():
     n_pages_g, n_rec_g, _ = _paginate(headers, params_g, "ww_qa_backlog", WW_QA_BACKLOG_PAGE_CAP, "Fetch G")
     print(f"  → {n_pages_g} pages, {n_rec_g} records")
 
+    # ---- Fetch H: companies created today (companies_today_p*.json) ----
+    # The companies table (tbl7U8RQM71Yil652) is a DIFFERENT table from
+    # relations_support — polled here so the QA Hourly Output page can show
+    # companies created per person per hour. created_at is a createdTime field;
+    # created_by is a createdBy collaborator field.
+    print("\n=== Fetch H: companies created today (companies_today_p*.json) ===")
+    filter_h = "IS_SAME(DATEADD({created_at}, 3, 'hours'), DATEADD(NOW(), 3, 'hours'), 'day')"
+    params_h = {**common, "filterByFormula": filter_h}
+    n_pages_h, n_rec_h, _ = _paginate(headers, params_h, "companies_today",
+                                      COMPANIES_PAGE_CAP, "Fetch H", url=COMPANIES_URL)
+    print(f"  → {n_pages_h} pages, {n_rec_h} records")
+
     elapsed = time.time() - t0
-    total_pages = n_pages_a + n_pages_b + n_pages_c + n_pages_d + n_pages_e + n_pages_f + n_pages_g
-    total_recs  = n_rec_a + n_rec_b + n_rec_c + n_rec_d + n_rec_e + n_rec_f + n_rec_g
+    total_pages = n_pages_a + n_pages_b + n_pages_c + n_pages_d + n_pages_e + n_pages_f + n_pages_g + n_pages_h
+    total_recs  = n_rec_a + n_rec_b + n_rec_c + n_rec_d + n_rec_e + n_rec_f + n_rec_g + n_rec_h
     print(f"\nSummary: A={n_rec_a} B={n_rec_b} C={n_rec_c} "
-          f"D={n_rec_d} E={n_rec_e} F={n_rec_f} G={n_rec_g} | "
+          f"D={n_rec_d} E={n_rec_e} F={n_rec_f} G={n_rec_g} H={n_rec_h} | "
           f"{total_pages} pages, {total_recs} records, {elapsed:.1f}s")
 
 
