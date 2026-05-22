@@ -655,6 +655,13 @@ function groupTaskHistory(rows) {
     hist.sort((a, b) => (a.snapshot_date < b.snapshot_date ? -1 : 1));
     const latest = hist[hist.length - 1];
     const trueTotal = Math.max(...hist.map(h => h.total_records || 0));
+    // "Assigned" = the first day the task had records in 'waiting'. A waiting
+    // record is assigned to an agent (assigned, not yet started), so the
+    // earliest snapshot with waiting > 0 is when the task was assigned.
+    let assignedDate = null;
+    for (const h of hist) {
+      if (((h.status_distribution || {}).waiting || 0) > 0) { assignedDate = h.snapshot_date; break; }
+    }
     tasks.push({
       name,
       history: hist,                       // chronological — the day-by-day trace
@@ -663,6 +670,7 @@ function groupTaskHistory(rows) {
       isCompleted: !!latest.is_completed,
       firstSeen: hist[0].snapshot_date,
       lastRecorded: latest.snapshot_date,
+      assignedDate,
     });
   }
   return tasks;
@@ -3012,7 +3020,7 @@ function _enumerateDays(startISO, endISO) {
 //  permanent archive: per task a day-by-day lifecycle trace plus a scorecard of
 //  who worked it and which QA reviewed it.
 // ============================================================================
-const COMPLETED_STATE = { filter: "", view: "completed", sortBy: "lastRecorded", sortDir: "desc" };
+const COMPLETED_STATE = { filter: "", view: "completed", sortBy: "received", sortDir: "desc" };
 
 // status_distribution keys → legend label → stacked-bar colour (lifecycle trace).
 const TRACE_STATUSES = [
@@ -3113,8 +3121,14 @@ function _completedFiltered() {
     }
     else if (k === "qa_coverage") { av = a.latest.qa_coverage_pct || 0; bv = b.latest.qa_coverage_pct || 0; }
     else if (k === "teams")   { av = (a.latest.teams_worked || []).length; bv = (b.latest.teams_worked || []).length; }
-    else if (k === "firstSeen") { av = a.firstSeen || ""; bv = b.firstSeen || ""; }
-    else /* lastRecorded */   { av = a.lastRecorded || ""; bv = b.lastRecorded || ""; }
+    else if (k === "received")      { av = a.latest.date_first_seen || ""; bv = b.latest.date_first_seen || ""; }
+    else if (k === "assigned")      { av = a.assignedDate || ""; bv = b.assignedDate || ""; }
+    else if (k === "completedDate") { av = a.latest.end_time || ""; bv = b.latest.end_time || ""; }
+    else if (k === "tat") {
+      av = (a.isCompleted && a.latest.tat_hours != null) ? a.latest.tat_hours : -1;
+      bv = (b.isCompleted && b.latest.tat_hours != null) ? b.latest.tat_hours : -1;
+    }
+    else /* received */ { av = a.latest.date_first_seen || ""; bv = b.latest.date_first_seen || ""; }
     if (av < bv) return -1 * dir;
     if (av > bv) return  1 * dir;
     return 0;
@@ -3128,7 +3142,8 @@ function renderCompletedTable() {
   const cols = [
     ["name", "Task name"], ["type", "Type"], ["records", "Records"],
     ["status", "Status"], ["donePct", "Properly done %"], ["qa_coverage", "QA coverage %"],
-    ["teams", "Teams"], ["firstSeen", "First seen"], ["lastRecorded", "Last recorded"],
+    ["teams", "Teams"], ["received", "Received"], ["assigned", "Assigned"],
+    ["completedDate", "Completed"], ["tat", "Turn-around"],
   ];
   const sortInd = (k) => k === COMPLETED_STATE.sortBy ? (COMPLETED_STATE.sortDir === "asc" ? "▲" : "▼") : "";
   const rightCols = new Set(['records']);
@@ -3147,11 +3162,13 @@ function renderCompletedTable() {
       <td><span class="pill-inline ${pctClass(donePct)}">${donePct.toFixed(0)}%</span></td>
       <td><span class="pill-inline ${cov >= 15 ? 'good' : cov >= 5 ? 'warn' : 'bad'}">${cov.toFixed(0)}%</span></td>
       <td>${esc(teams)}</td>
-      <td>${esc(shortDate(t.firstSeen))}</td>
-      <td>${esc(shortDate(t.lastRecorded))}</td>
+      <td>${esc(shortDate(t.latest.date_first_seen))}</td>
+      <td>${t.assignedDate ? esc(shortDate(t.assignedDate)) : '<span class="small-mono">—</span>'}</td>
+      <td>${t.isCompleted && t.latest.end_time ? esc(shortDate(t.latest.end_time)) : '<span class="small-mono">—</span>'}</td>
+      <td>${t.isCompleted && t.latest.tat_hours != null ? esc(formatDuration(t.latest.tat_hours)) : '<span class="small-mono">—</span>'}</td>
     </tr>`;
   }).join("");
-  document.getElementById("completedTable").innerHTML = `<table class="sortable">${head}<tbody>${body || '<tr><td colspan="9" class="empty">No tasks match.</td></tr>'}</tbody></table>`;
+  document.getElementById("completedTable").innerHTML = `<table class="sortable">${head}<tbody>${body || '<tr><td colspan="11" class="empty">No tasks match.</td></tr>'}</tbody></table>`;
   document.querySelectorAll("#completedTable th[data-sort]").forEach(th => {
     th.addEventListener("click", () => {
       const k = th.dataset.sort;
@@ -3235,6 +3252,17 @@ function openCompletedTaskDrawer(taskName) {
     <div class="drawer-body">
 
       <div class="panel">
+        <h3>Lifecycle <span class="meta">received → assigned → completed</span></h3>
+        <table>
+          <tr><td>Received <span class="small-mono">client upload</span></td><td class="right">${esc(shortDate(L.date_first_seen))}</td></tr>
+          <tr><td>Assigned <span class="small-mono">entered "waiting"</span></td><td class="right">${t.assignedDate ? esc(shortDate(t.assignedDate)) : '<span class="small-mono">—</span>'}</td></tr>
+          <tr><td>Completed <span class="small-mono">crossed 95% Valid</span></td><td class="right">${t.isCompleted && L.end_time ? esc(shortDate(L.end_time)) : '<span class="small-mono">in progress</span>'}</td></tr>
+          <tr><td>Turn-around</td><td class="right"><strong>${t.isCompleted && L.tat_hours != null ? esc(formatDuration(L.tat_hours)) : esc(formatDuration(ageHours(L.date_first_seen))) + ' open'}</strong></td></tr>
+        </table>
+        <div class="footer-note">"Assigned" is the first day the task had records in the "waiting" state (assigned to an agent, not yet started) — day-level, from the dashboard's snapshot history.</div>
+      </div>
+
+      <div class="panel">
         <h3>Lifecycle trace <span class="meta">day-by-day, from the history ledger</span></h3>
         <div class="chart-wrap"><canvas id="completedTraceChart"></canvas></div>
         <table style="margin-top:14px">
@@ -3247,7 +3275,6 @@ function openCompletedTaskDrawer(taskName) {
       <div class="panel">
         <h3>Scorecard <span class="meta">from the latest recorded day</span></h3>
         <table>
-          <tr><td>Turn-around</td><td class="right"><strong>${esc(tatStr)}</strong></td></tr>
           <tr><td>Properly completed</td><td class="right"><strong>${L.properly_completed || 0}</strong> / ${(L.total_records || 0).toLocaleString()}</td></tr>
           <tr><td>With company</td><td class="right">${L.with_company || 0}</td></tr>
           <tr><td>Without company</td><td class="right">${L.without_company || 0}</td></tr>
