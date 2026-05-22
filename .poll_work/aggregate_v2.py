@@ -810,6 +810,42 @@ def compute_qa_hourly(records, today_eat):
     return out
 
 
+def compute_companies_hourly(work_dir, today_eat):
+    """Per-person hourly company-creation counts for today. Reads the
+    companies_today_p*.json cache (Fetch H — the companies table, a different
+    table from relations_support). Each company record carries created_at
+    (createdTime) and created_by (createdBy collaborator). Buckets by the EAT
+    hour of created_at, attributed to created_by. Returns
+    {creator_name: {hour:int -> count}}."""
+    CREATED_AT = "fldmi6PGoljAA6ipK"
+    CREATED_BY = "fldAkwJgqC0CV7Rjk"
+    out, seen = {}, set()
+    for path in sorted(work_dir.glob("companies_today_p*.json")):
+        try:
+            doc = json.loads(path.read_text())
+        except Exception:
+            continue
+        for rec in doc.get("records", []):
+            rid = rec.get("id")
+            if rid in seen:
+                continue
+            seen.add(rid)
+            f = rec.get("fields", {})
+            dt = _parse_iso(f.get(CREATED_AT))
+            if not dt:
+                continue
+            eat = dt.astimezone(EAT)
+            if eat.date() != today_eat:
+                continue
+            cb = f.get(CREATED_BY)
+            name = ((cb.get("name") if isinstance(cb, dict) else cb) or "").strip()
+            if not name:
+                continue
+            bucket = out.setdefault(name, {})
+            bucket[eat.hour] = bucket.get(eat.hour, 0) + 1
+    return out
+
+
 def compute_not_yet_finalized(records, today_eat, ownership_assignees, cap=500):
     """Records currently in an incomplete state, with age and IMO-cohort context.
 
@@ -1739,6 +1775,7 @@ def main():
     today_eat = datetime.now(EAT).date()
     records = _load_records(work)
     aggs = aggregate(records, today_eat, ownership_assignees)
+    aggs["companies_hourly"] = compute_companies_hourly(work, today_eat)
 
     # Pick the larger of cache-counted intake (which sums Fetch A backfill +
     # Fetch B today-creates) and Fetch B's metadata totalRecordCount.
