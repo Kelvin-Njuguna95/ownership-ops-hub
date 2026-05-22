@@ -21,18 +21,5 @@ CREATE TABLE ownership_completions (
 CREATE INDEX idx_completed_at ON ownership_completions(completed_at);
 CREATE INDEX idx_completed_by ON ownership_completions(completed_by);
 
--- NOTE: the dashboard reads this table via the Supabase anon key after the
--- user signs in with email+PIN. With RLS disabled (Supabase default for
--- new tables is DISABLED), the anon key cannot read the table. Two options:
---
---   (a) Enable RLS and add a permissive SELECT policy for authenticated users:
---       ALTER TABLE ownership_completions ENABLE ROW LEVEL SECURITY;
---       CREATE POLICY "authenticated read" ON ownership_completions
---         FOR SELECT TO authenticated USING (true);
---
---   (b) Leave RLS off and grant SELECT to the anon role explicitly:
---       GRANT SELECT ON ownership_completions TO anon, authenticated;
---
--- The detector uses the service_role key so it bypasses RLS for INSERT
--- either way. Pick (a) if you want the safety of RLS-by-default; (b) if
--- you want the simplest path matching the existing public bucket model.
+-- Read access — matches the public-data model used by 002_flow_framework.sql (dashboard reads with the publishable key after sign-in; the detector writes with the service_role key, which bypasses this grant).
+GRANT SELECT ON ownership_completions TO anon, authenticated;
