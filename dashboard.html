@@ -229,6 +229,28 @@
   #newCompaniesTable thead th:first-child { z-index: 4; background: var(--soft); } /* top-left corner: above row header + frozen column */
   #newCompaniesTable tbody tr:hover td:first-child { background: var(--soft); }     /* keep hover shade consistent on the frozen cell */
 
+  /* Completed Tasks — its own bounded scroll region, same pattern as
+     #tasksTable / #newCompaniesTable: sticky header + frozen first column. The
+     bounded max-height is what makes position:sticky resolve against the scroll
+     container; fitTableHeight() sets the real height at runtime and the 70vh is
+     only the fallback for before JS has run. */
+  #completedTable { overflow: auto; max-height: 70vh; }
+  #completedTable thead th {
+    position: sticky;
+    top: 0; /* sticky resolves against the #completedTable scroll container */
+    z-index: 3;
+    background: var(--soft);
+  }
+  #completedTable tbody td:first-child,
+  #completedTable thead th:first-child {
+    position: sticky;
+    left: 0;
+    z-index: 2;
+    background: var(--surface);
+  }
+  #completedTable thead th:first-child { z-index: 4; background: var(--soft); } /* top-left corner: above row header + frozen column */
+  #completedTable tbody tr:hover td:first-child { background: var(--soft); }     /* keep hover shade consistent on the frozen cell */
+
   /* Case Scenarios — the two section tables share this scroll-region pattern
      (same as #newCompaniesTable / #tasksTable): sticky header + frozen first
      column. Fixed ~40vh each so neither section dominates the page. */
@@ -2479,6 +2501,7 @@ window.addEventListener("resize", () => {
     fitTableHeight(document.getElementById("tasksTable"));
     fitTableHeight(document.getElementById("newCompaniesTable"));
     fitTableHeight(document.getElementById("hourlyGrid"));
+    fitTableHeight(document.getElementById("completedTable"));
   });
 });
 
