@@ -52,11 +52,6 @@ CREATE INDEX idx_task_history_completed ON ownership_task_history(is_completed);
 -- The number shrinks on later days as finished records age out of the cache —
 -- that is expected. The "Completed Tasks" page should treat MAX(total_records)
 -- as the task's true size.
---
--- RLS / dashboard read access — apply the SAME option you used for
--- 001_ownership_completions. The aggregator writes with the service_role key
--- (bypasses RLS); the dashboard reads with the anon key after sign-in.
---   (a) ALTER TABLE ownership_task_history ENABLE ROW LEVEL SECURITY;
---       CREATE POLICY "authenticated read" ON ownership_task_history
---         FOR SELECT TO authenticated USING (true);
---   (b) GRANT SELECT ON ownership_task_history TO anon, authenticated;
+
+-- Read access — matches the public-data model used by 002_flow_framework.sql (dashboard reads with the publishable key after sign-in; the aggregator writes with the service_role key, which bypasses this grant).
+GRANT SELECT ON ownership_task_history TO anon, authenticated;
