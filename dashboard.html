@@ -238,6 +238,22 @@
   .case-scroll thead th:first-child { position: sticky; left: 0; z-index: 2; background: var(--surface); }
   .case-scroll thead th:first-child { z-index: 4; background: var(--soft); } /* top-left corner */
   .case-scroll tbody tr:hover td:first-child { background: var(--soft); }     /* hover consistency on the frozen cell */
+  /* Hourly Output — its own bounded scroll region so the hour-number header
+     row stays pinned while the agent rows scroll. Same pattern as #tasksTable
+     / #newCompaniesTable / .case-scroll: position:sticky needs a height-capped
+     scroll container to resolve against (the PR #28 regression). The 70vh is a
+     fallback; fitTableHeight() sets the real height at runtime. */
+  #hourlyGrid { overflow: auto; max-height: 70vh; }
+  /* Let #hourlyGrid own the scroll so the sticky header resolves against it.
+     .hourly-heatmap otherwise becomes its own scroll container via the shared
+     overflow-x:auto rule, which would break the sticky offset. */
+  #hourlyGrid .hourly-heatmap { overflow: visible; }
+  #hourlyGrid .hourly-heatmap .header {
+    position: sticky;
+    top: 0;                      /* resolves against #hourlyGrid */
+    z-index: 3;
+    background: var(--soft);     /* opaque — agent rows must not show through */
+  }
 
   .drawer-backdrop { position: fixed; inset: 0; background: rgba(17,22,30,0.32); opacity: 0; pointer-events: none; transition: opacity 180ms ease; z-index: 99; }
   .drawer-backdrop.open { opacity: 1; pointer-events: auto; }
@@ -1787,6 +1803,7 @@ function renderHourlyGrid(filterTeam) {
       <div class="header"></div>${headers}<div class="header" style="font-weight:600;color:var(--ink);">Total</div>
       ${html}
     </div>`;
+  fitTableHeight(document.getElementById("hourlyGrid"));
 }
 
 // -------- QA Performance --------
@@ -2409,6 +2426,7 @@ window.addEventListener("resize", () => {
     _fitRaf = null;
     fitTableHeight(document.getElementById("tasksTable"));
     fitTableHeight(document.getElementById("newCompaniesTable"));
+    fitTableHeight(document.getElementById("hourlyGrid"));
   });
 });
 
