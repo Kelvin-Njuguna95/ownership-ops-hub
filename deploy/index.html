@@ -535,6 +535,8 @@ const STATE = {
   currentAgent: localStorage.getItem("wqa.agent") || null,
   freshness: null,   // {label, level: "fresh"|"stale"|"alert"}
   charts: {},        // chart instances by element id (so we can destroy/redraw)
+  staleTaskNames: new Set(),   // task names flagged stale-24h (PR #67)
+  staleCompareDate: null,      // snapshot date the stale check compared against
   // Hourly completions for STATE.viewDate (EAT calendar day). Shape:
   // {canonical_agent_name: {hour: count}} or null when load hasn't run.
   // Empty object {} = load ran but ownership_completions had zero rows.
@@ -888,6 +890,8 @@ PAGE_RENDERERS.overview = function () {
         <div class="delta">relations_support intake — all assignees</div></div>
       <div class="kpi"><div class="label">Tagged today (5 teams)</div><div class="value">${t.tagged_today || 0}</div></div>
       <div class="kpi"><div class="label">Done today (5 teams)</div><div class="value">${t.done_today || 0}</div></div>
+      <div class="kpi"><div class="label">Assigned &amp; waiting</div><div class="value">${(t.counts_by_verification_status?.waiting || 0).toLocaleString()}</div><div class="delta">assigned, not yet started</div></div>
+      <div class="kpi ${(STATE.v2?.tasks_all || []).some(t => (t.flags || []).includes("stale-24h")) ? 'bad' : ''}"><div class="label">Stale assigned tasks</div><div class="value">${STATE.staleCompareDate ? (STATE.v2?.tasks_all || []).filter(t => (t.flags || []).includes("stale-24h")).length : "—"}</div><div class="delta">${STATE.staleCompareDate ? "no progress in 24h+" : "needs 24h of snapshot history"}</div></div>
       <div class="kpi secondary"><div class="label">Unique IMOs (cache)</div><div class="value">${(t.unique_imos || 0).toLocaleString()}</div><div class="delta">distinct vessels in window</div></div>
       <div class="kpi" title="Properly completed = start_date filled AND (company_id filled OR Dead vessel ticked). Dead-vessel is the operational alternative when no company exists to link."><div class="label">Properly completed today</div><div class="value">${t.properly_completed_today || 0}</div><div class="delta">${(t.tagged_today || 0) - (t.properly_completed_today || 0) > 0 ? `${(t.tagged_today || 0) - (t.properly_completed_today || 0)} tagged but not yet complete` : "&nbsp;"}</div></div>
       <div class="kpi secondary"><div class="label">Dead vessels today</div><div class="value">${t.dead_vessels_today || 0}</div><div class="delta">checkbox-ticked, tagged today</div></div>
@@ -1217,6 +1221,7 @@ function renderAgentBody(agentName) {
   body.innerHTML = `
     <div class="kpis">
       <div class="kpi ${prodClass}"><div class="label">Tagged today</div><div class="value">${tagged}</div><div class="delta">target ≥ ${min280}</div></div>
+      <div class="kpi"><div class="label">Assigned &amp; waiting</div><div class="value">${(m.counts_by_verification_status?.waiting || 0).toLocaleString()}</div><div class="delta">assigned, not yet started</div></div>
       <div class="kpi"><div class="label">QA reviewed</div><div class="value">${m.qa_inspected_today || 0}</div><div class="delta">approve+changed</div></div>
       <div class="kpi ${rejectClass}"><div class="label">Reject %</div><div class="value">${m.reject_rate.toFixed(1)}%</div><div class="delta">threshold ${m.reject_threshold}%</div></div>
       <div class="kpi"><div class="label">Reminder backlog</div><div class="value">${m.reminder_open || 0}</div><div class="delta">${m.reminder_overdue || 0} overdue</div></div>
@@ -2060,6 +2065,57 @@ PAGE_RENDERERS.boqa = function () {
 // is STATE.v2; the 6 prior come from snapshots/<date>.json (same approach as the
 // Case Scenarios 7-day heatmap). Fills the team scoreboard, agent leaderboard and
 // reject-rate heatmap. Fully snapshot-based — works in browser mode, no Cowork.
+// ---- Stale assigned-task detection (PR #67) ----
+// "Stale" = an assigned task whose waiting-record count has NOT decreased since
+// the most recent snapshot that is >=24h older than the data on screen. The
+// dashboard's own daily snapshots are the trusted clock; there is no reliable
+// per-record "assigned at" timestamp in the source data. Going-forward only:
+// it can see no further back than snapshot history exists.
+async function computeStaleTasks() {
+  STATE.staleTaskNames = new Set();
+  STATE.staleCompareDate = null;
+  const v2 = STATE.v2;
+  if (!v2 || !Array.isArray(v2.tasks_all) || !v2.date) return;
+  const anchorIso = v2.computed_at || (v2.date + "T23:59:59Z");
+  const anchorMs = new Date(anchorIso).getTime();
+  if (isNaN(anchorMs)) return;
+  const anchorDate = new Date(v2.date.slice(0, 10) + "T00:00:00Z");
+  // Walk back day by day; take the first snapshot whose computed_at is at
+  // least 24h before the anchor.
+  let cmp = null;
+  for (let back = 1; back <= 10; back++) {
+    const d = new Date(anchorDate.getTime() - back * 86400000);
+    const ds = d.toISOString().slice(0, 10);
+    const snap = await readJson(`snapshots/${ds}.json`);
+    if (!snap) continue;
+    const snapMs = new Date(snap.computed_at || (ds + "T23:59:59Z")).getTime();
+    if (!isNaN(snapMs) && anchorMs - snapMs >= 24 * 3600 * 1000) {
+      cmp = { ds, snap };
+      break;
+    }
+  }
+  if (!cmp) return;   // not enough snapshot history yet
+  STATE.staleCompareDate = cmp.ds;
+  const prevWaiting = {};
+  for (const pt of (cmp.snap.tasks_all || [])) {
+    prevWaiting[pt.name] = (pt.status_distribution && pt.status_distribution.waiting) || 0;
+  }
+  for (const t of v2.tasks_all) {
+    const nowWaiting = (t.status_distribution && t.status_distribution.waiting) || 0;
+    const assigned = Array.isArray(t.agents_worked) && t.agents_worked.length > 0;
+    const wasWaiting = prevWaiting[t.name] || 0;
+    // Idempotent: strip any prior stale-24h flag before re-deciding (this
+    // function re-runs whenever the viewed snapshot changes).
+    if (Array.isArray(t.flags)) {
+      t.flags = t.flags.filter(f => f !== "stale-24h");
+    }
+    if (assigned && nowWaiting > 0 && wasWaiting > 0 && nowWaiting >= wasWaiting) {
+      STATE.staleTaskNames.add(t.name);
+      if (Array.isArray(t.flags)) t.flags.push("stale-24h");
+    }
+  }
+}
+
 async function renderBoqa7Day() {
   const anchor = STATE.v2?.date || todayEat();
   const dates = [];
@@ -2249,16 +2305,17 @@ PAGE_RENDERERS.intake = function () {
   const teams = Object.keys(STATE.roster || {}).sort();
   const rows = teams.map(team => {
     const m = STATE.v2?.by_team?.[team];
-    if (!m) return `<tr><td><strong>${esc(team)}</strong></td><td colspan="3" class="empty">no cache records</td></tr>`;
+    if (!m) return `<tr><td><strong>${esc(team)}</strong></td><td colspan="4" class="empty">no cache records</td></tr>`;
     return `<tr>
       <td><strong>${esc(team)}</strong></td>
       <td class="right">${m.team_routed_intake_today}</td>
       <td class="right">${m.tagged_today}</td>
+      <td class="right">${(m.counts_by_verification_status?.waiting || 0).toLocaleString()}</td>
       <td class="right">${m.bo_qa_backlog}</td>
     </tr>`;
   }).join("");
   document.getElementById("intakeTable").innerHTML = `
-    <thead><tr><th>Team</th><th class="right">Routed today</th><th class="right">Tagged today</th><th class="right">BO QA backlog</th></tr></thead>
+    <thead><tr><th>Team</th><th class="right">Routed today</th><th class="right">Tagged today</th><th class="right">Assigned &amp; waiting</th><th class="right">BO QA backlog</th></tr></thead>
     <tbody>${rows}</tbody>`;
 
   // Routing health
@@ -2337,6 +2394,7 @@ PAGE_RENDERERS.tasks = function () {
   const kpiIncomplete  = tasks.filter(t => t.flags.includes("incomplete")).length;
   const kpiStuck       = tasks.filter(t => t.flags.includes("stuck")).length;
   const kpiCompanyGap  = tasks.filter(t => t.flags.includes("company-gap")).length;
+  const kpiStale = tasks.filter(t => (t.flags || []).includes("stale-24h")).length;
   const tatVals        = tasks.filter(t => t.is_completed && t.tat_hours != null).map(t => t.tat_hours);
   const kpiMedianTat   = median(tatVals);  // hours, or null when nothing completed yet
 
@@ -2346,6 +2404,7 @@ PAGE_RENDERERS.tasks = function () {
       <div class="kpi"><div class="label">Tasks visible in cache</div><div class="value">${kpiTotal}</div></div>
       <div class="kpi ${kpiIncomplete > 0 ? 'warn' : ''}"><div class="label">Incomplete tasks</div><div class="value">${kpiIncomplete}</div></div>
       <div class="kpi ${kpiStuck > 0 ? 'warn' : ''}"><div class="label">Stuck tasks</div><div class="value">${kpiStuck}</div><div class="delta">no activity in 24h</div></div>
+      <div class="kpi ${kpiStale > 0 ? 'bad' : ''}"><div class="label">Stale &gt;24h</div><div class="value">${STATE.staleCompareDate ? kpiStale : "—"}</div><div class="delta">${STATE.staleCompareDate ? "assigned, no progress since " + esc(STATE.staleCompareDate) : "needs 24h of snapshot history"}</div></div>
       <div class="kpi ${kpiCompanyGap > 0 ? 'bad' : ''}"><div class="label">Company-gap tasks</div><div class="value">${kpiCompanyGap}</div><div class="delta">Done w/o company &amp; not dead vessel</div></div>
       <div class="kpi"><div class="label">Median turn-around</div><div class="value">${formatDuration(kpiMedianTat)}</div><div class="delta">${tatVals.length} tasks completed</div></div>
     </div>
@@ -2358,6 +2417,7 @@ PAGE_RENDERERS.tasks = function () {
         <option value="today"      ${TASKS_STATE.view === 'today'      ? 'selected' : ''}>Today's only</option>
         <option value="incomplete" ${TASKS_STATE.view === 'incomplete' ? 'selected' : ''}>Incomplete only</option>
         <option value="stuck"      ${TASKS_STATE.view === 'stuck'      ? 'selected' : ''}>Stuck only</option>
+        <option value="stale"      ${TASKS_STATE.view === 'stale'      ? 'selected' : ''}>Stale &gt;24h only</option>
         <option value="completed"  ${TASKS_STATE.view === 'completed'  ? 'selected' : ''}>Completed only</option>
         <option value="aging"      ${TASKS_STATE.view === 'aging'      ? 'selected' : ''}>Aging only</option>
         <option value="flagged"    ${TASKS_STATE.view === 'flagged'    ? 'selected' : ''}>Has flags</option>
@@ -2393,6 +2453,8 @@ function _tasksFiltered() {
     out = out.filter(t => t.flags.includes("incomplete"));
   } else if (TASKS_STATE.view === "stuck") {
     out = out.filter(t => t.flags.includes("stuck"));
+  } else if (TASKS_STATE.view === "stale") {
+    out = out.filter(t => (t.flags || []).includes("stale-24h"));
   } else if (TASKS_STATE.view === "completed") {
     out = out.filter(t => t.is_completed);
   } else if (TASKS_STATE.view === "aging") {
@@ -2441,6 +2503,7 @@ const FLAG_STYLES = {
   "high-waiting":"amber",
   "stuck":       "gray",
   "aging":       "amber",
+  "stale-24h":   "red",
 };
 
 function timeAgo(iso) {
@@ -3668,6 +3731,7 @@ async function init() {
   document.getElementById("todayBtn").style.display = "none";
   document.getElementById("historicalBadge").style.display = "none";
 
+  await computeStaleTasks();
   renderNav();
   renderFreshness();
   goto(STATE.currentPage);
@@ -3824,11 +3888,14 @@ document.getElementById("viewDate").addEventListener("change", async (e) => {
   // Refresh completions for the newly-displayed date so the hourly grid
   // shows that day's actual per-record completion timestamps, not today's.
   await loadCompletions(STATE.viewDate);
+  await computeStaleTasks();
   rerenderCurrentPage();
 });
 
-document.getElementById("todayBtn").addEventListener("click", () => {
+document.getElementById("todayBtn").addEventListener("click", async () => {
   setViewToToday();
+  await computeStaleTasks();
+  rerenderCurrentPage();
 });
 
 // ============================================================================
