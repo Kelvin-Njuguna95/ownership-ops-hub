@@ -785,6 +785,31 @@ def compute_qa_reviewers(records):
     return out
 
 
+def compute_qa_hourly(records, today_eat):
+    """Per-QA hourly review counts for today. A review = a record whose
+    qa_status is 'approve' or 'changed' and whose qa_status_ts (the dedicated
+    last-modified-time field watching qa_status) lands on today (EAT). Bucketed
+    by the EAT hour of qa_status_ts, attributed to qa_assignee. Run over the
+    FULL record set (not in_scope) so the two Ownership Experts are included.
+    Returns {qa_name: {hour:int -> count}}."""
+    out = {}
+    for info in records:
+        if info.get("qa_status") not in ("approve", "changed"):
+            continue
+        dt = _parse_iso(info.get("qa_status_ts"))
+        if not dt:
+            continue
+        eat = dt.astimezone(EAT)
+        if eat.date() != today_eat:
+            continue
+        qa = (info.get("qa_assignee") or "").strip()
+        if not qa:
+            continue
+        bucket = out.setdefault(qa, {})
+        bucket[eat.hour] = bucket.get(eat.hour, 0) + 1
+    return out
+
+
 def compute_not_yet_finalized(records, today_eat, ownership_assignees, cap=500):
     """Records currently in an incomplete state, with age and IMO-cohort context.
 
@@ -1163,6 +1188,7 @@ def aggregate(records, today_eat, ownership_assignees):
         "lead_time_today":            _lead_time_today(in_scope, today_eat),
         "tasks_all":                  tasks_all,
         "qa_reviewers":               qa_reviewers,
+        "qa_hourly":                  compute_qa_hourly(records, today_eat),
         "not_yet_finalized":          not_yet_finalized,
         "not_yet_finalized_truncated": nyf_truncated,
         "qa_done_not_finalized":      qa_done_not_finalized,
