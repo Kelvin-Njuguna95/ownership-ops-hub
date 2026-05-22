@@ -810,6 +810,32 @@ def compute_qa_hourly(records, today_eat):
     return out
 
 
+def compute_qa_today_all(records, today_eat):
+    """All-QA count of today's QA verdicts — the all-inclusive companion to
+    the ownership-team-scoped qa_inspected_today / qa_changed_today. Uses the
+    IDENTICAL record-selection rule as compute_qa_hourly, so the BO QA Console
+    headline always equals the QA Hourly Output grand total: a record counts
+    when qa_status is 'approve' or 'changed', its qa_status_ts lands on today
+    (EAT), and it has a qa_assignee. Run over the FULL record set so the two
+    Ownership Experts are included. Returns {'reviewed': int, 'changed': int}."""
+    reviewed = changed = 0
+    for info in records:
+        qs = info.get("qa_status")
+        if qs not in ("approve", "changed"):
+            continue
+        dt = _parse_iso(info.get("qa_status_ts"))
+        if not dt:
+            continue
+        if dt.astimezone(EAT).date() != today_eat:
+            continue
+        if not (info.get("qa_assignee") or "").strip():
+            continue
+        reviewed += 1
+        if qs == "changed":
+            changed += 1
+    return {"reviewed": reviewed, "changed": changed}
+
+
 def compute_companies_hourly(work_dir, today_eat):
     """Per-person hourly company-creation counts for today. Reads the
     companies_today_p*.json cache (Fetch H — the companies table, a different
@@ -1225,6 +1251,7 @@ def aggregate(records, today_eat, ownership_assignees):
         "tasks_all":                  tasks_all,
         "qa_reviewers":               qa_reviewers,
         "qa_hourly":                  compute_qa_hourly(records, today_eat),
+        "qa_today_all":               compute_qa_today_all(records, today_eat),
         "not_yet_finalized":          not_yet_finalized,
         "not_yet_finalized_truncated": nyf_truncated,
         "qa_done_not_finalized":      qa_done_not_finalized,

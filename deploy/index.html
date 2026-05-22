@@ -2289,12 +2289,17 @@ PAGE_RENDERERS.boqa = function () {
       <div class="footer-note">A record tagged on day N is reviewed on day N+1, so coverage tracks how much of yesterday's work has been reviewed.</div>
     </div>`;
   }
-  const reviews = t.qa_inspected_today || 0;
-  const changes = t.qa_changed_today || 0;
+  // CONSIST-1: headline "Today's reviews/changes" use the all-inclusive count
+  // (all QAs incl. the Ownership Experts) so this card ties out with the QA
+  // Hourly Output grand total. Falls back to the ownership-team-scoped totals
+  // for snapshots saved before qa_today_all existed.
+  const qaToday = STATE.v2?.qa_today_all;
+  const reviews = (qaToday?.reviewed ?? t.qa_inspected_today) || 0;
+  const changes = (qaToday?.changed ?? t.qa_changed_today) || 0;
   const rejectToday = reviews > 0 ? (changes / reviews * 100) : null;
   root.innerHTML = `
     <div class="kpis">
-      <div class="kpi"><div class="label">Today's reviews</div><div class="value">${reviews}</div><div class="delta">verdicts set today (yesterday's work)</div></div>
+      <div class="kpi"><div class="label">Today's reviews</div><div class="value">${reviews}</div><div class="delta">verdicts set today · all QAs incl. experts</div></div>
       <div class="kpi"><div class="label">Today's changes</div><div class="value">${changes}</div><div class="delta">QA bounced back</div></div>
       <div class="kpi"><div class="label">Today's reject rate</div><div class="value">${rejectToday == null ? "—" : rejectToday.toFixed(1) + "%"}</div><div class="delta">changes ÷ reviews</div></div>
       <div class="kpi"><div class="label">BO QA backlog</div><div class="value">${t.bo_qa_backlog || 0}</div></div>
