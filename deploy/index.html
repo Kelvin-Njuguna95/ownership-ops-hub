@@ -3892,8 +3892,10 @@ document.getElementById("viewDate").addEventListener("change", async (e) => {
   rerenderCurrentPage();
 });
 
-document.getElementById("todayBtn").addEventListener("click", () => {
+document.getElementById("todayBtn").addEventListener("click", async () => {
   setViewToToday();
+  await computeStaleTasks();
+  rerenderCurrentPage();
 });
 
 // ============================================================================
