@@ -657,6 +657,17 @@ function groupTaskHistory(rows) {
     hist.sort((a, b) => (a.snapshot_date < b.snapshot_date ? -1 : 1));
     const latest = hist[hist.length - 1];
     const trueTotal = Math.max(...hist.map(h => h.total_records || 0));
+    // The latest recorded day only holds the shrinking tail of records still in
+    // the dashboard cache — finished records age out. So the scorecard and the
+    // per-agent breakdown must come from the day the task was at its fullest
+    // (peak total_records), not the latest day. QA review work peaks on a
+    // different day (verdicts land late, after most records have aged out), so
+    // QA reviewers come from the day qa_reviewed was highest. Use >= so a
+    // multi-day plateau at the peak resolves to the LAST such day — the one
+    // with the most work attributed while every record is still in cache (the
+    // first peak day is often just "received", with no agents/QA yet).
+    const peak   = hist.reduce((b, h) => ((h.total_records || 0) >= (b.total_records || 0) ? h : b), hist[0]);
+    const qaPeak = hist.reduce((b, h) => ((h.qa_reviewed  || 0) >= (b.qa_reviewed  || 0) ? h : b), hist[0]);
     // "Assigned" = the first day the task had records in 'waiting'. A waiting
     // record is assigned to an agent (assigned, not yet started), so the
     // earliest snapshot with waiting > 0 is when the task was assigned.
@@ -668,6 +679,8 @@ function groupTaskHistory(rows) {
       name,
       history: hist,                       // chronological — the day-by-day trace
       latest,                              // most recent row — current/final state
+      peak,                                // fullest day — scorecard & agent breakdown source
+      qaPeak,                              // day QA review peaked — QA reviewers source
       trueTotal,                           // MAX records ever seen = real size
       isCompleted: !!latest.is_completed,
       firstSeen: hist[0].snapshot_date,
@@ -3359,6 +3372,8 @@ function openCompletedTaskDrawer(taskName) {
   const drawer = document.getElementById("completedDrawer");
   const backdrop = document.getElementById("completedDrawerBackdrop");
   const L = t.latest;
+  const PK = t.peak;     // fullest recorded day — scorecard & agent breakdown
+  const QP = t.qaPeak;   // day QA review peaked — QA reviewers
   const hist = t.history;
 
   const flagsHtml = (L.flags || []).map(f => `<span class="flag-pill ${FLAG_STYLES[f] || 'gray'}">${esc(f)}</span>`).join("") || '<span class="small-mono">no flags</span>';
@@ -3384,15 +3399,15 @@ function openCompletedTaskDrawer(taskName) {
     </tr>`;
   }).join("");
 
-  const agentsRows = (L.agents_worked || []).map(a =>
+  const agentsRows = (PK.agents_worked || []).map(a =>
     `<tr><td class="agent-name">${esc(a.name)}</td><td>${esc(a.team || '—')}</td><td class="right">${a.records || 0}</td><td class="right">${a.qa_checked || 0}</td><td class="right">${a.qa_changed || 0}</td></tr>`
   ).join("") || '<tr><td colspan="5" class="empty">no agent attribution recorded</td></tr>';
 
   // QA reviewers — qa_reviewers is null on tasks whose latest row was recovered
   // from a pre-PR#70 snapshot; fall back to the reviewed/changed totals.
   let qaReviewersHtml;
-  if (Array.isArray(L.qa_reviewers)) {
-    const rev = L.qa_reviewers.map(q =>
+  if (Array.isArray(QP.qa_reviewers)) {
+    const rev = QP.qa_reviewers.map(q =>
       `<tr><td>${esc(q.name)}</td><td class="right">${q.reviewed || 0}</td><td class="right">${q.changed || 0}</td></tr>`
     ).join("") || '<tr><td colspan="3" class="empty">no QA reviewers recorded</td></tr>';
     qaReviewersHtml = `<table>
@@ -3401,8 +3416,8 @@ function openCompletedTaskDrawer(taskName) {
           </table>`;
   } else {
     qaReviewersHtml = `<table>
-            <tr><td>Reviewed</td><td class="right"><strong>${L.qa_reviewed || 0}</strong></td></tr>
-            <tr><td>Changed</td><td class="right">${L.qa_changed || 0}</td></tr>
+            <tr><td>Reviewed</td><td class="right"><strong>${QP.qa_reviewed || 0}</strong></td></tr>
+            <tr><td>Changed</td><td class="right">${QP.qa_changed || 0}</td></tr>
           </table>
           <div class="footer-note">Per-reviewer breakdown isn't recorded for this task (it predates the task-history ledger).</div>`;
   }
@@ -3442,26 +3457,26 @@ function openCompletedTaskDrawer(taskName) {
       </div>
 
       <div class="panel">
-        <h3>Scorecard <span class="meta">from the latest recorded day</span></h3>
+        <h3>Scorecard <span class="meta">from the task's fullest recorded day</span></h3>
         <table>
-          <tr><td>Properly completed</td><td class="right"><strong>${L.properly_completed || 0}</strong> / ${(L.total_records || 0).toLocaleString()}</td></tr>
-          <tr><td>With company</td><td class="right">${L.with_company || 0}</td></tr>
-          <tr><td>Without company</td><td class="right">${L.without_company || 0}</td></tr>
-          <tr><td>Dead vessels</td><td class="right">${L.dead_vessels || 0}</td></tr>
-          <tr><td>On reminder</td><td class="right">${L.with_reminder || 0}</td></tr>
+          <tr><td>Properly completed</td><td class="right"><strong>${PK.properly_completed || 0}</strong> / ${(PK.total_records || 0).toLocaleString()}</td></tr>
+          <tr><td>With company</td><td class="right">${PK.with_company || 0}</td></tr>
+          <tr><td>Without company</td><td class="right">${PK.without_company || 0}</td></tr>
+          <tr><td>Dead vessels</td><td class="right">${PK.dead_vessels || 0}</td></tr>
+          <tr><td>On reminder</td><td class="right">${PK.with_reminder || 0}</td></tr>
         </table>
       </div>
 
       <div class="row equal">
         <div class="panel">
-          <h3>Agents who worked this task</h3>
+          <h3>Agents who worked this task <span class="meta">from the task's fullest recorded day</span></h3>
           <table>
             <thead><tr><th>Agent</th><th>Team</th><th class="right">Records</th><th class="right">Checked</th><th class="right">Changed</th></tr></thead>
             <tbody>${agentsRows}</tbody>
           </table>
         </div>
         <div class="panel">
-          <h3>QA reviewers</h3>
+          <h3>QA reviewers <span class="meta">from the day QA review peaked</span></h3>
           ${qaReviewersHtml}
         </div>
       </div>
