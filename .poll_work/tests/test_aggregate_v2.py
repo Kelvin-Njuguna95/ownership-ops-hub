@@ -854,6 +854,36 @@ class TestComputeTaskBreakdowns(unittest.TestCase):
         self.assertIsNone(age["tat_hours"])
         self.assertIn("aging", age["flags"])
 
+    def test_comment_distribution_per_task(self):
+        # Per-task Airtable-Comment breakdown: every task dict carries a
+        # comment_distribution dict with all 11 COMMENT_VALUES plus a
+        # "(no comment)" bucket, and the counts sum to the task's in-cache
+        # record total (each record is counted exactly once).
+        recs = [
+            _info(requested_by="CMT",   assignees=["Alice"], comment="suspected zombie vessel"),
+            _info(requested_by="CMT",   assignees=["Alice"], comment="Document Not Available"),
+            _info(requested_by="CMT",   assignees=["Bob"],   comment=None),   # blank → "(no comment)"
+            _info(requested_by="BLANK", assignees=["Carol"], comment=None),
+            _info(requested_by="BLANK", assignees=["Carol"], comment=""),     # blank → "(no comment)"
+        ]
+        tasks = compute_task_breakdowns(recs, TODAY, self._build_norm_ownership())
+        expected_keys = set(COMMENT_VALUES) | {"(no comment)"}
+        for t in tasks:
+            cd = t["comment_distribution"]
+            self.assertIsInstance(cd, dict)                                  # (1)
+            self.assertEqual(set(cd.keys()), expected_keys)                  # (2) 11 values + "(no comment)"
+            self.assertEqual(sum(cd.values()), t["total_records_in_cache"])  # (3) each record counted once
+
+        cmt = next(t for t in tasks if t["name"] == "CMT")
+        self.assertEqual(cmt["comment_distribution"]["suspected zombie vessel"], 1)
+        self.assertEqual(cmt["comment_distribution"]["Document Not Available"], 1)
+        self.assertEqual(cmt["comment_distribution"]["(no comment)"], 1)
+
+        # A task whose records are all blank on Comment → only the bucket fills.
+        blank = next(t for t in tasks if t["name"] == "BLANK")
+        self.assertEqual(blank["comment_distribution"]["(no comment)"], 2)
+        self.assertTrue(all(blank["comment_distribution"][v] == 0 for v in COMMENT_VALUES))
+
 
 class TestTaskFlags(unittest.TestCase):
     """One test per flag rule. last_modified must be within the past 24h of
