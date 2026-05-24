@@ -577,6 +577,18 @@ def compute_task_breakdowns(records, today_eat, ownership_assignees):
         without_company    = total - with_company
         dead_vessels       = sum(1 for info in recs if info.get("dead_vessel") is True)
         with_reminder      = sum(1 for info in recs if info.get("reminder"))
+        # Per-task Airtable-Comment breakdown — counts of each of the 11 SOP
+        # case-scenario values, plus a "(no comment)" bucket for blank records.
+        # Stored on ownership_task_history.comment_distribution for the Reports
+        # section's Tasks workbook (PR #86 / #87).
+        task_comment_counts = {v: 0 for v in COMMENT_VALUES}
+        task_comment_counts["(no comment)"] = 0
+        for info in recs:
+            cm = info.get("comment")
+            if cm:
+                task_comment_counts[cm] = task_comment_counts.get(cm, 0) + 1
+            else:
+                task_comment_counts["(no comment)"] += 1
         # Per-task QA coverage — % of completed records that had a QA review.
         completed_task     = sum(1 for info in recs if info.get("verification_status") in ("Done", "Valid"))
         qa_reviewed_task   = sum(1 for info in recs
@@ -717,6 +729,7 @@ def compute_task_breakdowns(records, today_eat, ownership_assignees):
             "without_company": without_company,
             "dead_vessels": dead_vessels,
             "with_reminder": with_reminder,
+            "comment_distribution": task_comment_counts,
             "completed": completed_task,
             "qa_reviewed": qa_reviewed_task,
             "qa_changed": qa_changed_task,
@@ -1757,6 +1770,7 @@ def _write_task_history(aggs):
             "without_company":     t.get("without_company"),
             "dead_vessels":        t.get("dead_vessels"),
             "with_reminder":       t.get("with_reminder"),
+            "comment_distribution": t.get("comment_distribution"),
             "completed":           t.get("completed"),
             "qa_reviewed":         t.get("qa_reviewed"),
             "qa_changed":          t.get("qa_changed"),
