@@ -7,6 +7,7 @@
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.5.0/dist/chart.umd.js"></script>
 <script src="https://unpkg.com/gridjs/dist/gridjs.umd.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
 <link href="https://unpkg.com/gridjs/dist/theme/mermaid.min.css" rel="stylesheet">
 <style>
   :root {
@@ -446,6 +447,7 @@
       <div id="page-pipeline"       class="page" style="display:none"></div>
       <div id="page-scenarios"      class="page" style="display:none"></div>
       <div id="page-weekly"         class="page" style="display:none"></div>
+      <div id="page-report_builder" class="page" style="display:none"></div>
       <div id="page-comparison"     class="page" style="display:none"></div>
       <div id="taskDrawerBackdrop" class="drawer-backdrop"></div>
       <div id="taskDrawer"         class="drawer"></div>
@@ -563,6 +565,7 @@ const PAGES = [
   { id: "comparison",     label: "Comparison",              tag: null,   group: "People"     },
   { id: "experts",        label: "Ownership Experts",        tag: null,   group: "People"     },
   { id: "weekly",         label: "Weekly Report",           tag: null,   group: "Reports"    },
+  { id: "report_builder", label: "Report Builder",          tag: null,   group: "Reports"    },
 ];
 
 // ============================================================================
@@ -3657,6 +3660,462 @@ function closeCompletedTaskDrawer() {
   document.getElementById("completedDrawerBackdrop").classList.remove("open");
   if (STATE.charts["completedTraceChart"]) { STATE.charts["completedTraceChart"].destroy(); delete STATE.charts["completedTraceChart"]; }
 }
+
+// ============================================================================
+//  Report Builder (PR #87) — period presets + custom range, three downloadable
+//  Excel workbooks (Tasks / Agents / QAs) built client-side with SheetJS.
+//  Reads only the Supabase Postgres ledger tables (no Airtable, no snapshots).
+//  Reuses existing helpers: loadTaskHistory, groupTaskHistory, canonicalAgent,
+//  teamForAgent, eatDate, eatHour, _enumerateDays, _mondayOf, median, todayEat,
+//  esc, and the sb client. All code below is byte-identical in both files.
+// ============================================================================
+
+// The 11 SOP case-scenario Comment values + the blank bucket, in report order.
+const REPORT_COMMENT_VALUES = [
+  "suspected zombie vessel",
+  "IMO searched but not found",
+  "IMO not found, has positional data",
+  "IMO Never Existed, No positional data",
+  "IMO not found on Nexis/Equasis, No positional data",
+  "IMO not found on Nexis/Equasis/WW",
+  "IMO found, No positional data on WW",
+  "No Longer updated by (LRF) IHSF",
+  "Role not found",
+  "Cancelled before construction",
+  "Document Not Available",
+  "(no comment)",
+];
+
+// status_distribution jsonb keys → report column label (last 7 Tasks-tab cols).
+// "Selected for BO QA " keeps its literal trailing space (the Airtable value).
+const REPORT_STATUS_COLS = [
+  ["waiting", "Waiting"],
+  ["tagged", "Tagged"],
+  ["Selected for BO QA ", "BO QA"],
+  ["Selected for WW QA", "WW QA"],
+  ["Done", "Done"],
+  ["Valid", "Valid"],
+  ["need to be update", "Needs update"],
+];
+
+const REPORT_PRESETS = [
+  ["this_week", "This Week"], ["last_week", "Last Week"],
+  ["this_month", "This Month"], ["last_month", "Last Month"],
+  ["this_quarter", "This Quarter"], ["last_quarter", "Last Quarter"],
+];
+
+const REPORT_STATE = { preset: "this_week", customFrom: "", customTo: "", cache: {}, current: null, reqId: 0 };
+const REPORT_HOURS = Array.from({ length: 18 }, (_, i) => 6 + i);  // 06..23 EAT
+
+// ---- EAT calendar math (treat YYYY-MM-DD as a plain calendar date, noon UTC) ----
+function _isoAddDays(iso, n) {
+  const d = new Date(iso + "T12:00:00Z");
+  d.setUTCDate(d.getUTCDate() + n);
+  return d.toISOString().slice(0, 10);
+}
+function _firstOfMonth(iso) { return iso.slice(0, 8) + "01"; }
+function _firstOfPrevMonth(iso) {
+  let [y, m] = iso.split("-").map(Number);
+  m -= 1; if (m < 1) { m = 12; y -= 1; }
+  return `${y}-${String(m).padStart(2, "0")}-01`;
+}
+function _quarterStart(iso) {
+  const [y, m] = iso.split("-").map(Number);
+  const qm = Math.floor((m - 1) / 3) * 3 + 1;          // 1, 4, 7, 10
+  return `${y}-${String(qm).padStart(2, "0")}-01`;
+}
+function _prevQuarterStart(iso) { return _quarterStart(_isoAddDays(_quarterStart(iso), -1)); }
+function _isSundayEat(iso) { return new Date(iso + "T12:00:00Z").getUTCDay() === 0; }
+function _round(x, n) { const f = Math.pow(10, n); return Math.round((Number(x) || 0) * f) / f; }
+function _pct(num, den) { return den ? _round((num / den) * 100, 1) : 0; }
+
+function _resolveReportRange() {
+  const today = todayEat();
+  const p = REPORT_STATE.preset;
+  let start, end;
+  if (p === "this_week") { start = _mondayOf(today); end = today; }
+  else if (p === "last_week") { const m = _mondayOf(today); start = _isoAddDays(m, -7); end = _isoAddDays(m, -1); }
+  else if (p === "this_month") { start = _firstOfMonth(today); end = today; }
+  else if (p === "last_month") { start = _firstOfPrevMonth(today); end = _isoAddDays(_firstOfMonth(today), -1); }
+  else if (p === "this_quarter") { start = _quarterStart(today); end = today; }
+  else if (p === "last_quarter") { start = _prevQuarterStart(today); end = _isoAddDays(_quarterStart(today), -1); }
+  else { start = REPORT_STATE.customFrom || today; end = REPORT_STATE.customTo || today; if (start > end) { const t = start; start = end; end = t; } }
+  return { start, end };
+}
+
+// ---- In-range data load (Part 4). Paginates completions/sampling fully. ----
+async function _loadReportData(start, end) {
+  const cacheKey = `${start}_${end}`;
+  if (REPORT_STATE.cache[cacheKey]) return REPORT_STATE.cache[cacheKey];
+
+  const startUtc = new Date(start + "T00:00:00+03:00").toISOString();
+  const endUtc   = new Date(_isoAddDays(end, 1) + "T00:00:00+03:00").toISOString();
+
+  const rows = await loadTaskHistory();
+  const allTasks = rows ? groupTaskHistory(rows) : [];
+  const tasks = allTasks.filter(t => t.history.some(h => h.snapshot_date >= start && h.snapshot_date <= end));
+
+  // 1000-row paged read — a bare .limit() silently caps at db-max-rows (1000).
+  const pageFetch = async (table, cols, tsCol) => {
+    const out = [];
+    for (let page = 0; page < 1000; page++) {
+      const { data, error } = await sb.from(table)
+        .select(cols)
+        .gte(tsCol, startUtc)
+        .lt(tsCol, endUtc)
+        .order(tsCol, { ascending: true })
+        .range(page * 1000, page * 1000 + 999);
+      if (error) { console.error(`report load ${table}:`, error); return null; }
+      if (!data || !data.length) break;
+      out.push(...data);
+      if (data.length < 1000) break;
+    }
+    return out;
+  };
+
+  const [completions, sampling] = await Promise.all([
+    pageFetch("ownership_completions", "airtable_record_id,completed_by,completed_at,flow", "completed_at"),
+    pageFetch("ownership_qa_sampling", "airtable_record_id,qa_assignee,sampled_at", "sampled_at"),
+  ]);
+
+  const data = {
+    start, end,
+    dates: _enumerateDays(start, end),
+    tasks,
+    completions: completions || [],
+    sampling: sampling || [],
+  };
+  REPORT_STATE.cache[cacheKey] = data;
+  return data;
+}
+
+// ---- Per-agent / per-QA aggregation (memoised on the cached data object) ----
+function _agentAggregate(data) {
+  if (data._agentAgg) return data._agentAgg;
+  const agents = {};
+  for (const r of data.completions) {
+    const canon = canonicalAgent(r.completed_by);
+    if (!canon) continue;
+    const a = agents[canon] || (agents[canon] = { name: canon, team: teamForAgent(canon) || "—", total: 0, daily: {}, hourly: {}, outside: 0, flowA: 0, flowC: 0, days: new Set() });
+    const d = eatDate(r.completed_at), h = eatHour(r.completed_at);
+    a.total++;
+    if (d) { a.daily[d] = (a.daily[d] || 0) + 1; a.days.add(d); }
+    if (h != null && h >= 6 && h <= 23) a.hourly[h] = (a.hourly[h] || 0) + 1; else a.outside++;
+    if (r.flow === "A") a.flowA++; else if (r.flow === "C") a.flowC++;
+  }
+  const qaChecked = {}, qaChanged = {};
+  for (const t of data.tasks) for (const aw of (t.peak.agents_worked || [])) {
+    const canon = canonicalAgent(aw.name); if (!canon) continue;
+    qaChecked[canon] = (qaChecked[canon] || 0) + (aw.qa_checked || 0);
+    qaChanged[canon] = (qaChanged[canon] || 0) + (aw.qa_changed || 0);
+  }
+  data._agentAgg = { agents, qaChecked, qaChanged };
+  return data._agentAgg;
+}
+function _qaAggregate(data) {
+  if (data._qaAgg) return data._qaAgg;
+  const qas = {};
+  for (const r of data.sampling) {
+    const canon = canonicalAgent(r.qa_assignee); if (!canon) continue;
+    const q = qas[canon] || (qas[canon] = { name: canon, total: 0, daily: {}, hourly: {}, outside: 0, days: new Set() });
+    const d = eatDate(r.sampled_at), h = eatHour(r.sampled_at);
+    q.total++;
+    if (d) { q.daily[d] = (q.daily[d] || 0) + 1; q.days.add(d); }
+    if (h != null && h >= 6 && h <= 23) q.hourly[h] = (q.hourly[h] || 0) + 1; else q.outside++;
+  }
+  const reviewed = {}, changed = {};
+  for (const t of data.tasks) for (const qr of (t.qaPeak.qa_reviewers || [])) {
+    const canon = canonicalAgent(qr.name); if (!canon) continue;
+    reviewed[canon] = (reviewed[canon] || 0) + (qr.reviewed || 0);
+    changed[canon] = (changed[canon] || 0) + (qr.changed || 0);
+  }
+  data._qaAgg = { qas, reviewed, changed };
+  return data._qaAgg;
+}
+
+// ---- Part 5: Tasks workbook ----
+function _buildTasksWorkbook(data) {
+  const tasks = data.tasks;
+  const sum = (f) => tasks.reduce((s, t) => s + (Number(f(t)) || 0), 0);
+  const completed = tasks.filter(t => t.isCompleted);
+  const totalReviewed = sum(t => t.peak.qa_reviewed);
+  const totalCompletedRecs = sum(t => t.peak.completed);
+  const tats = completed.map(t => t.latest.tat_hours).filter(v => v != null).map(Number);
+
+  const summary = [
+    ["Tasks Report", ""],
+    ["Period", `${data.start} → ${data.end}`],
+    ["Tasks active", tasks.length],
+    ["Tasks completed", completed.length],
+    ["Tasks open", tasks.length - completed.length],
+    ["Total records", sum(t => t.peak.total_records)],
+    ["Total dead vessels", sum(t => t.peak.dead_vessels)],
+    ["Total with reminder", sum(t => t.peak.with_reminder)],
+    ["Total completed records", totalCompletedRecs],
+    ["Total QA reviewed", totalReviewed],
+    ["Total QA changed", sum(t => t.peak.qa_changed)],
+    ["Overall QA coverage %", _pct(totalReviewed, totalCompletedRecs)],
+    ["Median turn-around (hrs)", median(tats) ?? 0],
+  ];
+
+  const taskHeader = ["Task name", "Sanctions?", "First seen", "Last activity", "Status", "Valid %",
+    "Total records", "Dead vessels", "With reminder", "Completed records", "QA reviewed", "QA changed",
+    "QA coverage %", "TAT (hrs)", "Flags", ...REPORT_STATUS_COLS.map(c => c[1])];
+  const taskRows = tasks.map(t => {
+    const p = t.peak, sd = p.status_distribution || {};
+    return [
+      t.name,
+      p.is_sanctions ? "Yes" : "No",
+      p.date_first_seen || t.firstSeen || "",
+      t.latest.date_last_modified || t.lastRecorded || "",
+      t.isCompleted ? "Completed" : "Open",
+      Number(p.valid_pct) || 0,
+      Number(p.total_records) || 0,
+      Number(p.dead_vessels) || 0,
+      Number(p.with_reminder) || 0,
+      Number(p.completed) || 0,
+      Number(p.qa_reviewed) || 0,
+      Number(p.qa_changed) || 0,
+      Number(p.qa_coverage_pct) || 0,
+      (t.isCompleted && t.latest.tat_hours != null) ? Number(t.latest.tat_hours) : "",
+      (t.latest.flags || []).join(", "),
+      ...REPORT_STATUS_COLS.map(c => Number(sd[c[0]]) || 0),
+    ];
+  });
+
+  const commentNote = ["Comment data is recorded from the date the comment-tracking update shipped; tasks completed before then show blank."];
+  const commentHeader = ["Task name", ...REPORT_COMMENT_VALUES];
+  const commentRows = tasks.map(t => {
+    const cd = t.peak.comment_distribution;
+    return [t.name, ...REPORT_COMMENT_VALUES.map(k => cd ? (Number(cd[k]) || 0) : "")];
+  });
+
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(summary), "Summary");
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([taskHeader, ...taskRows]), "Tasks");
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([commentNote, commentHeader, ...commentRows]), "Comment Breakdown");
+  return wb;
+}
+
+// ---- Part 6: Agents workbook ----
+function _buildAgentsWorkbook(data) {
+  const { agents, qaChecked, qaChanged } = _agentAggregate(data);
+  const dates = data.dates, hours = REPORT_HOURS;
+  const names = Object.keys(agents).sort((a, b) => agents[b].total - agents[a].total || a.localeCompare(b));
+  const grandTotal = names.reduce((s, n) => s + agents[n].total, 0);
+
+  const dayTot = {}, hourTot = {};
+  for (const n of names) {
+    for (const d of dates) dayTot[d] = (dayTot[d] || 0) + (agents[n].daily[d] || 0);
+    for (const h of hours) hourTot[h] = (hourTot[h] || 0) + (agents[n].hourly[h] || 0);
+  }
+  const busiestDay = dates.reduce((b, d) => ((dayTot[d] || 0) > (dayTot[b] || 0) ? d : b), dates[0] || "");
+  const busiestHour = hours.reduce((b, h) => ((hourTot[h] || 0) > (hourTot[b] || 0) ? h : b), hours[0]);
+
+  const summary = [
+    ["Agents Report", ""],
+    ["Period", `${data.start} → ${data.end}`],
+    ["Active agents", names.length],
+    ["Total records tagged", grandTotal],
+    ["Daily average", dates.length ? _round(grandTotal / dates.length, 2) : 0],
+    ["Busiest day", busiestDay ? `${busiestDay} (${dayTot[busiestDay] || 0})` : "—"],
+    ["Busiest hour", names.length ? `${String(busiestHour).padStart(2, "0")}:00 (${hourTot[busiestHour] || 0})` : "—"],
+  ];
+
+  const dailyHeader = ["Agent", "Team", ...dates, "Total", "Avg/Day"];
+  const dailyRows = names.map(n => {
+    const a = agents[n];
+    return [n, a.team, ...dates.map(d => a.daily[d] || 0), a.total, dates.length ? _round(a.total / dates.length, 2) : 0];
+  });
+  const dailyTotalRow = ["Total", "", ...dates.map(d => dayTot[d] || 0), grandTotal, dates.length ? _round(grandTotal / dates.length, 2) : 0];
+
+  const hourlyHeader = ["Agent", "Team", ...hours.map(h => String(h).padStart(2, "0")), "Outside 06–23", "Total"];
+  const hourlyRows = names.map(n => {
+    const a = agents[n];
+    return [n, a.team, ...hours.map(h => a.hourly[h] || 0), a.outside, a.total];
+  });
+
+  const monSat = dates.filter(d => !_isSundayEat(d)).length;   // operation runs Mon–Sat
+  const scHeader = ["Agent", "Team", "Total tagged", "Days worked", "Days absent", "Avg/day",
+    "Peak day", "Peak hour", "Flow A", "Flow C", "QA-checked", "QA-changed", "Reject rate %"];
+  const scRows = names.map(n => {
+    const a = agents[n];
+    const dw = a.days.size;
+    const peakDay = dates.reduce((b, d) => ((a.daily[d] || 0) > (a.daily[b] || 0) ? d : b), dates[0] || "");
+    let peakHour = "—", best = 0;
+    for (const h of hours) if ((a.hourly[h] || 0) > best) { best = a.hourly[h]; peakHour = String(h).padStart(2, "0") + ":00"; }
+    const qc = qaChecked[n] || 0, qch = qaChanged[n] || 0;
+    return [n, a.team, a.total, dw, Math.max(0, monSat - dw), dw ? _round(a.total / dw, 2) : 0,
+      (a.daily[peakDay] ? peakDay : "—"), peakHour, a.flowA, a.flowC, qc, qch, _pct(qch, qc)];
+  });
+
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(summary), "Summary");
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([dailyHeader, ...dailyRows, dailyTotalRow]), "Daily Output");
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([hourlyHeader, ...hourlyRows]), "Hourly Profile");
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([scHeader, ...scRows]), "Agent Scorecard");
+  return wb;
+}
+
+// ---- Part 7: QAs workbook ----
+function _buildQAsWorkbook(data) {
+  const { qas, reviewed, changed } = _qaAggregate(data);
+  const dates = data.dates, hours = REPORT_HOURS;
+  const names = Object.keys(qas).sort((a, b) => qas[b].total - qas[a].total || a.localeCompare(b));
+  const totalSampled = names.reduce((s, n) => s + qas[n].total, 0);
+  const totalReviewed = names.reduce((s, n) => s + (reviewed[n] || 0), 0);
+  const totalChanged = names.reduce((s, n) => s + (changed[n] || 0), 0);
+
+  const summary = [
+    ["QA Report", ""],
+    ["Period", `${data.start} → ${data.end}`],
+    ["Active QAs", names.length],
+    ["Total records sampled", totalSampled],
+    ["Total reviewed", totalReviewed],
+    ["Total changed", totalChanged],
+    ["Overall reject rate %", _pct(totalChanged, totalReviewed)],
+  ];
+
+  const dayTot = {};
+  for (const n of names) for (const d of dates) dayTot[d] = (dayTot[d] || 0) + (qas[n].daily[d] || 0);
+  const dailyHeader = ["QA", ...dates, "Total", "Avg/Day"];
+  const dailyRows = names.map(n => {
+    const q = qas[n];
+    return [n, ...dates.map(d => q.daily[d] || 0), q.total, dates.length ? _round(q.total / dates.length, 2) : 0];
+  });
+  const dailyTotalRow = ["Total", ...dates.map(d => dayTot[d] || 0), totalSampled, dates.length ? _round(totalSampled / dates.length, 2) : 0];
+
+  const hourlyHeader = ["QA", ...hours.map(h => String(h).padStart(2, "0")), "Outside 06–23", "Total"];
+  const hourlyRows = names.map(n => {
+    const q = qas[n];
+    return [n, ...hours.map(h => q.hourly[h] || 0), q.outside, q.total];
+  });
+
+  const scNote = ["Reviewed / Approved / Changed are task-lifetime figures rolled up from the task ledger."];
+  const scHeader = ["QA", "Records sampled", "Records reviewed", "Approved", "Changed", "Reject rate %", "Days worked", "Avg/day"];
+  const scRows = names.map(n => {
+    const q = qas[n], rev = reviewed[n] || 0, ch = changed[n] || 0, dw = q.days.size;
+    return [n, q.total, rev, rev - ch, ch, _pct(ch, rev), dw, dw ? _round(q.total / dw, 2) : 0];
+  });
+
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(summary), "Summary");
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([dailyHeader, ...dailyRows, dailyTotalRow]), "Daily Output");
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([hourlyHeader, ...hourlyRows]), "Hourly Profile");
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([scNote, scHeader, ...scRows]), "QA Scorecard");
+  return wb;
+}
+
+// ---- Preview cards ----
+function _renderTasksCard(data) {
+  const el = document.getElementById("rbCardTasks"); if (!el) return;
+  const tasks = data.tasks;
+  if (!tasks.length) { el.innerHTML = `<h3>Tasks Report</h3><div class="empty">No data in this range</div><button class="btn" disabled>⤓ Download Excel</button>`; return; }
+  const done = tasks.filter(t => t.isCompleted).length;
+  const top = [...tasks].sort((a, b) => (b.peak.total_records || 0) - (a.peak.total_records || 0)).slice(0, 8);
+  el.innerHTML = `<h3>Tasks Report</h3>
+    <div class="kpis"><div class="kpi"><div class="label">Tasks active</div><div class="value">${tasks.length}</div></div>
+      <div class="kpi"><div class="label">Completed</div><div class="value">${done}</div></div></div>
+    <table><thead><tr><th>Task</th><th class="right">Records</th><th>Status</th></tr></thead><tbody>
+      ${top.map(t => `<tr><td>${esc(t.name)}</td><td class="right">${(t.peak.total_records || 0).toLocaleString()}</td><td>${t.isCompleted ? "Completed" : "Open"}</td></tr>`).join("")}
+    </tbody></table>
+    <button class="btn primary" id="rbDlTasks">⤓ Download Excel</button>`;
+  el.querySelector("#rbDlTasks").addEventListener("click", () => XLSX.writeFile(_buildTasksWorkbook(data), `Tasks_Report_${data.start}_to_${data.end}.xlsx`));
+}
+function _renderAgentsCard(data) {
+  const el = document.getElementById("rbCardAgents"); if (!el) return;
+  const { agents } = _agentAggregate(data);
+  const names = Object.keys(agents);
+  if (!names.length) { el.innerHTML = `<h3>Agents Report</h3><div class="empty">No data in this range</div><button class="btn" disabled>⤓ Download Excel</button>`; return; }
+  const total = names.reduce((s, n) => s + agents[n].total, 0);
+  const top = [...names].sort((a, b) => agents[b].total - agents[a].total).slice(0, 8);
+  el.innerHTML = `<h3>Agents Report</h3>
+    <div class="kpis"><div class="kpi"><div class="label">Active agents</div><div class="value">${names.length}</div></div>
+      <div class="kpi"><div class="label">Records tagged</div><div class="value">${total.toLocaleString()}</div></div></div>
+    <table><thead><tr><th>Agent</th><th>Team</th><th class="right">Tagged</th></tr></thead><tbody>
+      ${top.map(n => `<tr><td>${esc(n)}</td><td>${esc(agents[n].team)}</td><td class="right">${agents[n].total.toLocaleString()}</td></tr>`).join("")}
+    </tbody></table>
+    <button class="btn primary" id="rbDlAgents">⤓ Download Excel</button>`;
+  el.querySelector("#rbDlAgents").addEventListener("click", () => XLSX.writeFile(_buildAgentsWorkbook(data), `Agents_Report_${data.start}_to_${data.end}.xlsx`));
+}
+function _renderQACard(data) {
+  const el = document.getElementById("rbCardQA"); if (!el) return;
+  const { qas } = _qaAggregate(data);
+  const names = Object.keys(qas);
+  if (!names.length) { el.innerHTML = `<h3>QA Report</h3><div class="empty">No data in this range</div><button class="btn" disabled>⤓ Download Excel</button>`; return; }
+  const total = names.reduce((s, n) => s + qas[n].total, 0);
+  const top = [...names].sort((a, b) => qas[b].total - qas[a].total).slice(0, 8);
+  el.innerHTML = `<h3>QA Report</h3>
+    <div class="kpis"><div class="kpi"><div class="label">Active QAs</div><div class="value">${names.length}</div></div>
+      <div class="kpi"><div class="label">Records sampled</div><div class="value">${total.toLocaleString()}</div></div></div>
+    <table><thead><tr><th>QA</th><th class="right">Sampled</th></tr></thead><tbody>
+      ${top.map(n => `<tr><td>${esc(n)}</td><td class="right">${qas[n].total.toLocaleString()}</td></tr>`).join("")}
+    </tbody></table>
+    <button class="btn primary" id="rbDlQA">⤓ Download Excel</button>`;
+  el.querySelector("#rbDlQA").addEventListener("click", () => XLSX.writeFile(_buildQAsWorkbook(data), `QAs_Report_${data.start}_to_${data.end}.xlsx`));
+}
+
+function _persistReport() {
+  try { localStorage.setItem("wqa.reportBuilder", JSON.stringify({ preset: REPORT_STATE.preset, customFrom: REPORT_STATE.customFrom, customTo: REPORT_STATE.customTo })); } catch (e) {}
+}
+
+async function _reportRefresh() {
+  const root = document.getElementById("page-report_builder");
+  if (!root) return;
+  const { start, end } = _resolveReportRange();
+  const days = _enumerateDays(start, end).length;
+  const rangeEl = root.querySelector("#rbRange");
+  if (rangeEl) rangeEl.textContent = `Showing: ${start} → ${end}  (${days} day${days === 1 ? "" : "s"})`;
+  root.querySelectorAll("button[data-preset]").forEach(b => b.classList.toggle("primary", b.dataset.preset === REPORT_STATE.preset));
+  const fromEl = root.querySelector("#rbFrom"), toEl = root.querySelector("#rbTo");
+  if (fromEl && toEl) { fromEl.value = start; toEl.value = end; }
+  for (const [id, title] of [["rbCardTasks", "Tasks Report"], ["rbCardAgents", "Agents Report"], ["rbCardQA", "QA Report"]]) {
+    const el = root.querySelector("#" + id); if (el) el.innerHTML = `<h3>${title}</h3><div class="empty">Loading…</div>`;
+  }
+  const reqId = (REPORT_STATE.reqId += 1);
+  const data = await _loadReportData(start, end);
+  if (reqId !== REPORT_STATE.reqId) return;                 // superseded by a newer refresh
+  if (!document.getElementById("page-report_builder")) return;
+  REPORT_STATE.current = data;
+  _renderTasksCard(data);
+  _renderAgentsCard(data);
+  _renderQACard(data);
+}
+
+PAGE_RENDERERS.report_builder = async function () {
+  const root = document.getElementById("page-report_builder");
+  try {
+    const saved = JSON.parse(localStorage.getItem("wqa.reportBuilder") || "null");
+    if (saved && saved.preset) { REPORT_STATE.preset = saved.preset; REPORT_STATE.customFrom = saved.customFrom || ""; REPORT_STATE.customTo = saved.customTo || ""; }
+  } catch (e) {}
+  if (!REPORT_STATE.preset) REPORT_STATE.preset = "this_week";
+
+  root.innerHTML = `
+    <h3 style="font-size:18px;font-weight:600;color:var(--ink);margin-bottom:8px">Report Builder <span class="meta" style="font-weight:400;color:var(--muted)">— pick a period, preview, and download Excel workbooks</span></h3>
+    <div class="controls-row" style="flex-wrap:wrap;gap:8px;align-items:center">
+      <span class="small-mono">Period:</span>
+      ${REPORT_PRESETS.map(([id, lab]) => `<button class="btn" data-preset="${id}">${lab}</button>`).join("")}
+      <span class="small-mono" style="margin-left:10px">Custom:</span>
+      <input type="date" id="rbFrom" style="font-family:inherit;font-size:13px;padding:6px 9px;border:1px solid var(--border);background:var(--surface);border-radius:6px;color:var(--ink)"/>
+      <span class="small-mono">→</span>
+      <input type="date" id="rbTo" style="font-family:inherit;font-size:13px;padding:6px 9px;border:1px solid var(--border);background:var(--surface);border-radius:6px;color:var(--ink)"/>
+    </div>
+    <div class="small-mono" id="rbRange" style="margin:8px 0 14px;color:var(--muted)"></div>
+    <div class="row equal">
+      <div class="panel" id="rbCardTasks"></div>
+      <div class="panel" id="rbCardAgents"></div>
+      <div class="panel" id="rbCardQA"></div>
+    </div>
+  `;
+  root.querySelectorAll("button[data-preset]").forEach(b => b.addEventListener("click", () => {
+    REPORT_STATE.preset = b.dataset.preset; _persistReport(); _reportRefresh();
+  }));
+  const fromEl = root.querySelector("#rbFrom"), toEl = root.querySelector("#rbTo");
+  const onCustom = () => { REPORT_STATE.preset = "custom"; REPORT_STATE.customFrom = fromEl.value; REPORT_STATE.customTo = toEl.value; _persistReport(); _reportRefresh(); };
+  fromEl.addEventListener("change", onCustom);
+  toEl.addEventListener("change", onCustom);
+  _reportRefresh();
+};
 
 PAGE_RENDERERS.weekly = async function () {
   const root = document.getElementById("page-weekly");
