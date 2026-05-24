@@ -3189,7 +3189,7 @@ function _enumerateDays(startISO, endISO) {
 //  permanent archive: per task a day-by-day lifecycle trace plus a scorecard of
 //  who worked it and which QA reviewed it.
 // ============================================================================
-const COMPLETED_STATE = { filter: "", view: "completed", sortBy: "received", sortDir: "desc" };
+const COMPLETED_STATE = { filter: "", view: "completed", sortBy: "completedDate", sortDir: "desc" };
 
 // status_distribution keys → legend label → stacked-bar colour (lifecycle trace).
 const TRACE_STATUSES = [
