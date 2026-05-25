@@ -423,6 +423,8 @@
         <input type="date" id="viewDate" />
         <button id="todayBtn" class="btn" style="display:none">← Today</button>
         <span id="historicalBadge" class="pill warn" style="display:none">Historical view</span>
+        <label class="small-mono" for="viewMonth" style="margin-left:14px">Month:</label>
+        <input type="month" id="viewMonth" />
       </div>
       <div class="controls">
         <span id="syncFreshness" class="pill" title="Last time sync_to_supabase.py uploaded data"><span class="dot"></span><span id="syncFreshnessText">no sync yet</span></span>
@@ -578,6 +580,7 @@ const STATE = {
   todayV2: null,     // pinned snapshot of today's aggregates_v2 — never mutated, used as the "back to today" anchor
   viewDate: null,    // ISO date currently displayed in the global date picker
   viewIsHistorical: false,  // true when viewDate != todayV2.date
+  selectedMonth: null,  // "YYYY-MM" — month shown by the monthly trend charts (Month picker)
   legacy: null,      // daily_aggregates.{by_agent, by_team, totals}  (the old block)
   roster: null,      // config/roster.json (.teams)
   cacheRecords: [],  // flat list of records from .poll_work/recent_p*.json (sample)
@@ -2783,9 +2786,9 @@ PAGE_RENDERERS.intake = function () {
       <div id="tasksTodayPanel"></div>
     </div>
     <div class="panel">
-      <h3>7-day intake (whole table, from snapshots)</h3>
-      <div class="chart-wrap"><canvas id="chart-7day-intake"></canvas></div>
-      <div class="footer-note">Derived from daily snapshots in Supabase Storage (snapshots/YYYY-MM-DD.json). Gray bars = no snapshot exists for that day yet.</div>
+      <h3>Monthly intake (whole table, from snapshots)</h3>
+      <div class="chart-wrap"><canvas id="chart-monthly-intake"></canvas></div>
+      <div class="footer-note">Records uploaded per day for the month chosen in the Month picker above. Derived from daily snapshots in Supabase Storage; only days that have a snapshot are shown.</div>
     </div>
   `;
 
@@ -2847,34 +2850,30 @@ PAGE_RENDERERS.intake = function () {
     </table>
     <div class="footer-note" style="margin-top:8px">Today's intake is being absorbed by upstream taggers, not the 5 ownership teams. Reflect on whether this is expected per SOP.</div>`;
 
-  // 7-day intake chart — fetch totals.relations_support_intake_today from
-  // the daily snapshots in Supabase Storage. The old implementation derived
-  // this from STATE.cacheRecords, which was capped at the 20-page fetch and
-  // never reflected the true whole-table intake — only today's partial cache.
+  // Monthly intake chart — totals.relations_support_intake_today per day for the
+  // month picked in the Month selector. Only days that have a snapshot are
+  // plotted (no empty padding). Snapshots come from Supabase Storage via the
+  // shared loadMonthSnapshots() helper.
   (async () => {
-    const today = todayEat();
-    const dates = [];
-    for (let i = 6; i >= 0; i--) {
-      const dt = new Date(today + "T00:00:00+03:00");
-      dt.setDate(dt.getDate() - i);
-      dates.push(dt.toLocaleDateString("en-CA", { timeZone: "Africa/Nairobi" }));
-    }
-    const last7 = await Promise.all(dates.map(async d => {
-      const snap = await readJson(`snapshots/${d}.json`);
-      const n = snap?.totals?.relations_support_intake_today;
-      return { d, n: (typeof n === "number") ? n : null };  // null = no snapshot found
-    }));
-    const ctx = document.getElementById("chart-7day-intake");
+    const monthSnaps = await loadMonthSnapshots(STATE.selectedMonth || _currentMonth());
+    const monthDays = monthSnaps
+      .map(s => ({ d: s.date, n: s.agg?.totals?.relations_support_intake_today }))
+      .filter(x => typeof x.n === "number");
+    const ctx = document.getElementById("chart-monthly-intake");
     if (!ctx) return;
-    if (STATE.charts["chart-7day-intake"]) STATE.charts["chart-7day-intake"].destroy();
-    STATE.charts["chart-7day-intake"] = new Chart(ctx, {
+    if (STATE.charts["chart-monthly-intake"]) STATE.charts["chart-monthly-intake"].destroy();
+    if (!monthDays.length) {
+      ctx.parentElement.innerHTML = `<div class="empty">No daily snapshots for ${esc(STATE.selectedMonth || _currentMonth())} yet.</div>`;
+      return;
+    }
+    STATE.charts["chart-monthly-intake"] = new Chart(ctx, {
       type: "bar",
       data: {
-        labels: last7.map(x => x.d),
+        labels: monthDays.map(x => x.d),
         datasets: [{
           label: "Records uploaded (whole table)",
-          data: last7.map(x => x.n ?? 0),
-          backgroundColor: last7.map(x => x.n == null ? "#cccccc" : "#3d63dd"),
+          data: monthDays.map(x => x.n),
+          backgroundColor: "#3d63dd",
         }],
       },
       options: {
@@ -2882,10 +2881,7 @@ PAGE_RENDERERS.intake = function () {
         maintainAspectRatio: false,
         plugins: {
           legend: { display: false },
-          tooltip: { callbacks: { label: c => {
-            const v = last7[c.dataIndex].n;
-            return v == null ? "no snapshot for this day" : v.toLocaleString() + " records";
-          }}},
+          tooltip: { callbacks: { label: c => monthDays[c.dataIndex].n.toLocaleString() + " records" } },
         },
       },
     });
@@ -3566,6 +3562,37 @@ function _enumerateDays(startISO, endISO) {
   while (d <= end) {
     out.push(d.toLocaleDateString("en-CA", { timeZone: "Africa/Nairobi" }));
     d.setDate(d.getDate() + 1);
+  }
+  return out;
+}
+
+// ----- Monthly range helpers (Month picker / monthly trend charts) ----------
+// Current calendar month in EAT, as "YYYY-MM".
+function _currentMonth() { return todayEat().slice(0, 7); }
+
+// Load every daily snapshot in calendar month `yyyymm` ("YYYY-MM") that exists.
+// Returns [{date, agg}] oldest->newest, ONLY for days that actually have a
+// snapshot — monthly charts show days with data, no empty padding. Reuses the
+// STATE.weeklySnapshots cache; today's day comes from STATE.todayV2 so the
+// in-progress day is always included.
+async function loadMonthSnapshots(yyyymm) {
+  STATE.weeklySnapshots = STATE.weeklySnapshots || {};
+  const today = todayEat();
+  const firstDay = `${yyyymm}-01`;
+  const [y, m] = yyyymm.split("-").map(Number);
+  // Date.UTC(y, m, 0) = day 0 of the next month index = last day of this month.
+  const lastOfMonth = new Date(Date.UTC(y, m, 0)).toISOString().slice(0, 10);
+  const endDay = lastOfMonth < today ? lastOfMonth : today;  // never fetch future days
+  if (endDay < firstDay) return [];                          // month is entirely in the future
+  const out = [];
+  for (const date of _enumerateDays(firstDay, endDay)) {
+    if (STATE.weeklySnapshots[date] === undefined) {
+      STATE.weeklySnapshots[date] =
+        (date === STATE.todayV2?.date) ? STATE.todayV2
+                                       : await readJson(`snapshots/${date}.json`);
+    }
+    const agg = STATE.weeklySnapshots[date];
+    if (agg) out.push({ date, agg });
   }
   return out;
 }
@@ -5029,6 +5056,13 @@ async function init() {
   }
   document.getElementById("todayBtn").style.display = "none";
   document.getElementById("historicalBadge").style.display = "none";
+  // Month picker — defaults to the current EAT month; keeps the user's pick across Refresh.
+  STATE.selectedMonth = STATE.selectedMonth || _currentMonth();
+  const mp = document.getElementById("viewMonth");
+  if (mp) {
+    mp.max   = _currentMonth();   // no future months
+    mp.value = STATE.selectedMonth;
+  }
 
   await computeStaleTasks();
   renderNav();
@@ -5194,6 +5228,15 @@ document.getElementById("viewDate").addEventListener("change", async (e) => {
 document.getElementById("todayBtn").addEventListener("click", async () => {
   setViewToToday();
   await computeStaleTasks();
+  rerenderCurrentPage();
+});
+
+// Month picker — re-render the current page so its monthly trend charts pick up
+// STATE.selectedMonth. Supabase data is unaffected; only snapshot-derived charts change.
+document.getElementById("viewMonth").addEventListener("change", (e) => {
+  const m = e.target.value;
+  if (!m) return;
+  STATE.selectedMonth = m;
   rerenderCurrentPage();
 });
 
