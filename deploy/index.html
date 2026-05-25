@@ -2790,6 +2790,11 @@ PAGE_RENDERERS.intake = function () {
       <div class="chart-wrap"><canvas id="chart-monthly-intake"></canvas></div>
       <div class="footer-note">Records uploaded per day for the month chosen in the Month picker above. Derived from daily snapshots in Supabase Storage; only days that have a snapshot are shown.</div>
     </div>
+    <div class="panel">
+      <h3>Records set to Valid per day <span class="meta">relations_support vs relations_io</span></h3>
+      <div class="chart-wrap"><canvas id="chart-valid-by-table"></canvas></div>
+      <div class="footer-note">Records whose Valid Selected Time fell on each day, per source table, for the month chosen in the Month picker above. From daily snapshots in Supabase Storage; only days that carry the per-table counts are shown (they accumulate from the day this feature shipped).</div>
+    </div>
   `;
 
   // Tasks panel
@@ -2882,6 +2887,47 @@ PAGE_RENDERERS.intake = function () {
         plugins: {
           legend: { display: false },
           tooltip: { callbacks: { label: c => monthDays[c.dataIndex].n.toLocaleString() + " records" } },
+        },
+      },
+    });
+  })();
+
+  // Records set to Valid per day, split by source table — totals.valid_today_support
+  // and totals.valid_today_io from the daily snapshots, for the month picked in the
+  // Month selector. Grouped bars (one per table per day). Only days whose snapshot
+  // carries the per-table counts are shown (they accumulate from when PR #99 shipped).
+  (async () => {
+    const monthSnaps = await loadMonthSnapshots(STATE.selectedMonth || _currentMonth());
+    const monthDays = monthSnaps
+      .map(s => ({
+        d:  s.date,
+        rs: s.agg?.totals?.valid_today_support,
+        io: s.agg?.totals?.valid_today_io,
+      }))
+      .filter(x => typeof x.rs === "number" || typeof x.io === "number");
+    const ctx = document.getElementById("chart-valid-by-table");
+    if (!ctx) return;
+    if (STATE.charts["chart-valid-by-table"]) STATE.charts["chart-valid-by-table"].destroy();
+    if (!monthDays.length) {
+      ctx.parentElement.innerHTML = `<div class="empty">No per-table Valid counts for ${esc(STATE.selectedMonth || _currentMonth())} yet — they accumulate from the day this feature shipped.</div>`;
+      return;
+    }
+    STATE.charts["chart-valid-by-table"] = new Chart(ctx, {
+      type: "bar",
+      data: {
+        labels: monthDays.map(x => x.d),
+        datasets: [
+          { label: "relations_support", data: monthDays.map(x => x.rs ?? 0), backgroundColor: "#3d63dd" },
+          { label: "relations_io",      data: monthDays.map(x => x.io ?? 0), backgroundColor: "#e8833a" },
+        ],
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        scales: { y: { beginAtZero: true, title: { display: true, text: "records set to Valid" } } },
+        plugins: {
+          legend: { display: true },
+          tooltip: { callbacks: { label: c => `${c.dataset.label}: ${(c.parsed.y || 0).toLocaleString()}` } },
         },
       },
     });
