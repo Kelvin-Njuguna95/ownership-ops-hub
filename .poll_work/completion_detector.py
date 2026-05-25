@@ -269,6 +269,8 @@ def build_sampling_row(rec, now_utc):
         "qa_assignee":        qa_assignee,
         "sampled_at":         now_utc.isoformat(),
         "raw_payload":        fields,
+        "assignee":           _name(fields.get(FLD_ASSIGNEE)),
+        "add_a_new_company":  fields.get(FLD_ADD_NEW_COMPANY),
     }
 
 
@@ -506,6 +508,48 @@ def supabase_insert_samplings(supabase_url, service_key, rows):
     return len(inserted)
 
 
+def supabase_stamp_reviewed(supabase_url, service_key, reviewed_updates, now_utc):
+    """Stamp reviewed_at + qa_status on ownership_qa_sampling rows whose record
+    now carries a QA verdict. ``reviewed_updates`` maps airtable_record_id ->
+    qa_status verdict ('approve' / 'changed').
+
+    First-write-wins: the PostgREST filter ``&reviewed_at=is.null`` means a row
+    already stamped is never re-stamped, so reviewed_at reflects the FIRST cycle
+    in which the detector observed the verdict. A record that has no sampling
+    row (e.g. first observed already complete) simply matches nothing — a
+    harmless no-op.
+
+    Batched PATCH grouped by verdict, mirroring supabase_insert_completions'
+    flow-upsert: ~2 verdict groups x chunks of 100 ids = a handful of calls.
+    Returns the count of rows newly stamped.
+    """
+    if not reviewed_updates:
+        return 0
+    from collections import defaultdict as _defaultdict
+
+    base = supabase_url.rstrip("/")
+    by_verdict = _defaultdict(list)
+    for rid, verdict in reviewed_updates.items():
+        by_verdict[verdict].append(rid)
+
+    stamped = 0
+    CHUNK = 100  # ~2KB URL with %2C-encoded commas; safely under PostgREST default
+    for verdict, rec_ids in by_verdict.items():
+        for i in range(0, len(rec_ids), CHUNK):
+            chunk = rec_ids[i:i + CHUNK]
+            ids_clause = ",".join(chunk)
+            patch_url = (f"{base}/rest/v1/ownership_qa_sampling"
+                         f"?airtable_record_id=in.({ids_clause})"
+                         f"&reviewed_at=is.null")
+            result = _sb_patch(
+                patch_url,
+                _sb_headers(service_key, {"Prefer": "return=representation"}),
+                {"reviewed_at": now_utc.isoformat(), "qa_status": verdict},
+            )
+            stamped += len(result)
+    return stamped
+
+
 def supabase_upsert_alerts(supabase_url, service_key, rows):
     """INSERT alerts (first-write-wins on first_seen_at) AND clear resolved_at
     on any existing alert that's still firing (was resolved, condition came back).
@@ -631,6 +675,7 @@ def main():
     completion_rows = []
     sampling_rows   = []
     alert_rows      = []
+    reviewed_updates = {}   # airtable_record_id -> qa_status verdict, for sampling-row stamping
     skipped         = {"skip": 0, "no_attribution": 0}
     by_class        = {"A": 0, "B": 0, "C": 0, "pre_flow": 0,
                        "missing_qa_assignee": 0, "missing_qa_status": 0}
@@ -638,6 +683,9 @@ def main():
 
     for rec in records:
         fields = rec.get("fields") or rec.get("cellValuesByFieldId") or {}
+        qa_status_now = _name(fields.get(FLD_QA_STATUS))
+        if qa_status_now:
+            reviewed_updates[rec["id"]] = qa_status_now
         target, detail, comp, samp, alert = route_record(rec, now_utc)
 
         # classify-target counters (unchanged semantics)
@@ -677,6 +725,7 @@ def main():
     # Write to the three tables.
     comp_result = supabase_insert_completions(supabase_url, service_key, completion_rows)
     samp_new    = supabase_insert_samplings(supabase_url, service_key, sampling_rows)
+    reviewed_stamped = supabase_stamp_reviewed(supabase_url, service_key, reviewed_updates, now_utc)
     alert_new, alert_reopened = supabase_upsert_alerts(supabase_url, service_key, alert_rows)
 
     # Resolve open alerts whose condition no longer applies.
@@ -691,7 +740,7 @@ def main():
           f"flow_upserted={comp_result['flow_upserted']} "
           f"dup_no_flow={comp_result['duplicates_no_flow']} "
           f"tagging_fill={tagging_fill}")
-    print(f"  qa_sampling:       new={samp_new}")
+    print(f"  qa_sampling:       new={samp_new} reviewed_stamped={reviewed_stamped}")
     print(f"  alerts:            "
           f"missing_qa_assignee={by_class['missing_qa_assignee']} "
           f"missing_qa_status={by_class['missing_qa_status']} "
