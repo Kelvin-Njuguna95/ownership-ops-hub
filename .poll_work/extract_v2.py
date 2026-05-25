@@ -42,6 +42,47 @@ FIELD_IDS = {
     "dead_vessel": "fldK9xjvBASgXIKlm",
 }
 
+# relations_io field IDs — the second ownership table (tblrOiHiLe2O3UhsE).
+# Same logical fields as FIELD_IDS above (identical Airtable display names),
+# different field IDs because every Airtable table has its own. Pass this map
+# to extract() for relations_io records: extract(rec, FIELD_IDS_IO). The keys
+# MUST stay identical to FIELD_IDS — the assert below enforces that.
+FIELD_IDS_IO = {
+    "imo": "fldsrPYBTN5qnN1WD",
+    "assignee": "fldVzGbUOqAu9myPx",
+    "qa_assignee": "fldMMB742oX3y6JCg",
+    "ww_qa_assignee": "fldptxztIyYuEgcpI",
+    "qa_status": "fldro2ZFZ7K4KJuZv",
+    "ww_qa": "fldHzp2fcpQcqrPjs",
+    "last_modified": "fld2M86MfuQaoGot8",
+    "last_modified_by": "fldr4iu3zwtOD70lK",
+    "start_tagging_date": "fld2CKyEYjaoJV5Vq",
+    "done_selected_time": "fldspS5VCZ4Ey1wxC",
+    "valid_selected_time": "fldHZIlbgc82c7tZE",
+    "qa_status_ts": "fldm64qFZdV0Rh0Wf",
+    "verification_status": "fld0n6efs9TOJGMV5",
+    "status": "fldcAT0WQ6KBreYcy",
+    "company_id_and_name": "fldchKXJ2l2RzQuSm",
+    "company_id_lookup": "flda6G9hPxEdVLiWW",
+    "company_name_lookup": "fldcAIQAjopSgFWhl",
+    "is_change": "fldbtwqh83q3IlqGT",
+    "created": "fld9cWZGNsRGIw8iQ",
+    "comment": "fldtCi0oYQjhAv8UY",
+    "reminder": "fldNEbP1l1dVrX8z3",
+    "source_flow": "fldrxIhbUdhwkoyuB",
+    "add_new_company": "fldgnOTzwo7VkvEjX",
+    "requested_by": "fldnkt2u2LGVTc0eY",
+    "valid_done_by_bo": "fldni1nYwlX8EPiyf",
+    "role": "fldp6WkTDhUldOIIF",
+    "start_date": "fldWiBQJ2XiLppoYM",
+    "dead_vessel": "fldSxRSQ3IBFgPil1",
+}
+
+# The two field-ID maps must expose exactly the same logical fields — extract()
+# is written against one set of keys. This fails fast at import if they drift.
+assert set(FIELD_IDS_IO) == set(FIELD_IDS), \
+    "FIELD_IDS_IO drifted from FIELD_IDS — the two maps must have identical keys"
+
 # verification_status choice 'Selected for BO QA ' has a trailing space — preserve exactly.
 SELECTED_FOR_BO_QA = "Selected for BO QA "
 SELECTED_FOR_WW_QA = "Selected for WW QA"
@@ -134,7 +175,7 @@ def _id(val):
     return None
 
 
-def extract(rec):
+def extract(rec, field_ids=FIELD_IDS):
     """Flatten an Airtable record into a dict with stable keys.
 
     Accepts both record shapes:
@@ -149,7 +190,7 @@ def extract(rec):
     for the checkbox fields). Garbage values on role/status are mapped to None.
     """
     c = (rec.get("cellValuesByFieldId") or rec.get("fields") or {})
-    F = FIELD_IDS
+    F = field_ids  # FIELD_IDS (relations_support) by default; pass FIELD_IDS_IO for relations_io
 
     # Multi-assignee — list under both shapes, but element type differs
     # (dict for collaborators in both, string only in some lookup shapes).
