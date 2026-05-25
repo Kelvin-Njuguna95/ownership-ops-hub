@@ -2338,9 +2338,13 @@ PAGE_RENDERERS.boqa = function () {
       <div id="boqaReviewerLoad"></div>
       <div class="footer-note">Coverage % = reviewed today / assigned. Sustained low coverage on heavily-assigned reviewers = bottleneck.</div>
     </div>
+      <div id="boqaBacklogTeam"></div>
+      <div id="boqaBacklogQa"></div>
+      <div id="boqaTurnaround"></div>
   `;
   renderQaReviewerLoad();
   renderBoqa7Day();  // async — fills the team scoreboard, agent leaderboard and heatmap
+  renderQaBacklogSla();   // async — fills the backlog + turnaround panels
 };
 
 // 7-day QA window: sum qa_inspected_today / qa_changed_today (reviews are bucketed
@@ -2518,6 +2522,235 @@ function renderQaReviewerLoad() {
   root.innerHTML = `<table>
     <thead><tr><th>Reviewer</th><th class="right">Assigned (BO QA queue)</th><th class="right">Reviewed today</th><th class="right">Coverage %</th></tr></thead>
     <tbody>${body}</tbody></table>`;
+}
+
+// ============================================================================
+//  BO QA Console — backlog & review-turnaround panels (PR #89).
+//  Reads ownership_qa_sampling, enriched by PR #88 with reviewed_at, qa_status,
+//  add_a_new_company and assignee. Pending = reviewed_at NULL; breached = a
+//  pending row older than 24h; turnaround = reviewed_at − sampled_at. Reads
+//  paginate via .range() (CLAUDE.md: a bare .limit silently caps at 1000).
+// ============================================================================
+const QA_SLA_HOURS = 24;
+
+async function loadQaSampling() {
+  // Union (deduped by airtable_record_id) of two paginated reads:
+  //   1. every still-pending row (reviewed_at NULL), however old — the backlog;
+  //   2. the last 8 days of rows — the turnaround history.
+  // Returns { rows, error:false } on success, or { rows:null, error:true } if a
+  // query fails (e.g. PR #88's migration hasn't run so the columns are absent).
+  // Ordered by the unique airtable_record_id so .range() pagination can't skip
+  // or duplicate across a page boundary — a whole poll cycle shares one
+  // sampled_at value, so ordering by sampled_at would tie across a 1000-row edge.
+  const COLS = "airtable_record_id,qa_assignee,assignee,add_a_new_company,imo,role,sampled_at,reviewed_at,qa_status";
+  const eightDaysAgoIso = new Date(Date.now() - 8 * 86400000).toISOString();
+  const byId = new Map();
+
+  async function pageAll(makeQuery, tag) {
+    for (let page = 0; page < 50; page++) {
+      const { data, error } = await makeQuery()
+        .order("airtable_record_id", { ascending: true })
+        .range(page * 1000, page * 1000 + 999);
+      if (error) { console.error("loadQaSampling " + tag + ":", error); return false; }
+      if (!data || !data.length) break;
+      for (const r of data) byId.set(r.airtable_record_id, r);
+      if (data.length < 1000) break;
+    }
+    return true;
+  }
+
+  if (!(await pageAll(() => sb.from("ownership_qa_sampling").select(COLS).is("reviewed_at", null), "pending")))
+    return { rows: null, error: true };
+  if (!(await pageAll(() => sb.from("ownership_qa_sampling").select(COLS).gte("sampled_at", eightDaysAgoIso), "recent")))
+    return { rows: null, error: true };
+
+  return { rows: [...byId.values()], error: false };
+}
+
+async function renderQaBacklogSla() {
+  const elTeam = document.getElementById("boqaBacklogTeam");
+  const elQa   = document.getElementById("boqaBacklogQa");
+  const elTat  = document.getElementById("boqaTurnaround");
+  if (!elTeam || !elQa || !elTat) return;
+
+  const { rows, error } = await loadQaSampling();
+  if (error || !rows) {
+    const msg = `<div class="panel"><div class="empty">QA turnaround data isn't available yet — PR #88 must be merged and its migration run first.</div></div>`;
+    elTeam.innerHTML = msg; elQa.innerHTML = msg; elTat.innerHTML = msg;
+    return;
+  }
+
+  const now = Date.now();
+  const ageH = (iso) => (now - new Date(iso).getTime()) / 3600000;
+  const isNewCo = (r) => !!(r.add_a_new_company && String(r.add_a_new_company).trim());
+  const pending = rows.filter(r => !r.reviewed_at);
+
+  // ---- Panel A — Backlog by Team (pending rows, grouped by the tagger's team) ----
+  const teamGroups = {};
+  for (const r of pending) {
+    const team = teamForAgent(canonicalAgent(r.assignee)) || "(unknown)";
+    const g = (teamGroups[team] = teamGroups[team] || { key: team, count: 0, newCo: 0, breached: 0, oldest: 0 });
+    g.count++;
+    if (isNewCo(r)) g.newCo++;
+    const a = ageH(r.sampled_at);
+    if (a > QA_SLA_HOURS) g.breached++;
+    if (a > g.oldest) g.oldest = a;
+  }
+  elTeam.innerHTML = backlogPanelHtml(
+    "Backlog by team", "pending BO QA · grouped by tagger's team", "Team", "In BO QA",
+    Object.values(teamGroups).sort((x, y) => y.count - x.count), "All teams", false);
+
+  // ---- Panel B — Backlog by QA (pending rows, grouped by qa_assignee) ----
+  const qaGroups = {};
+  for (const r of pending) {
+    const qa = canonicalAgent(r.qa_assignee) || "(unassigned)";
+    const g = (qaGroups[qa] = qaGroups[qa] || { key: qa, count: 0, newCo: 0, breached: 0, oldest: 0 });
+    g.count++;
+    if (isNewCo(r)) g.newCo++;
+    const a = ageH(r.sampled_at);
+    if (a > QA_SLA_HOURS) g.breached++;
+    if (a > g.oldest) g.oldest = a;
+  }
+  elQa.innerHTML = backlogPanelHtml(
+    "Backlog by QA", "pending BO QA · per reviewer", "QA", "Pending",
+    Object.values(qaGroups).sort((x, y) => y.count - x.count), "All QAs", true);
+
+  // ---- Panel C — Review Turnaround (SLA) ----
+  // yesterday (EAT) = todayEat() minus one day.
+  const ydt = new Date(todayEat() + "T00:00:00+03:00");
+  ydt.setDate(ydt.getDate() - 1);
+  const yesterday = ydt.toLocaleDateString("en-CA", { timeZone: "Africa/Nairobi" });
+
+  // Classify a row within its cohort: "ontime" | "late" | "pending".
+  const classifyRow = (r) => {
+    if (!r.reviewed_at) return "pending";
+    const tat = (new Date(r.reviewed_at).getTime() - new Date(r.sampled_at).getTime()) / 3600000;
+    return tat > QA_SLA_HOURS ? "late" : "ontime";
+  };
+  const cohortStats = (eatDay) => {
+    const st = { set: 0, ontime: 0, late: 0, pending: 0 };
+    for (const r of rows) {
+      if (eatDate(r.sampled_at) !== eatDay) continue;
+      st.set++; st[classifyRow(r)]++;
+    }
+    return st;
+  };
+  const onTimePct = (st) => st.set > 0 ? Math.round((st.ontime / st.set) * 100) : 0;
+  const pctCls = (p) => p >= 80 ? "good" : p >= 60 ? "warn" : "bad";
+
+  // KPI row for yesterday's cohort (or a plain note if yesterday was empty).
+  const yst = cohortStats(yesterday);
+  let kpiHtml;
+  if (yst.set === 0) {
+    kpiHtml = `<div class="empty">No records were set for BO QA yesterday (${esc(shortDate(yesterday))}) — nothing to review.</div>`;
+  } else {
+    const p = onTimePct(yst);
+    kpiHtml = `<div class="kpis">
+      <div class="kpi"><div class="label">Records set for QA</div><div class="value">${yst.set}</div><div class="delta">yesterday · ${esc(shortDate(yesterday))}</div></div>
+      <div class="kpi"><div class="label">Reviewed on time</div><div class="value">${yst.ontime}</div><div class="delta">≤24h turnaround</div></div>
+      <div class="kpi"><div class="label">Reviewed late</div><div class="value">${yst.late}</div><div class="delta">&gt;24h turnaround</div></div>
+      <div class="kpi"><div class="label">Still pending</div><div class="value">${yst.pending}</div><div class="delta">not yet reviewed</div></div>
+      <div class="kpi ${pctCls(p)}"><div class="label">On-time %</div><div class="value">${p}%</div><div class="delta">on time ÷ set</div></div>
+    </div>`;
+  }
+
+  // Per-QA table for yesterday's cohort.
+  const qaCohort = {};
+  for (const r of rows) {
+    if (eatDate(r.sampled_at) !== yesterday) continue;
+    const qa = canonicalAgent(r.qa_assignee) || "(unassigned)";
+    const g = (qaCohort[qa] = qaCohort[qa] || { qa, set: 0, ontime: 0, late: 0, pending: 0 });
+    g.set++; g[classifyRow(r)]++;
+  }
+  const qaCohortRows = Object.values(qaCohort).sort((x, y) => y.set - x.set);
+  const perQaHtml = qaCohortRows.length === 0 ? "" :
+    `<h4 style="font-size:13px;color:var(--muted);margin:14px 0 6px">By QA — yesterday's cohort (${esc(shortDate(yesterday))})</h4>
+    <table>
+      <thead><tr><th>QA</th><th class="right">Set</th><th class="right">On time</th><th class="right">Late</th><th class="right">Still pending</th><th class="right">On-time %</th></tr></thead>
+      <tbody>${qaCohortRows.map(g => {
+        const p = onTimePct(g);
+        return `<tr>
+          <td>${esc(g.qa)}</td>
+          <td class="right">${g.set}</td>
+          <td class="right">${g.ontime}</td>
+          <td class="right">${g.late}</td>
+          <td class="right">${g.pending}</td>
+          <td class="right"><span class="pill-inline ${p >= 80 ? "good" : "warn"}">${p}%</span></td>
+        </tr>`;
+      }).join("")}</tbody>
+    </table>`;
+
+  // 7-day on-time % strip — oldest → newest, matching renderBoqa7Day's window/heatmap.
+  const anchor = STATE.v2?.date || todayEat();
+  const stripDays = [];
+  for (let i = 6; i >= 0; i--) {
+    const dt = new Date(anchor + "T00:00:00+03:00");
+    dt.setDate(dt.getDate() - i);
+    stripDays.push(dt.toLocaleDateString("en-CA", { timeZone: "Africa/Nairobi" }));
+  }
+  const stripHeader = `<div class="header"></div>` + stripDays.map(d => `<div class="header">${esc(shortDate(d))}</div>`).join("");
+  const stripCells = stripDays.map(d => {
+    const st = cohortStats(d);
+    if (st.set === 0) return `<div class="cell z" title="${esc(d)}: no cohort">—</div>`;
+    const p = onTimePct(st);
+    const alpha = (0.25 + 0.75 * (p / 100)).toFixed(2);   // greener = better (inverse of the reject heatmap)
+    return `<div class="cell" style="background:rgba(34,134,58,${alpha})" title="${esc(d)}: ${st.ontime}/${st.set} on time · ${st.pending} pending">${p}%</div>`;
+  }).join("");
+  const stripHtml = `<h4 style="font-size:13px;color:var(--muted);margin:14px 0 6px">7-day on-time % <span class="meta">per cohort date · on time ÷ records set</span></h4>
+    <div class="heatmap" style="grid-template-columns: 90px repeat(7, minmax(40px, 1fr));">${stripHeader}<div class="label">On-time %</div>${stripCells}</div>`;
+
+  // Oldest open breaches — top 10 oldest pending rows past 24h, so they can be chased.
+  const breaches = pending
+    .filter(r => ageH(r.sampled_at) > QA_SLA_HOURS)
+    .sort((a, b) => ageH(b.sampled_at) - ageH(a.sampled_at))
+    .slice(0, 10);
+  const breachesHtml = `<h4 style="font-size:13px;color:var(--muted);margin:14px 0 6px">Oldest open breaches <span class="meta">pending &gt;24h · chase these</span></h4>` +
+    (breaches.length === 0 ? `<div class="empty">No open breaches — every pending record is under 24h.</div>` : `<table>
+      <thead><tr><th>QA</th><th>IMO</th><th>Role</th><th class="right">Age</th></tr></thead>
+      <tbody>${breaches.map(r => `<tr>
+        <td>${esc(canonicalAgent(r.qa_assignee) || "(unassigned)")}</td>
+        <td>${esc(r.imo ?? "—")}</td>
+        <td>${esc(r.role ?? "—")}</td>
+        <td class="right"><span class="pill-inline bad">${esc(formatDuration(ageH(r.sampled_at)))}</span></td>
+      </tr>`).join("")}</tbody>
+    </table>`);
+
+  elTat.innerHTML = `<div class="panel">
+    <h3>Review turnaround (SLA) <span class="meta">24h target · yesterday's cohort</span></h3>
+    ${kpiHtml}
+    ${perQaHtml}
+    ${stripHtml}
+    ${breachesHtml}
+    <div class="footer-note">On time = reviewed within 24h of being set for BO QA. Breached = a record still pending after 24h. Turnaround is a flat 24-hour clock, including weekends. Recent days show a lower on-time % while their reviews are still pending — expected.</div>
+  </div>`;
+}
+
+// Shared markup for the two backlog tables (Panel A / Panel B). ``rows`` are
+// {key, count, newCo, breached, oldest}; ``flagBreached`` flags rows whose
+// breached count is non-zero with the warn pill (Panel B). A totals row lets
+// the two panels be cross-checked — same pending set, grouped two ways.
+function backlogPanelHtml(title, meta, keyHead, countHead, rows, totalLabel, flagBreached) {
+  if (rows.length === 0) {
+    return `<div class="panel"><h3>${esc(title)} <span class="meta">${esc(meta)}</span></h3><div class="empty">Nothing pending in BO QA.</div></div>`;
+  }
+  const tot = rows.reduce((s, g) => ({ count: s.count + g.count, newCo: s.newCo + g.newCo, breached: s.breached + g.breached }),
+                          { count: 0, newCo: 0, breached: 0 });
+  const breachCell = (n) => n ? `<span class="pill-inline ${flagBreached ? "warn" : "bad"}">${n}</span>` : "0";
+  const body = rows.map(g => `<tr>
+      <td>${esc(g.key)}</td>
+      <td class="right">${g.count.toLocaleString()}</td>
+      <td class="right">${g.newCo.toLocaleString()}</td>
+      <td class="right">${esc(formatDuration(g.oldest))}</td>
+      <td class="right">${breachCell(g.breached)}</td>
+    </tr>`).join("");
+  return `<div class="panel">
+    <h3>${esc(title)} <span class="meta">${esc(meta)}</span></h3>
+    <table>
+      <thead><tr><th>${esc(keyHead)}</th><th class="right">${esc(countHead)}</th><th class="right">New-company</th><th class="right">Oldest waiting</th><th class="right">Breached (&gt;24h)</th></tr></thead>
+      <tbody>${body}</tbody>
+      <tfoot><tr><td><strong>${esc(totalLabel)}</strong></td><td class="right"><strong>${tot.count.toLocaleString()}</strong></td><td class="right"><strong>${tot.newCo.toLocaleString()}</strong></td><td class="right">—</td><td class="right"><strong>${tot.breached.toLocaleString()}</strong></td></tr></tfoot>
+    </table>
+  </div>`;
 }
 
 // -------- Daily Intake & Assignments --------
