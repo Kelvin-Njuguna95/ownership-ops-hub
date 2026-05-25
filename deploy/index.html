@@ -1008,7 +1008,7 @@ PAGE_RENDERERS.overview = function () {
         <div class="value">${(t.relations_support_intake_today || 0).toLocaleString()}</div>
         <div class="delta">relations_support intake — all assignees</div></div>
       <div class="kpi"><div class="label">Tagged today (5 teams)</div><div class="value">${t.tagged_today || 0}</div></div>
-      <div class="kpi"><div class="label">Done today (5 teams)</div><div class="value">${t.done_today || 0}</div></div>
+      <div class="kpi"><div class="label">Set to Valid today</div><div class="value">${(t.valid_today_support || 0) + (t.valid_today_io || 0)}</div><div class="delta">relations_support + relations_io · whole table</div></div>
       <div class="kpi"><div class="label">Assigned &amp; waiting</div><div class="value">${(t.counts_by_verification_status?.waiting || 0).toLocaleString()}</div><div class="delta">assigned, not yet started</div></div>
       <div class="kpi ${(STATE.v2?.tasks_all || []).some(t => (t.flags || []).includes("stale-24h")) ? 'bad' : ''}"><div class="label">Stale assigned tasks</div><div class="value">${STATE.staleCompareDate ? (STATE.v2?.tasks_all || []).filter(t => (t.flags || []).includes("stale-24h")).length : "—"}</div><div class="delta">${STATE.staleCompareDate ? "no progress in 24h+" : "needs 24h of snapshot history"}</div></div>
       <div class="kpi secondary"><div class="label">Unique IMOs (cache)</div><div class="value">${(t.unique_imos || 0).toLocaleString()}</div><div class="delta">distinct vessels in window</div></div>
