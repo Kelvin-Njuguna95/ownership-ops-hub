@@ -16,16 +16,15 @@
     },
     "Nyati": {
       "qa": {
-        "name": "Stephen Kimari",
-        "email": "stephenkimari@impactoutsourcing.co.ke"
+        "name": "Flavian Etyang"
       },
       "ww_qa": null,
       "members": [
         { "name": "Lewis Nganga" },
-        { "name": "Flavian Etyang" },
         { "name": "Anne Nzisa" },
         { "name": "Annabel Grace", "aliases": ["Annabel Muriithi"] },
-        { "name": "Beatrice Mutheu" }
+        { "name": "Beatrice Mutheu" },
+        { "name": "Faith Owino" }
       ]
     },
     "Kobe": {
@@ -55,10 +54,10 @@
       "qa": { "name": "Selah Nabiswa" },
       "ww_qa": null,
       "members": [
-        { "name": "Wilson Karani" },
         { "name": "James Maina", "aliases": ["JAMES MAINA"] },
         { "name": "Hellen Vigehi" },
-        { "name": "Elvis Mwanzia" }
+        { "name": "Elvis Mwanzia" },
+        { "name": "Winnie Mwongela" }
       ]
     }
   }
