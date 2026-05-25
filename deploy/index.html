@@ -224,9 +224,9 @@
   .heatmap .cell, .hourly-heatmap .cell { padding: 5px 4px; text-align: center; border-radius: 4px; min-height: 24px; font-weight: 500; color: #fff; }
   .heatmap .label, .hourly-heatmap .label { background: transparent; color: var(--ink); text-align: left; padding: 5px 6px; font-weight: 500; white-space: nowrap; }
   .heatmap .header, .hourly-heatmap .header { background: transparent; color: var(--muted); text-align: center; font-size: 10px; padding: 4px; }
-  .heatmap .cell.z, .hourly-heatmap .cell.z { background: #eceef2; color: #aab0bd; }
-  .hourly-team-label { background: #181a20; color: #fff; padding: 5px 10px; font-weight: 600; font-size: 11px; text-transform: uppercase; letter-spacing: 0.04em; }
-  .hourly-team-fill { background: #181a20; }
+  .heatmap .cell.z, .hourly-heatmap .cell.z { background: var(--soft); color: var(--muted); }
+  .hourly-team-label { background: var(--accent-soft); color: var(--accent); padding: 5px 10px; font-weight: 600; font-size: 11px; text-transform: uppercase; letter-spacing: 0.04em; }
+  .hourly-team-fill { background: var(--accent-soft); }
   .hourly-spacer { grid-column: 1 / -1; height: 6px; }
 
   /* Tasks page */
@@ -1596,7 +1596,7 @@ function renderAgentBody(agentName) {
     const v = counts[i];
     if (v === 0) return `<div class="cell z" title="${h}:00 EAT">0</div>`;
     const alpha = (0.2 + 0.8 * (v / max)).toFixed(2);
-    return `<div class="cell" style="background:rgba(20,80,179,${alpha});" title="${h}:00 EAT → ${v} records">${v}</div>`;
+    return `<div class="cell" style="background:rgba(123,104,238,${alpha});" title="${h}:00 EAT → ${v} records">${v}</div>`;
   }).join("");
   const headers = hours.map(h => `<div class="header">${h}</div>`).join("");
   const total = counts.reduce((a, b) => a + b, 0);
@@ -2109,6 +2109,19 @@ PAGE_RENDERERS.hourly = function () {
   const opts = `<option value="__all__"${selected === "__all__" ? " selected" : ""}>All teams</option>`
     + teams.map(t => `<option value="${esc(t)}"${selected === t ? " selected" : ""}>${esc(t)}</option>`).join("");
   const date = STATE.v2?.date || "—";
+  const hourlyAgentCount = teams.reduce((s, tm) => s + ((STATE.roster?.[tm]?.members || []).length), 0);
+  const pageHeadHtml = `
+    <div class="page-head">
+      <div class="page-eyebrow">Ownership QA &middot; ${esc(date)} &middot; Tagging cadence</div>
+      <h1 class="page-title">Hourly <em>output</em></h1>
+      <div class="page-subtitle">
+        <span class="num">${hourlyAgentCount}</span> agents
+        <span class="dot-sep">&middot;</span>
+        <span class="num">${teams.length}</span> teams
+        <span class="dot-sep">&middot;</span>
+        waiting &rarr; tagged transitions by EAT hour
+      </div>
+    </div>`;
 
   // Empty-state diagnostic: completion_detector.py writes to
   // ownership_completions on every poll cycle. If the table has zero rows
@@ -2137,15 +2150,15 @@ PAGE_RENDERERS.hourly = function () {
     return;
   }
 
-  root.innerHTML = `
+  root.innerHTML = pageHeadHtml + `
     <div class="controls-row">
       <label class="small-mono">Team:</label>
       <select id="hourlyTeamSelect">${opts}</select>
-      <span class="small-mono">Hourly Tagging Output by Agent — ${esc(date)}</span>
       <button id="hourlyRefreshBtn" class="small-mono" style="margin-left:auto; padding:4px 10px; cursor:pointer; border:1px solid var(--border); background:var(--surface); border-radius:3px;">↻ Refresh</button>
       <span id="hourlyRefreshTs" class="small-mono" style="color:var(--muted);"></span>
     </div>
     <div class="panel">
+      <h3>Per-agent &middot; per-hour heatmap <span class="meta">waiting &rarr; tagged transitions &middot; 06:00&ndash;23:00 EAT</span></h3>
       <div id="hourlyGrid"></div>
       <div class="footer-note">Cells = records each agent moved waiting→tagged during that EAT hour (source: <code>ownership_completions</code>, bucketed by detector observation time — accurate to ≈5 min at the 5-min poll cadence). The Total covers all 24 hours; the grid shows the 06:00–23:00 business window (* = the agent also has rows tagged outside it, e.g. overnight). Data auto-refreshes when the browser tab regains focus; tap Refresh to fetch immediately.</div>
     </div>`;
@@ -2209,7 +2222,7 @@ function renderHourlyGrid(filterTeam) {
   const cellHtml = (v, h, scale) => {
     if (v === 0) return `<div class="cell z" title="${h}:00 EAT">0</div>`;
     const alpha = scale === 0 ? 0 : (0.2 + 0.8 * (v / scale)).toFixed(2);
-    return `<div class="cell" style="background:rgba(20,80,179,${alpha});" title="${h}:00 EAT → ${v}">${v}</div>`;
+    return `<div class="cell" style="background:rgba(123,104,238,${alpha});" title="${h}:00 EAT → ${v}">${v}</div>`;
   };
   const headers = hours.map(h => `<div class="header">${h}</div>`).join("");
 
@@ -2228,7 +2241,7 @@ function renderHourlyGrid(filterTeam) {
     html += `<div class="label">${esc(r.name)}</div>`;
     html += r.counts.map((v, i) => cellHtml(v, hours[i], gridMax)).join("");
     const outTip = r.outside > 0 ? ` title="includes ${r.outside} record${r.outside === 1 ? "" : "s"} tagged outside 06:00–23:00 EAT"` : "";
-    html += `<div class="cell" style="background:#f0eee8;color:#1a1a1a;font-weight:600;"${outTip}>${r.total}${r.outside > 0 ? "*" : ""}</div>`;
+    html += `<div class="cell" style="background:var(--soft);color:var(--ink);font-weight:600;"${outTip}>${r.total}${r.outside > 0 ? "*" : ""}</div>`;
   }
   // Footer "All agents" sum row
   html += `<div class="hourly-spacer"></div>`;
@@ -2237,10 +2250,10 @@ function renderHourlyGrid(filterTeam) {
     if (v === 0) return `<div class="cell z" title="${hours[i]}:00 EAT total">0</div>`;
     const colMax = Math.max(1, ...colSums);
     const alpha = (0.2 + 0.8 * (v / colMax)).toFixed(2);
-    return `<div class="cell" style="background:rgba(31,111,44,${alpha});" title="${hours[i]}:00 EAT total → ${v}">${v}</div>`;
+    return `<div class="cell" style="background:rgba(14,165,108,${alpha});" title="${hours[i]}:00 EAT total → ${v}">${v}</div>`;
   }).join("");
   const grandTip = grandOutside > 0 ? ` title="includes ${grandOutside} record${grandOutside === 1 ? "" : "s"} tagged outside 06:00–23:00 EAT"` : "";
-  html += `<div class="cell" style="background:#1a1a1a;color:#fff;font-weight:600;"${grandTip}>${grand}${grandOutside > 0 ? "*" : ""}</div>`;
+  html += `<div class="cell" style="background:var(--accent);color:#fff;font-weight:600;"${grandTip}>${grand}${grandOutside > 0 ? "*" : ""}</div>`;
 
   document.getElementById("hourlyGrid").innerHTML = `
     <div class="hourly-heatmap" style="grid-template-columns: 180px repeat(${hours.length}, 1fr) 70px;">
@@ -2314,7 +2327,7 @@ function renderQaHourlyGrid() {
   const cellHtml = (v, h, scale) => {
     if (v === 0) return `<div class="cell z" title="${h}:00 EAT">0</div>`;
     const alpha = scale === 0 ? 0 : (0.2 + 0.8 * (v / scale)).toFixed(2);
-    return `<div class="cell" style="background:rgba(20,80,179,${alpha});" title="${h}:00 EAT → ${v}">${v}</div>`;
+    return `<div class="cell" style="background:rgba(123,104,238,${alpha});" title="${h}:00 EAT → ${v}">${v}</div>`;
   };
   const headers = hours.map(h => `<div class="header">${h}</div>`).join("");
 
@@ -2323,7 +2336,7 @@ function renderQaHourlyGrid() {
     html += `<div class="label">${esc(r.name)}</div>`;
     html += r.counts.map((v, i) => cellHtml(v, hours[i], gridMax)).join("");
     const outTip = r.outside > 0 ? ` title="includes ${r.outside} review${r.outside === 1 ? "" : "s"} stamped outside 06:00–23:00 EAT"` : "";
-    html += `<div class="cell" style="background:#f0eee8;color:#1a1a1a;font-weight:600;"${outTip}>${r.total}${r.outside > 0 ? "*" : ""}</div>`;
+    html += `<div class="cell" style="background:var(--soft);color:var(--ink);font-weight:600;"${outTip}>${r.total}${r.outside > 0 ? "*" : ""}</div>`;
   }
   // Footer "All QAs" sum row
   html += `<div class="hourly-spacer"></div>`;
@@ -2332,10 +2345,10 @@ function renderQaHourlyGrid() {
     if (v === 0) return `<div class="cell z" title="${hours[i]}:00 EAT total">0</div>`;
     const colMax = Math.max(1, ...colSums);
     const alpha = (0.2 + 0.8 * (v / colMax)).toFixed(2);
-    return `<div class="cell" style="background:rgba(31,111,44,${alpha});" title="${hours[i]}:00 EAT total → ${v}">${v}</div>`;
+    return `<div class="cell" style="background:rgba(14,165,108,${alpha});" title="${hours[i]}:00 EAT total → ${v}">${v}</div>`;
   }).join("");
   const grandTip = grandOutside > 0 ? ` title="includes ${grandOutside} review${grandOutside === 1 ? "" : "s"} stamped outside 06:00–23:00 EAT"` : "";
-  html += `<div class="cell" style="background:#1a1a1a;color:#fff;font-weight:600;"${grandTip}>${grand}${grandOutside > 0 ? "*" : ""}</div>`;
+  html += `<div class="cell" style="background:var(--accent);color:#fff;font-weight:600;"${grandTip}>${grand}${grandOutside > 0 ? "*" : ""}</div>`;
 
   document.getElementById("qaHourlyGrid").innerHTML = `
     <div class="hourly-heatmap" style="grid-template-columns: 180px repeat(${hours.length}, 1fr) 70px;">
@@ -2381,7 +2394,7 @@ function renderCompaniesHourlyGrid() {
   const cellHtml = (v, h, scale) => {
     if (v === 0) return `<div class="cell z" title="${h}:00 EAT">0</div>`;
     const alpha = scale === 0 ? 0 : (0.2 + 0.8 * (v / scale)).toFixed(2);
-    return `<div class="cell" style="background:rgba(20,80,179,${alpha});" title="${h}:00 EAT → ${v}">${v}</div>`;
+    return `<div class="cell" style="background:rgba(123,104,238,${alpha});" title="${h}:00 EAT → ${v}">${v}</div>`;
   };
   const headers = hours.map(h => `<div class="header">${h}</div>`).join("");
 
@@ -2390,7 +2403,7 @@ function renderCompaniesHourlyGrid() {
     html += `<div class="label">${esc(r.name)}</div>`;
     html += r.counts.map((v, i) => cellHtml(v, hours[i], gridMax)).join("");
     const outTip = r.outside > 0 ? ` title="includes ${r.outside} compan${r.outside === 1 ? "y" : "ies"} created outside 06:00–23:00 EAT"` : "";
-    html += `<div class="cell" style="background:#f0eee8;color:#1a1a1a;font-weight:600;"${outTip}>${r.total}${r.outside > 0 ? "*" : ""}</div>`;
+    html += `<div class="cell" style="background:var(--soft);color:var(--ink);font-weight:600;"${outTip}>${r.total}${r.outside > 0 ? "*" : ""}</div>`;
   }
   // Footer "All creators" sum row
   html += `<div class="hourly-spacer"></div>`;
@@ -2399,10 +2412,10 @@ function renderCompaniesHourlyGrid() {
     if (v === 0) return `<div class="cell z" title="${hours[i]}:00 EAT total">0</div>`;
     const colMax = Math.max(1, ...colSums);
     const alpha = (0.2 + 0.8 * (v / colMax)).toFixed(2);
-    return `<div class="cell" style="background:rgba(31,111,44,${alpha});" title="${hours[i]}:00 EAT total → ${v}">${v}</div>`;
+    return `<div class="cell" style="background:rgba(14,165,108,${alpha});" title="${hours[i]}:00 EAT total → ${v}">${v}</div>`;
   }).join("");
   const grandTip = grandOutside > 0 ? ` title="includes ${grandOutside} compan${grandOutside === 1 ? "y" : "ies"} created outside 06:00–23:00 EAT"` : "";
-  html += `<div class="cell" style="background:#1a1a1a;color:#fff;font-weight:600;"${grandTip}>${grand}${grandOutside > 0 ? "*" : ""}</div>`;
+  html += `<div class="cell" style="background:var(--accent);color:#fff;font-weight:600;"${grandTip}>${grand}${grandOutside > 0 ? "*" : ""}</div>`;
 
   document.getElementById("companiesHourlyGrid").innerHTML = `
     <div class="hourly-heatmap" style="grid-template-columns: 180px repeat(${hours.length}, 1fr) 70px;">
@@ -5273,7 +5286,7 @@ async function renderCaseTrendHeatmap() {
       const v = s.cd[c] || 0;
       if (v === 0) return `<div class="cell z" title="${esc(c)} · ${esc(s.d)}: 0">0</div>`;
       const alpha = (0.2 + 0.8 * (v / max)).toFixed(2);
-      return `<div class="cell" style="background:rgba(20,80,179,${alpha})" title="${esc(c)} · ${esc(s.d)}: ${v}">${v}</div>`;
+      return `<div class="cell" style="background:rgba(123,104,238,${alpha})" title="${esc(c)} · ${esc(s.d)}: ${v}">${v}</div>`;
     }).join("");
     return `<div class="label">${esc(c)}</div>${cells}`;
   }).join("");
