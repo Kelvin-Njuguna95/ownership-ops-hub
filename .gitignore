@@ -14,6 +14,7 @@ ww_audit_log.json
 .poll_work/qa_reviewed_today_p*.json
 .poll_work/ww_qa_backlog_p*.json
 .poll_work/companies_today_p*.json
+.poll_work/*_io_p*.json
 .poll_work/snapshots/
 .poll_work/.dashboard_pid
 .poll_work/.dashboard_server.log
