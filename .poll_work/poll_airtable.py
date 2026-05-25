@@ -11,6 +11,7 @@ Outputs:
   .poll_work/recent_p*.json   — Fetch A (ownership-team work, past 24h)
   .poll_work/intake_p*.json   — Fetch B (today's table intake)
   .poll_work/boqa_p*.json     — Fetch C (current BO QA queue)
+  .poll_work/*_io_p*.json     — Fetches A-G repeated against the relations_io table
 
 Airtable is strictly read-only — this script only issues GET requests.
 Designed to run in CI: reads ``AIRTABLE_PAT`` from env, exits non-zero
@@ -35,6 +36,11 @@ TABLE_ID = "tblpj9aJP4ExhYCZF"
 API_URL  = f"https://api.airtable.com/v0/{BASE_ID}/{TABLE_ID}"
 COMPANIES_TABLE_ID = "tbl7U8RQM71Yil652"
 COMPANIES_URL      = f"https://api.airtable.com/v0/{BASE_ID}/{COMPANIES_TABLE_ID}"
+# relations_io — the second ownership table (all 5 teams work both tables).
+# Same base, same field names as relations_support; polled in parallel into
+# separate *_io_p*.json caches.
+IO_TABLE_ID = "tblrOiHiLe2O3UhsE"
+IO_API_URL  = f"https://api.airtable.com/v0/{BASE_ID}/{IO_TABLE_ID}"
 
 # Field IDs (mirror extract_v2.FIELD_IDS for sort/filter param values).
 FLD_LAST_MODIFIED      = "fld0hZzdjksTCKJ09"
@@ -339,6 +345,37 @@ def main():
     n_pages_h, n_rec_h, _ = _paginate(headers, params_h, "companies_today",
                                       COMPANIES_PAGE_CAP, "Fetch H", url=COMPANIES_URL)
     print(f"  → {n_pages_h} pages, {n_rec_h} records")
+
+    # ---- relations_io: poll the second ownership table (all 5 teams) ----
+    # relations_io (tblrOiHiLe2O3UhsE) lives in the same base and has the same
+    # field NAMES as relations_support, so every filterByFormula clause built
+    # above is valid against it unchanged. Sorts are dropped: the sort params
+    # used relations_support field IDs, and the aggregator dedupes/re-sorts
+    # records, so cache ordering does not matter (same rationale as Fetch E2).
+    # Output goes to parallel *_io_p*.json caches. Nothing consumes them yet —
+    # that is Phase B (the detector + aggregator).
+    print("\n=== relations_io: polling the second table (tblrOiHiLe2O3UhsE) ===")
+    io_fetches = [
+        (filter_a,  "recent_io",            RECENT_PAGE_CAP,        "error"),
+        (filter_b,  "intake_io",            INTAKE_PAGE_CAP,        "warn"),
+        (filter_c,  "boqa_io",              BOQA_PAGE_CAP,          "error"),
+        (filter_d,  "tagged_today_io",      TAGGED_PAGE_CAP,        "error"),
+        (filter_e1, "done_today_io",        DONE_PAGE_CAP,          "error"),
+        (filter_e2, "valid_today_io",       DONE_PAGE_CAP,          "error"),
+        (filter_f,  "qa_reviewed_today_io", QA_REVIEWED_PAGE_CAP,   "error"),
+        (filter_g,  "ww_qa_backlog_io",     WW_QA_BACKLOG_PAGE_CAP, "error"),
+    ]
+    io_total_pages = 0
+    io_total_recs  = 0
+    for filt, prefix, cap, on_trunc in io_fetches:
+        params = {**common, "filterByFormula": filt}
+        np_io, nr_io, _ = _paginate(headers, params, prefix, cap,
+                                    f"relations_io/{prefix}",
+                                    on_truncate=on_trunc, url=IO_API_URL)
+        io_total_pages += np_io
+        io_total_recs  += nr_io
+        print(f"  {prefix}: {np_io} pages, {nr_io} records")
+    print(f"relations_io summary: {io_total_pages} pages, {io_total_recs} records")
 
     elapsed = time.time() - t0
     total_pages = n_pages_a + n_pages_b + n_pages_c + n_pages_d + n_pages_e + n_pages_f + n_pages_g + n_pages_h
