@@ -1856,6 +1856,19 @@ def main():
     aggs = aggregate(records, today_eat, ownership_assignees)
     aggs["companies_hourly"] = compute_companies_hourly(work, today_eat)
 
+    # Per-table "set to Valid today" counts — records whose Valid Selected Time
+    # is today (EAT), split by source table. Feeds the dashboard's two-table
+    # Valid comparison panel. Whole-table (not roster-scoped), matching how the
+    # valid_today / valid_today_io caches are fetched.
+    aggs["totals"]["valid_today_support"] = sum(
+        1 for r in records
+        if r.get("_table") == "relations_support"
+        and _parse_eat_date(r.get("valid_selected_time")) == today_eat)
+    aggs["totals"]["valid_today_io"] = sum(
+        1 for r in records
+        if r.get("_table") == "relations_io"
+        and _parse_eat_date(r.get("valid_selected_time")) == today_eat)
+
     # Pick the larger of cache-counted intake (which sums Fetch A backfill +
     # Fetch B today-creates) and Fetch B's metadata totalRecordCount.
     # Background: when Fetch B truncates at the 30-page cap, poll_airtable.py
