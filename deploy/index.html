@@ -9,39 +9,47 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
 <link href="https://unpkg.com/gridjs/dist/theme/mermaid.min.css" rel="stylesheet">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600;700&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
   :root {
     color-scheme: light;
-    /* Neutral palette — calm, slightly cool surfaces */
-    --bg:#f5f6f8; --surface:#ffffff; --border:#e7e9ef; --soft:#f2f4f7; --ink:#1b2027; --muted:#69707d;
-    /* Semantic — desaturated, sophisticated (kept legible on white and on their *-bg tints) */
-    --good:#1a7a55; --good-bg:#e7f3ed; --warn:#9a6a12; --warn-bg:#f7efda; --bad:#bb4338; --bad-bg:#f9e8e6;
-    --accent:#3d63dd; --link:#2f5fd0;
-    /* Soft layered shadows — depth comes from these, not from heavy borders */
-    --shadow-sm:0 1px 2px rgba(16,24,40,0.04), 0 1px 3px rgba(16,24,40,0.05);
-    --shadow-md:0 4px 12px rgba(16,24,40,0.06), 0 2px 4px rgba(16,24,40,0.04);
-    --shadow-lg:0 16px 40px rgba(16,24,40,0.12), 0 4px 12px rgba(16,24,40,0.06);
-    /* Radius + spacing scales */
-    --radius-sm:8px; --radius-md:12px; --radius-lg:16px;
+    /* Vivid theme (ClickUp-inspired) — surfaces. Variable NAMES kept so every
+       existing var() reference still resolves; only the values change. */
+    --bg:#F7F8FB; --surface:#FFFFFF; --border:#E5E8F0; --soft:#F5F7FB; --ink:#1B2240; --muted:#8B92AB;
+    /* Semantic — Vivid palette; text shades darkened so they stay legible on white */
+    --good:#0EA56C; --good-bg:#DCFAEE; --warn:#C76512; --warn-bg:#FFEED9; --bad:#E5384F; --bad-bg:#FFE3E8;
+    /* Accent — Vivid purple */
+    --accent:#7B68EE; --accent-soft:#EFEBFD; --link:#5C49D4;
+    /* Vivid soft layered shadows */
+    --shadow-sm:0 1px 2px rgba(15,20,38,0.04), 0 1px 1px rgba(15,20,38,0.03);
+    --shadow-md:0 4px 12px rgba(15,20,38,0.05), 0 2px 4px rgba(15,20,38,0.04);
+    --shadow-lg:0 14px 32px rgba(15,20,38,0.08), 0 4px 12px rgba(15,20,38,0.05);
+    /* Radius + spacing scales (Vivid is a touch rounder) */
+    --radius-sm:8px; --radius-md:12px; --radius-lg:18px;
     --space-1:4px; --space-2:8px; --space-3:12px; --space-4:16px; --space-5:24px; --space-6:32px;
+    /* Vivid brand gradient — used by later phases (hero card, brand tile, etc.) */
+    --vivid-grad:linear-gradient(135deg,#7B68EE 0%,#FB62A1 100%);
   }
   * { box-sizing: border-box; }
   html, body { margin: 0; height: 100%; }
-  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: var(--bg); color: var(--ink); font-size: 14px; line-height: 1.5; -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility; }
+  body { font-family: "Geist", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: var(--bg); color: var(--ink); font-size: 14px; line-height: 1.5; -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility; }
   .app { display: grid; grid-template-columns: 220px 1fr; min-height: 100vh; }
   /* Left nav — dark, calm, considered */
-  nav.side { background: #181a20; color: #abb1bd; padding: 16px 0; position: sticky; top: 0; height: 100vh; overflow-y: auto; }
-  nav.side h1 { font-size: 12px; padding: 4px 18px 16px; margin: 0; letter-spacing: 0.08em; text-transform: uppercase; color: #767d8c; font-weight: 600; }
+  /* Left nav — Vivid: clean light surface, rounded items, soft-purple active pill */
+  nav.side { background: var(--surface); color: var(--ink); padding: 16px 10px; position: sticky; top: 0; height: 100vh; overflow-y: auto; border-right: 1px solid var(--border); }
+  nav.side h1 { font-size: 11px; padding: 4px 10px 14px; margin: 0; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); font-weight: 700; }
   nav.side ul { list-style: none; padding: 0; margin: 0; }
-  nav.side li.nav-section { font-size: 10px; text-transform: uppercase; letter-spacing: 0.08em; color: #5f6675; font-weight: 600; padding: 16px 18px 5px; margin: 0; pointer-events: none; user-select: none; }
-  nav.side li button { width: 100%; text-align: left; background: none; border: 0; color: #abb1bd; padding: 8px 18px; font-size: 13px; cursor: pointer; font-family: inherit; border-left: 2px solid transparent; display: flex; justify-content: space-between; align-items: center; transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease; }
-  nav.side li button:hover { background: #212531; color: #f3f5f9; border-left-color: #3a4150; }
-  nav.side li button.active { background: #262b37; color: #f3f5f9; border-left-color: var(--accent); font-weight: 500; }
-  nav.side li button.active:hover { border-left-color: var(--accent); }
-  nav.side li button .tag { font-size: 9px; letter-spacing: 0.04em; text-transform: uppercase; font-weight: 600; background: #2c313d; padding: 2px 6px; border-radius: 999px; color: #8b93a3; }
-  nav.side li button .tag.stub { background: #3a3320; color: #e8c479; }
-  nav.side li button .tag.live { background: #1d3640; color: #79cfd6; }
-  nav.side .nav-footer { padding: 16px 18px; font-size: 11px; color: #5b6271; border-top: 1px solid #262a33; margin-top: 16px; line-height: 1.5; }
+  nav.side li.nav-section { font-size: 10px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); font-weight: 700; padding: 16px 10px 5px; margin: 0; pointer-events: none; user-select: none; }
+  nav.side li button { width: 100%; text-align: left; background: none; border: 0; color: var(--ink); padding: 8px 10px; font-size: 13px; cursor: pointer; font-family: inherit; border-radius: var(--radius-sm); display: flex; justify-content: space-between; align-items: center; transition: background 0.15s ease, color 0.15s ease; }
+  nav.side li button:hover { background: var(--soft); color: var(--ink); }
+  nav.side li button.active { background: var(--accent-soft); color: var(--accent); font-weight: 600; }
+  nav.side li button.active:hover { background: #E2DCFC; }
+  nav.side li button .tag { font-size: 9px; letter-spacing: 0.04em; text-transform: uppercase; font-weight: 700; background: var(--soft); padding: 2px 6px; border-radius: 999px; color: var(--muted); }
+  nav.side li button .tag.stub { background: #FFF5D6; color: #C76512; }
+  nav.side li button .tag.live { background: #DBF6FE; color: #0691B5; }
+  nav.side .nav-footer { padding: 14px 10px; font-size: 11px; color: var(--muted); border-top: 1px solid var(--border); margin-top: 14px; line-height: 1.5; }
 
   /* Main */
   main { padding: 0; min-width: 0; }
