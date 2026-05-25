@@ -106,6 +106,42 @@
   .kpi.warn:hover { box-shadow: inset 3px 0 0 var(--warn), var(--shadow-md); }
   .kpi.bad:hover  { box-shadow: inset 3px 0 0 var(--bad),  var(--shadow-md); }
 
+  /* ---- Vivid reskin Phase 4 — Overview detail layer ---------------------- */
+  /* Editorial page head: uppercase eyebrow, a headline with a serif-italic
+     accent word, and a one-line summary of live counts. */
+  .page-head { margin: 4px 0 24px; }
+  .page-eyebrow { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.07em; color: var(--muted); }
+  .page-title { margin: 9px 0 0; font-size: 30px; font-weight: 700; letter-spacing: -0.02em; line-height: 1.1; color: var(--ink); }
+  .page-title em { font-style: italic; font-weight: 600; font-family: Georgia, "Times New Roman", serif; color: var(--accent); }
+  .page-subtitle { margin-top: 10px; font-size: 13px; color: var(--muted); }
+  .page-subtitle .num { color: var(--ink); font-weight: 600; font-variant-numeric: tabular-nums; }
+  .page-subtitle .dot-sep { margin: 0 8px; color: var(--border); }
+
+  /* Overview KPI grid — fixed, even 4-column grid. Scoped via .kpis-overview so
+     every other page keeps the base auto-fit .kpis. The hero spans 2 columns,
+     so 1 hero + 14 cards = 16 column-units = exactly four full rows of four. */
+  .kpis-overview { grid-template-columns: repeat(4, 1fr); gap: 14px; }
+  .kpis-overview .kpi .value { margin-top: 10px; }
+  .kpis-overview .kpi.secondary .value { margin-top: 8px; }
+  @media (max-width: 1180px) { .kpis-overview { grid-template-columns: repeat(2, 1fr); } }
+  @media (max-width: 620px)  { .kpis-overview { grid-template-columns: 1fr; }
+                               .kpis-overview .kpi.hero { grid-column: span 1; } }
+
+  /* KPI card header — label on the left, a soft rounded icon tile on the right */
+  .kpi-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; position: relative; }
+  .kpi-top .label { flex: 1 1 auto; min-width: 0; }
+  .kpi-icon { width: 32px; height: 32px; border-radius: 10px; flex: 0 0 auto;
+              display: inline-flex; align-items: center; justify-content: center;
+              background: var(--accent-soft); color: var(--accent); }
+  .kpi-icon svg { width: 16px; height: 16px; }
+  /* Per-card icon-tile tints */
+  .kpi.k-cyan    .kpi-icon { background: #E0F5FB; color: #0691B5; }
+  .kpi.k-orange  .kpi-icon { background: var(--warn-bg); color: var(--warn); }
+  .kpi.k-green   .kpi-icon { background: var(--good-bg); color: var(--good); }
+  .kpi.k-red     .kpi-icon { background: var(--bad-bg);  color: var(--bad); }
+  .kpi.k-neutral .kpi-icon { background: var(--soft);    color: var(--muted); }
+  .kpi.hero .kpi-icon { background: rgba(255,255,255,0.20); color: #fff; }
+
   /* Panels — shadow-led; a restrained shadow deepen on hover (no transform here, to
      avoid touching the sticky/frozen scroll regions some panels contain) */
   .panel { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-md); padding: 18px 20px; margin-bottom: 16px; box-shadow: var(--shadow-sm); transition: box-shadow 0.18s ease; }
@@ -1006,6 +1042,22 @@ function renderFreshness() {
 // ============================================================================
 const PAGE_RENDERERS = {};
 
+// Vivid KPI icon set — inline lucide-style SVGs (no external dependency).
+// Sized to 16x16 by the `.kpi-icon svg` CSS rule; colour follows the tile.
+const KPI_ICONS = {
+  upload:   '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>',
+  tag:      '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>',
+  check:    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>',
+  clock:    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>',
+  alert:    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>',
+  anchor:   '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="5" r="3"/><line x1="12" y1="22" x2="12" y2="8"/><path d="M5 12H2a10 10 0 0 0 20 0h-3"/></svg>',
+  inbox:    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 16 12 14 15 10 15 8 12 2 12"/><path d="M5.45 5.11L2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"/></svg>',
+  file:     '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><line x1="12" y1="9" x2="12.01" y2="9"/></svg>',
+  percent:  '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="5" x2="5" y2="19"/><circle cx="6.5" cy="6.5" r="2.5"/><circle cx="17.5" cy="17.5" r="2.5"/></svg>',
+  octagon:  '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="7.86 2 16.14 2 22 7.86 22 16.14 16.14 22 7.86 22 2 16.14 2 7.86"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>',
+  activity: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>',
+};
+
 // -------- Overview --------
 PAGE_RENDERERS.overview = function () {
   const root = document.getElementById("page-overview");
@@ -1018,24 +1070,81 @@ PAGE_RENDERERS.overview = function () {
   const silent      = STATE.legacy?.totals?.silent_changes_today ?? "—";
 
   const kpiHtml = `
-    <div class="kpis">
-      <div class="kpi hero"><div class="label">Records uploaded today (whole table)</div>
+    <div class="kpis kpis-overview">
+      <div class="kpi hero">
+        <div class="kpi-top"><div class="label">Records uploaded today (whole table)</div><span class="kpi-icon">${KPI_ICONS.upload}</span></div>
         <div class="value">${(t.relations_support_intake_today || 0).toLocaleString()}</div>
-        <div class="delta">relations_support intake — all assignees</div></div>
-      <div class="kpi"><div class="label">Tagged today (5 teams)</div><div class="value">${t.tagged_today || 0}</div></div>
-      <div class="kpi"><div class="label">Set to Valid today</div><div class="value">${(t.valid_today_support || 0) + (t.valid_today_io || 0)}</div><div class="delta">relations_support + relations_io · whole table</div></div>
-      <div class="kpi"><div class="label">Assigned &amp; waiting</div><div class="value">${(t.counts_by_verification_status?.waiting || 0).toLocaleString()}</div><div class="delta">assigned, not yet started</div></div>
-      <div class="kpi ${(STATE.v2?.tasks_all || []).some(t => (t.flags || []).includes("stale-24h")) ? 'bad' : ''}"><div class="label">Stale assigned tasks</div><div class="value">${STATE.staleCompareDate ? (STATE.v2?.tasks_all || []).filter(t => (t.flags || []).includes("stale-24h")).length : "—"}</div><div class="delta">${STATE.staleCompareDate ? "no progress in 24h+" : "needs 24h of snapshot history"}</div></div>
-      <div class="kpi secondary"><div class="label">Unique IMOs (cache)</div><div class="value">${(t.unique_imos || 0).toLocaleString()}</div><div class="delta">distinct vessels in window</div></div>
-      <div class="kpi" title="Properly completed = start_date filled AND (company_id filled OR Dead vessel ticked). Dead-vessel is the operational alternative when no company exists to link."><div class="label">Properly completed today</div><div class="value">${t.properly_completed_today || 0}</div><div class="delta">${(t.tagged_today || 0) - (t.properly_completed_today || 0) > 0 ? `${(t.tagged_today || 0) - (t.properly_completed_today || 0)} tagged but not yet complete` : "&nbsp;"}</div></div>
-      <div class="kpi secondary"><div class="label">Dead vessels today</div><div class="value">${t.dead_vessels_today || 0}</div><div class="delta">checkbox-ticked, tagged today</div></div>
-      <div class="kpi"><div class="label">BO QA backlog</div><div class="value">${t.bo_qa_backlog || 0}</div><div class="delta">in queue, any age</div></div>
-      <div class="kpi"><div class="label">WW QA backlog</div><div class="value">${t.ww_qa_backlog || 0}</div><div class="delta">awaiting WW review</div></div>
-      <div class="kpi ${(STATE.v2?.qa_done_not_finalized?.length || 0) > 0 ? 'warn' : ''}" title="Records where QA has reviewed (qa_assignee + qa_status both filled) but verification_status is still incomplete. Operational red flag — QA touched it, ops hasn't closed it."><div class="label">QA'd but not closed</div><div class="value">${(STATE.v2?.qa_done_not_finalized?.length || 0)}</div><div class="delta">QA reviewed, awaiting ops close-out</div></div>
-      <div class="kpi ${sampNsClass}"><div class="label">Sampling % — Non-sanctions</div><div class="value">${t.sampling_non_sanctions_pct.toFixed(1)}%</div><div class="delta">target ≥ ${t.sampling_target_non_sanctions_pct}% (of ${t.tagged_today_non_sanctions || 0} tagged)</div></div>
-      <div class="kpi ${sampSClass}"><div class="label">Sampling % — Sanctions</div><div class="value">${t.sampling_sanctions_pct.toFixed(1)}%</div><div class="delta">target ≥ ${t.sampling_target_sanctions_pct}% (of ${t.tagged_today_sanctions || 0} tagged)</div></div>
-      <div class="kpi ${rejectClass}"><div class="label">Reject %</div><div class="value">${t.reject_rate.toFixed(1)}%</div><div class="delta">threshold ${t.reject_threshold}%</div></div>
-      <div class="kpi secondary"><div class="label">Silent changes today</div><div class="value">${silent}</div><div class="delta">from legacy poll block</div></div>
+        <div class="delta">relations_support intake — all assignees</div>
+      </div>
+      <div class="kpi k-cyan">
+        <div class="kpi-top"><div class="label">Tagged today (5 teams)</div><span class="kpi-icon">${KPI_ICONS.tag}</span></div>
+        <div class="value">${t.tagged_today || 0}</div>
+      </div>
+      <div class="kpi k-green">
+        <div class="kpi-top"><div class="label">Set to Valid today</div><span class="kpi-icon">${KPI_ICONS.check}</span></div>
+        <div class="value">${(t.valid_today_support || 0) + (t.valid_today_io || 0)}</div>
+        <div class="delta">relations_support + relations_io · whole table</div>
+      </div>
+      <div class="kpi k-neutral">
+        <div class="kpi-top"><div class="label">Assigned &amp; waiting</div><span class="kpi-icon">${KPI_ICONS.clock}</span></div>
+        <div class="value">${(t.counts_by_verification_status?.waiting || 0).toLocaleString()}</div>
+        <div class="delta">assigned, not yet started</div>
+      </div>
+      <div class="kpi k-orange ${(STATE.v2?.tasks_all || []).some(t => (t.flags || []).includes("stale-24h")) ? 'bad' : ''}">
+        <div class="kpi-top"><div class="label">Stale assigned tasks</div><span class="kpi-icon">${KPI_ICONS.alert}</span></div>
+        <div class="value">${STATE.staleCompareDate ? (STATE.v2?.tasks_all || []).filter(t => (t.flags || []).includes("stale-24h")).length : "—"}</div>
+        <div class="delta">${STATE.staleCompareDate ? "no progress in 24h+" : "needs 24h of snapshot history"}</div>
+      </div>
+      <div class="kpi secondary k-neutral">
+        <div class="kpi-top"><div class="label">Unique IMOs (cache)</div><span class="kpi-icon">${KPI_ICONS.anchor}</span></div>
+        <div class="value">${(t.unique_imos || 0).toLocaleString()}</div>
+        <div class="delta">distinct vessels in window</div>
+      </div>
+      <div class="kpi k-green" title="Properly completed = start_date filled AND (company_id filled OR Dead vessel ticked). Dead-vessel is the operational alternative when no company exists to link.">
+        <div class="kpi-top"><div class="label">Properly completed today</div><span class="kpi-icon">${KPI_ICONS.check}</span></div>
+        <div class="value">${t.properly_completed_today || 0}</div>
+        <div class="delta">${(t.tagged_today || 0) - (t.properly_completed_today || 0) > 0 ? `${(t.tagged_today || 0) - (t.properly_completed_today || 0)} tagged but not yet complete` : "&nbsp;"}</div>
+      </div>
+      <div class="kpi secondary k-neutral">
+        <div class="kpi-top"><div class="label">Dead vessels today</div><span class="kpi-icon">${KPI_ICONS.anchor}</span></div>
+        <div class="value">${t.dead_vessels_today || 0}</div>
+        <div class="delta">checkbox-ticked, tagged today</div>
+      </div>
+      <div class="kpi k-orange">
+        <div class="kpi-top"><div class="label">BO QA backlog</div><span class="kpi-icon">${KPI_ICONS.inbox}</span></div>
+        <div class="value">${t.bo_qa_backlog || 0}</div>
+        <div class="delta">in queue, any age</div>
+      </div>
+      <div class="kpi k-orange">
+        <div class="kpi-top"><div class="label">WW QA backlog</div><span class="kpi-icon">${KPI_ICONS.inbox}</span></div>
+        <div class="value">${t.ww_qa_backlog || 0}</div>
+        <div class="delta">awaiting WW review</div>
+      </div>
+      <div class="kpi k-orange ${(STATE.v2?.qa_done_not_finalized?.length || 0) > 0 ? 'warn' : ''}" title="Records where QA has reviewed (qa_assignee + qa_status both filled) but verification_status is still incomplete. Operational red flag — QA touched it, ops hasn't closed it.">
+        <div class="kpi-top"><div class="label">QA'd but not closed</div><span class="kpi-icon">${KPI_ICONS.file}</span></div>
+        <div class="value">${(STATE.v2?.qa_done_not_finalized?.length || 0)}</div>
+        <div class="delta">QA reviewed, awaiting ops close-out</div>
+      </div>
+      <div class="kpi k-orange ${sampNsClass}">
+        <div class="kpi-top"><div class="label">Sampling % — Non-sanctions</div><span class="kpi-icon">${KPI_ICONS.percent}</span></div>
+        <div class="value">${t.sampling_non_sanctions_pct.toFixed(1)}%</div>
+        <div class="delta">target ≥ ${t.sampling_target_non_sanctions_pct}% (of ${t.tagged_today_non_sanctions || 0} tagged)</div>
+      </div>
+      <div class="kpi k-orange ${sampSClass}">
+        <div class="kpi-top"><div class="label">Sampling % — Sanctions</div><span class="kpi-icon">${KPI_ICONS.percent}</span></div>
+        <div class="value">${t.sampling_sanctions_pct.toFixed(1)}%</div>
+        <div class="delta">target ≥ ${t.sampling_target_sanctions_pct}% (of ${t.tagged_today_sanctions || 0} tagged)</div>
+      </div>
+      <div class="kpi k-red ${rejectClass}">
+        <div class="kpi-top"><div class="label">Reject %</div><span class="kpi-icon">${KPI_ICONS.octagon}</span></div>
+        <div class="value">${t.reject_rate.toFixed(1)}%</div>
+        <div class="delta">threshold ${t.reject_threshold}%</div>
+      </div>
+      <div class="kpi secondary k-neutral">
+        <div class="kpi-top"><div class="label">Silent changes today</div><span class="kpi-icon">${KPI_ICONS.activity}</span></div>
+        <div class="value">${silent}</div>
+        <div class="delta">from legacy poll block</div>
+      </div>
     </div>`;
 
   const flowA = t.flow_a_today || 0;
@@ -1125,8 +1234,27 @@ PAGE_RENDERERS.overview = function () {
       </div>
     </div>`;
 
+  const headDate = (() => {
+    const d = STATE.v2?.date;
+    if (!d) return "";
+    const dt = new Date(d + "T00:00:00");
+    return isNaN(dt) ? d : dt.toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short", year: "numeric" });
+  })();
+  const pageHeadHtml = `
+    <div class="page-head">
+      <div class="page-eyebrow">Ownership QA${headDate ? " &middot; " + headDate : ""} &middot; Africa / Nairobi</div>
+      <h1 class="page-title">Operations <em>overview</em></h1>
+      <div class="page-subtitle">
+        <span class="num">${(t.relations_support_intake_today || 0).toLocaleString()}</span> records uploaded today
+        <span class="dot-sep">&middot;</span>
+        <span class="num">${(t.tagged_today || 0).toLocaleString()}</span> tagged
+        <span class="dot-sep">&middot;</span>
+        <span class="num">${((t.valid_today_support || 0) + (t.valid_today_io || 0)).toLocaleString()}</span> set to valid
+      </div>
+    </div>`;
+
   root.innerHTML =
-      `<h2 class="section-head">Executive summary</h2>` + kpiHtml
+      pageHeadHtml + kpiHtml
     + `<h2 class="section-head">Operational flow <span class="meta">today · 5 teams · Flow A + B + C + D = tagged</span></h2>` + flowHtml
     + `<h2 class="section-head">Team activity &amp; alerts</h2>` + alertsHtml + trendsHtml;
 
