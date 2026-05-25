@@ -39,14 +39,33 @@
   /* Left nav — dark, calm, considered */
   /* Left nav — Vivid: clean light surface, rounded items, soft-purple active pill */
   nav.side { background: var(--surface); color: var(--ink); padding: 16px 10px; position: sticky; top: 0; height: 100vh; overflow-y: auto; border-right: 1px solid var(--border); }
-  nav.side h1 { font-size: 11px; padding: 4px 10px 14px; margin: 0; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); font-weight: 700; }
+  /* Brand block — gradient "IO" tile + stacked org / product name */
+  nav.side .brand { display: flex; align-items: center; gap: 11px; padding: 6px 8px 16px; margin-bottom: 8px; border-bottom: 1px solid var(--border); }
+  nav.side .brand-tile { width: 38px; height: 38px; flex-shrink: 0; background: var(--vivid-grad); color: #fff; border-radius: 11px; display: inline-flex; align-items: center; justify-content: center; font-weight: 700; font-size: 14px; letter-spacing: 0.03em; box-shadow: 0 6px 14px rgba(123,104,238,0.30); }
+  nav.side .brand-stack { display: flex; flex-direction: column; line-height: 1.2; min-width: 0; }
+  nav.side .brand-eye { font-size: 10.5px; color: var(--muted); font-weight: 500; }
+  nav.side .brand-ttl { font-size: 14.5px; color: var(--ink); font-weight: 700; letter-spacing: -0.005em; margin-top: 1px; }
   nav.side ul { list-style: none; padding: 0; margin: 0; }
   nav.side li.nav-section { font-size: 10px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); font-weight: 700; padding: 16px 10px 5px; margin: 0; pointer-events: none; user-select: none; }
-  nav.side li button { width: 100%; text-align: left; background: none; border: 0; color: var(--ink); padding: 8px 10px; font-size: 13px; cursor: pointer; font-family: inherit; border-radius: var(--radius-sm); display: flex; justify-content: space-between; align-items: center; transition: background 0.15s ease, color 0.15s ease; }
+  nav.side li button { width: 100%; text-align: left; background: none; border: 0; color: var(--ink); padding: 7px 9px; font-size: 13px; cursor: pointer; font-family: inherit; border-radius: var(--radius-sm); display: flex; align-items: center; gap: 9px; transition: background 0.15s ease, color 0.15s ease; }
   nav.side li button:hover { background: var(--soft); color: var(--ink); }
   nav.side li button.active { background: var(--accent-soft); color: var(--accent); font-weight: 600; }
   nav.side li button.active:hover { background: #E2DCFC; }
-  nav.side li button .tag { font-size: 9px; letter-spacing: 0.04em; text-transform: uppercase; font-weight: 700; background: var(--soft); padding: 2px 6px; border-radius: 999px; color: var(--muted); }
+  /* Nav icon tile — soft rounded square, tinted per section group; solid on active */
+  nav.side .nav-ico { width: 23px; height: 23px; flex-shrink: 0; border-radius: 6px; display: inline-flex; align-items: center; justify-content: center; background: var(--soft); color: var(--muted); }
+  nav.side .nav-ico svg { width: 13px; height: 13px; }
+  nav.side .nav-label { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  nav.side li button.g-ops    .nav-ico { background: #E0F5FB; color: #0691B5; }
+  nav.side li button.g-qual   .nav-ico { background: var(--accent-soft); color: var(--accent); }
+  nav.side li button.g-people .nav-ico { background: #FCEAF1; color: #C42A6D; }
+  nav.side li button.g-report .nav-ico { background: var(--good-bg); color: var(--good); }
+  nav.side li button.active .nav-ico { background: var(--accent); color: #fff; }
+  /* Count badge — pushed to the right edge of the row */
+  nav.side .nav-count { margin-left: auto; font-size: 10.5px; font-weight: 600; padding: 2px 7px; border-radius: 999px; background: var(--soft); color: var(--muted); font-variant-numeric: tabular-nums; }
+  nav.side .nav-count.cyan   { background: #E0F5FB; color: #0691B5; }
+  nav.side .nav-count.orange { background: var(--warn-bg); color: var(--warn); }
+  nav.side .nav-count.purple { background: var(--accent-soft); color: var(--accent); }
+  nav.side li button .tag { margin-left: auto; font-size: 9px; letter-spacing: 0.04em; text-transform: uppercase; font-weight: 700; background: var(--soft); padding: 2px 6px; border-radius: 999px; color: var(--muted); }
   nav.side li button .tag.stub { background: #FFF5D6; color: #C76512; }
   nav.side li button .tag.live { background: #DBF6FE; color: #0691B5; }
   nav.side .nav-footer { padding: 14px 10px; font-size: 11px; color: var(--muted); border-top: 1px solid var(--border); margin-top: 14px; line-height: 1.5; }
@@ -458,7 +477,13 @@
 
 <div class="app">
   <nav class="side">
-    <h1>Operations Hub</h1>
+    <div class="brand">
+      <span class="brand-tile">IO</span>
+      <span class="brand-stack">
+        <span class="brand-eye">Impact Outsourcing</span>
+        <span class="brand-ttl">Ownership QA</span>
+      </span>
+    </div>
     <ul id="navList"></ul>
     <div class="nav-footer">
       <div>Deployed build (Supabase Storage)</div>
@@ -999,15 +1024,55 @@ function teamForAgent(name) {
 // ============================================================================
 //  Navigation
 // ============================================================================
+// Vivid sidebar — inline lucide-style icons, one per page id. No dependency.
+const NAV_ICONS = {
+  overview:       '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="9"/><rect x="14" y="3" width="7" height="5"/><rect x="14" y="12" width="7" height="9"/><rect x="3" y="16" width="7" height="5"/></svg>',
+  hourly:         '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="20" x2="12" y2="10"/><line x1="18" y1="20" x2="18" y2="4"/><line x1="6" y1="20" x2="6" y2="16"/></svg>',
+  intake:         '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 16 12 14 15 10 15 8 12 2 12"/><path d="M5.45 5.11L2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"/></svg>',
+  tasks:          '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><rect x="8" y="2" width="8" height="4" rx="1"/><path d="M9 14l2 2 4-4"/></svg>',
+  completed:      '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>',
+  new_companies:  '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="2" width="16" height="20" rx="2"/><path d="M9 22v-4h6v4"/><line x1="8" y1="6" x2="8" y2="6.01"/><line x1="16" y1="6" x2="16" y2="6.01"/><line x1="8" y1="11" x2="8" y2="11.01"/><line x1="16" y1="11" x2="16" y2="11.01"/></svg>',
+  pipeline:       '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="6" cy="6" r="3"/><circle cx="18" cy="6" r="3"/><circle cx="12" cy="18" r="3"/><path d="M18 9v1a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2V9"/><line x1="12" y1="12" x2="12" y2="15"/></svg>',
+  scenarios:      '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/></svg>',
+  qa_hourly:      '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>',
+  qa_performance: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3.34 19a10 10 0 1 1 17.32 0"/><line x1="12" y1="12" x2="16" y2="9"/></svg>',
+  boqa:           '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><polyline points="9 12 11 14 15 10"/></svg>',
+  wwqa:           '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>',
+  agent:          '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>',
+  comparison:     '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="7" x2="15" y2="7"/><line x1="4" y1="12" x2="20" y2="12"/><line x1="4" y1="17" x2="10" y2="17"/></svg>',
+  experts:        '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>',
+  weekly:         '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="8" y1="13" x2="16" y2="13"/><line x1="8" y1="17" x2="16" y2="17"/></svg>',
+  report_builder: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="3" y1="15" x2="21" y2="15"/><line x1="12" y1="3" x2="12" y2="21"/></svg>',
+};
+
+// Section group -> CSS class that tints the icon tile.
+const NAV_GROUP_CLASS = { Operations: "g-ops", Quality: "g-qual", People: "g-people", Reports: "g-report" };
+
+// Live count badge for a nav item — only the three pages with a clean source.
+// Returns null until aggregates are loaded, so badges simply appear once data is in.
+function navCountFor(pageId) {
+  const v2 = STATE.v2;
+  if (!v2) return null;
+  const t = v2.totals || {};
+  if (pageId === "intake")        return { n: t.relations_support_intake_today, tint: "cyan" };
+  if (pageId === "new_companies") return { n: (v2.add_new_company_records || []).length, tint: "orange" };
+  if (pageId === "boqa")          return { n: t.bo_qa_backlog, tint: "purple" };
+  return null;
+}
+
 function renderNav() {
   const ul = document.getElementById("navList");
   let lastGroup = null;
   ul.innerHTML = PAGES.map(p => {
     const tagHtml = p.tag === "stub" ? `<span class="tag stub">stub</span>`
                   : p.tag === "live" ? `<span class="tag live">live</span>` : "";
+    const c = navCountFor(p.id);
+    const countHtml = (c && c.n != null) ? `<span class="nav-count ${c.tint}">${Number(c.n).toLocaleString()}</span>` : "";
     const header = (p.group && p.group !== lastGroup) ? `<li class="nav-section">${p.group}</li>` : "";
     lastGroup = p.group;
-    return `${header}<li><button data-page="${p.id}" class="${STATE.currentPage === p.id ? "active" : ""}">${p.label}${tagHtml}</button></li>`;
+    const grpClass = NAV_GROUP_CLASS[p.group] || "";
+    const cls = `${STATE.currentPage === p.id ? "active" : ""}${grpClass ? " " + grpClass : ""}`.trim();
+    return `${header}<li><button data-page="${p.id}" class="${cls}"><span class="nav-ico">${NAV_ICONS[p.id] || ""}</span><span class="nav-label">${p.label}</span>${tagHtml}${countHtml}</button></li>`;
   }).join("");
   ul.querySelectorAll("button[data-page]").forEach(b => b.addEventListener("click", () => goto(b.dataset.page)));
 }
