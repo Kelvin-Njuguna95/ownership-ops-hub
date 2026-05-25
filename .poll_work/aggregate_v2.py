@@ -22,6 +22,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 from extract_v2 import (  # noqa: E402
     COMMENT_VALUES,
     EXPERT_NAMES,
+    FIELD_IDS_IO,
     NO_IMO_FOUND_COMMENTS,
     SELECTED_FOR_BO_QA,
     SELECTED_FOR_WW_QA,
@@ -1311,6 +1312,7 @@ def _load_records(work_dir):
     """
     raw     = {}
     sources = {}
+    io_ids  = set()   # record ids loaded from relations_io caches
     fetch_map = {
         "recent_p*.json":            "A",
         "intake_p*.json":            "B",
@@ -1321,15 +1323,37 @@ def _load_records(work_dir):
         "qa_reviewed_today_p*.json": "F",
         "ww_qa_backlog_p*.json":     "G",
     }
+    # relations_io caches — the same eight fetches against the second ownership
+    # table (poll_airtable.py Phase A), same fetch-letter semantics. The "*_p*"
+    # globs above do NOT match "*_io_p*" filenames, so the two sets load
+    # separately; io record ids are tracked so extract() gets the io field map.
+    io_fetch_map = {
+        "recent_io_p*.json":            "A",
+        "intake_io_p*.json":            "B",
+        "boqa_io_p*.json":              "C",
+        "tagged_today_io_p*.json":      "D",
+        "done_today_io_p*.json":        "E",
+        "valid_today_io_p*.json":       "E",
+        "qa_reviewed_today_io_p*.json": "F",
+        "ww_qa_backlog_io_p*.json":     "G",
+    }
     for pattern, letter in fetch_map.items():
         for p in sorted(work_dir.glob(pattern)):
             for r in json.loads(p.read_text()).get("records", []):
                 raw[r["id"]] = r
                 sources.setdefault(r["id"], set()).add(letter)
+    for pattern, letter in io_fetch_map.items():
+        for p in sorted(work_dir.glob(pattern)):
+            for r in json.loads(p.read_text()).get("records", []):
+                raw[r["id"]] = r
+                sources.setdefault(r["id"], set()).add(letter)
+                io_ids.add(r["id"])
     out = []
     for rid, r in raw.items():
-        info = extract(r)
+        is_io = rid in io_ids
+        info = extract(r, FIELD_IDS_IO) if is_io else extract(r)
         info["_sources"] = sources.get(rid, set())
+        info["_table"]   = "relations_io" if is_io else "relations_support"
         out.append(info)
     return out
 
@@ -1345,22 +1369,28 @@ def _intake_total_from_metadata(work_dir):
     by the integer page number embedded in the filename to pick the
     actual last page.
 
-    Returns (total, partial_flag). partial_flag is True iff total > 3000
-    (the cache page cap), indicating downstream consumers should warn.
+    Returns (total, partial_flag). Sums both ownership tables (relations_support
+    + relations_io). partial_flag is True if EITHER table's intake fetch
+    truncated (its metadata count exceeds the 3000-row cache page cap),
+    indicating downstream consumers should warn.
     """
-    files = list(work_dir.glob("intake_p*.json"))
-    if not files:
-        return 0, False
-    def _page_num(p):
-        m = re.search(r"intake_p(\d+)\.json$", p.name)
-        return int(m.group(1)) if m else 0
-    last_page = max(files, key=_page_num)
-    try:
-        meta = json.loads(last_page.read_text()).get("metadata", {})
-        total = int(meta.get("totalRecordCount", 0))
-    except (json.JSONDecodeError, ValueError, OSError):
-        return 0, False
-    return total, total > 3000
+    def _table_total(glob_pat, page_re):
+        files = list(work_dir.glob(glob_pat))
+        if not files:
+            return 0
+        def _page_num(p):
+            m = re.search(page_re, p.name)
+            return int(m.group(1)) if m else 0
+        last_page = max(files, key=_page_num)
+        try:
+            meta = json.loads(last_page.read_text()).get("metadata", {})
+            return int(meta.get("totalRecordCount", 0))
+        except (json.JSONDecodeError, ValueError, OSError):
+            return 0
+    support = _table_total("intake_p*.json",    r"intake_p(\d+)\.json$")
+    io      = _table_total("intake_io_p*.json", r"intake_io_p(\d+)\.json$")
+    total = support + io
+    return total, (support > 3000 or io > 3000)
 
 
 def _build_ownership_assignees(roster):
@@ -1604,7 +1634,7 @@ def _compute_flow_framework_counts(work_dir, ownership_assignees):
     import sys as _sys
     from pathlib import Path as _Path
     _sys.path.insert(0, str(_Path(__file__).resolve().parent))
-    from completion_detector import classify as _classify, FLD_ASSIGNEE  # noqa: E402
+    from completion_detector import classify as _classify, FLD_ASSIGNEE, IO_TO_SUPPORT_FIELD_IDS  # noqa: E402
 
     # Build a case-insensitive roster lookup (mirrors aggregate()'s
     # multi-assignee, alias-aware roster matching).
@@ -1615,13 +1645,21 @@ def _compute_flow_framework_counts(work_dir, ownership_assignees):
     flow_a = flow_b = flow_c = flow_d = 0
     in_scope = 0
 
-    for p in sorted(work_dir.glob("tagged_today_p*.json")):
+    # Both ownership tables' tagged-today caches. relations_io records are
+    # re-keyed to relations_support field IDs (IO_TO_SUPPORT_FIELD_IDS) so
+    # _classify() and the FLD_ASSIGNEE roster filter run on them unchanged.
+    tagged_files = ([(p, False) for p in sorted(work_dir.glob("tagged_today_p*.json"))]
+                    + [(p, True) for p in sorted(work_dir.glob("tagged_today_io_p*.json"))])
+    for p, is_io in tagged_files:
         try:
             page = json.loads(p.read_text())
         except (json.JSONDecodeError, OSError):
             continue
         for rec in page.get("records", []):
             fields = rec.get("fields") or rec.get("cellValuesByFieldId") or {}
+            if is_io:
+                fields = {IO_TO_SUPPORT_FIELD_IDS.get(fid, fid): val
+                          for fid, val in fields.items()}
             # Roster filter — multi-assignee aware (ANY assignee in roster qualifies).
             asg_list = fields.get(FLD_ASSIGNEE) or []
             if not isinstance(asg_list, list):
