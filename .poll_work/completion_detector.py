@@ -84,6 +84,9 @@ STUCK_HOURS = 24
 BASE_ID  = "REDACTED_BASE_ID"
 TABLE_ID = "tblpj9aJP4ExhYCZF"
 AIRTABLE_URL = f"https://api.airtable.com/v0/{BASE_ID}/{TABLE_ID}"
+# relations_io — the second ownership table, same base. All 5 teams work both.
+IO_TABLE_ID     = "tblrOiHiLe2O3UhsE"
+IO_AIRTABLE_URL = f"https://api.airtable.com/v0/{BASE_ID}/{IO_TABLE_ID}"
 
 # Field IDs we read. Mirror of extract_v2.FIELD_IDS — duplicated here
 # (small list) rather than imported to keep this script standalone and
@@ -100,6 +103,27 @@ FLD_DEAD_VESSEL            = "fldK9xjvBASgXIKlm"
 FLD_ADD_NEW_COMPANY        = "fld2wp1Q0GQJjbYdA"
 FLD_ROLE                   = "fldnBNNkH7w4rS3fG"
 FLD_REQUESTED_BY           = "fldlPkvV6BiE7glLZ"
+
+# relations_io field IDs → relations_support field IDs, for the 12 fields this
+# detector reads. relations_io has the same field NAMES but its own field IDs;
+# re-keying an io record's `fields` dict through this map lets every classify /
+# build function below run on it UNCHANGED (they all read relations_support
+# IDs). IDs sourced from the relations_io table schema; the values reuse the
+# FLD_* constants above so the two stay in lockstep.
+IO_TO_SUPPORT_FIELD_IDS = {
+    "fldsrPYBTN5qnN1WD": FLD_IMO,
+    "fldVzGbUOqAu9myPx": FLD_ASSIGNEE,
+    "fldMMB742oX3y6JCg": FLD_QA_ASSIGNEE,
+    "fldro2ZFZ7K4KJuZv": FLD_QA_STATUS,
+    "fldr4iu3zwtOD70lK": FLD_LAST_MODIFIED_BY,
+    "fld0n6efs9TOJGMV5": FLD_VERIFICATION_STATUS,
+    "fldchKXJ2l2RzQuSm": FLD_COMPANY_ID_AND_NAME,
+    "fldcAIQAjopSgFWhl": FLD_COMPANY_NAME_LOOKUP,
+    "fldSxRSQ3IBFgPil1": FLD_DEAD_VESSEL,
+    "fldgnOTzwo7VkvEjX": FLD_ADD_NEW_COMPANY,
+    "fldp6WkTDhUldOIIF": FLD_ROLE,
+    "fldnkt2u2LGVTc0eY": FLD_REQUESTED_BY,
+}
 
 # Cap pages so a runaway day can't loop forever. The expanded v2 filter
 # pulls 4 more states than v1 (was tagged + need-to-be-update; now adds
@@ -133,6 +157,23 @@ def _first_link(val):
     if isinstance(val, list):
         return len(val) > 0
     return bool(val)
+
+
+def _rekey_io_fields(rec):
+    """Translate a relations_io record so its `fields` dict is keyed by the
+    SAME field IDs as relations_support, and tag it with its source table.
+
+    After this, every classify/build function runs on the record unchanged —
+    they all read relations_support IDs. Fields not in the remap pass through
+    untouched (the detector never reads them). The `_source_table` marker is
+    read by the row builders to stamp the Supabase `source_table` column.
+    raw_payload therefore ends up relations_support-keyed for io records too —
+    intentional and consistent.
+    """
+    fields = rec.get("fields") or rec.get("cellValuesByFieldId") or {}
+    remapped = {IO_TO_SUPPORT_FIELD_IDS.get(fid, fid): val
+                for fid, val in fields.items()}
+    return {**rec, "fields": remapped, "_source_table": "relations_io"}
 
 
 # ----------------------------------------------------------------------
@@ -251,6 +292,7 @@ def build_completion_row(rec, now_utc, flow):
         "requested_by":        fields.get(FLD_REQUESTED_BY),
         "raw_payload":         fields,
         "flow":                flow,
+        "source_table":        rec.get("_source_table", "relations_support"),
     }
     return row, source
 
@@ -271,6 +313,7 @@ def build_sampling_row(rec, now_utc):
         "raw_payload":        fields,
         "assignee":           _name(fields.get(FLD_ASSIGNEE)),
         "add_a_new_company":  fields.get(FLD_ADD_NEW_COMPANY),
+        "source_table":       rec.get("_source_table", "relations_support"),
     }
 
 
@@ -284,6 +327,7 @@ def build_alert_row(rec, alert_type):
         "qa_assignee":         _name(fields.get(FLD_QA_ASSIGNEE)),
         "qa_status":           _name(fields.get(FLD_QA_STATUS)),
         "raw_payload":         fields,
+        "source_table":        rec.get("_source_table", "relations_support"),
     }
 
 
@@ -341,7 +385,7 @@ def route_record(rec, now_utc):
 # Airtable fetch
 # ----------------------------------------------------------------------
 
-def fetch_flow_records(pat):
+def fetch_flow_records(pat, url=AIRTABLE_URL):
     """GET pages of records in any of the 5 Flow-relevant states."""
     headers = {"Authorization": f"Bearer {pat}"}
     formula = (
@@ -365,7 +409,7 @@ def fetch_flow_records(pat):
         q = dict(params)
         if offset:
             q["offset"] = offset
-        r = requests.get(AIRTABLE_URL, headers=headers, params=q, timeout=60)
+        r = requests.get(url, headers=headers, params=q, timeout=60)
         if r.status_code != 200:
             raise RuntimeError(f"Airtable {r.status_code}: {r.text[:200]}")
         body = r.json()
@@ -613,7 +657,7 @@ def detect_stuck_in_sampling(supabase_url, service_key, now_utc):
     old_samples = _sb_get_paginated(
         f"{base}/rest/v1/ownership_qa_sampling",
         _sb_headers(service_key),
-        {"select": "airtable_record_id,qa_assignee,sampled_at,raw_payload",
+        {"select": "airtable_record_id,qa_assignee,sampled_at,raw_payload,source_table",
          "sampled_at": f"lt.{cutoff}"},
     )
     if not old_samples:
@@ -646,6 +690,7 @@ def detect_stuck_in_sampling(supabase_url, service_key, now_utc):
             "qa_assignee":         s["qa_assignee"],
             "qa_status":           None,
             "raw_payload":         s.get("raw_payload") or {},
+            "source_table":        s.get("source_table") or "relations_support",
         })
     return alerts
 
@@ -668,8 +713,11 @@ def main():
     now_utc = datetime.now(timezone.utc)
     print(f"completion_detector (Flow v2) — {now_utc.isoformat()}")
 
-    records = fetch_flow_records(pat)
-    print(f"  Fetched {len(records)} records from Airtable")
+    records_support = fetch_flow_records(pat, AIRTABLE_URL)
+    records_io      = [_rekey_io_fields(r) for r in fetch_flow_records(pat, IO_AIRTABLE_URL)]
+    records = records_support + records_io
+    print(f"  Fetched {len(records_support)} relations_support + "
+          f"{len(records_io)} relations_io = {len(records)} records")
 
     # Bucket records by classification target.
     completion_rows = []
