@@ -275,6 +275,26 @@ class TestBuildSamplingRow(unittest.TestCase):
         now = datetime(2026, 5, 18, tzinfo=timezone.utc)
         self.assertIsNone(build_sampling_row({"id": "rec1", "fields": _fields(verification_status=SELECTED_FOR_BO_QA)}, now))
 
+    def test_sampling_row_captures_assignee_and_add_new_company(self):
+        # A record set for BO QA carries the tagger (assignee) and the
+        # add-new-company field; build_sampling_row must capture both at
+        # sampling time so the row is a full review-lifecycle record.
+        now = datetime(2026, 5, 18, 12, 0, 0, tzinfo=timezone.utc)
+        f = _fields(verification_status=SELECTED_FOR_BO_QA,
+                    imo="9999",
+                    qa_assignee={"id": "q1", "name": "Zuleikha"},
+                    assignee=[{"id": "a1", "name": "JAMES MAINA"}],
+                    add_new_company="Acme Shipping Ltd")
+        row = build_sampling_row({"id": "rec1", "fields": f}, now)
+        # (1) assignee = the (first) tagger.
+        self.assertEqual(row["assignee"], "JAMES MAINA")
+        # (2) add_a_new_company = the raw add-new-company value.
+        self.assertEqual(row["add_a_new_company"], "Acme Shipping Ltd")
+        # (3) the original keys are still present and correct.
+        self.assertEqual(row["airtable_record_id"], "rec1")
+        self.assertEqual(row["qa_assignee"], "Zuleikha")
+        self.assertEqual(row["sampled_at"], "2026-05-18T12:00:00+00:00")
+
 
 class TestBuildAlertRow(unittest.TestCase):
     def test_alert_row_captures_context(self):
