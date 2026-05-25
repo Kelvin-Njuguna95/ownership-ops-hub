@@ -5387,6 +5387,14 @@ document.getElementById("signoutBtn").addEventListener("click", async () => {
   window.location.reload();
 });
 
+// Boot guard — supabase-js re-fires onAuthStateChange("SIGNED_IN") on every tab
+// refocus and on its hourly token refresh. Without this flag each re-fire re-runs
+// init(), which reloads all data and re-renders the current page from scratch —
+// blanking async panels (e.g. the BO QA Console backlog / review-turnaround
+// panels) for several seconds on every focus. The real sign-out path calls
+// window.location.reload(), so this flag resets naturally for the next session.
+let _appBooted = false;
+
 async function checkSessionAndBoot() {
   const { data: { session } } = await sb.auth.getSession();
   if (!session) {
@@ -5403,6 +5411,9 @@ async function checkSessionAndBoot() {
   // Show the user pill in topbar
   document.getElementById("userPillEmail").textContent = email;
   document.getElementById("userPill").style.display = "inline-flex";
+  // Boot the app exactly once; ignore repeat SIGNED_IN events (tab focus, token refresh).
+  if (_appBooted) return;
+  _appBooted = true;
   await init();
 }
 
