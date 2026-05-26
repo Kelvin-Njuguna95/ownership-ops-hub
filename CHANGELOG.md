@@ -2,12 +2,13 @@
 
 ## Vivid detail layers — 2026-05-26
 
-Hourly Output and Overview pages brought in line with the Vivid mockup.
+Hourly Output, Overview, and Daily Intake pages brought in line with the Vivid mockup.
 
 - **PR #108 — Hourly Output detail layer** (GitHub #106, merge `f7dc82b`): 4 KPI cards reactive to the team filter, team chips replacing the dropdown, sort tabs, agent avatars + team label, PER HOUR row moved to top with peak highlight, per-team heatmap colouring, three insight cards (DAY SHAPE / AT RISK / LATE ACTIVITY), saturation legend.
 - **PR #109 — DoD% delta on the Hourly Output hero card** (GitHub #108, merge `8d0ad93`): fetches yesterday's snapshot once per page mount, renders ±X.X% DoD pill on the hero KPI when "All teams" is active, hidden otherwise.
 - **PR #110 — Overview detail layer** (GitHub #107, merge `d035895`): editorial page head with Export CSV + Open BO QA buttons, curated 4-card hero KPI row (backlog with 8-day trend bars + DoD%, tagged with DoD%, sampling and reject with progress bars), enriched lifecycle footer, 2-column body — agent productivity scorecard with filter tabs, teams-vs-floor mini-panel, open alerts and per-team chart on the left, daily verdict checklist with auto-snapshot countdown on the right, collapsed "Detailed metrics" expander for the other 11 KPI cards.
 - **PR #111 — Overview hero card: Set to Valid today** (GitHub #110, merge `2d326ff`): repoints the gradient hero KPI from BO QA backlog to today's "set to Valid" count (`valid_today_support` + `valid_today_io` across both tables). The 8-day mini-bar trend and ±X.X% DoD pill are repointed to the same metric; the duplicate "Set to Valid today" entry in the detailed-metrics expander is removed (summary count drops from 11 to 10).
+- **PR #113 — Daily Intake detail layer** (GitHub #113, merge `96a2c65`): editorial page head with Export CSV + Manual upload buttons, filter tabs (All / Today's intake / In progress / Completed / Sanctions) with counts, four hero KPI cards (intake purple-gradient hero with 8-day trend bars + DoD%, active tasks, add-new-company, cleared today), a featured Today's-batch card (status pill, tagging-% progress ring, team chips + agent avatars, TAGGED / IN BO QA / VALID stat blocks), an Other-active-batches grid filtered by the active tab, a team allocation panel with per-team stacked bars against the 280×agents floor, a 4-day upload timeline from snapshots, and the existing monthly-intake + Valid-by-table charts moved into a Charts & trends expander (recoloured to the Vivid palette).
 
 ## Phase A — 2026-05-17
 
