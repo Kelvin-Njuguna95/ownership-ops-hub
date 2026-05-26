@@ -702,6 +702,94 @@
   .ct-heat { display:flex; flex-wrap:wrap; gap:3px; }
   .ct-heat span { width:9px; height:9px; border-radius:2px; }
 
+  /* ---- New Companies tagging analytics (Phase 12) ----------------------- */
+  .nc-live { display:inline-flex; align-items:center; gap:5px; margin-left:8px; font-size:11px; color:var(--good); font-weight:600; }
+  .nc-live .dot { width:7px; height:7px; border-radius:50%; background:var(--good); }
+  .nc-chips { display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin-bottom:16px; }
+  .nc-chips .spacer { flex:1; }
+  .nc-chip { display:inline-flex; align-items:center; gap:6px; padding:6px 12px; border-radius:999px; background:var(--surface); border:1px solid var(--border); color:var(--ink); font-size:12.5px; cursor:pointer; font-family:inherit; transition:background .15s ease,color .15s ease,border-color .15s ease; }
+  .nc-chip:hover { background:var(--soft); }
+  .nc-chip.active { color:#fff; border-color:transparent; font-weight:600; }
+  .nc-chip .dot { width:8px; height:8px; border-radius:50%; flex-shrink:0; }
+  .nc-chip .ct { font-size:11px; padding:1px 7px; border-radius:999px; background:var(--soft); color:var(--muted); font-variant-numeric:tabular-nums; }
+  .nc-chip.active .ct { background:rgba(255,255,255,0.22); color:#fff; }
+  .nc-foot { font-size:11px; color:var(--muted); margin-top:6px; } .kpi.hero .nc-foot { color:rgba(255,255,255,0.72); }
+  .nc-sub { font-size:11.5px; color:var(--muted); margin-top:4px; } .kpi.hero .nc-sub { color:rgba(255,255,255,0.85); }
+  .nc-section-head { display:flex; align-items:baseline; justify-content:space-between; gap:12px; margin:20px 2px 10px; }
+  .nc-section-head h2 { margin:0; font-size:15px; font-weight:700; color:var(--ink); }
+  .nc-section-head h2 em { font-style:italic; font-family:Georgia,"Times New Roman",serif; color:var(--accent); font-weight:600; }
+  .nc-section-head .meta { font-size:11.5px; color:var(--muted); }
+  .nc-3col { display:grid; grid-template-columns:repeat(3,1fr); gap:14px; margin-bottom:14px; }
+  @media(max-width:1100px){ .nc-3col { grid-template-columns:1fr; } }
+  .nc-2col { display:grid; grid-template-columns:38fr 62fr; gap:14px; margin-bottom:14px; }
+  @media(max-width:1100px){ .nc-2col { grid-template-columns:1fr; } }
+  .nc-dist { display:grid; grid-template-columns:70px 1fr 40px; gap:10px; align-items:center; font-size:11.5px; padding:4px 0; }
+  .nc-dist .lab { color:var(--muted); }
+  .nc-dist .bar { height:10px; background:var(--soft); border-radius:4px; overflow:hidden; }
+  .nc-dist .bar > span { display:block; height:100%; border-radius:4px; background:var(--vivid-grad); }
+  .nc-dist .v { text-align:right; font-weight:600; color:var(--ink); font-variant-numeric:tabular-nums; }
+  .nc-feed-row { display:flex; align-items:center; gap:10px; padding:8px 0; border-bottom:1px solid var(--border); font-size:12px; }
+  .nc-feed-row .co { flex:1; min-width:0; }
+  .nc-feed-row .co .nm { font-weight:600; color:var(--ink); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .nc-feed-row .co .s { font-size:10.5px; color:var(--muted); }
+  .nc-agepill { font-size:10.5px; font-weight:700; padding:2px 8px; border-radius:999px; font-variant-numeric:tabular-nums; white-space:nowrap; }
+  .nc-vpill { font-size:10px; font-weight:700; padding:2px 7px; border-radius:999px; text-transform:uppercase; letter-spacing:0.02em; white-space:nowrap; }
+  .nc-rolechip { font-size:10px; color:var(--muted); background:var(--soft); padding:1px 7px; border-radius:999px; white-space:nowrap; }
+  .nc-qh { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:10px; }
+  .nc-qh-card { background:var(--soft); border-radius:var(--radius-sm); padding:10px 12px; }
+  .nc-qh-card .v { font-size:20px; font-weight:700; color:var(--ink); font-variant-numeric:tabular-nums; line-height:1; }
+  .nc-qh-card .l { font-size:9.5px; text-transform:uppercase; letter-spacing:0.04em; color:var(--muted); margin-top:4px; }
+  .nc-qh-card .sub { font-size:10.5px; color:var(--muted); margin-top:3px; }
+  .nc-prow { display:flex; align-items:center; gap:10px; padding:6px 0; font-size:12px; }
+  .nc-prow .who { flex:1; min-width:0; color:var(--ink); } .nc-prow .who .s { color:var(--muted); font-size:10.5px; }
+  .nc-prow .v { font-weight:600; color:var(--ink); font-variant-numeric:tabular-nums; flex-shrink:0; }
+  .nc-barwrap { flex:1.2; height:6px; background:var(--soft); border-radius:999px; overflow:hidden; }
+  .nc-barwrap > span { display:block; height:100%; border-radius:999px; background:var(--vivid-grad); }
+  .nc-selhead { font-size:11px; text-transform:uppercase; letter-spacing:0.05em; color:var(--muted); font-weight:700; margin:20px 2px 6px; }
+  .nc-selhint { font-size:11px; color:var(--muted); font-weight:400; text-transform:none; letter-spacing:0; margin-left:6px; }
+  .nc-drawer-card { background:var(--surface); border:1px solid var(--border); border-top:3px solid var(--accent); border-radius:var(--radius-lg); padding:16px 18px; box-shadow:var(--shadow-sm); margin-bottom:14px; }
+  .nc-dh { display:flex; align-items:flex-start; gap:12px; }
+  .nc-dh .ic { width:40px; height:40px; border-radius:10px; flex-shrink:0; display:inline-flex; align-items:center; justify-content:center; background:var(--vivid-grad); color:#fff; }
+  .nc-dh .ic svg { width:19px; height:19px; }
+  .nc-dh .nm { font-size:16px; font-weight:700; color:var(--ink); }
+  .nc-dh .meta { font-size:11.5px; color:var(--muted); margin-top:4px; line-height:1.5; }
+  .nc-dh .acts { margin-left:auto; display:flex; gap:8px; flex-shrink:0; }
+  .nc-drow { display:grid; grid-template-columns:repeat(3,1fr); gap:14px; margin-bottom:8px; }
+  @media(max-width:1100px){ .nc-drow { grid-template-columns:1fr; } }
+  .nc-field { display:flex; justify-content:space-between; gap:10px; padding:5px 0; font-size:12px; border-bottom:1px solid var(--border); }
+  .nc-field .k { color:var(--muted); text-transform:uppercase; font-size:10px; letter-spacing:0.04em; flex-shrink:0; }
+  .nc-field .val { color:var(--ink); font-weight:600; text-align:right; word-break:break-word; }
+  .nc-field .val.hl { color:var(--accent); }
+  .nc-statblocks { display:flex; gap:14px; margin:6px 0; }
+  .nc-statblocks .b { flex:1; }
+  .nc-statblocks .b .v { font-size:19px; font-weight:700; color:var(--ink); font-variant-numeric:tabular-nums; line-height:1; }
+  .nc-statblocks .b .l { font-size:9.5px; text-transform:uppercase; letter-spacing:0.04em; color:var(--muted); margin-top:4px; }
+  .nc-teambars { display:flex; align-items:flex-end; gap:6px; height:62px; margin-top:8px; }
+  .nc-teambars .tb { flex:1; display:flex; flex-direction:column; align-items:center; gap:3px; justify-content:flex-end; height:100%; }
+  .nc-teambars .tb .bar { width:100%; border-radius:3px 3px 0 0; min-height:3px; }
+  .nc-teambars .tb .lab { font-size:9px; color:var(--muted); } .nc-teambars .tb .c { font-size:9px; color:var(--ink); font-weight:600; }
+  .nc-pfoot { margin-top:10px; padding-top:10px; border-top:1px solid var(--border); font-size:11px; color:var(--muted); line-height:1.5; }
+  .nc-pfoot .num { color:var(--ink); font-weight:600; }
+  .nc-roster-row { display:flex; align-items:center; gap:10px; padding:8px 0; border-bottom:1px solid var(--border); font-size:12px; }
+  .nc-roster-row .who { flex:1; min-width:0; } .nc-roster-row .who .nm { font-weight:600; color:var(--ink); }
+  .nc-badge { font-size:9.5px; font-weight:700; padding:2px 7px; border-radius:999px; white-space:nowrap; }
+  .nc-queue-row { display:grid; grid-template-columns:24px 84px minmax(150px,2fr) 1.3fr 64px 1fr; gap:10px; align-items:center; padding:9px 8px; border-bottom:1px solid var(--border); cursor:pointer; font-size:12px; transition:background .12s ease; }
+  .nc-queue-row:hover { background:var(--soft); } .nc-queue-row.selected { background:var(--accent-soft); }
+  .nc-queue-row.head { font-size:10px; text-transform:uppercase; letter-spacing:0.04em; color:var(--muted); font-weight:700; cursor:default; } .nc-queue-row.head:hover { background:transparent; }
+  .nc-queue-row .imo { font-family:"Geist Mono",ui-monospace,Menlo,monospace; font-variant-numeric:tabular-nums; color:var(--ink); }
+  .nc-cob { display:flex; align-items:center; gap:7px; min-width:0; }
+  .nc-cob .nm { font-weight:600; color:var(--ink); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .nc-cob .s { font-size:10px; color:var(--muted); }
+  .nc-newpill { font-size:9px; font-weight:700; padding:1px 6px; border-radius:999px; background:var(--accent-soft); color:var(--accent); text-transform:uppercase; }
+  .nc-cb { width:14px; height:14px; border-radius:3px; border:1.5px solid var(--border); display:inline-block; }
+  .nc-queue-row.selected .nc-cb { background:var(--accent); border-color:var(--accent); }
+  .nc-copy { cursor:pointer; color:var(--muted); font-size:11px; } .nc-copy:hover { color:var(--accent); }
+  .nc-pag { display:flex; align-items:center; justify-content:space-between; gap:8px; flex-wrap:wrap; margin-top:10px; font-size:11.5px; color:var(--muted); }
+  .nc-pag .pages { display:flex; gap:4px; }
+  .nc-pag .pages button { min-width:26px; padding:3px 7px; font-size:12px; font-family:inherit; border:1px solid var(--border); background:var(--surface); color:var(--ink); border-radius:6px; cursor:pointer; }
+  .nc-pag .pages button.active { background:var(--ink); color:#fff; border-color:var(--ink); font-weight:600; }
+  .nc-pag .pages button:disabled { opacity:0.4; cursor:default; }
+
   /* Tasks page */
   .sortable th { cursor: pointer; user-select: none; }
   .sortable th:hover { background: #e9ebf0; }
@@ -4981,106 +5069,290 @@ async function fetchTaskRecords(taskName) {
 }
 
 // -------- New Companies --------
-const NEW_COMPANIES_STATE = { view: "all", sortBy: "days_open", sortDir: "desc" };
+// ===== New Companies tagging analytics (Phase 12) =====
+// Every value traces to a real field on STATE.v2.add_new_company_records:
+// requested_by, imo, role, assignee, team, add_new_company, days_open,
+// qa_assignee, qa_status, verification_status — plus case_company_gap_records
+// and case_no_imo_records (quality flags). No timestamps exist, so age is
+// days_open (whole days) and there is no time-of-day / hourly view.
+const NC_PAGE_SIZE = 12;
+function ncInitials(n){ return String(n||"").split(/\s+/).filter(Boolean).map(p=>p[0].toUpperCase()).slice(0,2).join("")||"··"; }
+function ncTeamHex(tm){ return (TEAM_COLORS[tm]||{}).hex || "#7B68EE"; }
+function ncPct(arr,p){ const s=[...arr].filter(x=>x!=null).sort((a,b)=>a-b); if(!s.length) return null; return s[Math.min(s.length-1,Math.floor(p/100*s.length))]; }
+function ncCleared(r){ return r.verification_status==="Valid"; }
+function ncOpen(r){ return !["Valid","Done"].includes(r.verification_status); }
+function ncAgePill(d){
+  d=d||0; let bg,fg;
+  if(d<=0){bg="var(--good-bg)";fg="var(--good)";}
+  else if(d===1){bg="rgba(6,145,181,0.13)";fg="#0691B5";}
+  else if(d<=3){bg="var(--warn-bg)";fg="var(--warn)";}
+  else {bg="var(--bad-bg)";fg="var(--bad)";}
+  return `<span class="nc-agepill" style="background:${bg};color:${fg}">${d}d</span>`;
+}
+function ncVpill(s){
+  const m={ "Valid":["var(--good-bg)","var(--good)"], "Done":["var(--good-bg)","var(--good)"], "Selected for BO QA ":["rgba(6,145,181,0.13)","#0691B5"], "Selected for WW QA":["var(--accent-soft)","var(--accent)"], "waiting":["var(--warn-bg)","var(--warn)"], "tagged":["var(--accent-soft)","var(--accent)"], "need to be update":["var(--bad-bg)","var(--bad)"] };
+  const [bg,fg]=m[s]||["var(--soft)","var(--muted)"];
+  return `<span class="nc-vpill" style="background:${bg};color:${fg}">${esc((s||"—").replace("Selected for ",""))}</span>`;
+}
 
 PAGE_RENDERERS.new_companies = function () {
   const root = document.getElementById("page-new_companies");
-  const records   = STATE.v2?.add_new_company_records || [];
-  const truncated = !!STATE.v2?.add_new_company_records_truncated;
-  NEW_COMPANIES_STATE.view = localStorage.getItem("wqa.newCompaniesView") || "all";
+  const recs = STATE.v2?.add_new_company_records || [];
+  const gaps = STATE.v2?.case_company_gap_records || [];
+  const noimo = STATE.v2?.case_no_imo_records || [];
+  if (!STATE.ncFilters) STATE.ncFilters = { team:"__all__", open3:false, valid:false, gaps:false };
+  if (STATE.ncSelectedImo === undefined) STATE.ncSelectedImo = null;
+  if (!STATE.ncPage) STATE.ncPage = 1;
+  const f = STATE.ncFilters;
 
-  const needsQa = r => !r.qa_assignee || !r.qa_status;
-  const needsQaCount = records.filter(needsQa).length;
+  // ---- headline aggregates (all real) ----
+  const total = recs.length;
+  const stillOpen = recs.filter(ncOpen).length;
+  const cleared = recs.filter(ncCleared).length;
+  const clearedPct = total? cleared/total*100 : 0;
+  const gapsTotal = gaps.length + noimo.length;
+  const uniqueCos = new Set(recs.map(r=>r.add_new_company).filter(Boolean)).size;
+  const medDays = median(recs.map(r=>r.days_open||0));
+  const p90Days = ncPct(recs.map(r=>r.days_open||0),90);
+  const over3 = recs.filter(r=>(r.days_open||0)>3).length;
+  const over3Pct = total? over3/total*100 : 0;
+  const gapImos = new Set([...gaps.map(r=>String(r.imo)), ...noimo.map(r=>String(r.imo))]);
+
+  const teamKeys = Object.keys(STATE.roster||{}).sort();
+  const teamCount=(tm)=>recs.filter(r=>r.team===tm).length;
+  const refAge = ageHours(STATE.v2?.computed_at);
+  const refLabel = refAge==null? "freshness unknown" : refAge<1? `Refreshed ${Math.max(1,Math.round(refAge*60))} min ago` : refAge<24? `Refreshed ${Math.round(refAge)}h ago` : `Refreshed ${Math.round(refAge/24)}d ago`;
+  const nowEat = (STATE.v2?.computed_at? new Date(STATE.v2.computed_at):new Date()).toLocaleString("en-GB",{timeZone:"Africa/Nairobi",weekday:"long",day:"2-digit",month:"short",year:"numeric",hour:"2-digit",minute:"2-digit"});
+
+  const chip=(id,label,count,active,hex)=>`<button class="nc-chip${active?" active":""}" data-nc="${id}"${active&&hex?` style="background:${hex}"`:""}>${hex?`<span class="dot" style="background:${active?"#fff":hex}"></span>`:""}<span>${esc(label)}</span><span class="ct">${count}</span></button>`;
+  const chipsHtml=`<div class="nc-chips" id="ncChips">
+    ${chip("__all__","All teams",total,f.team==="__all__",null)}
+    ${teamKeys.map(tm=>chip(tm,tm,teamCount(tm),f.team===tm,ncTeamHex(tm))).join("")}
+    <span class="spacer"></span>
+    <button class="nc-chip${f.open3?" active":""}" data-nc="__open3"${f.open3?' style="background:var(--bad)"':""}>🚩 Open &gt;3d <span class="ct">${over3}</span></button>
+    <button class="nc-chip${f.valid?" active":""}" data-nc="__valid"${f.valid?' style="background:var(--good)"':""}>✓ Valid <span class="ct">${cleared}</span></button>
+    <button class="nc-chip${f.gaps?" active":""}" data-nc="__gaps"${f.gaps?' style="background:var(--bad)"':""}>🔴 Quality gaps <span class="ct">${gapsTotal}</span></button>
+  </div>`;
+
+  // days-open distribution (over all recs)
+  const buckets=[["0d",r=>r.days_open===0],["1d",r=>r.days_open===1],["2–3d",r=>r.days_open>=2&&r.days_open<=3],["4–7d",r=>r.days_open>=4&&r.days_open<=7],["8+d",r=>r.days_open>=8]];
+  const bCount=buckets.map(([l,fn])=>recs.filter(fn).length); const bMax=Math.max(1,...bCount);
+  // team decision dots
+  const teamDots=teamKeys.map(tm=>`<span style="display:inline-flex;align-items:center;gap:3px"><span style="width:7px;height:7px;border-radius:50%;background:${ncTeamHex(tm)};display:inline-block"></span>${teamCount(tm)}</span>`).join(" · ");
+  // recent tags (newest = lowest days_open) over filtered set
+  const filtered = _ncFiltered();
+  const recent = [...filtered].sort((a,b)=>(a.days_open||0)-(b.days_open||0)).slice(0,8);
+  const feedRows = recent.map(r=>`<div class="nc-feed-row"><span class="task-avatar" style="background:${ncTeamHex(r.team)};width:24px;height:24px;font-size:9px">${esc(ncInitials(r.assignee))}</span><span class="co"><div class="nm">${esc(r.add_new_company||"(no company)")}</div><div class="s">IMO ${esc(r.imo||"—")} · ${esc(r.assignee||"unassigned")}</div></span><span class="nc-rolechip">${esc((r.role||"—").replace(/_/g," "))}</span><span class="task-team-chip" style="color:${ncTeamHex(r.team)}">&bull; ${esc(r.team||"—")}</span>${ncAgePill(r.days_open)}</div>`).join("")||'<div class="empty" style="padding:14px">No records.</div>';
+  // queue health
+  const openRecs = recs.filter(ncOpen);
+  const medOpenDays = openRecs.length? median(openRecs.map(r=>r.days_open||0)) : null;
+  // top taggers (all recs)
+  const byTagger={}; for(const r of recs){ const k=r.assignee||"(unassigned)"; (byTagger[k]=byTagger[k]||{name:k,count:0,team:r.team,days:[]}); byTagger[k].count++; byTagger[k].days.push(r.days_open||0); }
+  const topTaggers=Object.values(byTagger).sort((a,b)=>b.count-a.count).slice(0,4); const ttMax=Math.max(1,...topTaggers.map(t=>t.count));
 
   root.innerHTML = `
-    <h3 style="font-size:18px;font-weight:600;color:var(--ink);margin-bottom:8px">New Companies</h3>
-    <div class="footer-note" style="margin-bottom:10px">Records where <code>add_new_company</code> is filled. SOP requires 100% QA on every such record — use the toggle to see which still need it.</div>
-    <div class="kpis">
-      <div class="kpi"><div class="label">Total with new-company text</div><div class="value">${records.length}</div></div>
-      <div class="kpi ${needsQaCount > 0 ? 'warn' : ''}"><div class="label">Needing QA</div><div class="value">${needsQaCount}</div><div class="delta">qa_assignee or qa_status empty</div></div>
+    <div class="page-head">
+      <div>
+        <div class="page-eyebrow">Ownership QA &middot; ${esc(nowEat)} EAT<span class="nc-live"><span class="dot"></span>Live &middot; ${esc(refLabel)}</span></div>
+        <h1 class="page-title">New <em>companies</em></h1>
+        <div class="page-subtitle">
+          Tagging analytics for new companies — track volume, team load, clearance time.
+          <span class="dot-sep">&middot;</span><span class="num">${total}</span> tagged
+          <span class="dot-sep">&middot;</span><span class="num">${stillOpen}</span> open
+          <span class="dot-sep">&middot;</span><span class="num">${cleared}</span> cleared to Valid
+          <span class="dot-sep">&middot;</span><span class="num">${gapsTotal}</span> quality flags
+        </div>
+      </div>
+      <div class="page-head-actions">
+        <button class="btn" id="ncFilterBtn">Filter</button>
+        <button class="btn" id="ncExportBtn">Export</button>
+        <button class="btn btn-primary" id="ncNewBtn">+ New</button>
+      </div>
     </div>
-    <div class="controls-row">
-      <label class="small-mono">View:</label>
-      <select id="newCompaniesView">
-        <option value="all"       ${NEW_COMPANIES_STATE.view === 'all'       ? 'selected' : ''}>All records</option>
-        <option value="needs_qa"  ${NEW_COMPANIES_STATE.view === 'needs_qa'  ? 'selected' : ''}>Needing QA only</option>
-      </select>
-      <span class="small-mono" id="newCompaniesCount"></span>
+    ${chipsHtml}
+    <div class="kpis kpis-overview-hero">
+      <div class="kpi hero">
+        <div class="kpi-top"><div class="label">Total tagged</div><span class="kpi-icon">${KPI_ICONS.tag}</span></div>
+        <div class="value-row"><span class="value">${total.toLocaleString()}</span><span class="kpi-dod" title="Day-over-day needs a prior-window snapshot, not loaded here">DoD —</span></div>
+        <div class="kpi-trend">${bCount.map((v,i)=>`<span class="bar${v===0?' miss':''}" style="height:${Math.max(8,Math.round(v/bMax*100))}%" title="${buckets[i][0]}: ${v}"></span>`).join("")}</div>
+        <div class="nc-sub">Across <b>${uniqueCos}</b> unique companies</div>
+        <div class="nc-foot">Median days_open: <span>${medDays!=null?medDays+"d":"—"}</span></div>
+      </div>
+      <div class="kpi k-cyan">
+        <div class="kpi-top"><div class="label">Still open</div><span class="kpi-icon">${KPI_ICONS.clock}</span></div>
+        <div class="value-row"><span class="value">${stillOpen.toLocaleString()}</span></div>
+        <div class="nc-sub">${stillOpen===0?"Queue clear ✓":"Active workload (not yet Valid/Done)"}</div>
+      </div>
+      <div class="kpi k-green">
+        <div class="kpi-top"><div class="label">Cleared to Valid</div><span class="kpi-icon">${KPI_ICONS.check}</span></div>
+        <div class="value-row"><span class="value">${cleared.toLocaleString()}</span><span class="kpi-dod-light up">${clearedPct.toFixed(1)}%</span></div>
+        <div class="kpi-bar"><span class="fill green" style="width:${Math.min(100,clearedPct).toFixed(0)}%"></span></div>
+        <div class="nc-foot">of ${total.toLocaleString()} tagged records</div>
+      </div>
+      <div class="kpi k-red ${gapsTotal>0?'bad':''}">
+        <div class="kpi-top"><div class="label">Quality gaps</div><span class="kpi-icon">${KPI_ICONS.octagon}</span></div>
+        <div class="value-row"><span class="value">${gapsTotal.toLocaleString()}</span></div>
+        <div class="nc-foot">company-missing <span class="num">${gaps.length}</span> &middot; no-IMO <span class="num">${noimo.length}</span></div>
+      </div>
     </div>
-    ${truncated ? `<div class="alert-row warn" style="margin-bottom:10px"><span class="icon">!</span><div>Showing 500 of ${records.length}+ records — older entries truncated. Bump the cap in <code>compute_add_new_company_records</code> if you need more.</div></div>` : ""}
-    <div class="panel"><div id="newCompaniesTable"></div></div>
+
+    <div class="nc-section-head"><h2>Break<em>downs</em></h2><span class="meta">${f.team==="__all__"?"all teams":esc(f.team)} &middot; ${filtered.length} records</span></div>
+    <div class="nc-3col">
+      <div class="panel"><h3>Days-open distribution <span class="meta">Median ${medDays!=null?medDays+"d":"—"} &middot; P90 ${p90Days!=null?p90Days+"d":"—"}</span></h3>
+        ${buckets.map(([l],i)=>`<div class="nc-dist"><span class="lab">${l}</span><span class="bar"><span style="width:${(bCount[i]/bMax*100).toFixed(0)}%"></span></span><span class="v">${bCount[i]}</span></div>`).join("")}
+        <div class="nc-pfoot">Age = <code>days_open</code> (whole days). No per-record timestamp is emitted, so this is a day-granularity distribution.</div>
+      </div>
+      <div class="panel"><h3>Recent tags <span class="meta">${filtered.length} records &middot; newest first (by days_open)</span></h3>
+        <div class="nc-pfoot" style="margin:0 0 6px;border:0;padding:0">By team: ${teamDots}</div>
+        ${feedRows}
+      </div>
+      <div class="panel"><h3>Queue health <span class="meta">quality &amp; ageing</span></h3>
+        <div class="nc-qh">
+          <div class="nc-qh-card"><div class="v">${medOpenDays!=null?medOpenDays+"d":"—"}</div><div class="l">Median days-open</div><div class="sub">of ${openRecs.length} still-open</div></div>
+          <div class="nc-qh-card"><div class="v" style="color:var(--bad)">${over3}</div><div class="l">Open &gt;3d</div><div class="sub">${over3Pct.toFixed(1)}% of all</div></div>
+          <div class="nc-qh-card"><div class="v">${gaps.length}</div><div class="l">Company name missing</div><div class="sub">tagged without company</div></div>
+          <div class="nc-qh-card"><div class="v">${noimo.length}</div><div class="l">No IMO</div><div class="sub">IMO not verified</div></div>
+        </div>
+        <div style="font-size:10px;text-transform:uppercase;letter-spacing:0.04em;color:var(--muted);font-weight:700;margin:6px 0 4px">Top taggers</div>
+        ${topTaggers.map(t=>`<div class="nc-prow"><span class="task-avatar" style="background:${ncTeamHex(t.team)}">${esc(ncInitials(t.name))}</span><span class="who">${esc(t.name)}<span class="s"> &middot; ${esc(t.team||"—")}</span></span><span class="nc-barwrap"><span style="width:${(t.count/ttMax*100).toFixed(0)}%"></span></span><span class="v">${t.count}</span></div>`).join("")}
+      </div>
+    </div>
+
+    <div id="ncDetail"></div>
+
+    <div class="nc-2col">
+      <div class="panel"><h3>Tagger roster <span class="meta">cache window</span></h3><div id="ncRoster"></div></div>
+      <div class="panel" style="padding:8px 10px 10px"><h3 style="margin:4px 4px 8px">Companies queue <span class="meta" id="ncQueueMeta"></span></h3><div id="ncQueue"></div></div>
+    </div>
   `;
 
-  document.getElementById("newCompaniesView").addEventListener("change", (e) => {
-    NEW_COMPANIES_STATE.view = e.target.value;
-    localStorage.setItem("wqa.newCompaniesView", NEW_COMPANIES_STATE.view);
-    renderNewCompaniesTable();
-  });
-  renderNewCompaniesTable();
+  document.querySelectorAll("#ncChips .nc-chip").forEach(b=>b.addEventListener("click",()=>{
+    const id=b.dataset.nc;
+    if(id==="__open3") f.open3=!f.open3; else if(id==="__valid") f.valid=!f.valid; else if(id==="__gaps") f.gaps=!f.gaps; else f.team=id;
+    STATE.ncPage=1; PAGE_RENDERERS.new_companies();
+  }));
+  document.getElementById("ncExportBtn").addEventListener("click", _ncExport);
+  renderNcRoster();
+  renderNcQueue();
+  renderNcDrawer();
 };
 
-function _newCompaniesFiltered() {
-  let out = STATE.v2?.add_new_company_records || [];
-  if (NEW_COMPANIES_STATE.view === "needs_qa") {
-    out = out.filter(r => !r.qa_assignee || !r.qa_status);
-  }
-  const k = NEW_COMPANIES_STATE.sortBy, dir = NEW_COMPANIES_STATE.sortDir === "asc" ? 1 : -1;
-  out = [...out].sort((a, b) => {
-    let av, bv;
-    if      (k === "requested_by")        { av = a.requested_by || ""; bv = b.requested_by || ""; }
-    else if (k === "assignee")            { av = a.assignee || "";     bv = b.assignee || ""; }
-    else if (k === "team")                { av = a.team || "";         bv = b.team || ""; }
-    else if (k === "add_new_company")     { av = a.add_new_company || ""; bv = b.add_new_company || ""; }
-    else if (k === "qa_assignee")         { av = a.qa_assignee || "";  bv = b.qa_assignee || ""; }
-    else if (k === "qa_status")           { av = a.qa_status || "";    bv = b.qa_status || ""; }
-    else if (k === "verification_status") { av = a.verification_status || ""; bv = b.verification_status || ""; }
-    else /* days_open */                  { av = a.days_open || 0;     bv = b.days_open || 0; }
-    if (av < bv) return -1 * dir;
-    if (av > bv) return  1 * dir;
-    return 0;
-  });
+function _ncFiltered(){
+  const f=STATE.ncFilters||{}; let out=STATE.v2?.add_new_company_records||[];
+  const gaps=STATE.v2?.case_company_gap_records||[], noimo=STATE.v2?.case_no_imo_records||[];
+  if(f.team&&f.team!=="__all__") out=out.filter(r=>r.team===f.team);
+  if(f.open3) out=out.filter(r=>(r.days_open||0)>3);
+  if(f.valid) out=out.filter(r=>r.verification_status==="Valid");
+  if(f.gaps){ const set=new Set([...gaps.map(r=>String(r.imo)),...noimo.map(r=>String(r.imo))]); out=out.filter(r=>set.has(String(r.imo))); }
   return out;
 }
-
-function renderNewCompaniesTable() {
-  const list = _newCompaniesFiltered();
-  const total = (STATE.v2?.add_new_company_records || []).length;
-  document.getElementById("newCompaniesCount").textContent = `${list.length} of ${total}`;
-  const cols = [
-    ["requested_by",        "Task name"],
-    ["assignee",            "Agent"],
-    ["team",                "Team"],
-    ["add_new_company",     "Company text"],
-    ["days_open",           "Days open"],
-    ["qa_assignee",         "QA assignee"],
-    ["qa_status",           "QA status"],
-    ["verification_status", "Verification status"],
-  ];
-  const rightCols = new Set(["days_open"]);
-  const sortInd = (k) => k === NEW_COMPANIES_STATE.sortBy ? (NEW_COMPANIES_STATE.sortDir === "asc" ? "▲" : "▼") : "";
-  const head = `<thead><tr>${cols.map(([k, lab]) => `<th data-sort="${k}" class="${rightCols.has(k) ? 'right' : ''}">${esc(lab)} <span class="sort-ind">${sortInd(k)}</span></th>`).join("")}</tr></thead>`;
-  const body = list.map(r => `<tr>
-    <td>${esc(r.requested_by || "—")}</td>
-    <td>${esc(r.assignee || "—")}</td>
-    <td>${esc(r.team || "—")}</td>
-    <td>${esc(r.add_new_company || "")}</td>
-    <td class="right">${r.days_open}</td>
-    <td>${esc(r.qa_assignee || "—")}</td>
-    <td>${esc(r.qa_status || "—")}</td>
-    <td>${esc(r.verification_status || "—")}</td>
-  </tr>`).join("");
-  document.getElementById("newCompaniesTable").innerHTML = `<table class="sortable">${head}<tbody>${body || '<tr><td colspan="8" class="empty">No records match.</td></tr>'}</tbody></table>`;
-  document.querySelectorAll("#newCompaniesTable th[data-sort]").forEach(th => {
-    th.addEventListener("click", () => {
-      const k = th.dataset.sort;
-      if (NEW_COMPANIES_STATE.sortBy === k) NEW_COMPANIES_STATE.sortDir = NEW_COMPANIES_STATE.sortDir === "asc" ? "desc" : "asc";
-      else { NEW_COMPANIES_STATE.sortBy = k; NEW_COMPANIES_STATE.sortDir = "desc"; }
-      renderNewCompaniesTable();
-    });
-  });
-  fitTableHeight(document.getElementById("newCompaniesTable"));
+function _ncExport(){
+  const rows=_ncFiltered();
+  const cell=(v)=>`"${String(v??"").replace(/"/g,'""')}"`;
+  const lines=["IMO,Company,Role,Tagger,Team,DaysOpen,VerificationStatus,QAStatus,QAAssignee,RequestedBy"];
+  for(const r of rows) lines.push([cell(r.imo),cell(r.add_new_company),cell(r.role),cell(r.assignee),cell(r.team),r.days_open||0,cell(r.verification_status),cell(r.qa_status),cell(r.qa_assignee),cell(r.requested_by)].join(","));
+  const blob=new Blob([lines.join("\n")],{type:"text/csv"}); const a=document.createElement("a"); a.href=URL.createObjectURL(blob); a.download=`new-companies-${STATE.v2?.date||"export"}.csv`; a.click(); URL.revokeObjectURL(a.href);
 }
 
+function renderNcRoster(){
+  const cont=document.getElementById("ncRoster"); if(!cont) return;
+  const recs=_ncFiltered();
+  const byT={}; let unassigned=0;
+  for(const r of recs){ if(!r.assignee){ unassigned++; continue; } const o=byT[r.assignee]||(byT[r.assignee]={name:r.assignee,count:0,team:r.team}); o.count++; }
+  const taggers=Object.values(byT).sort((a,b)=>b.count-a.count);
+  const max=Math.max(1,...taggers.map(t=>t.count));
+  const badge=(c)=> c>=18? `<span class="nc-badge" style="background:var(--bad-bg);color:var(--bad)">heavy</span>` : c>=12? `<span class="nc-badge" style="background:var(--warn-bg);color:var(--warn)">near cap</span>` : `<span class="nc-badge" style="background:var(--good-bg);color:var(--good)">active</span>`;
+  const rows=taggers.map(t=>`<div class="nc-roster-row"><span class="task-avatar" style="background:${ncTeamHex(t.team)}">${esc(ncInitials(t.name))}</span><span class="who"><div class="nm">${esc(t.name)}</div><span class="task-team-chip" style="color:${ncTeamHex(t.team)}">&bull; ${esc(t.team||"—")}</span> <span class="small-mono">${t.count}/20</span></span><span class="nc-barwrap" style="max-width:90px"><span style="width:${(t.count/Math.max(max,20)*100).toFixed(0)}%"></span></span><span class="v" style="font-weight:600">${t.count}</span>${badge(t.count)}</div>`).join("");
+  const unRow = unassigned>0? `<div class="nc-roster-row"><span class="task-avatar" style="background:#F9943B">··</span><span class="who"><div class="nm" style="color:var(--warn)">Unassigned</div><span class="small-mono">no tagger on record</span></span><span class="v" style="color:var(--warn)">${unassigned}</span></div>`:"";
+  cont.innerHTML = `<div class="nc-pfoot" style="margin:0 0 8px;border:0;padding:0"><span class="num">${taggers.length}</span> taggers &middot; <span class="num">${recs.length}</span> records</div>${rows||'<div class="empty" style="padding:14px">No taggers.</div>'}${unRow}`;
+}
+
+function renderNcQueue(){
+  const cont=document.getElementById("ncQueue"); if(!cont) return;
+  const rowsAll=_ncFiltered();
+  const total=rowsAll.length;
+  const pages=Math.max(1,Math.ceil(total/NC_PAGE_SIZE)); if(STATE.ncPage>pages) STATE.ncPage=pages;
+  const pg=STATE.ncPage, start=(pg-1)*NC_PAGE_SIZE, end=Math.min(start+NC_PAGE_SIZE,total);
+  const rows=rowsAll.slice(start,end);
+  const meta=document.getElementById("ncQueueMeta"); if(meta) meta.textContent=`showing ${total?start+1:0}–${end} of ${total}`;
+  const rowHtml=(r)=>{ const sel=STATE.ncSelectedImo===String(r.imo)?" selected":"";
+    return `<div class="nc-queue-row${sel}" data-imo="${esc(String(r.imo))}">
+      <span class="nc-cb"></span>
+      <span class="imo">${esc(r.imo||"—")}</span>
+      <span class="nc-cob"><span class="nm">${esc(r.add_new_company||"(no company)")}</span><span class="nc-newpill">new</span><span class="nc-rolechip">${esc((r.role||"—").replace(/_/g," "))}</span></span>
+      <span class="nc-cob"><span class="task-avatar" style="background:${ncTeamHex(r.team)};width:22px;height:22px;font-size:9px">${esc(ncInitials(r.assignee))}</span><span style="min-width:0"><span class="nm" style="font-weight:500">${esc(r.assignee||"unassigned")}</span> <span class="task-team-chip" style="color:${ncTeamHex(r.team)}">&bull; ${esc(r.team||"—")}</span></span></span>
+      <span>${ncAgePill(r.days_open)}</span>
+      <span>${ncVpill(r.verification_status)}</span>
+    </div>`; };
+  const pbtn=(p,l,dis,act)=>`<button data-ncpg="${p}"${dis?" disabled":""}${act?' class="active"':""}>${l||p}</button>`;
+  let pagesHtml=""; if(pages>1){ pagesHtml+=pbtn(Math.max(1,pg-1),"‹",pg===1,false); for(let p=1;p<=pages;p++){ if(p===1||p===pages||Math.abs(p-pg)<=1) pagesHtml+=pbtn(p,null,false,p===pg); else if(Math.abs(p-pg)===2) pagesHtml+=`<span style="padding:3px 2px">…</span>`; } pagesHtml+=pbtn(Math.min(pages,pg+1),"›",pg===pages,false); }
+  cont.innerHTML=`
+    <div class="nc-queue-row head"><span></span><span>IMO</span><span>Company</span><span>Tagger</span><span>Age</span><span>Status</span></div>
+    ${rows.map(rowHtml).join("")||'<div class="empty" style="padding:16px">No records match this filter.</div>'}
+    <div class="nc-pag"><span>Showing ${total?start+1:0}–${end} of ${total}</span><span class="pages">${pagesHtml}</span></div>`;
+  cont.querySelectorAll(".nc-queue-row[data-imo]").forEach(row=>row.addEventListener("click",()=>{ STATE.ncSelectedImo=row.dataset.imo; renderNcQueue(); renderNcDrawer(); document.getElementById("ncDetail").scrollIntoView({behavior:"smooth",block:"start"}); }));
+  cont.querySelectorAll("[data-ncpg]").forEach(b=>b.addEventListener("click",()=>{ if(b.disabled)return; STATE.ncPage=parseInt(b.dataset.ncpg,10); renderNcQueue(); }));
+}
+
+function renderNcDrawer(){
+  const cont=document.getElementById("ncDetail"); if(!cont) return;
+  const recs=STATE.v2?.add_new_company_records||[];
+  let r=recs.find(x=>String(x.imo)===String(STATE.ncSelectedImo));
+  if(!r){ r=_ncFiltered()[0]; if(r) STATE.ncSelectedImo=String(r.imo); }
+  if(!r){ cont.innerHTML=""; return; }
+  const co=r.add_new_company||"(no company)";
+  const statusOpen=ncOpen(r);
+  // (a) record detail — real fields only
+  const field=(k,v,hl)=> v? `<div class="nc-field"><span class="k">${k}</span><span class="val${hl?' hl':''}">${esc(v)}</span></div>`:"";
+  const detail = field("Company name",co,true)+field("IMO",r.imo)+field("Role",(r.role||"").replace(/_/g," "))+field("Tagger",r.assignee)+`<div class="nc-field"><span class="k">Team</span><span class="val"><span class="task-team-chip" style="color:${ncTeamHex(r.team)}">&bull; ${esc(r.team||"—")}</span></span></div>`+`<div class="nc-field"><span class="k">Days open</span><span class="val">${r.days_open||0}d</span></div>`+field("Verification",r.verification_status)+field("QA status",r.qa_status)+field("QA assignee",r.qa_assignee)+field("Requested by",r.requested_by);
+  // (b) tagger stats (across all recs)
+  const tg=r.assignee; const tgRecs=recs.filter(x=>x.assignee===tg);
+  const tgCleared=tgRecs.filter(ncCleared).length; const tgClearedPct=tgRecs.length?tgCleared/tgRecs.length*100:0;
+  const tgMed=median(tgRecs.map(x=>x.days_open||0));
+  const others=tgRecs.filter(x=>String(x.imo)!==String(r.imo)).sort((a,b)=>(a.days_open||0)-(b.days_open||0)).slice(0,5);
+  const otherRows=others.map(x=>`<div class="nc-prow"><span class="who"><b>${esc(x.add_new_company||"(no company)")}</b><span class="s"> &middot; IMO ${esc(x.imo||"—")} &middot; ${esc((x.role||"—").replace(/_/g," "))}</span></span>${ncAgePill(x.days_open)}</div>`).join("")||'<div class="small-mono" style="padding:6px 0">No other records by this tagger.</div>';
+  const tgLoad=Math.min(100,tgRecs.length/20*100);
+  // (c) team context
+  const tm=r.team; const tmRecs=recs.filter(x=>x.team===tm);
+  const tmOpen=tmRecs.filter(ncOpen).length; const tmMed=median(tmRecs.map(x=>x.days_open||0));
+  const teamKeys=Object.keys(STATE.roster||{}).sort();
+  const teamTotals=teamKeys.map(k=>({team:k,n:recs.filter(x=>x.team===k).length})); const tMax=Math.max(1,...teamTotals.map(x=>x.n));
+  const teamBars=teamTotals.map(x=>`<div class="tb"><span class="c">${x.n}</span><span class="bar" style="height:${Math.max(3,Math.round(x.n/tMax*52))}px;background:${x.team===tm?ncTeamHex(x.team):'var(--border)'}"></span><span class="lab">${esc(x.team.slice(0,4))}</span></div>`).join("");
+  // role distribution for this team
+  const roleC={}; for(const x of tmRecs){ const k=(x.role||"(none)").replace(/_/g," "); roleC[k]=(roleC[k]||0)+1; }
+  const roles=Object.entries(roleC).sort((a,b)=>b[1]-a[1]).slice(0,5); const rMax=Math.max(1,...roles.map(x=>x[1]));
+
+  cont.innerHTML=`
+    <div class="nc-selhead">SELECTED &middot; IMO ${esc(r.imo||"—")} &middot; ${esc(co)}<span class="nc-selhint">Click any queue row to swap detail</span></div>
+    <div class="nc-drawer-card">
+      <div class="nc-dh">
+        <span class="ic">${KPI_ICONS.inbox}</span>
+        <div style="min-width:0"><div class="nm">${esc(co)} <span class="pill-inline" style="margin-left:4px;background:var(--soft);color:var(--muted)">IMO ${esc(r.imo||"—")}</span> ${ncVpill(r.verification_status)} <span class="nc-agepill" style="background:${(r.days_open||0)>3?'var(--bad-bg)':'var(--soft)'};color:${(r.days_open||0)>3?'var(--bad)':'var(--muted)'}">● ${r.days_open||0}d old</span></div>
+          <div class="meta">Tagged by ${esc(r.assignee||"unassigned")} &middot; ${esc(r.team||"—")} &middot; Role ${esc((r.role||"—").replace(/_/g," "))} &middot; ${r.days_open||0}d open &middot; QA ${esc(r.qa_status||"—")}</div>
+        </div>
+        <div class="nc-dh acts"><button class="btn" data-ncnoop="airtable">Open in Airtable</button><button class="btn" id="ncDetailClose" title="Clear selection">×</button></div>
+      </div>
+    </div>
+    <div class="nc-drow">
+      <div class="panel"><h3>Record detail</h3>${detail}<div class="nc-pfoot">Status: <span class="num">${statusOpen?"open":"cleared"}</span> &middot; provenance: batch <span class="num">${esc(r.requested_by||"—")}</span></div></div>
+      <div class="panel"><h3>Tagger stats <span class="meta">${esc(tg||"unassigned")} · across ${tgRecs.length} records</span></h3>
+        <div class="nc-statblocks"><div class="b"><div class="v">${tgRecs.length}</div><div class="l">Total tagged</div></div><div class="b"><div class="v">${tgCleared}</div><div class="l">Cleared (${tgClearedPct.toFixed(0)}%)</div></div><div class="b"><div class="v">${tgMed!=null?tgMed+"d":"—"}</div><div class="l">Median days-open</div></div></div>
+        <div style="font-size:10px;text-transform:uppercase;letter-spacing:0.04em;color:var(--muted);font-weight:700;margin:8px 0 2px">Other new-co tags by ${esc(tg||"—")}</div>
+        ${otherRows}
+        <div class="nc-barwrap" style="margin-top:8px"><span style="width:${tgLoad.toFixed(0)}%"></span></div><div class="nc-pfoot" style="border:0;padding:4px 0 0;margin:0">Workload ${tgRecs.length}/20 reference</div>
+      </div>
+      <div class="panel"><h3>Team context <span class="meta">${esc(tm||"—")} · new-co stats</span></h3>
+        <div class="nc-statblocks"><div class="b"><div class="v">${tmRecs.length}</div><div class="l">Total tagged</div></div><div class="b"><div class="v">${tmOpen}</div><div class="l">Still open</div></div><div class="b"><div class="v">${tmMed!=null?tmMed+"d":"—"}</div><div class="l">Median days-open</div></div></div>
+        <div style="font-size:10px;text-transform:uppercase;letter-spacing:0.04em;color:var(--muted);font-weight:700;margin:8px 0 2px">By team</div>
+        <div class="nc-teambars">${teamBars}</div>
+        <div style="font-size:10px;text-transform:uppercase;letter-spacing:0.04em;color:var(--muted);font-weight:700;margin:10px 0 2px">Role distribution · ${esc(tm||"—")}</div>
+        ${roles.map(([rl,n])=>`<div class="nc-dist"><span class="lab" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(rl)}</span><span class="bar"><span style="width:${(n/rMax*100).toFixed(0)}%"></span></span><span class="v">${n}</span></div>`).join("")}
+      </div>
+    </div>
+    <div class="nc-pfoot" style="text-align:center;border:0">ⓘ Decisions happen in Airtable — this dashboard is read-only. Open the record above to action it.</div>`;
+  cont.querySelectorAll("[data-ncnoop]").forEach(b=>b.addEventListener("click",()=>{}));
+  const c=document.getElementById("ncDetailClose"); if(c) c.addEventListener("click",()=>{ STATE.ncSelectedImo=null; renderNcQueue(); cont.innerHTML=""; });
+}
 // -------- WW QA Console --------
 PAGE_RENDERERS.wwqa = function () {
   const root = document.getElementById("page-wwqa");
