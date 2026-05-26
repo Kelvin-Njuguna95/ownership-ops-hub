@@ -229,6 +229,67 @@
   .hourly-team-fill { background: var(--accent-soft); }
   .hourly-spacer { grid-column: 1 / -1; height: 6px; }
 
+  /* ---- Hourly Output detail layer ------------------------------------ */
+  /* KPI row — 4 equal cards (no hero span on this page) */
+  .kpis-hourly { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin-bottom: 18px; }
+  .kpis-hourly .kpi.hero { grid-column: span 1; }
+  @media (max-width: 1180px) { .kpis-hourly { grid-template-columns: repeat(2, 1fr); } }
+  @media (max-width: 620px)  { .kpis-hourly { grid-template-columns: 1fr; } }
+
+  /* Team filter chips */
+  .hourly-chips { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 12px; }
+  .hourly-chips .chip { display: inline-flex; align-items: center; gap: 7px; padding: 6px 12px; border-radius: 999px; background: var(--surface); border: 1px solid var(--border); color: var(--ink); font-size: 13px; cursor: pointer; font-family: inherit; transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease; }
+  .hourly-chips .chip:hover { background: var(--soft); }
+  .hourly-chips .chip.active { background: var(--ink); color: #fff; border-color: var(--ink); font-weight: 600; }
+  .hourly-chips .chip .dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+  .hourly-chips .chip .ct { font-size: 11px; padding: 1px 7px; border-radius: 999px; background: var(--soft); color: var(--muted); font-variant-numeric: tabular-nums; }
+  .hourly-chips .chip.active .ct { background: rgba(255,255,255,0.18); color: rgba(255,255,255,0.92); }
+
+  /* Sort tabs */
+  .hourly-sort { display: inline-flex; gap: 0; border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--soft); padding: 3px; margin-bottom: 14px; }
+  .hourly-sort button { padding: 5px 11px; font-size: 12px; font-family: inherit; color: var(--muted); background: transparent; border: 0; cursor: pointer; border-radius: 6px; transition: background 0.15s ease, color 0.15s ease; }
+  .hourly-sort button:hover { color: var(--ink); }
+  .hourly-sort button.active { background: var(--surface); color: var(--ink); font-weight: 600; box-shadow: var(--shadow-sm); }
+
+  /* Heatmap row head — avatar + name + team */
+  .hourly-row-head { display: flex; align-items: center; gap: 8px; padding: 5px 6px; min-width: 0; }
+  .hourly-avatar { width: 26px; height: 26px; border-radius: 7px; flex-shrink: 0; display: inline-flex; align-items: center; justify-content: center; color: #fff; font-size: 10px; font-weight: 700; letter-spacing: 0.02em; }
+  .hourly-who { display: flex; flex-direction: column; min-width: 0; line-height: 1.1; }
+  .hourly-name { font-weight: 600; color: var(--ink); font-size: 12.5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .hourly-team-bit { font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.04em; margin-top: 1px; }
+
+  /* PER HOUR label and peak column highlight */
+  .hourly-perhour-label { padding: 8px 6px; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: var(--muted); }
+  .hourly-heatmap .cell.peak { box-shadow: inset 0 0 0 2px var(--accent); }
+  .hourly-heatmap .header.peak { color: var(--accent); font-weight: 700; }
+
+  /* Saturation legend */
+  .hourly-legend { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-top: 14px; font-size: 11.5px; color: var(--muted); }
+  .hourly-legend .scale { display: inline-flex; gap: 3px; }
+  .hourly-legend .scale span { width: 14px; height: 9px; border-radius: 2px; background: var(--accent); }
+  .hourly-legend .scale span:nth-child(1) { opacity: 0.18; }
+  .hourly-legend .scale span:nth-child(2) { opacity: 0.38; }
+  .hourly-legend .scale span:nth-child(3) { opacity: 0.58; }
+  .hourly-legend .scale span:nth-child(4) { opacity: 0.78; }
+  .hourly-legend .scale span:nth-child(5) { opacity: 1.0; }
+  .hourly-legend .num { color: var(--ink); font-weight: 600; font-variant-numeric: tabular-nums; }
+  .hourly-legend .sep { color: var(--border); }
+
+  /* Insight cards row */
+  .insights-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin-top: 18px; margin-bottom: 18px; }
+  @media (max-width: 1180px) { .insights-row { grid-template-columns: 1fr; } }
+  .insight-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 16px 18px; box-shadow: var(--shadow-sm); }
+  .insight-card .top { display: flex; align-items: center; gap: 9px; margin-bottom: 8px; }
+  .insight-card .ico { width: 28px; height: 28px; border-radius: 8px; display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; }
+  .insight-card .ico svg { width: 14px; height: 14px; }
+  .insight-card.day-shape .ico { background: var(--accent-soft); color: var(--accent); }
+  .insight-card.at-risk   .ico { background: var(--warn-bg); color: var(--warn); }
+  .insight-card.late      .ico { background: var(--good-bg); color: var(--good); }
+  .insight-card .lbl { font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; font-weight: 700; color: var(--muted); }
+  .insight-card .ttl { font-size: 14px; font-weight: 700; color: var(--ink); letter-spacing: -0.005em; }
+  .insight-card .body { font-size: 12px; color: var(--muted); margin-top: 6px; line-height: 1.5; }
+  .insight-card .body .num { color: var(--ink); font-weight: 600; font-variant-numeric: tabular-nums; }
+
   /* Tasks page */
   .sortable th { cursor: pointer; user-select: none; }
   .sortable th:hover { background: #e9ebf0; }
@@ -2102,12 +2163,21 @@ function renderComparisonAgents() {
 }
 
 // -------- Hourly Output --------
+// Team palette for the Hourly Output heatmap. Each team gets a colour: cells in
+// that team's rows are tinted with rgba(rgb, alpha) where alpha scales by value.
+const TEAM_COLORS = {
+  Pweza: { rgb: "14,165,108",  hex: "#0EA56C" },  // green
+  Kobe:  { rgb: "229,56,79",   hex: "#E5384F" },  // red
+  Tembo: { rgb: "249,148,59",  hex: "#F9943B" },  // orange
+  Simba: { rgb: "6,145,181",   hex: "#0691B5" },  // cyan
+  Nyati: { rgb: "123,104,238", hex: "#7B68EE" },  // purple
+};
+
 PAGE_RENDERERS.hourly = function () {
   const root = document.getElementById("page-hourly");
   const teams = Object.keys(STATE.roster || {}).sort();
-  const selected = localStorage.getItem("wqa.hourlyTeam") || "__all__";
-  const opts = `<option value="__all__"${selected === "__all__" ? " selected" : ""}>All teams</option>`
-    + teams.map(t => `<option value="${esc(t)}"${selected === t ? " selected" : ""}>${esc(t)}</option>`).join("");
+  const selectedTeam = localStorage.getItem("wqa.hourlyTeam") || "__all__";
+  STATE.hourlySort = localStorage.getItem("wqa.hourlySort") || "team";
   const date = STATE.v2?.date || "—";
   const hourlyAgentCount = teams.reduce((s, tm) => s + ((STATE.roster?.[tm]?.members || []).length), 0);
   const pageHeadHtml = `
@@ -2123,24 +2193,15 @@ PAGE_RENDERERS.hourly = function () {
       </div>
     </div>`;
 
-  // Empty-state diagnostic: completion_detector.py writes to
-  // ownership_completions on every poll cycle. If the table has zero rows
-  // for the displayed date, render an explicit message rather than a sea
-  // of zero cells — the empty grid is the right diagnostic signal that the
-  // detector isn't writing (don't fall back to the old hourly_buckets,
-  // which would hide whether the new pipeline is working).
+  // Empty-state diagnostic — same diagnostic as before, now wrapped under the
+  // editorial page head for consistency.
   const noRows = STATE.completions && Object.keys(STATE.completions).length === 0;
   const loadFailed = STATE.completions === null;
   if (noRows || loadFailed) {
     const msg = loadFailed
       ? `Could not read <code>ownership_completions</code> from Supabase. Check that the table exists (run <code>db/migrations/001_ownership_completions.sql</code>) and that the anon role has SELECT access.`
       : `No completions detected yet for <strong>${esc(date)}</strong> — first detector run pending. Each poll cycle of <code>completion_detector.py</code> stamps newly-complete records; the heatmap populates as those land.`;
-    root.innerHTML = `
-      <div class="controls-row">
-        <label class="small-mono">Team:</label>
-        <select id="hourlyTeamSelect" disabled>${opts}</select>
-        <span class="small-mono">Hourly Tagging Output by Agent — ${esc(date)}</span>
-      </div>
+    root.innerHTML = pageHeadHtml + `
       <div class="panel">
         <div class="empty-state">
           <div class="title">${loadFailed ? "Cannot reach completions table" : "No completions detected yet"}</div>
@@ -2150,116 +2211,282 @@ PAGE_RENDERERS.hourly = function () {
     return;
   }
 
-  root.innerHTML = pageHeadHtml + `
-    <div class="controls-row">
-      <label class="small-mono">Team:</label>
-      <select id="hourlyTeamSelect">${opts}</select>
-      <button id="hourlyRefreshBtn" class="small-mono" style="margin-left:auto; padding:4px 10px; cursor:pointer; border:1px solid var(--border); background:var(--surface); border-radius:3px;">↻ Refresh</button>
-      <span id="hourlyRefreshTs" class="small-mono" style="color:var(--muted);"></span>
-    </div>
-    <div class="panel">
-      <h3>Per-agent &middot; per-hour heatmap <span class="meta">waiting &rarr; tagged transitions &middot; 06:00&ndash;23:00 EAT</span></h3>
-      <div id="hourlyGrid"></div>
-      <div class="footer-note">Cells = records each agent moved waiting→tagged during that EAT hour (source: <code>ownership_completions</code>, bucketed by detector observation time — accurate to ≈5 min at the 5-min poll cadence). The Total covers all 24 hours; the grid shows the 06:00–23:00 business window (* = the agent also has rows tagged outside it, e.g. overnight). Data auto-refreshes when the browser tab regains focus; tap Refresh to fetch immediately.</div>
+  // Team chips (replace the old <select>) — All teams + one per roster team.
+  const chipsHtml = `
+    <div class="hourly-chips" id="hourlyChips">
+      <button class="chip${selectedTeam === "__all__" ? " active" : ""}" data-team="__all__">
+        <span>All teams</span><span class="ct">${teams.length}</span>
+      </button>
+      ${teams.map(t => `<button class="chip${selectedTeam === t ? " active" : ""}" data-team="${esc(t)}">
+        <span class="dot" style="background:${TEAM_COLORS[t]?.hex || "#7B68EE"}"></span>
+        <span>${esc(t)}</span>
+        <span class="ct">${(STATE.roster?.[t]?.members || []).length}</span>
+      </button>`).join("")}
     </div>`;
 
-  const sel = document.getElementById("hourlyTeamSelect");
-  sel.addEventListener("change", () => {
-    localStorage.setItem("wqa.hourlyTeam", sel.value);
-    renderHourlyGrid(sel.value);
-  });
-  const refreshBtn = document.getElementById("hourlyRefreshBtn");
-  const refreshTs = document.getElementById("hourlyRefreshTs");
-  const updateTsLabel = () => {
-    const now = new Date();
-    const hhmm = now.toLocaleTimeString("en-GB", {timeZone:"Africa/Nairobi", hour:"2-digit", minute:"2-digit"});
-    refreshTs.textContent = `loaded ${hhmm} EAT`;
-  };
-  updateTsLabel();
-  refreshBtn.addEventListener("click", async () => {
-    refreshBtn.disabled = true;
-    refreshBtn.textContent = "↻ Loading…";
+  // Sort tabs
+  const sortHtml = `
+    <div class="hourly-sort" id="hourlySort">
+      <button data-sort="team"         class="${STATE.hourlySort === "team" ? "active" : ""}">Sort by team</button>
+      <button data-sort="output"       class="${STATE.hourlySort === "output" ? "active" : ""}">By output</button>
+      <button data-sort="activity"     class="${STATE.hourlySort === "activity" ? "active" : ""}">By activity</button>
+      <button data-sort="alphabetical" class="${STATE.hourlySort === "alphabetical" ? "active" : ""}">Alphabetical</button>
+    </div>`;
+
+  root.innerHTML = pageHeadHtml + chipsHtml + sortHtml + `
+    <div id="hourlyKpis"></div>
+    <div class="panel">
+      <h3>Per-agent &middot; per-hour heatmap <span class="meta">waiting &rarr; tagged transitions &middot; 06:00&ndash;23:00 EAT &middot; rows colour-coded by team</span><button id="hourlyRefreshBtn" class="btn" style="margin-left:auto;">↻ Refresh</button></h3>
+      <div id="hourlyGrid"></div>
+      <div id="hourlyLegend" class="hourly-legend"></div>
+      <div class="footer-note">Cells = records each agent moved waiting→tagged during that EAT hour (source: <code>ownership_completions</code>, bucketed by detector observation time — accurate to ≈5 min at the 5-min poll cadence). The Total covers all 24 hours; the grid shows the 06:00–23:00 business window (* = the agent also has rows tagged outside it, e.g. overnight). Data auto-refreshes when the browser tab regains focus; tap Refresh to fetch immediately.</div>
+    </div>
+    <div id="hourlyInsights" class="insights-row"></div>`;
+
+  // Chip click → set team filter and re-render.
+  document.querySelectorAll("#hourlyChips .chip").forEach(b => b.addEventListener("click", () => {
+    const t = b.dataset.team;
+    localStorage.setItem("wqa.hourlyTeam", t);
+    document.querySelectorAll("#hourlyChips .chip").forEach(x => x.classList.toggle("active", x.dataset.team === t));
+    renderHourlyGrid(t);
+  }));
+  // Sort tab click → set sort mode and re-render.
+  document.querySelectorAll("#hourlySort button").forEach(b => b.addEventListener("click", () => {
+    const s = b.dataset.sort;
+    STATE.hourlySort = s;
+    localStorage.setItem("wqa.hourlySort", s);
+    document.querySelectorAll("#hourlySort button").forEach(x => x.classList.toggle("active", x.dataset.sort === s));
+    renderHourlyGrid(localStorage.getItem("wqa.hourlyTeam") || "__all__");
+  }));
+  // Refresh button — re-fetch completions then re-render.
+  document.getElementById("hourlyRefreshBtn").addEventListener("click", async () => {
+    const btn = document.getElementById("hourlyRefreshBtn");
+    btn.disabled = true;
+    btn.textContent = "↻ Loading…";
     await loadCompletions(STATE.completionsDate || STATE.v2?.date || null);
-    refreshBtn.disabled = false;
-    refreshBtn.textContent = "↻ Refresh";
-    updateTsLabel();
-    renderHourlyGrid(sel.value);
+    btn.disabled = false;
+    btn.textContent = "↻ Refresh";
+    renderHourlyGrid(localStorage.getItem("wqa.hourlyTeam") || "__all__");
   });
-  renderHourlyGrid(selected);
+
+  renderHourlyGrid(selectedTeam);
 };
 
 function renderHourlyGrid(filterTeam) {
   const hours = Array.from({ length: 18 }, (_, i) => i + 6);  // 6..23
   const teams = Object.keys(STATE.roster || {}).sort();
   const visibleTeams = (filterTeam && filterTeam !== "__all__") ? [filterTeam] : teams;
+  const sortMode = STATE.hourlySort || "team";
+  const FLOOR = 280;
 
   // First pass: gather rows so we can compute the global max for intensity scaling.
   const rows = [];
   let gridMax = 0;
   for (const team of visibleTeams) {
-    const members = (STATE.roster[team]?.members || []).slice().sort((a, b) => a.name.localeCompare(b.name));
+    const members = (STATE.roster[team]?.members || []).slice();
     for (const m of members) {
       const buckets = STATE.completions?.[m.name] || {};
       const counts = hours.map(h => buckets[h] ?? buckets[String(h)] ?? 0);
-      // Total covers ALL 24 hours (incl. overnight cron ticks ~00:30 / 03:30
-      // EAT), not just the visible 6–23 columns. `outside` = rows whose EAT
-      // hour falls outside that window — flagged with a * on the Total.
       const total = Object.values(buckets).reduce((a, b) => a + b, 0);
       const outside = total - counts.reduce((a, b) => a + b, 0);
+      let lastHour = -1;
+      for (let i = counts.length - 1; i >= 0; i--) { if (counts[i] > 0) { lastHour = i; break; } }
       gridMax = Math.max(gridMax, ...counts);
-      rows.push({ kind: "agent", team, name: m.name, counts, total, outside });
+      rows.push({ team, name: m.name, counts, total, outside, lastHour });
     }
-    rows.push({ kind: "divider", team });
   }
 
-  // Sum-across-all-visible-agents row (per visible hour 6–23 for the cells)
-  const agentRows = rows.filter(r => r.kind === "agent");
-  const colSums = hours.map((_, i) => agentRows.reduce((s, r) => s + r.counts[i], 0));
-  // Grand total covers all 24h (sum of the per-agent 24h totals), not just visible cells.
-  const grand = agentRows.reduce((s, r) => s + r.total, 0);
-  const grandOutside = agentRows.reduce((s, r) => s + r.outside, 0);
-
-  const cellHtml = (v, h, scale) => {
-    if (v === 0) return `<div class="cell z" title="${h}:00 EAT">0</div>`;
-    const alpha = scale === 0 ? 0 : (0.2 + 0.8 * (v / scale)).toFixed(2);
-    return `<div class="cell" style="background:rgba(123,104,238,${alpha});" title="${h}:00 EAT → ${v}">${v}</div>`;
-  };
-  const headers = hours.map(h => `<div class="header">${h}</div>`).join("");
-
-  // Group rows visually: emit a team divider row before each team's members.
-  let html = "";
-  let lastTeam = null;
-  let teamStarted = false;
-  for (const r of rows) {
-    if (r.kind === "divider") continue;
-    if (r.team !== lastTeam) {
-      if (teamStarted) html += `<div class="hourly-spacer"></div>`;
-      html += `<div class="hourly-team-label">${esc(r.team)}</div>` + `<div class="hourly-team-fill" style="grid-column: 2 / span ${hours.length + 1};"></div>`;
-      lastTeam = r.team;
-      teamStarted = true;
-    }
-    html += `<div class="label">${esc(r.name)}</div>`;
-    html += r.counts.map((v, i) => cellHtml(v, hours[i], gridMax)).join("");
-    const outTip = r.outside > 0 ? ` title="includes ${r.outside} record${r.outside === 1 ? "" : "s"} tagged outside 06:00–23:00 EAT"` : "";
-    html += `<div class="cell" style="background:var(--soft);color:var(--ink);font-weight:600;"${outTip}>${r.total}${r.outside > 0 ? "*" : ""}</div>`;
+  // Apply sort
+  let sortedRows;
+  if (sortMode === "team") {
+    sortedRows = rows.slice().sort((a, b) => a.team.localeCompare(b.team) || a.name.localeCompare(b.name));
+  } else if (sortMode === "output") {
+    sortedRows = rows.slice().sort((a, b) => b.total - a.total || a.name.localeCompare(b.name));
+  } else if (sortMode === "activity") {
+    sortedRows = rows.slice().sort((a, b) => b.lastHour - a.lastHour || b.total - a.total);
+  } else {
+    sortedRows = rows.slice().sort((a, b) => a.name.localeCompare(b.name));
   }
-  // Footer "All agents" sum row
-  html += `<div class="hourly-spacer"></div>`;
-  html += `<div class="label" style="font-weight:600;">All agents</div>`;
-  html += colSums.map((v, i) => {
-    if (v === 0) return `<div class="cell z" title="${hours[i]}:00 EAT total">0</div>`;
+
+  // Stats
+  const colSums = hours.map((_, i) => rows.reduce((s, r) => s + r.counts[i], 0));
+  const grand = rows.reduce((s, r) => s + r.total, 0);
+  const grandOutside = rows.reduce((s, r) => s + r.outside, 0);
+  const agentCount = rows.length;
+  const totalsAsc = rows.map(r => r.total).sort((a, b) => a - b);
+  const median = totalsAsc.length === 0 ? 0
+    : totalsAsc.length % 2 ? totalsAsc[(totalsAsc.length - 1) / 2]
+    : Math.round((totalsAsc[totalsAsc.length / 2 - 1] + totalsAsc[totalsAsc.length / 2]) / 2);
+  const avg = agentCount > 0 ? Math.round(grand / agentCount) : 0;
+  const metFloor = rows.filter(r => r.total >= FLOOR).length;
+  const peakVal = colSums.length ? Math.max(...colSums) : 0;
+  const peakIdx = colSums.indexOf(peakVal);
+  const peakHour = peakIdx >= 0 ? hours[peakIdx] : null;
+  const peakPct = grand > 0 ? Math.round(peakVal / grand * 100) : 0;
+  const sorted2 = colSums.map((v, i) => ({ v, i })).sort((a, b) => b.v - a.v);
+  const secondPeak = sorted2.length > 1 ? sorted2[1] : null;
+  const secondPeakHour = secondPeak && secondPeak.v > 0 ? hours[secondPeak.i] : null;
+  const secondPeakVal = secondPeak ? secondPeak.v : 0;
+  // Active in the current EAT hour
+  let nowH = -1;
+  try { nowH = parseInt(new Intl.DateTimeFormat("en-GB", { timeZone: "Africa/Nairobi", hour: "2-digit", hour12: false }).format(new Date()), 10); } catch (_) {}
+  const nowIdx = hours.indexOf(nowH);
+  const activeNow = nowIdx >= 0 ? rows.filter(r => r.counts[nowIdx] > 0).length : 0;
+
+  // Peak cell (max single agent-hour value) — for the legend
+  let peakCellAgent = "—", peakCellHour = null;
+  if (gridMax > 0) {
+    for (const r of rows) {
+      const idx = r.counts.indexOf(gridMax);
+      if (idx >= 0) { peakCellAgent = r.name; peakCellHour = hours[idx]; break; }
+    }
+  }
+  // Lull window — longest run of hours where colSum < 25% of peak
+  const lullThresh = peakVal * 0.25;
+  let lullS = -1, lullE = -1, runS = -1;
+  for (let i = 0; i <= colSums.length; i++) {
+    const inLull = i < colSums.length && colSums[i] < lullThresh;
+    if (inLull && runS < 0) runS = i;
+    if (!inLull && runS >= 0) {
+      if ((i - 1 - runS) > (lullE - lullS)) { lullS = runS; lullE = i - 1; }
+      runS = -1;
+    }
+  }
+
+  // Local helpers
+  const teamRgb = (t) => (TEAM_COLORS[t]?.rgb || "123,104,238");
+  const teamHex = (t) => (TEAM_COLORS[t]?.hex || "#7B68EE");
+  const initialsOf = (n) => n.split(/\s+/).filter(Boolean).map(p => p[0].toUpperCase()).slice(0, 2).join("");
+  const pad2 = (n) => String(n).padStart(2, "0");
+
+  // ---- KPI cards
+  const filterLabel = filterTeam && filterTeam !== "__all__" ? esc(filterTeam) : "today";
+  const kpisHtml = `
+    <div class="kpis kpis-hourly">
+      <div class="kpi hero">
+        <div class="kpi-top"><div class="label">Total tagged ${filterLabel}</div><span class="kpi-icon">${KPI_ICONS.tag}</span></div>
+        <div class="value">${grand.toLocaleString()}</div>
+        <div class="delta">Floor ${FLOOR}/agent &middot; ${metFloor}/${agentCount} agents met floor</div>
+      </div>
+      <div class="kpi k-cyan">
+        <div class="kpi-top"><div class="label">Peak hour</div><span class="kpi-icon">${KPI_ICONS.activity}</span></div>
+        <div class="value">${peakHour != null ? pad2(peakHour) + ":00" : "—"}</div>
+        <div class="delta">${peakVal.toLocaleString()} records &middot; ${peakPct}% of daily${secondPeakHour != null ? "<br>2nd peak " + pad2(secondPeakHour) + ":00 &middot; " + secondPeakVal.toLocaleString() : ""}</div>
+      </div>
+      <div class="kpi k-orange">
+        <div class="kpi-top"><div class="label">Active this hour</div><span class="kpi-icon">${KPI_ICONS.clock}</span></div>
+        <div class="value">${activeNow}</div>
+        <div class="delta">${nowIdx >= 0 ? "of " + agentCount + " agents &middot; " + pad2(nowH) + ":00 EAT" : "outside 06–23 window"}</div>
+      </div>
+      <div class="kpi k-green">
+        <div class="kpi-top"><div class="label">Avg per agent</div><span class="kpi-icon">${KPI_ICONS.check}</span></div>
+        <div class="value">${avg.toLocaleString()}</div>
+        <div class="delta">Median ${median.toLocaleString()} &middot; floor ${FLOOR}</div>
+      </div>
+    </div>`;
+  document.getElementById("hourlyKpis").innerHTML = kpisHtml;
+
+  // ---- Heatmap: PER HOUR top row + agent rows
+  const headers = hours.map((h, i) => `<div class="header${i === peakIdx ? " peak" : ""}">${h}</div>`).join("");
+
+  // PER HOUR sum row (moved from bottom to top; peak column highlighted)
+  const perHourCells = colSums.map((v, i) => {
+    if (v === 0) return `<div class="cell z${i === peakIdx ? " peak" : ""}" title="${hours[i]}:00 EAT total">0</div>`;
     const colMax = Math.max(1, ...colSums);
-    const alpha = (0.2 + 0.8 * (v / colMax)).toFixed(2);
-    return `<div class="cell" style="background:rgba(14,165,108,${alpha});" title="${hours[i]}:00 EAT total → ${v}">${v}</div>`;
+    const a = 0.2 + 0.8 * (v / colMax);
+    const txt = a > 0.55 ? "#fff" : "var(--ink)";
+    return `<div class="cell${i === peakIdx ? " peak" : ""}" style="background:rgba(14,165,108,${a.toFixed(2)});color:${txt};" title="${hours[i]}:00 EAT total → ${v}">${v.toLocaleString()}</div>`;
   }).join("");
-  const grandTip = grandOutside > 0 ? ` title="includes ${grandOutside} record${grandOutside === 1 ? "" : "s"} tagged outside 06:00–23:00 EAT"` : "";
-  html += `<div class="cell" style="background:var(--accent);color:#fff;font-weight:600;"${grandTip}>${grand}${grandOutside > 0 ? "*" : ""}</div>`;
+  const perHourGrand = `<div class="cell" style="background:var(--accent);color:#fff;font-weight:700;">${grand.toLocaleString()}</div>`;
+
+  // Agent rows
+  let body = "";
+  let lastTeam = null;
+  for (const r of sortedRows) {
+    if (sortMode === "team" && r.team !== lastTeam) {
+      if (lastTeam !== null) body += `<div class="hourly-spacer"></div>`;
+      lastTeam = r.team;
+    }
+    // Row head: avatar + name + team
+    body += `<div class="hourly-row-head"><span class="hourly-avatar" style="background:${teamHex(r.team)}">${esc(initialsOf(r.name))}</span><span class="hourly-who"><span class="hourly-name">${esc(r.name)}</span><span class="hourly-team-bit">${esc(r.team)}</span></span></div>`;
+    // Cells — tinted by team
+    body += r.counts.map((v, i) => {
+      const isPeak = (i === peakIdx);
+      if (v === 0) return `<div class="cell z${isPeak ? " peak" : ""}" title="${hours[i]}:00 EAT">0</div>`;
+      const a = gridMax === 0 ? 0 : 0.2 + 0.8 * (v / gridMax);
+      const txt = a > 0.55 ? "#fff" : "var(--ink)";
+      return `<div class="cell${isPeak ? " peak" : ""}" style="background:rgba(${teamRgb(r.team)},${a.toFixed(2)});color:${txt};" title="${hours[i]}:00 EAT → ${v}">${v}</div>`;
+    }).join("");
+    const outTip = r.outside > 0 ? ` title="includes ${r.outside} record${r.outside === 1 ? "" : "s"} tagged outside 06:00–23:00 EAT"` : "";
+    body += `<div class="cell" style="background:var(--soft);color:var(--ink);font-weight:700;"${outTip}>${r.total.toLocaleString()}${r.outside > 0 ? "*" : ""}</div>`;
+  }
 
   document.getElementById("hourlyGrid").innerHTML = `
-    <div class="hourly-heatmap" style="grid-template-columns: 180px repeat(${hours.length}, 1fr) 70px;">
+    <div class="hourly-heatmap" style="grid-template-columns: 200px repeat(${hours.length}, 1fr) 80px;">
+      <div class="hourly-perhour-label">PER HOUR</div>${perHourCells}${perHourGrand}
       <div class="header"></div>${headers}<div class="header">Total</div>
-      ${html}
+      ${body}
     </div>`;
+
+  // ---- Saturation legend / peak cell / lull window
+  const lullHtml = lullS >= 0 ? `${pad2(hours[lullS])}&ndash;${pad2(hours[lullE])}` : "—";
+  document.getElementById("hourlyLegend").innerHTML = `
+    <span>Saturation per agent</span>
+    <span class="scale"><span></span><span></span><span></span><span></span><span></span></span>
+    <span>0 → <span class="num">${gridMax}</span> records / cell</span>
+    <span class="sep">&middot;</span>
+    <span>Peak cell <span class="num">${esc(peakCellAgent)}</span>${peakCellHour != null ? " &middot; " + pad2(peakCellHour) + ":00" : ""}</span>
+    <span class="sep">&middot;</span>
+    <span>Lull window <span class="num">${lullHtml}</span></span>
+    <span class="sep">&middot;</span>
+    <span>Showing <span class="num">${agentCount}</span> agent${agentCount === 1 ? "" : "s"}</span>`;
+
+  // ---- Insight cards (DAY SHAPE / AT RISK / LATE ACTIVITY)
+  let dayShape;
+  if (grand === 0) {
+    dayShape = { title: "No tagging yet today", body: `The day hasn't started — heatmap fills as agents tag.` };
+  } else if (peakPct >= 50) {
+    dayShape = { title: `Single-peak day &middot; ${pad2(peakHour)}:00`, body: `<span class="num">${peakPct}%</span> of daily volume in a single hour.` };
+  } else if (secondPeakHour != null && (peakVal + secondPeakVal) / grand >= 0.5) {
+    const combined = Math.round((peakVal + secondPeakVal) / grand * 100);
+    dayShape = { title: `Two-surge day &middot; ${pad2(peakHour)}:00 & ${pad2(secondPeakHour)}:00`, body: `Together drive <span class="num">${combined}%</span> of daily volume.` };
+  } else {
+    dayShape = { title: "Even distribution", body: `Peak hour drives <span class="num">${peakPct}%</span> of daily volume — no sharp surge.` };
+  }
+  const underFloor = rows.filter(r => r.total < FLOOR).sort((a, b) => a.total - b.total);
+  const atRiskTeams = [...new Set(underFloor.map(r => r.team))];
+  let atRisk;
+  if (underFloor.length === 0) {
+    atRisk = { title: "All agents at or above floor", body: `Every agent has cleared the <span class="num">${FLOOR}</span> floor.` };
+  } else {
+    const top = underFloor.slice(0, 4).map(r => `${esc(r.name)} (<span class="num">${r.total}</span>)`).join(", ");
+    atRisk = { title: `<span class="num">${underFloor.length}</span> agent${underFloor.length === 1 ? "" : "s"} under floor`, body: `${atRiskTeams.map(esc).join(", ")}<br>${top}` };
+  }
+  const late = rows.filter(r => r.outside > 0).sort((a, b) => b.outside - a.outside);
+  let lateAct;
+  if (late.length === 0) {
+    lateAct = { title: "No late activity", body: `All tags inside the 06:00&ndash;23:00 window.` };
+  } else {
+    const top = late.slice(0, 3).map(r => `${esc(r.name)} (<span class="num">${r.outside}</span>)`).join(", ");
+    lateAct = { title: `<span class="num">${late.length}</span> agent${late.length === 1 ? "" : "s"} with off-hours tags`, body: `${top}<br>Records tagged outside the 06:00&ndash;23:00 EAT window.` };
+  }
+  document.getElementById("hourlyInsights").innerHTML = `
+    <div class="insight-card day-shape">
+      <div class="top"><span class="ico">${KPI_ICONS.activity}</span><span class="lbl">Day shape</span></div>
+      <div class="ttl">${dayShape.title}</div>
+      <div class="body">${dayShape.body}</div>
+    </div>
+    <div class="insight-card at-risk">
+      <div class="top"><span class="ico">${KPI_ICONS.alert}</span><span class="lbl">At risk</span></div>
+      <div class="ttl">${atRisk.title}</div>
+      <div class="body">${atRisk.body}</div>
+    </div>
+    <div class="insight-card late">
+      <div class="top"><span class="ico">${KPI_ICONS.clock}</span><span class="lbl">Late activity</span></div>
+      <div class="ttl">${lateAct.title}</div>
+      <div class="body">${lateAct.body}</div>
+    </div>`;
+
   fitTableHeight(document.getElementById("hourlyGrid"));
 }
 
