@@ -1348,15 +1348,16 @@ PAGE_RENDERERS.overview = function () {
       </div>
     </div>`;
 
-  // 8-day backlog trend bars + DoD% deltas (populated by the loader below)
-  const backlog8d = STATE.overviewBacklog8d || [];
-  const maxBl = Math.max(1, ...backlog8d.map(v => v == null ? 0 : v));
-  const trendBarsHtml = backlog8d.length === 0 ? "" :
-    `<div class="kpi-trend">${backlog8d.map(v => v == null ? `<span class="bar miss" title="no snapshot"></span>` : `<span class="bar" style="height:${Math.max(8, Math.round((v / maxBl) * 100))}%" title="${v}"></span>`).join("")}</div>`;
-  const yBacklog = STATE.overviewYesterday?.bo_qa_backlog;
-  const yTagged  = STATE.overviewYesterday?.tagged_today;
+  // 8-day "Set to Valid" trend bars + DoD% deltas (populated by the loader below).
+  const validToday = (t.valid_today_support || 0) + (t.valid_today_io || 0);
+  const valid8d = STATE.overviewValid8d || [];
+  const maxV = Math.max(1, ...valid8d.map(v => v == null ? 0 : v));
+  const trendBarsHtml = valid8d.length === 0 ? "" :
+    `<div class="kpi-trend">${valid8d.map(v => v == null ? `<span class="bar miss" title="no snapshot"></span>` : `<span class="bar" style="height:${Math.max(8, Math.round((v / maxV) * 100))}%" title="${v}"></span>`).join("")}</div>`;
+  const yValid  = STATE.overviewYesterday?.valid_today;
+  const yTagged = STATE.overviewYesterday?.tagged_today;
   const dodPct = (today, y) => (y == null || y <= 0) ? null : ((today - y) / y) * 100;
-  const blDoD = dodPct(t.bo_qa_backlog || 0, yBacklog);
+  const vDoD  = dodPct(validToday, yValid);
   const tgDoD = dodPct(t.tagged_today || 0, yTagged);
 
   // KPI bar values
@@ -1371,10 +1372,10 @@ PAGE_RENDERERS.overview = function () {
   const kpiHeroHtml = `
     <div class="kpis kpis-overview-hero">
       <div class="kpi hero">
-        <div class="kpi-top"><div class="label">Selected for BO QA &middot; backlog</div><span class="kpi-icon">${KPI_ICONS.inbox}</span></div>
-        <div class="value-row"><span class="value">${(t.bo_qa_backlog || 0).toLocaleString()}</span>${blDoD == null ? "" : `<span class="kpi-dod">${blDoD >= 0 ? "+" : ""}${blDoD.toFixed(1)}% DoD</span>`}</div>
+        <div class="kpi-top"><div class="label">Set to Valid today</div><span class="kpi-icon">${KPI_ICONS.check}</span></div>
+        <div class="value-row"><span class="value">${validToday.toLocaleString()}</span>${vDoD == null ? "" : `<span class="kpi-dod">${vDoD >= 0 ? "+" : ""}${vDoD.toFixed(1)}% DoD</span>`}</div>
         ${trendBarsHtml}
-        <div class="foot">8-day trend &middot; WW QA backlog <span class="num">${(t.ww_qa_backlog || 0).toLocaleString()}</span></div>
+        <div class="foot">8-day trend &middot; verification_status = valid &middot; both tables</div>
       </div>
       <div class="kpi k-cyan">
         <div class="kpi-top"><div class="label">Tagged today</div><span class="kpi-icon">${KPI_ICONS.tag}</span></div>
@@ -1586,10 +1587,9 @@ PAGE_RENDERERS.overview = function () {
   // Detailed metrics (the other 11 KPI cards, collapsed)
   const detailHtml = `
     <details class="overview-details">
-      <summary>Detailed metrics <span class="meta">11 more &middot; click to expand</span></summary>
+      <summary>Detailed metrics <span class="meta">10 more &middot; click to expand</span></summary>
       <div class="kpis-overview-detail">
         <div class="kpi k-neutral"><div class="kpi-top"><div class="label">Records uploaded today (whole table)</div><span class="kpi-icon">${KPI_ICONS.upload}</span></div><div class="value">${(t.relations_support_intake_today || 0).toLocaleString()}</div><div class="delta">relations_support intake — all assignees</div></div>
-        <div class="kpi k-green"><div class="kpi-top"><div class="label">Set to Valid today</div><span class="kpi-icon">${KPI_ICONS.check}</span></div><div class="value">${(t.valid_today_support || 0) + (t.valid_today_io || 0)}</div><div class="delta">relations_support + relations_io · whole table</div></div>
         <div class="kpi k-neutral"><div class="kpi-top"><div class="label">Assigned &amp; waiting</div><span class="kpi-icon">${KPI_ICONS.clock}</span></div><div class="value">${(t.counts_by_verification_status?.waiting || 0).toLocaleString()}</div><div class="delta">assigned, not yet started</div></div>
         <div class="kpi k-orange ${(STATE.v2?.tasks_all || []).some(t => (t.flags || []).includes("stale-24h")) ? 'bad' : ''}"><div class="kpi-top"><div class="label">Stale assigned tasks</div><span class="kpi-icon">${KPI_ICONS.alert}</span></div><div class="value">${STATE.staleCompareDate ? (STATE.v2?.tasks_all || []).filter(t => (t.flags || []).includes("stale-24h")).length : "—"}</div><div class="delta">${STATE.staleCompareDate ? "no progress in 24h+" : "needs 24h of snapshot history"}</div></div>
         <div class="kpi secondary k-neutral"><div class="kpi-top"><div class="label">Unique IMOs (cache)</div><span class="kpi-icon">${KPI_ICONS.anchor}</span></div><div class="value">${(t.unique_imos || 0).toLocaleString()}</div><div class="delta">distinct vessels in window</div></div>
@@ -1669,9 +1669,9 @@ PAGE_RENDERERS.overview = function () {
     });
   }
 
-  // One-time loader for 8-day backlog trend + yesterday's totals (DoD%).
-  if (STATE.overviewBacklog8d === undefined && STATE.v2?.date) {
-    STATE.overviewBacklog8d = null;
+  // One-time loader for 8-day "Set to Valid" trend + yesterday's totals (DoD%).
+  if (STATE.overviewValid8d === undefined && STATE.v2?.date) {
+    STATE.overviewValid8d = null;
     (async () => {
       const anchor = new Date(STATE.v2.date + "T00:00:00Z");
       const out = [];
@@ -1680,17 +1680,23 @@ PAGE_RENDERERS.overview = function () {
         const ds = d.toISOString().slice(0, 10);
         try {
           const snap = await readJson(`snapshots/${ds}.json`);
-          const v = snap?.totals?.bo_qa_backlog;
-          out.push(Number.isFinite(v) ? v : null);
+          const supp = snap?.totals?.valid_today_support;
+          const io   = snap?.totals?.valid_today_io;
+          // null only when BOTH fields are absent (pre-relations_io snapshot);
+          // a real zero day still records as 0 so the trend bar shows it.
+          out.push((supp == null && io == null) ? null : (supp || 0) + (io || 0));
         } catch (_) { out.push(null); }
       }
-      out.push(t.bo_qa_backlog || 0);
-      STATE.overviewBacklog8d = out;
+      out.push(validToday);
+      STATE.overviewValid8d = out;
       const yd = new Date(anchor); yd.setUTCDate(yd.getUTCDate() - 1);
       const yds = yd.toISOString().slice(0, 10);
       try {
         const ys = await readJson(`snapshots/${yds}.json`);
-        STATE.overviewYesterday = { bo_qa_backlog: ys?.totals?.bo_qa_backlog, tagged_today: ys?.totals?.tagged_today };
+        const supp = ys?.totals?.valid_today_support;
+        const io   = ys?.totals?.valid_today_io;
+        const yValidSum = (supp == null && io == null) ? null : (supp || 0) + (io || 0);
+        STATE.overviewYesterday = { valid_today: yValidSum, tagged_today: ys?.totals?.tagged_today };
       } catch (_) { STATE.overviewYesterday = null; }
       PAGE_RENDERERS.overview();
     })();
