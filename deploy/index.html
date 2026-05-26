@@ -292,6 +292,123 @@
   /* DoD% badge on the Hourly Output hero KPI (purple-gradient card) */
   .kpi-dod { display: inline-flex; align-items: center; padding: 2px 8px; border-radius: 999px; font-size: 11px; font-weight: 700; background: rgba(255,255,255,0.22); color: #fff; font-variant-numeric: tabular-nums; margin-right: 8px; }
 
+  /* ---- Overview detail layer -------------------------------------------- */
+  /* Page head action buttons (right-aligned alongside titles) */
+  .page-head { display: flex; align-items: flex-end; justify-content: space-between; gap: 20px; }
+  .page-head-actions { display: flex; gap: 8px; flex-shrink: 0; padding-bottom: 4px; }
+  .page-head-actions .btn { padding: 7px 14px; font-size: 13px; }
+  .page-head-actions .btn-primary { background: var(--vivid-grad); color: #fff; border: 0; font-weight: 600; box-shadow: 0 6px 14px rgba(123,104,238,0.30); }
+  .page-head-actions .btn-primary:hover { box-shadow: 0 8px 18px rgba(123,104,238,0.40); transform: translateY(-1px); }
+
+  /* Curated 4-card hero KPI row */
+  .kpis-overview-hero { display: grid; grid-template-columns: 1.4fr 1fr 1fr 1fr; gap: 14px; margin-bottom: 18px; }
+  .kpis-overview-hero .kpi.hero { grid-column: span 1; padding: 18px 22px; }
+  @media (max-width: 1180px) { .kpis-overview-hero { grid-template-columns: repeat(2, 1fr); } }
+  @media (max-width: 620px)  { .kpis-overview-hero { grid-template-columns: 1fr; } }
+  .kpi .value-row { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; position: relative; }
+  .kpi .value-row .value { margin-top: 0; }
+  .kpi .value .unit { font-size: 15px; color: var(--muted); font-weight: 600; margin-left: 3px; }
+  .kpi.hero .value .unit { color: rgba(255,255,255,0.6); font-size: 22px; }
+  /* Small DoD pill on non-hero cards (the hero uses .kpi-dod from PR #109) */
+  .kpi-dod-light { display: inline-flex; align-items: center; padding: 2px 8px; border-radius: 999px; font-size: 11px; font-weight: 700; background: var(--soft); color: var(--muted); font-variant-numeric: tabular-nums; }
+  .kpi-dod-light.up   { background: var(--good-bg); color: var(--good); }
+  .kpi-dod-light.down { background: var(--bad-bg);  color: var(--bad); }
+  /* 8-day trend mini-bars on the hero card */
+  .kpi-trend { display: flex; align-items: flex-end; gap: 4px; height: 32px; margin-top: 4px; position: relative; }
+  .kpi-trend .bar { flex: 1; background: rgba(255,255,255,0.30); border-radius: 2px; min-height: 4px; }
+  .kpi-trend .bar.miss { background: rgba(255,255,255,0.10); }
+  .kpi-trend .bar:last-child { background: #fff; }
+  .kpi .foot { font-size: 11px; color: rgba(255,255,255,0.72); position: relative; margin-top: 2px; }
+  .kpi .foot .num { color: #fff; font-weight: 600; }
+  /* KPI progress bar (sampling / reject cards) */
+  .kpi-bar { height: 6px; background: var(--soft); border-radius: 999px; overflow: hidden; margin-top: 8px; position: relative; }
+  .kpi-bar .fill { display: block; height: 100%; border-radius: 999px; background: var(--warn); transition: width 0.3s ease; }
+  .kpi-bar .fill.red   { background: var(--bad); }
+  .kpi-bar .fill.green { background: var(--good); }
+
+  /* Lifecycle panel: header + enriched footer row */
+  .lifecycle-panel h3 em { font-style: italic; font-weight: 600; font-family: Georgia, "Times New Roman", serif; color: var(--accent); }
+  .lifecycle-foot { margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--border); display: flex; flex-wrap: wrap; gap: 10px; font-size: 12px; color: var(--muted); }
+  .lifecycle-foot .num { color: var(--ink); font-weight: 600; font-variant-numeric: tabular-nums; }
+  .lifecycle-foot .sep { color: var(--border); }
+  .lifecycle-foot .reconcile-warn { color: var(--warn); font-weight: 600; }
+
+  /* 2-column overview body layout */
+  .overview-layout { display: grid; grid-template-columns: 2fr 1fr; gap: 14px; margin-bottom: 18px; }
+  @media (max-width: 1180px) { .overview-layout { grid-template-columns: 1fr; } }
+  .overview-main { display: flex; flex-direction: column; gap: 14px; min-width: 0; }
+  .overview-side { display: flex; flex-direction: column; gap: 14px; min-width: 0; }
+
+  /* Daily verdict checklist panel */
+  .verdict-panel h3 em { font-style: italic; font-weight: 600; font-family: Georgia, "Times New Roman", serif; color: var(--accent); }
+  .verdict-list { display: flex; flex-direction: column; gap: 8px; }
+  .verdict-check { display: grid; grid-template-columns: 22px 1fr auto; gap: 10px; align-items: center; padding: 9px 10px; border-radius: var(--radius-sm); background: var(--soft); }
+  .verdict-check .ic { width: 22px; height: 22px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 700; }
+  .verdict-check .lbl { font-size: 12.5px; color: var(--ink); }
+  .verdict-check .lbl .note { color: var(--muted); font-weight: 400; }
+  .verdict-check .val { font-size: 12px; font-weight: 700; font-variant-numeric: tabular-nums; color: var(--ink); }
+  .verdict-pass .ic { background: var(--good-bg); color: var(--good); }
+  .verdict-warn .ic { background: var(--warn-bg); color: var(--warn); }
+  .verdict-fail .ic { background: var(--bad-bg);  color: var(--bad); }
+  .verdict-info .ic { background: var(--accent-soft); color: var(--accent); }
+  .verdict-fail .val { color: var(--bad); }
+  .verdict-warn .val { color: var(--warn); }
+
+  /* Teams vs 280 floor mini-panel */
+  .teams-floor { display: flex; flex-direction: column; gap: 8px; }
+  .teams-floor-row { display: grid; grid-template-columns: 8px minmax(0,1fr) auto 140px auto; gap: 12px; align-items: center; padding: 8px 10px; border-radius: var(--radius-sm); background: var(--soft); }
+  .teams-floor-row .dot { width: 8px; height: 8px; border-radius: 50%; }
+  .teams-floor-row .nm strong { font-size: 13px; color: var(--ink); }
+  .teams-floor-row .nm .sub { font-size: 11px; color: var(--muted); margin-left: 4px; }
+  .teams-floor-row .tgt { font-size: 12px; color: var(--ink); font-weight: 600; font-variant-numeric: tabular-nums; }
+  .teams-floor-row .bar { height: 8px; background: var(--surface); border-radius: 999px; overflow: hidden; }
+  .teams-floor-row .bar .fill { display: block; height: 100%; border-radius: 999px; transition: width 0.3s ease; }
+  .teams-floor-row .bar .fill.met   { background: var(--good); }
+  .teams-floor-row .bar .fill.under { background: var(--bad); }
+  .teams-floor-row .status { font-size: 10.5px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; padding: 2px 8px; border-radius: 999px; }
+  .teams-floor-row .status.met   { background: var(--good-bg); color: var(--good); }
+  .teams-floor-row .status.under { background: var(--bad-bg);  color: var(--bad); }
+
+  /* Agent productivity scorecard */
+  .scorecard-panel h3 em { font-style: italic; font-weight: 600; font-family: Georgia, "Times New Roman", serif; color: var(--accent); }
+  .scorecard-tabs { display: flex; align-items: center; gap: 6px; margin-bottom: 12px; padding-bottom: 10px; border-bottom: 1px solid var(--border); }
+  .scorecard-tabs button { padding: 6px 12px; font-size: 12px; font-family: inherit; color: var(--muted); background: transparent; border: 1px solid var(--border); cursor: pointer; border-radius: 999px; transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease; }
+  .scorecard-tabs button:hover { color: var(--ink); }
+  .scorecard-tabs button.active { background: var(--ink); color: #fff; border-color: var(--ink); font-weight: 600; }
+  .scorecard-tabs button .ct { margin-left: 6px; font-size: 11px; padding: 1px 6px; border-radius: 999px; background: var(--soft); color: var(--muted); font-variant-numeric: tabular-nums; }
+  .scorecard-tabs button.active .ct { background: rgba(255,255,255,0.18); color: rgba(255,255,255,0.9); }
+  .scorecard-tabs .spacer { flex: 1; }
+  .scorecard-tabs .sorted-by { font-size: 11.5px; color: var(--muted); }
+  .scorecard-tabs .sorted-by strong { color: var(--ink); font-weight: 600; }
+  .scorecard-list { display: flex; flex-direction: column; gap: 4px; max-height: 480px; overflow-y: auto; }
+  .sc-row { display: grid; grid-template-columns: 30px minmax(160px,1.4fr) auto minmax(80px,1fr) auto auto; gap: 12px; align-items: center; padding: 8px 10px; border-radius: var(--radius-sm); }
+  .sc-row:hover { background: var(--soft); }
+  .sc-avatar { width: 28px; height: 28px; border-radius: 8px; display: inline-flex; align-items: center; justify-content: center; color: #fff; font-size: 11px; font-weight: 700; }
+  .sc-who strong { font-size: 13px; color: var(--ink); }
+  .sc-team-chip { font-size: 11px; margin-left: 6px; font-weight: 600; }
+  .sc-tagged { font-size: 13px; color: var(--ink); font-weight: 700; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .sc-tagged .muted { color: var(--muted); font-weight: 400; }
+  .sc-bar { height: 6px; background: var(--soft); border-radius: 999px; overflow: hidden; }
+  .sc-bar .fill { display: block; height: 100%; border-radius: 999px; transition: width 0.3s ease; }
+  .sc-bar .fill.met   { background: var(--good); }
+  .sc-bar .fill.under { background: var(--bad); }
+  .sc-seen { font-size: 11px; color: var(--muted); font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .sc-seen .lbl { display: block; font-size: 9.5px; text-transform: uppercase; letter-spacing: 0.04em; color: var(--muted); }
+  .sc-status { font-size: 10.5px; font-weight: 700; padding: 3px 8px; border-radius: 999px; white-space: nowrap; }
+  .sc-status.met   { background: var(--good-bg); color: var(--good); }
+  .sc-status.under { background: var(--bad-bg);  color: var(--bad); }
+  .sc-foot { margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--border); font-size: 11.5px; color: var(--muted); }
+  .sc-foot .num { color: var(--ink); font-weight: 600; font-variant-numeric: tabular-nums; }
+
+  /* Detailed metrics expander */
+  .overview-details { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-md); padding: 14px 18px; margin-bottom: 18px; box-shadow: var(--shadow-sm); }
+  .overview-details > summary { cursor: pointer; font-size: 13px; font-weight: 600; color: var(--ink); list-style: none; display: flex; align-items: center; gap: 10px; }
+  .overview-details > summary::-webkit-details-marker { display: none; }
+  .overview-details > summary::before { content: "▸"; color: var(--muted); transition: transform 0.15s ease; }
+  .overview-details[open] > summary::before { transform: rotate(90deg); }
+  .overview-details > summary .meta { color: var(--muted); font-weight: 400; font-size: 11.5px; }
+  .overview-details .kpis-overview-detail { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; margin-top: 14px; }
+
   /* Tasks page */
   .sortable th { cursor: pointer; user-select: none; }
   .sortable th:hover { background: #e9ebf0; }
@@ -1192,116 +1309,113 @@ PAGE_RENDERERS.overview = function () {
   const t = STATE.v2?.totals;
   if (!t) { root.innerHTML = noDataHtml("aggregates_v2 not in daily_aggregates.json — run aggregate_v2.py"); return; }
 
+  const FLOOR = 280;
   const sampNsClass = t.sampling_non_sanctions_pct < t.sampling_target_non_sanctions_pct ? "bad" : "good";
   const sampSClass  = t.sampling_sanctions_pct      < t.sampling_target_sanctions_pct      ? "bad" : "good";
   const rejectClass = t.reject_rate > t.reject_threshold ? "bad" : "good";
-  const silent      = STATE.legacy?.totals?.silent_changes_today ?? "—";
+  const silent      = STATE.legacy?.totals?.silent_changes_today ?? 0;
+  const byTeam      = STATE.v2.by_team || {};
+  const teams       = Object.keys(STATE.roster || {}).sort();
+  const agentCount  = teams.reduce((s, tm) => s + ((STATE.roster?.[tm]?.members || []).length), 0);
+  const teamsMet    = Object.values(byTeam).filter(m => (m?.tagged_today || 0) >= FLOOR).length;
+  const newCompaniesOpen = (STATE.v2.add_new_company_records || []).length;
 
-  const kpiHtml = `
-    <div class="kpis kpis-overview">
-      <div class="kpi hero">
-        <div class="kpi-top"><div class="label">Records uploaded today (whole table)</div><span class="kpi-icon">${KPI_ICONS.upload}</span></div>
-        <div class="value">${(t.relations_support_intake_today || 0).toLocaleString()}</div>
-        <div class="delta">relations_support intake — all assignees</div>
+  // Page head with Export + Open BO QA buttons
+  const headDate = (() => {
+    const d = STATE.v2?.date;
+    if (!d) return "";
+    const dt = new Date(d + "T00:00:00");
+    return isNaN(dt) ? d : dt.toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short", year: "numeric" });
+  })();
+  const pageHeadHtml = `
+    <div class="page-head">
+      <div>
+        <div class="page-eyebrow">Ownership QA${headDate ? " &middot; " + headDate : ""} &middot; Africa / Nairobi</div>
+        <h1 class="page-title">Operations <em>overview</em></h1>
+        <div class="page-subtitle">
+          <span class="num">${teams.length}</span> teams
+          <span class="dot-sep">&middot;</span>
+          <span class="num">${agentCount}</span> agents
+          <span class="dot-sep">&middot;</span>
+          <span class="num">${(t.relations_support_intake_today || 0).toLocaleString()}</span> records intake today
+          <span class="dot-sep">&middot;</span>
+          <span class="num">${(t.tagged_today || 0).toLocaleString()}</span> tagged
+        </div>
       </div>
-      <div class="kpi k-cyan">
-        <div class="kpi-top"><div class="label">Tagged today (5 teams)</div><span class="kpi-icon">${KPI_ICONS.tag}</span></div>
-        <div class="value">${t.tagged_today || 0}</div>
-      </div>
-      <div class="kpi k-green">
-        <div class="kpi-top"><div class="label">Set to Valid today</div><span class="kpi-icon">${KPI_ICONS.check}</span></div>
-        <div class="value">${(t.valid_today_support || 0) + (t.valid_today_io || 0)}</div>
-        <div class="delta">relations_support + relations_io · whole table</div>
-      </div>
-      <div class="kpi k-neutral">
-        <div class="kpi-top"><div class="label">Assigned &amp; waiting</div><span class="kpi-icon">${KPI_ICONS.clock}</span></div>
-        <div class="value">${(t.counts_by_verification_status?.waiting || 0).toLocaleString()}</div>
-        <div class="delta">assigned, not yet started</div>
-      </div>
-      <div class="kpi k-orange ${(STATE.v2?.tasks_all || []).some(t => (t.flags || []).includes("stale-24h")) ? 'bad' : ''}">
-        <div class="kpi-top"><div class="label">Stale assigned tasks</div><span class="kpi-icon">${KPI_ICONS.alert}</span></div>
-        <div class="value">${STATE.staleCompareDate ? (STATE.v2?.tasks_all || []).filter(t => (t.flags || []).includes("stale-24h")).length : "—"}</div>
-        <div class="delta">${STATE.staleCompareDate ? "no progress in 24h+" : "needs 24h of snapshot history"}</div>
-      </div>
-      <div class="kpi secondary k-neutral">
-        <div class="kpi-top"><div class="label">Unique IMOs (cache)</div><span class="kpi-icon">${KPI_ICONS.anchor}</span></div>
-        <div class="value">${(t.unique_imos || 0).toLocaleString()}</div>
-        <div class="delta">distinct vessels in window</div>
-      </div>
-      <div class="kpi k-green" title="Properly completed = start_date filled AND (company_id filled OR Dead vessel ticked). Dead-vessel is the operational alternative when no company exists to link.">
-        <div class="kpi-top"><div class="label">Properly completed today</div><span class="kpi-icon">${KPI_ICONS.check}</span></div>
-        <div class="value">${t.properly_completed_today || 0}</div>
-        <div class="delta">${(t.tagged_today || 0) - (t.properly_completed_today || 0) > 0 ? `${(t.tagged_today || 0) - (t.properly_completed_today || 0)} tagged but not yet complete` : "&nbsp;"}</div>
-      </div>
-      <div class="kpi secondary k-neutral">
-        <div class="kpi-top"><div class="label">Dead vessels today</div><span class="kpi-icon">${KPI_ICONS.anchor}</span></div>
-        <div class="value">${t.dead_vessels_today || 0}</div>
-        <div class="delta">checkbox-ticked, tagged today</div>
-      </div>
-      <div class="kpi k-orange">
-        <div class="kpi-top"><div class="label">BO QA backlog</div><span class="kpi-icon">${KPI_ICONS.inbox}</span></div>
-        <div class="value">${t.bo_qa_backlog || 0}</div>
-        <div class="delta">in queue, any age</div>
-      </div>
-      <div class="kpi k-orange">
-        <div class="kpi-top"><div class="label">WW QA backlog</div><span class="kpi-icon">${KPI_ICONS.inbox}</span></div>
-        <div class="value">${t.ww_qa_backlog || 0}</div>
-        <div class="delta">awaiting WW review</div>
-      </div>
-      <div class="kpi k-orange ${(STATE.v2?.qa_done_not_finalized?.length || 0) > 0 ? 'warn' : ''}" title="Records where QA has reviewed (qa_assignee + qa_status both filled) but verification_status is still incomplete. Operational red flag — QA touched it, ops hasn't closed it.">
-        <div class="kpi-top"><div class="label">QA'd but not closed</div><span class="kpi-icon">${KPI_ICONS.file}</span></div>
-        <div class="value">${(STATE.v2?.qa_done_not_finalized?.length || 0)}</div>
-        <div class="delta">QA reviewed, awaiting ops close-out</div>
-      </div>
-      <div class="kpi k-orange ${sampNsClass}">
-        <div class="kpi-top"><div class="label">Sampling % — Non-sanctions</div><span class="kpi-icon">${KPI_ICONS.percent}</span></div>
-        <div class="value">${t.sampling_non_sanctions_pct.toFixed(1)}%</div>
-        <div class="delta">target ≥ ${t.sampling_target_non_sanctions_pct}% (of ${t.tagged_today_non_sanctions || 0} tagged)</div>
-      </div>
-      <div class="kpi k-orange ${sampSClass}">
-        <div class="kpi-top"><div class="label">Sampling % — Sanctions</div><span class="kpi-icon">${KPI_ICONS.percent}</span></div>
-        <div class="value">${t.sampling_sanctions_pct.toFixed(1)}%</div>
-        <div class="delta">target ≥ ${t.sampling_target_sanctions_pct}% (of ${t.tagged_today_sanctions || 0} tagged)</div>
-      </div>
-      <div class="kpi k-red ${rejectClass}">
-        <div class="kpi-top"><div class="label">Reject %</div><span class="kpi-icon">${KPI_ICONS.octagon}</span></div>
-        <div class="value">${t.reject_rate.toFixed(1)}%</div>
-        <div class="delta">threshold ${t.reject_threshold}%</div>
-      </div>
-      <div class="kpi secondary k-neutral">
-        <div class="kpi-top"><div class="label">Silent changes today</div><span class="kpi-icon">${KPI_ICONS.activity}</span></div>
-        <div class="value">${silent}</div>
-        <div class="delta">from legacy poll block</div>
+      <div class="page-head-actions">
+        <button class="btn" id="overviewExportBtn">Export CSV</button>
+        <button class="btn btn-primary" id="overviewOpenBoqaBtn">Open BO QA</button>
       </div>
     </div>`;
 
+  // 8-day backlog trend bars + DoD% deltas (populated by the loader below)
+  const backlog8d = STATE.overviewBacklog8d || [];
+  const maxBl = Math.max(1, ...backlog8d.map(v => v == null ? 0 : v));
+  const trendBarsHtml = backlog8d.length === 0 ? "" :
+    `<div class="kpi-trend">${backlog8d.map(v => v == null ? `<span class="bar miss" title="no snapshot"></span>` : `<span class="bar" style="height:${Math.max(8, Math.round((v / maxBl) * 100))}%" title="${v}"></span>`).join("")}</div>`;
+  const yBacklog = STATE.overviewYesterday?.bo_qa_backlog;
+  const yTagged  = STATE.overviewYesterday?.tagged_today;
+  const dodPct = (today, y) => (y == null || y <= 0) ? null : ((today - y) / y) * 100;
+  const blDoD = dodPct(t.bo_qa_backlog || 0, yBacklog);
+  const tgDoD = dodPct(t.tagged_today || 0, yTagged);
+
+  // KPI bar values
+  const sampNsPct = t.sampling_non_sanctions_pct || 0;
+  const sampNsTgt = t.sampling_target_non_sanctions_pct || 25;
+  const sampNsRatio = Math.min(1, sampNsTgt > 0 ? sampNsPct / sampNsTgt : 0);
+  const sampNsDelta = sampNsPct - sampNsTgt;
+  const rejectRate = t.reject_rate || 0;
+  const rejectTh = t.reject_threshold || 30;
+  const rejectRatio = Math.min(1, rejectTh > 0 ? rejectRate / rejectTh : 0);
+
+  const kpiHeroHtml = `
+    <div class="kpis kpis-overview-hero">
+      <div class="kpi hero">
+        <div class="kpi-top"><div class="label">Selected for BO QA &middot; backlog</div><span class="kpi-icon">${KPI_ICONS.inbox}</span></div>
+        <div class="value-row"><span class="value">${(t.bo_qa_backlog || 0).toLocaleString()}</span>${blDoD == null ? "" : `<span class="kpi-dod">${blDoD >= 0 ? "+" : ""}${blDoD.toFixed(1)}% DoD</span>`}</div>
+        ${trendBarsHtml}
+        <div class="foot">8-day trend &middot; WW QA backlog <span class="num">${(t.ww_qa_backlog || 0).toLocaleString()}</span></div>
+      </div>
+      <div class="kpi k-cyan">
+        <div class="kpi-top"><div class="label">Tagged today</div><span class="kpi-icon">${KPI_ICONS.tag}</span></div>
+        <div class="value-row"><span class="value">${(t.tagged_today || 0).toLocaleString()}</span>${tgDoD == null ? "" : `<span class="kpi-dod-light ${tgDoD >= 0 ? "up" : "down"}">${tgDoD >= 0 ? "+" : ""}${tgDoD.toFixed(1)}%</span>`}</div>
+        <div class="delta">Floor ${FLOOR} &middot; <b>${teamsMet}/${teams.length}</b> teams met</div>
+      </div>
+      <div class="kpi k-orange ${sampNsClass}">
+        <div class="kpi-top"><div class="label">QA sampling</div><span class="kpi-icon">${KPI_ICONS.percent}</span></div>
+        <div class="value-row"><span class="value">${sampNsPct.toFixed(1)}<span class="unit">%</span></span>${sampNsTgt > 0 ? `<span class="kpi-dod-light ${sampNsDelta < 0 ? "down" : "up"}">${sampNsDelta >= 0 ? "+" : ""}${sampNsDelta.toFixed(1)}</span>` : ""}</div>
+        <div class="kpi-bar"><span class="fill" style="width:${(sampNsRatio * 100).toFixed(0)}%"></span></div>
+        <div class="delta">Target ${sampNsTgt}% &middot; <b>${(t.tagged_today_non_sanctions || 0).toLocaleString()}</b> non-sanctions tagged</div>
+      </div>
+      <div class="kpi k-red ${rejectClass}">
+        <div class="kpi-top"><div class="label">Reject rate</div><span class="kpi-icon">${KPI_ICONS.octagon}</span></div>
+        <div class="value-row"><span class="value">${rejectRate.toFixed(1)}<span class="unit">%</span></span>${rejectRate <= rejectTh ? `<span class="kpi-dod-light up">clean</span>` : ""}</div>
+        <div class="kpi-bar"><span class="fill ${rejectRate > rejectTh ? "red" : "green"}" style="width:${(rejectRatio * 100).toFixed(0)}%"></span></div>
+        <div class="delta">Threshold ${rejectTh}%</div>
+      </div>
+    </div>`;
+
+  // Lifecycle ribbon + enriched footer
   const flowA = t.flow_a_today || 0;
   const flowB = t.flow_b_today || 0;
   const flowC = t.flow_c_today || 0;
   const flowD = t.flow_d_today || 0;
-  // Renamed from "tagged" — collided with `const tagged = labels.map(...)`
-  // later in this same function (PAGE_RENDERERS.overview). Same-scope
-  // `const` re-declaration is a SyntaxError that fails the whole script
-  // parse — blanked the dashboard until this hotfix.
   const taggedTotal = t.tagged_today || 0;
   const sumABCD = flowA + flowB + flowC + flowD;
   const reconcileOk = sumABCD === taggedTotal;
-  // Operational flow — stage strip (current count per stage) + composition bar
-  // (how today's tagged cohort splits across Flow A/B/C/D). All from STATE.v2.totals.
-  // No conversion %s on connectors: Intake is whole-table, Tagged is the 5 teams, so a
-  // drop-off there would be a false signal — this is a stage view, not a funnel.
   const intake = t.relations_support_intake_today || 0;
   const inQA = flowB;
   const completed = t.total_completions_today || 0;
-  const backlog = t.bo_qa_backlog || 0;
   const flowPct = (n) => taggedTotal > 0 ? (n / taggedTotal * 100) : 0;
+  const sanctionsCohort = t.tagged_today_sanctions || 0;
   const flowHtml = `
-    <div class="panel">
+    <div class="panel lifecycle-panel">
+      <h3>Today's <em>lifecycle</em> <span class="meta">Waiting &rarr; Tagged &rarr; BO QA &rarr; WW QA &rarr; Valid &middot; since 06:00 EAT</span></h3>
       <div class="flow-strip">
         <div class="flow-node">
           <div class="flow-count">${intake.toLocaleString()}</div>
           <div class="flow-name">Intake</div>
-          <div class="flow-sub">uploaded today · whole table</div>
+          <div class="flow-sub">uploaded today &middot; whole table</div>
         </div>
         <div class="flow-connector">&rarr;</div>
         <div class="flow-node">
@@ -1312,9 +1426,8 @@ PAGE_RENDERERS.overview = function () {
         <div class="flow-connector">&rarr;</div>
         <div class="flow-node">
           <div class="flow-count">${inQA.toLocaleString()}</div>
-          <div class="flow-name">In QA</div>
-          <div class="flow-sub">in BO QA</div>
-          ${backlog > 0 ? `<div class="flow-extra">+${backlog.toLocaleString()} in backlog</div>` : ""}
+          <div class="flow-name">In BO QA</div>
+          <div class="flow-sub">${(t.bo_qa_backlog || 0) > 0 ? `+${(t.bo_qa_backlog || 0).toLocaleString()} backlog` : "all in flight"}</div>
         </div>
         <div class="flow-connector">&rarr;</div>
         <div class="flow-node">
@@ -1332,66 +1445,210 @@ PAGE_RENDERERS.overview = function () {
           <div class="flow-seg d" style="width:${flowPct(flowD)}%" title="Flow D — in flight: ${flowD}"></div>
         </div>
         <div class="flow-legend">
-          <div class="item"><span class="swatch a"></span><span class="lname">Flow A · done, no QA</span> <span class="lcount">${flowA}</span></div>
-          <div class="item"><span class="swatch b"></span><span class="lname">Flow B · in BO QA</span> <span class="lcount">${flowB}</span></div>
-          <div class="item"><span class="swatch c"></span><span class="lname">Flow C · done after QA</span> <span class="lcount">${flowC}</span></div>
-          <div class="item"><span class="swatch d"></span><span class="lname">Flow D · in flight</span> <span class="lcount">${flowD}</span></div>
-        </div>
-        <div class="small-mono" style="color:var(--muted);margin-top:10px;">
-          A + B + C + D = ${sumABCD} of ${taggedTotal} tagged ${reconcileOk ? "✓" : `⚠ (expected ${taggedTotal})`}
+          <div class="item"><span class="swatch a"></span><span class="lname">Flow A &middot; done, no QA</span> <span class="lcount">${flowA}</span></div>
+          <div class="item"><span class="swatch b"></span><span class="lname">Flow B &middot; in BO QA</span> <span class="lcount">${flowB}</span></div>
+          <div class="item"><span class="swatch c"></span><span class="lname">Flow C &middot; done after QA</span> <span class="lcount">${flowC}</span></div>
+          <div class="item"><span class="swatch d"></span><span class="lname">Flow D &middot; in flight</span> <span class="lcount">${flowD}</span></div>
         </div>
       </div>` : `<div class="empty" style="margin-top:14px;">No work tagged today yet — the flow fills in as the 5 teams tag records.</div>`}
+      <div class="lifecycle-foot">
+        <span>Cache <span class="num">${(t.unique_imos || 0).toLocaleString()}</span></span>
+        <span class="sep">&middot;</span>
+        <span>Properly completed <span class="num">${(t.properly_completed_today || 0).toLocaleString()}</span></span>
+        <span class="sep">&middot;</span>
+        <span>Dead vessels <span class="num">${(t.dead_vessels_today || 0).toLocaleString()}</span></span>
+        <span class="sep">&middot;</span>
+        <span>Silent changes <span class="num">${silent}</span></span>
+        <span class="sep">&middot;</span>
+        <span>Sanctions cohort <span class="num">${sanctionsCohort}</span></span>
+        ${reconcileOk ? "" : `<span class="sep">&middot;</span><span class="reconcile-warn">A+B+C+D ≠ tagged (${sumABCD} vs ${taggedTotal})</span>`}
+      </div>
     </div>`;
 
+  // Verdict checklist
+  const sampSPct = t.sampling_sanctions_pct || 0;
+  const sampSTgt = t.sampling_target_sanctions_pct || 50;
+  const sampSStatus = (t.tagged_today_sanctions || 0) === 0 ? "pass" : (sampSPct >= sampSTgt ? "pass" : "fail");
+  const teamAlertsCount = (() => { try { return computeTeamAlerts().length; } catch { return 0; } })();
+  const verdictChecks = [
+    { label: "Productivity floor", note: `${FLOOR} / day`, status: teamsMet === teams.length ? "pass" : "warn", value: `${teamsMet}/${teams.length} teams met` },
+    { label: "Sampling", note: `vs ${sampNsTgt}%`, status: sampNsPct >= sampNsTgt ? "pass" : "warn", value: `${sampNsPct.toFixed(1)}%` },
+    { label: "Sanctions", note: `vs ${sampSTgt}%`, status: sampSStatus, value: `${sampSPct.toFixed(1)}%` },
+    { label: "Reject", note: `vs ${rejectTh}%`, status: rejectRate <= rejectTh ? "pass" : "fail", value: `${rejectRate.toFixed(1)}%` },
+    { label: "Silent changes", note: "drift detector", status: silent === 0 ? "pass" : "warn", value: silent === 0 ? "0 · clean" : String(silent) },
+    { label: "Open alerts", note: "team activity", status: teamAlertsCount === 0 ? "pass" : "info", value: `${teamAlertsCount}` },
+    { label: "Add-new-company", note: "need 100% QA", status: newCompaniesOpen > 0 ? "info" : "pass", value: `${newCompaniesOpen} open` },
+  ];
+  const verdictHtml = `
+    <div class="panel verdict-panel">
+      <h3>Daily verdict <em>checklist</em> <span class="meta" id="verdictCountdown">locks at 23:00 EAT</span></h3>
+      <div class="verdict-list">
+        ${verdictChecks.map(c => `
+          <div class="verdict-check verdict-${c.status}">
+            <span class="ic">${c.status === "pass" ? "✓" : c.status === "fail" ? "✕" : c.status === "warn" ? "!" : "•"}</span>
+            <span class="lbl"><strong>${esc(c.label)}</strong> <span class="note">${esc(c.note)}</span></span>
+            <span class="val">${c.value}</span>
+          </div>`).join("")}
+      </div>
+    </div>`;
+
+  // Teams vs floor
+  const teamsFloorHtml = `
+    <div class="panel">
+      <h3>Teams vs <em>${FLOOR}</em> floor <span class="meta">tagged today</span></h3>
+      <div class="teams-floor">
+        ${teams.map(tm => {
+          const m = byTeam[tm] || {};
+          const tagged = m.tagged_today || 0;
+          const ratio = Math.min(1, FLOOR > 0 ? tagged / FLOOR : 0);
+          const met = tagged >= FLOOR;
+          return `
+          <div class="teams-floor-row">
+            <span class="dot" style="background:${TEAM_COLORS[tm]?.hex || "#7B68EE"}"></span>
+            <span class="nm"><strong>${esc(tm)}</strong> <span class="sub">${(STATE.roster?.[tm]?.members || []).length} agents</span></span>
+            <span class="tgt">${tagged.toLocaleString()} / ${FLOOR}</span>
+            <span class="bar"><span class="fill ${met ? "met" : "under"}" style="width:${(ratio * 100).toFixed(0)}%"></span></span>
+            <span class="status ${met ? "met" : "under"}">${met ? "met" : "below"}</span>
+          </div>`;
+        }).join("")}
+      </div>
+    </div>`;
+
+  // Agent productivity scorecard
+  const scorecardFilter = STATE.overviewScorecardFilter || "all";
+  const hours = Array.from({ length: 18 }, (_, i) => i + 6);
+  const allAgents = [];
+  for (const tm of teams) {
+    for (const m of (STATE.roster?.[tm]?.members || [])) {
+      const buckets = STATE.completions?.[m.name] || {};
+      const counts = hours.map(h => buckets[h] ?? buckets[String(h)] ?? 0);
+      const total = Object.values(buckets).reduce((a, b) => a + b, 0);
+      let lastHour = -1;
+      for (let i = counts.length - 1; i >= 0; i--) { if (counts[i] > 0) { lastHour = i; break; } }
+      allAgents.push({ team: tm, name: m.name, tagged: total, lastHour });
+    }
+  }
+  allAgents.sort((a, b) => b.tagged - a.tagged);
+  const cAll = allAgents.length;
+  const cAbove = allAgents.filter(r => r.tagged >= FLOOR).length;
+  const cAtRisk = allAgents.filter(r => r.tagged < FLOOR).length;
+  let visAgents = allAgents;
+  if (scorecardFilter === "above")  visAgents = allAgents.filter(r => r.tagged >= FLOOR);
+  if (scorecardFilter === "atrisk") visAgents = allAgents.filter(r => r.tagged < FLOOR);
+  const initialsOf = (n) => n.split(/\s+/).filter(Boolean).map(p => p[0].toUpperCase()).slice(0, 2).join("");
+  const pad2 = (n) => String(n).padStart(2, "0");
+  const sumTaggedVisible = visAgents.reduce((s, r) => s + r.tagged, 0);
+  const scorecardHtml = `
+    <div class="panel scorecard-panel">
+      <h3>Agent productivity <em>today</em> <span class="meta"><b>${agentCount}</b> agents &middot; <b>${cAbove}</b> met ${FLOOR} &middot; <b>${cAtRisk}</b> at risk</span></h3>
+      <div class="scorecard-tabs" id="scorecardTabs">
+        <button data-sf="all"    class="${scorecardFilter === "all" ? "active" : ""}">All <span class="ct">${cAll}</span></button>
+        <button data-sf="above"  class="${scorecardFilter === "above" ? "active" : ""}">Above ${FLOOR} <span class="ct">${cAbove}</span></button>
+        <button data-sf="atrisk" class="${scorecardFilter === "atrisk" ? "active" : ""}">At risk <span class="ct">${cAtRisk}</span></button>
+        <span class="spacer"></span>
+        <span class="sorted-by">Sorted by <strong>Tagged today</strong></span>
+      </div>
+      <div class="scorecard-list">
+        ${visAgents.map(r => {
+          const ratio = Math.min(1, FLOOR > 0 ? r.tagged / FLOOR : 0);
+          const met = r.tagged >= FLOOR;
+          const lastSeen = r.lastHour >= 0 ? `${pad2(hours[r.lastHour])}:00` : "—";
+          return `
+          <div class="sc-row">
+            <span class="sc-avatar" style="background:${TEAM_COLORS[r.team]?.hex || "#7B68EE"}">${esc(initialsOf(r.name))}</span>
+            <span class="sc-who"><strong>${esc(r.name)}</strong><span class="sc-team-chip" style="color:${TEAM_COLORS[r.team]?.hex || "#7B68EE"}">&bull; ${esc(r.team)}</span></span>
+            <span class="sc-tagged">${r.tagged.toLocaleString()} <span class="muted">/ ${FLOOR}</span></span>
+            <span class="sc-bar"><span class="fill ${met ? "met" : "under"}" style="width:${(ratio * 100).toFixed(0)}%"></span></span>
+            <span class="sc-seen"><span class="lbl">Last seen</span>${lastSeen}</span>
+            <span class="sc-status ${met ? "met" : "under"}">${met ? "✓ " + FLOOR : "below"}</span>
+          </div>`;
+        }).join("")}
+        ${visAgents.length === 0 ? `<div class="empty" style="padding:14px;color:var(--muted);">No agents match this filter.</div>` : ""}
+      </div>
+      <div class="sc-foot">Showing <span class="num">${visAgents.length}</span> of <span class="num">${cAll}</span> agents &middot; <span class="num">${sumTaggedVisible.toLocaleString()}</span> tagged</div>
+    </div>`;
+
+  // Alerts panel (existing behaviour kept)
   const alertsHtml = `
     <div class="panel">
-      <h3>Team Activity Alerts <span class="meta">data-integrity + workflow signals</span></h3>
+      <h3>Open <em>alerts</em> <span class="meta">data-integrity + workflow signals</span></h3>
       <div id="flow-alerts"></div>
       <div id="alerts"></div>
     </div>`;
 
-  const trendsHtml = `
-    <div class="row">
-      <div class="panel">
-        <h3>Tagged today by team</h3>
-        <div class="chart-wrap"><canvas id="chart-tagged-by-team"></canvas></div>
-      </div>
-      <div class="panel">
-        <h3>Per-team summary</h3>
-        <table id="team-summary"></table>
-      </div>
+  // Tagged-by-team chart panel
+  const chartHtml = `
+    <div class="panel">
+      <h3>Tagged today <em>by team</em></h3>
+      <div class="chart-wrap"><canvas id="chart-tagged-by-team"></canvas></div>
     </div>`;
 
-  const headDate = (() => {
-    const d = STATE.v2?.date;
-    if (!d) return "";
-    const dt = new Date(d + "T00:00:00");
-    return isNaN(dt) ? d : dt.toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short", year: "numeric" });
-  })();
-  const pageHeadHtml = `
-    <div class="page-head">
-      <div class="page-eyebrow">Ownership QA${headDate ? " &middot; " + headDate : ""} &middot; Africa / Nairobi</div>
-      <h1 class="page-title">Operations <em>overview</em></h1>
-      <div class="page-subtitle">
-        <span class="num">${(t.relations_support_intake_today || 0).toLocaleString()}</span> records uploaded today
-        <span class="dot-sep">&middot;</span>
-        <span class="num">${(t.tagged_today || 0).toLocaleString()}</span> tagged
-        <span class="dot-sep">&middot;</span>
-        <span class="num">${((t.valid_today_support || 0) + (t.valid_today_io || 0)).toLocaleString()}</span> set to valid
+  // Detailed metrics (the other 11 KPI cards, collapsed)
+  const detailHtml = `
+    <details class="overview-details">
+      <summary>Detailed metrics <span class="meta">11 more &middot; click to expand</span></summary>
+      <div class="kpis-overview-detail">
+        <div class="kpi k-neutral"><div class="kpi-top"><div class="label">Records uploaded today (whole table)</div><span class="kpi-icon">${KPI_ICONS.upload}</span></div><div class="value">${(t.relations_support_intake_today || 0).toLocaleString()}</div><div class="delta">relations_support intake — all assignees</div></div>
+        <div class="kpi k-green"><div class="kpi-top"><div class="label">Set to Valid today</div><span class="kpi-icon">${KPI_ICONS.check}</span></div><div class="value">${(t.valid_today_support || 0) + (t.valid_today_io || 0)}</div><div class="delta">relations_support + relations_io · whole table</div></div>
+        <div class="kpi k-neutral"><div class="kpi-top"><div class="label">Assigned &amp; waiting</div><span class="kpi-icon">${KPI_ICONS.clock}</span></div><div class="value">${(t.counts_by_verification_status?.waiting || 0).toLocaleString()}</div><div class="delta">assigned, not yet started</div></div>
+        <div class="kpi k-orange ${(STATE.v2?.tasks_all || []).some(t => (t.flags || []).includes("stale-24h")) ? 'bad' : ''}"><div class="kpi-top"><div class="label">Stale assigned tasks</div><span class="kpi-icon">${KPI_ICONS.alert}</span></div><div class="value">${STATE.staleCompareDate ? (STATE.v2?.tasks_all || []).filter(t => (t.flags || []).includes("stale-24h")).length : "—"}</div><div class="delta">${STATE.staleCompareDate ? "no progress in 24h+" : "needs 24h of snapshot history"}</div></div>
+        <div class="kpi secondary k-neutral"><div class="kpi-top"><div class="label">Unique IMOs (cache)</div><span class="kpi-icon">${KPI_ICONS.anchor}</span></div><div class="value">${(t.unique_imos || 0).toLocaleString()}</div><div class="delta">distinct vessels in window</div></div>
+        <div class="kpi k-green"><div class="kpi-top"><div class="label">Properly completed today</div><span class="kpi-icon">${KPI_ICONS.check}</span></div><div class="value">${t.properly_completed_today || 0}</div></div>
+        <div class="kpi secondary k-neutral"><div class="kpi-top"><div class="label">Dead vessels today</div><span class="kpi-icon">${KPI_ICONS.anchor}</span></div><div class="value">${t.dead_vessels_today || 0}</div></div>
+        <div class="kpi k-orange"><div class="kpi-top"><div class="label">WW QA backlog</div><span class="kpi-icon">${KPI_ICONS.inbox}</span></div><div class="value">${t.ww_qa_backlog || 0}</div></div>
+        <div class="kpi k-orange ${(STATE.v2?.qa_done_not_finalized?.length || 0) > 0 ? 'warn' : ''}"><div class="kpi-top"><div class="label">QA'd but not closed</div><span class="kpi-icon">${KPI_ICONS.file}</span></div><div class="value">${(STATE.v2?.qa_done_not_finalized?.length || 0)}</div></div>
+        <div class="kpi k-orange ${sampSClass}"><div class="kpi-top"><div class="label">Sampling % — Sanctions</div><span class="kpi-icon">${KPI_ICONS.percent}</span></div><div class="value">${sampSPct.toFixed(1)}%</div><div class="delta">target ≥ ${sampSTgt}% (of ${t.tagged_today_sanctions || 0} tagged)</div></div>
+        <div class="kpi secondary k-neutral"><div class="kpi-top"><div class="label">Silent changes today</div><span class="kpi-icon">${KPI_ICONS.activity}</span></div><div class="value">${silent}</div></div>
       </div>
-    </div>`;
+    </details>`;
 
-  root.innerHTML =
-      pageHeadHtml + kpiHtml
-    + `<h2 class="section-head">Operational flow <span class="meta">today · 5 teams · Flow A + B + C + D = tagged</span></h2>` + flowHtml
-    + `<h2 class="section-head">Team activity &amp; alerts</h2>` + alertsHtml + trendsHtml;
+  root.innerHTML = pageHeadHtml + kpiHeroHtml + flowHtml + `
+    <div class="overview-layout">
+      <div class="overview-main">${scorecardHtml}${teamsFloorHtml}${alertsHtml}${chartHtml}</div>
+      <div class="overview-side">${verdictHtml}</div>
+    </div>` + detailHtml;
 
-  // Flow Framework v2 alerts (from Supabase flow_alerts table, fed by
-  // completion_detector). Each row is inline-expandable on click to show
-  // the affected records.
+  // Wiring — page-head buttons
+  document.getElementById("overviewOpenBoqaBtn")?.addEventListener("click", () => goto("boqa"));
+  document.getElementById("overviewExportBtn")?.addEventListener("click", () => {
+    const lines = ["Team,Tagged,Done,BO QA backlog,Non-sanctions %,Sanctions %,Reject %,Dead vessels"];
+    for (const tm of teams) {
+      const m = byTeam[tm] || {};
+      lines.push([tm, m.tagged_today || 0, m.done_today || 0, m.bo_qa_backlog || 0, (m.sampling_non_sanctions_pct || 0).toFixed(1), (m.sampling_sanctions_pct || 0).toFixed(1), (m.reject_rate || 0).toFixed(1), m.dead_vessels_today || 0].join(","));
+    }
+    const blob = new Blob([lines.join("\n")], { type: "text/csv" });
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = `overview-${STATE.v2?.date || "today"}.csv`;
+    a.click();
+    URL.revokeObjectURL(a.href);
+  });
+  // Scorecard filter tabs
+  document.querySelectorAll("#scorecardTabs button").forEach(b => b.addEventListener("click", () => {
+    STATE.overviewScorecardFilter = b.dataset.sf;
+    PAGE_RENDERERS.overview();
+  }));
+  // Verdict countdown — ticks every 30s
+  const tickVerdict = () => {
+    const el = document.getElementById("verdictCountdown");
+    if (!el) return;
+    try {
+      const parts = new Intl.DateTimeFormat("en-GB", { timeZone: "Africa/Nairobi", hour: "2-digit", minute: "2-digit", hour12: false }).formatToParts(new Date());
+      const hh = parseInt(parts.find(p => p.type === "hour").value, 10);
+      const mm = parseInt(parts.find(p => p.type === "minute").value, 10);
+      let mins = (23 * 60) - (hh * 60 + mm);
+      if (mins < 0) mins += 24 * 60;
+      const dh = Math.floor(mins / 60);
+      const dm = mins % 60;
+      el.textContent = `auto-snapshot in ${dh}h ${dm}m`;
+    } catch (_) {}
+  };
+  tickVerdict();
+  if (STATE._verdictTimer) clearInterval(STATE._verdictTimer);
+  STATE._verdictTimer = setInterval(tickVerdict, 30000);
+
+  // Flow alerts + team alerts (existing behaviour)
   renderFlowAlerts(t);
-
-  // Team Activity alerts (cache-derived heuristics — kept for back-compat)
   const alerts = computeTeamAlerts();
   const alertsEl = document.getElementById("alerts");
   if (alerts.length === 0) {
@@ -1400,45 +1657,43 @@ PAGE_RENDERERS.overview = function () {
     alertsEl.innerHTML = alerts.map(a => `<div class="alert-row ${a.level}"><span class="icon">${a.icon}</span><div><strong>${esc(a.team)}</strong> — ${esc(a.message)}</div></div>`).join("");
   }
 
-  // Per-team summary table
-  const teamRows = Object.keys(STATE.roster || {}).sort().map(team => {
-    const m = STATE.v2.by_team?.[team];
-    if (!m) return `<tr><td>${esc(team)}</td><td colspan="7" class="empty">no records in cache window</td></tr>`;
-    const ns = m.sampling_non_sanctions_pct, nsT = m.sampling_target_non_sanctions_pct;
-    const sa = m.sampling_sanctions_pct,      saT = m.sampling_target_sanctions_pct;
-    const nsCls = (m.tagged_today_non_sanctions || 0) === 0 ? "" : (ns >= nsT ? "good" : "bad");
-    const saCls = (m.tagged_today_sanctions || 0) === 0     ? "" : (sa >= saT ? "good" : "bad");
-    const nsPill = (m.tagged_today_non_sanctions || 0) === 0
-      ? `<span class="small-mono">—</span>`
-      : `<span class="pill-inline ${nsCls}">${ns.toFixed(1)}%</span>`;
-    const saPill = (m.tagged_today_sanctions || 0) === 0
-      ? `<span class="small-mono">—</span>`
-      : `<span class="pill-inline ${saCls}">${sa.toFixed(1)}%</span>`;
-    return `<tr>
-      <td><strong>${esc(team)}</strong></td>
-      <td class="right">${m.tagged_today}</td>
-      <td class="right">${m.done_today}</td>
-      <td class="right">${m.bo_qa_backlog}</td>
-      <td class="right">${nsPill}</td>
-      <td class="right">${saPill}</td>
-      <td class="right">${m.reject_rate.toFixed(1)}%</td>
-      <td class="right">${m.dead_vessels_today || 0}</td>
-    </tr>`;
-  }).join("");
-  document.getElementById("team-summary").innerHTML = `
-    <thead><tr><th>Team</th><th class="right">Tagged</th><th class="right">Done</th><th class="right">BO QA backlog</th><th class="right">Non-sanctions<br><span class="small-mono">≥15%</span></th><th class="right">Sanctions<br><span class="small-mono">≥50%</span></th><th class="right">Reject %</th><th class="right">Dead vessels</th></tr></thead>
-    <tbody>${teamRows}</tbody>`;
-
-  // Tagged by team chart
-  const labels = Object.keys(STATE.v2.by_team || {}).sort();
-  const tagged = labels.map(t => STATE.v2.by_team[t]?.tagged_today || 0);
+  // Tagged-by-team chart — now per-team coloured
+  const labels = teams;
+  const tagged = labels.map(tm => byTeam[tm]?.tagged_today || 0);
   const ctx = document.getElementById("chart-tagged-by-team");
   if (ctx) {
     STATE.charts["chart-tagged-by-team"] = new Chart(ctx, {
       type: "bar",
-      data: { labels, datasets: [{ label: "Tagged today", data: tagged, backgroundColor: "#3d63dd" }] },
+      data: { labels, datasets: [{ label: "Tagged today", data: tagged, backgroundColor: labels.map(tm => TEAM_COLORS[tm]?.hex || "#7B68EE") }] },
       options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } }
     });
+  }
+
+  // One-time loader for 8-day backlog trend + yesterday's totals (DoD%).
+  if (STATE.overviewBacklog8d === undefined && STATE.v2?.date) {
+    STATE.overviewBacklog8d = null;
+    (async () => {
+      const anchor = new Date(STATE.v2.date + "T00:00:00Z");
+      const out = [];
+      for (let i = 7; i >= 1; i--) {
+        const d = new Date(anchor); d.setUTCDate(d.getUTCDate() - i);
+        const ds = d.toISOString().slice(0, 10);
+        try {
+          const snap = await readJson(`snapshots/${ds}.json`);
+          const v = snap?.totals?.bo_qa_backlog;
+          out.push(Number.isFinite(v) ? v : null);
+        } catch (_) { out.push(null); }
+      }
+      out.push(t.bo_qa_backlog || 0);
+      STATE.overviewBacklog8d = out;
+      const yd = new Date(anchor); yd.setUTCDate(yd.getUTCDate() - 1);
+      const yds = yd.toISOString().slice(0, 10);
+      try {
+        const ys = await readJson(`snapshots/${yds}.json`);
+        STATE.overviewYesterday = { bo_qa_backlog: ys?.totals?.bo_qa_backlog, tagged_today: ys?.totals?.tagged_today };
+      } catch (_) { STATE.overviewYesterday = null; }
+      PAGE_RENDERERS.overview();
+    })();
   }
 };
 
