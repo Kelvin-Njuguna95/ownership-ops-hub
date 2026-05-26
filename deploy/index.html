@@ -4078,24 +4078,61 @@ PAGE_RENDERERS.tasks = function () {
   TASKS_STATE.filter = localStorage.getItem("wqa.tasksFilter") || "";
   TASKS_STATE.view   = localStorage.getItem("wqa.tasksView") || "all";
 
-  // KPIs
-  const kpiTotal       = tasks.length;
-  const kpiIncomplete  = tasks.filter(t => t.flags.includes("incomplete")).length;
-  const kpiStuck       = tasks.filter(t => t.flags.includes("stuck")).length;
-  const kpiCompanyGap  = tasks.filter(t => t.flags.includes("company-gap")).length;
-  const kpiStale = tasks.filter(t => (t.flags || []).includes("stale-24h")).length;
-  const tatVals        = tasks.filter(t => t.is_completed && t.tat_hours != null).map(t => t.tat_hours);
-  const kpiMedianTat   = median(tatVals);  // hours, or null when nothing completed yet
+  // Hero KPIs (editorial chrome) — all derived from tasks_all; no new STATE keys.
+  const activeTasks = tasks.filter(t => !t.is_completed);
+  const kActive     = activeTasks.length;
+  const kInFlight   = activeTasks.reduce((s, t) => s + (t.total_records_in_cache || 0), 0);
+  const totRecords  = tasks.reduce((s, t) => s + (t.total_records_in_cache || 0), 0);
+  const totProper   = tasks.reduce((s, t) => s + (t.properly_completed || 0), 0);
+  const kProperPct  = totRecords > 0 ? (totProper / totRecords * 100) : 0;
+  const tatDays     = tasks.filter(t => t.is_completed && t.tat_hours != null).map(t => t.tat_hours / 24);
+  const kMedianTatDays = median(tatDays);  // days, or null when nothing completed yet
+  const headDate = (() => {
+    const d = STATE.v2?.date;
+    if (!d) return "";
+    const dt = new Date(d + "T00:00:00");
+    return isNaN(dt) ? d : dt.toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short", year: "numeric" });
+  })();
 
   root.innerHTML = `
-    <h3 style="font-size:18px;font-weight:600;color:var(--ink);margin-bottom:8px">Task Lifecycle Tracking</h3>
-    <div class="kpis">
-      <div class="kpi"><div class="label">Tasks visible in cache</div><div class="value">${kpiTotal}</div></div>
-      <div class="kpi ${kpiIncomplete > 0 ? 'warn' : ''}"><div class="label">Incomplete tasks</div><div class="value">${kpiIncomplete}</div></div>
-      <div class="kpi ${kpiStuck > 0 ? 'warn' : ''}"><div class="label">Stuck tasks</div><div class="value">${kpiStuck}</div><div class="delta">no activity in 24h</div></div>
-      <div class="kpi ${kpiStale > 0 ? 'bad' : ''}"><div class="label">Stale &gt;24h</div><div class="value">${STATE.staleCompareDate ? kpiStale : "—"}</div><div class="delta">${STATE.staleCompareDate ? "assigned, no progress since " + esc(STATE.staleCompareDate) : "needs 24h of snapshot history"}</div></div>
-      <div class="kpi ${kpiCompanyGap > 0 ? 'bad' : ''}"><div class="label">Company-gap tasks</div><div class="value">${kpiCompanyGap}</div><div class="delta">Done w/o company &amp; not dead vessel</div></div>
-      <div class="kpi"><div class="label">Median turn-around</div><div class="value">${formatDuration(kpiMedianTat)}</div><div class="delta">${tatVals.length} tasks completed</div></div>
+    <div class="page-head">
+      <div>
+        <div class="page-eyebrow">Ownership QA${headDate ? " &middot; " + headDate : ""} &middot; Operations</div>
+        <h1 class="page-title"><em>Tasks</em></h1>
+        <div class="page-subtitle">
+          <span class="num">${tasks.length}</span> tasks
+          <span class="dot-sep">&middot;</span>
+          <span class="num">${kActive}</span> active
+          <span class="dot-sep">&middot;</span>
+          All tagging tasks across the cache window — search &amp; filter by status &amp; age below.
+        </div>
+      </div>
+      <div class="page-head-actions">
+        <button class="btn" id="tasksExportBtn">Export</button>
+        <button class="btn btn-primary" id="tasksOpenBtn">Open</button>
+      </div>
+    </div>
+    <div class="kpis kpis-overview-hero">
+      <div class="kpi hero">
+        <div class="kpi-top"><div class="label">Active tasks</div><span class="kpi-icon">${KPI_ICONS.file}</span></div>
+        <div class="value-row"><span class="value">${kActive.toLocaleString()}</span></div>
+        <div class="delta">of ${tasks.length} in the cache window</div>
+      </div>
+      <div class="kpi k-cyan">
+        <div class="kpi-top"><div class="label">Records in flight</div><span class="kpi-icon">${KPI_ICONS.inbox}</span></div>
+        <div class="value-row"><span class="value">${kInFlight.toLocaleString()}</span></div>
+        <div class="delta">across active tasks</div>
+      </div>
+      <div class="kpi k-green">
+        <div class="kpi-top"><div class="label">Properly completed</div><span class="kpi-icon">${KPI_ICONS.check}</span></div>
+        <div class="value-row"><span class="value">${kProperPct.toFixed(1)}<span class="unit">%</span></span></div>
+        <div class="delta">${totProper.toLocaleString()} / ${totRecords.toLocaleString()} records</div>
+      </div>
+      <div class="kpi k-orange">
+        <div class="kpi-top"><div class="label">Median TAT</div><span class="kpi-icon">${KPI_ICONS.clock}</span></div>
+        <div class="value-row"><span class="value">${kMedianTatDays != null ? kMedianTatDays.toFixed(1) + "d" : "—"}</span></div>
+        <div class="delta">${tatDays.length} completed task${tatDays.length === 1 ? "" : "s"}</div>
+      </div>
     </div>
     <div class="controls-row">
       <label class="small-mono">Search:</label>
@@ -4125,6 +4162,37 @@ PAGE_RENDERERS.tasks = function () {
     TASKS_STATE.view = e.target.value;
     localStorage.setItem("wqa.tasksView", TASKS_STATE.view);
     renderTasksTable();
+  });
+  // Page-head actions (new chrome). Export → CSV of the visible (filtered+sorted)
+  // task list; Open → drawer for the most-active task (most records in flight),
+  // falling back to the first task in the current filter.
+  document.getElementById("tasksExportBtn").addEventListener("click", () => {
+    const rows = _tasksFiltered();
+    const cell = (v) => `"${String(v ?? "").replace(/"/g, '""')}"`;
+    const lines = ["Task,Records,Properly completed,Valid,In BO QA,Waiting,Tagged,Completed,QA reviewed,TAT/age hours,Flags,First seen,Last modified"];
+    for (const t of rows) {
+      const sd = t.status_distribution || {};
+      const tat = t.is_completed && t.tat_hours != null ? t.tat_hours : (ageHours(t.date_first_seen) || 0);
+      lines.push([
+        cell(t.name), t.total_records_in_cache || 0, t.properly_completed || 0,
+        sd.Valid || 0, sd["Selected for BO QA "] || 0, sd.waiting || 0, sd.tagged || 0,
+        t.completed || 0, t.qa_reviewed || 0, Math.round(tat),
+        cell((t.flags || []).join("|")), cell(t.date_first_seen || ""), cell(t.date_last_modified || ""),
+      ].join(","));
+    }
+    const blob = new Blob([lines.join("\n")], { type: "text/csv" });
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = `tasks-${STATE.v2?.date || "today"}.csv`;
+    a.click();
+    URL.revokeObjectURL(a.href);
+  });
+  document.getElementById("tasksOpenBtn").addEventListener("click", () => {
+    const active = (STATE.v2?.tasks_all || []).filter(t => !t.is_completed);
+    const pick = active.length
+      ? active.slice().sort((a, b) => (b.total_records_in_cache || 0) - (a.total_records_in_cache || 0))[0]
+      : _tasksFiltered()[0];
+    if (pick) openTaskDrawer(pick.name);
   });
   renderTasksTable();
 };
