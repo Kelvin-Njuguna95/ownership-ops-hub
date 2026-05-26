@@ -1,5 +1,13 @@
 # Changelog
 
+## Vivid detail layers — 2026-05-26
+
+Hourly Output and Overview pages brought in line with the Vivid mockup.
+
+- **PR #108 — Hourly Output detail layer** (GitHub #106, merge `f7dc82b`): 4 KPI cards reactive to the team filter, team chips replacing the dropdown, sort tabs, agent avatars + team label, PER HOUR row moved to top with peak highlight, per-team heatmap colouring, three insight cards (DAY SHAPE / AT RISK / LATE ACTIVITY), saturation legend.
+- **PR #109 — DoD% delta on the Hourly Output hero card** (GitHub #108, merge `8d0ad93`): fetches yesterday's snapshot once per page mount, renders ±X.X% DoD pill on the hero KPI when "All teams" is active, hidden otherwise.
+- **PR #110 — Overview detail layer** (GitHub #107, merge `d035895`): editorial page head with Export CSV + Open BO QA buttons, curated 4-card hero KPI row (backlog with 8-day trend bars + DoD%, tagged with DoD%, sampling and reject with progress bars), enriched lifecycle footer, 2-column body — agent productivity scorecard with filter tabs, teams-vs-floor mini-panel, open alerts and per-team chart on the left, daily verdict checklist with auto-snapshot countdown on the right, collapsed "Detailed metrics" expander for the other 11 KPI cards.
+
 ## Phase A — 2026-05-17
 
 The app now sees the full operation, not 9 of 17 fields.
