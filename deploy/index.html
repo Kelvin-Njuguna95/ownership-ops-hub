@@ -508,6 +508,96 @@
   .intake-charts { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-top: 14px; }
   @media (max-width: 900px) { .intake-charts { grid-template-columns: 1fr; } }
 
+  /* ---- Tasks detail layer (Phase 10) ------------------------------------ */
+  .tl-live { display:inline-flex; align-items:center; gap:5px; margin-left:8px; font-size:11px; color:var(--good); font-weight:600; }
+  .tl-live .dot { width:7px; height:7px; border-radius:50%; background:var(--good); }
+  .tl-chips { display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin-bottom:16px; }
+  .tl-chips .spacer { flex:1; }
+  .tl-chip { display:inline-flex; align-items:center; gap:6px; padding:6px 12px; border-radius:999px; background:var(--surface); border:1px solid var(--border); color:var(--ink); font-size:12.5px; cursor:pointer; font-family:inherit; transition:background .15s ease,color .15s ease,border-color .15s ease; }
+  .tl-chip:hover { background:var(--soft); }
+  .tl-chip.active { color:#fff; border-color:transparent; font-weight:600; }
+  .tl-chip .dot { width:8px; height:8px; border-radius:50%; flex-shrink:0; }
+  .tl-chip .ct { font-size:11px; padding:1px 7px; border-radius:999px; background:var(--soft); color:var(--muted); font-variant-numeric:tabular-nums; }
+  .tl-chip.active .ct { background:rgba(255,255,255,0.22); color:#fff; }
+  .tl-segbar { display:flex; height:6px; border-radius:999px; overflow:hidden; background:var(--soft); margin-top:8px; }
+  .tl-segbar > span { height:100%; }
+  .kpi.hero .tl-segbar { background:rgba(255,255,255,0.22); }
+  .tl-foot { font-size:11px; color:var(--muted); margin-top:6px; }
+  .kpi.hero .tl-foot { color:rgba(255,255,255,0.72); }
+  .tl-sub { font-size:11.5px; color:var(--muted); margin-top:4px; }
+  .kpi.hero .tl-sub { color:rgba(255,255,255,0.85); }
+  .kpi .dod-muted { display:inline-flex; align-items:center; padding:2px 8px; border-radius:999px; font-size:11px; font-weight:700; background:var(--soft); color:var(--muted); }
+  .kpi.hero .dod-muted { background:rgba(255,255,255,0.18); color:rgba(255,255,255,0.85); }
+  .tl-list-head { display:flex; align-items:baseline; justify-content:space-between; gap:12px; margin:4px 2px 10px; }
+  .tl-list-head h2 { margin:0; font-size:16px; font-weight:700; letter-spacing:-0.01em; color:var(--ink); }
+  .tl-list-head .meta { font-size:11.5px; color:var(--muted); }
+  .tl-tabs { display:flex; align-items:center; gap:6px; flex-wrap:wrap; margin-bottom:10px; }
+  .tl-tabs button { padding:6px 12px; font-size:12px; font-family:inherit; color:var(--muted); background:transparent; border:1px solid var(--border); cursor:pointer; border-radius:999px; transition:background .15s ease,color .15s ease; }
+  .tl-tabs button:hover { color:var(--ink); }
+  .tl-tabs button.active { background:var(--ink); color:#fff; border-color:var(--ink); font-weight:600; }
+  .tl-tabs button .ct { margin-left:6px; font-size:11px; padding:1px 6px; border-radius:999px; background:var(--soft); color:var(--muted); font-variant-numeric:tabular-nums; }
+  .tl-tabs button.active .ct { background:rgba(255,255,255,0.22); color:#fff; }
+  .tl-tabs .spacer { flex:1; }
+  .tl-sortlabel { font-size:11.5px; color:var(--muted); }
+  .tl-fchips { display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin-bottom:12px; font-size:11.5px; }
+  .tl-fchip { display:inline-flex; align-items:center; gap:6px; padding:4px 10px; border-radius:999px; background:var(--soft); color:var(--muted); }
+  .tl-fchip .x { cursor:pointer; color:var(--muted); font-weight:700; }
+  .tl-fchip .x:hover { color:var(--ink); }
+  .tl-clear { color:var(--accent); cursor:pointer; font-weight:600; }
+  .tl-row { display:grid; grid-template-columns: minmax(220px,2.2fr) 1.4fr 1.5fr 1.1fr 56px 66px; gap:14px; align-items:center; padding:11px 10px; border-bottom:1px solid var(--border); cursor:pointer; transition:background .12s ease; }
+  .tl-row:hover { background:var(--soft); }
+  .tl-row.selected { background:var(--accent-soft); }
+  .tl-row.head { font-size:10.5px; text-transform:uppercase; letter-spacing:0.04em; color:var(--muted); font-weight:700; cursor:default; padding-bottom:8px; }
+  .tl-row.head:hover { background:transparent; }
+  .tl-tb { display:flex; align-items:flex-start; gap:10px; min-width:0; }
+  .tl-tb .ic { width:30px; height:30px; border-radius:8px; flex-shrink:0; display:inline-flex; align-items:center; justify-content:center; background:var(--accent-soft); color:var(--accent); }
+  .tl-tb .ic svg { width:15px; height:15px; }
+  .tl-tb .nm { font-size:13px; font-weight:600; color:var(--ink); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .tl-tb .sub { font-size:11px; color:var(--muted); margin-top:2px; }
+  .tl-teams { display:flex; align-items:center; gap:6px; flex-wrap:wrap; }
+  .tl-ava { display:inline-flex; }
+  .tl-ava .task-avatar { margin-left:-5px; border:1.5px solid var(--surface); }
+  .tl-pct { font-size:12px; font-weight:700; font-variant-numeric:tabular-nums; text-align:right; }
+  .tl-age { font-size:12px; font-variant-numeric:tabular-nums; color:var(--ink); }
+  .tl-stage { display:flex; height:7px; border-radius:999px; overflow:hidden; background:var(--soft); }
+  .tl-stage > span { height:100%; }
+  .tl-selhead { font-size:11px; text-transform:uppercase; letter-spacing:0.05em; color:var(--muted); font-weight:700; margin:20px 2px 6px; }
+  .tl-selhint { font-size:11px; color:var(--muted); font-weight:400; text-transform:none; letter-spacing:0; margin-left:6px; }
+  .tl-drawer-card { background:var(--surface); border:1px solid var(--border); border-top:3px solid var(--accent); border-radius:var(--radius-lg); padding:16px 18px; box-shadow:var(--shadow-sm); margin-bottom:14px; }
+  .tl-dh { display:flex; align-items:flex-start; gap:12px; }
+  .tl-dh .ic { width:40px; height:40px; border-radius:10px; flex-shrink:0; display:inline-flex; align-items:center; justify-content:center; background:var(--vivid-grad); color:#fff; }
+  .tl-dh .ic svg { width:19px; height:19px; }
+  .tl-dh .nm { font-size:16px; font-weight:700; color:var(--ink); }
+  .tl-dh .meta { font-size:11.5px; color:var(--muted); margin-top:4px; line-height:1.5; }
+  .tl-dh .acts { margin-left:auto; display:flex; gap:8px; flex-shrink:0; }
+  .tl-drow { display:grid; grid-template-columns:repeat(3,1fr); gap:14px; margin-bottom:14px; }
+  @media (max-width:1100px){ .tl-drow { grid-template-columns:1fr; } }
+  .tl-prow { display:flex; align-items:center; gap:10px; padding:6px 0; font-size:12px; }
+  .tl-prow .who { flex:1; min-width:0; color:var(--ink); }
+  .tl-prow .who .s { color:var(--muted); font-size:10.5px; }
+  .tl-prow .ct { font-variant-numeric:tabular-nums; font-weight:600; color:var(--ink); flex-shrink:0; }
+  .tl-barwrap { flex:1.4; height:6px; background:var(--soft); border-radius:999px; overflow:hidden; }
+  .tl-barwrap > span { display:block; height:100%; border-radius:999px; background:var(--vivid-grad); }
+  .tl-donut { width:120px; height:120px; border-radius:50%; margin:8px auto; position:relative; }
+  .tl-donut .hole { position:absolute; inset:24px; background:var(--surface); border-radius:50%; display:flex; flex-direction:column; align-items:center; justify-content:center; }
+  .tl-donut .hole b { font-size:18px; color:var(--ink); font-variant-numeric:tabular-nums; line-height:1; }
+  .tl-donut .hole span { font-size:9px; text-transform:uppercase; letter-spacing:0.05em; color:var(--muted); margin-top:2px; }
+  .tl-legend { display:flex; flex-direction:column; gap:5px; font-size:11.5px; margin-top:8px; }
+  .tl-legend .li { display:flex; align-items:center; gap:7px; }
+  .tl-legend .li .d { width:8px; height:8px; border-radius:2px; flex-shrink:0; }
+  .tl-legend .li .ct { margin-left:auto; font-variant-numeric:tabular-nums; color:var(--ink); font-weight:600; }
+  .tl-pfoot { margin-top:10px; padding-top:10px; border-top:1px solid var(--border); font-size:11px; color:var(--muted); line-height:1.6; }
+  .tl-pfoot .num { color:var(--ink); font-weight:600; }
+  .tl-bigpct { font-size:34px; font-weight:800; color:var(--ink); font-variant-numeric:tabular-nums; letter-spacing:-0.02em; line-height:1; }
+  .tl-ttrow { display:flex; align-items:center; gap:10px; font-size:11px; padding:5px 0; }
+  .tl-ttrow .lft { width:150px; flex-shrink:0; color:var(--muted); }
+  .tl-ttrow .lft b { color:var(--ink); }
+  .tl-ttbar { flex:1; display:flex; height:12px; border-radius:4px; overflow:hidden; background:var(--soft); }
+  .tl-ttbar > span { height:100%; }
+  .tl-axis { display:flex; justify-content:space-between; font-size:9.5px; color:var(--muted); margin-top:6px; font-variant-numeric:tabular-nums; }
+  .tl-minibar { width:64px; height:6px; background:var(--soft); border-radius:999px; overflow:hidden; flex-shrink:0; }
+  .tl-minibar > span { display:block; height:100%; border-radius:999px; }
+
   /* Tasks page */
   .sortable th { cursor: pointer; user-select: none; }
   .sortable th:hover { background: #e9ebf0; }
@@ -4072,100 +4162,145 @@ function sumByTeam(field) {
 // -------- Tasks --------
 const TASKS_STATE = { filter: "", view: "all", sortBy: "date_first_seen", sortDir: "desc" };
 
+// Status → colour map for tasks-layer segmented bars / donut / legend.
+const TL_STATUS = [
+  { key: "waiting",              label: "Waiting",      color: "#F9943B" },
+  { key: "tagged",               label: "Tagged",       color: "#7B68EE" },
+  { key: "Selected for BO QA ",  label: "In BO QA",     color: "#0691B5" },
+  { key: "Done",                 label: "Done",         color: "#16A34A" },
+  { key: "Valid",                label: "Valid",        color: "#0EA56C" },
+  { key: "need to be update",    label: "Needs update", color: "#E5384F" },
+];
+
 PAGE_RENDERERS.tasks = function () {
   const root = document.getElementById("page-tasks");
   const tasks = STATE.v2?.tasks_all || [];
-  TASKS_STATE.filter = localStorage.getItem("wqa.tasksFilter") || "";
-  TASKS_STATE.view   = localStorage.getItem("wqa.tasksView") || "all";
+  // New tasks-layer state (no new pipeline fields).
+  if (!STATE.tasksFilters) STATE.tasksFilters = { team: "__all__", flaggedOnly: false, last7: false };
+  if (!STATE.tasksTab) STATE.tasksTab = "active";
+  if (STATE.selectedTaskId === undefined) STATE.selectedTaskId = null;
 
-  // Hero KPIs (editorial chrome) — all derived from tasks_all; no new STATE keys.
   const activeTasks = tasks.filter(t => !t.is_completed);
   const kActive     = activeTasks.length;
   const kInFlight   = activeTasks.reduce((s, t) => s + (t.total_records_in_cache || 0), 0);
   const totRecords  = tasks.reduce((s, t) => s + (t.total_records_in_cache || 0), 0);
   const totProper   = tasks.reduce((s, t) => s + (t.properly_completed || 0), 0);
+  const totDead     = tasks.reduce((s, t) => s + (t.dead_vessels || 0), 0);
   const kProperPct  = totRecords > 0 ? (totProper / totRecords * 100) : 0;
   const tatDays     = tasks.filter(t => t.is_completed && t.tat_hours != null).map(t => t.tat_hours / 24);
-  const kMedianTatDays = median(tatDays);  // days, or null when nothing completed yet
+  const kMedianTatDays = median(tatDays);
+  const flaggedN    = tasks.filter(t => (t.flags || []).length > 0).length;
+  const today       = STATE.v2?.date;
+  const newToday    = activeTasks.filter(t => (t.date_first_seen || "").slice(0, 10) === today).length;
+  const teamsActive = new Set(activeTasks.flatMap(t => (t.teams_worked || []).map(x => x.team))).size;
+  const ages        = activeTasks.map(t => ageHours(t.date_first_seen)).filter(v => v != null);
+  const oldestDays  = ages.length ? Math.max(...ages) / 24 : null;
+  const firstSeens  = tasks.map(t => t.date_first_seen).filter(Boolean).map(d => new Date(d).getTime()).filter(n => !isNaN(n));
+  const windowDays  = firstSeens.length ? (Date.now() - Math.min(...firstSeens)) / 86400000 : null;
+  // Records-in-flight stage segments (across active tasks)
+  const sumStage = (k) => activeTasks.reduce((s, t) => s + ((t.status_distribution || {})[k] || 0), 0);
+  const wSum = sumStage("waiting"), tgSum = sumStage("tagged"), boSum = sumStage("Selected for BO QA ");
+  const segTot = Math.max(1, wSum + tgSum + boSum);
+  // Lead time (Created → Valid; whole-funnel, seconds). Per-stage transit timings
+  // aren't emitted, so "bottleneck" = slowest team by p50 (documented gap).
+  const lt = STATE.v2?.lead_time_today || {};
+  const leadP50d = Number.isFinite(lt.p50) ? lt.p50 / 86400 : null;
+  const leadP90d = Number.isFinite(lt.p90) ? lt.p90 / 86400 : null;
+  let slowTeam = null, slowD = null;
+  for (const [tm, v] of Object.entries(lt.by_team || {})) {
+    if (Number.isFinite(v?.p50) && (slowD == null || v.p50 > slowD)) { slowD = v.p50; slowTeam = tm; }
+  }
+  const slowDays = slowD != null ? slowD / 86400 : null;
+
   const headDate = (() => {
     const d = STATE.v2?.date;
     if (!d) return "";
     const dt = new Date(d + "T00:00:00");
     return isNaN(dt) ? d : dt.toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short", year: "numeric" });
   })();
+  // "Refreshed X ago" from the aggregate timestamp.
+  const refAge = ageHours(STATE.v2?.computed_at);
+  const refLabel = refAge == null ? "freshness unknown"
+    : refAge < 1 ? `Refreshed ${Math.max(1, Math.round(refAge * 60))} min ago`
+    : refAge < 24 ? `Refreshed ${Math.round(refAge)}h ago`
+    : `Refreshed ${Math.round(refAge / 24)}d ago`;
 
+  // Team filter chips (counts by tasks touching each team)
+  const teamKeys = Object.keys(STATE.roster || {}).sort();
+  const teamCount = (tm) => tasks.filter(t => (t.teams_worked || []).some(x => x.team === tm)).length;
+  const last7N = tasks.filter(t => { const a = ageHours(t.date_first_seen); return a != null && a <= 168; }).length;
+  const f = STATE.tasksFilters;
+  const chip = (id, label, count, active, dotHex) =>
+    `<button class="tl-chip${active ? " active" : ""}" data-chip="${id}"${active && dotHex ? ` style="background:${dotHex}"` : ""}>` +
+    `${dotHex ? `<span class="dot" style="background:${active ? "#fff" : dotHex}"></span>` : ""}<span>${esc(label)}</span><span class="ct">${count}</span></button>`;
+  const chipsHtml = `
+    <div class="tl-chips" id="tlChips">
+      ${chip("__all__", "All teams", tasks.length, f.team === "__all__", null)}
+      ${teamKeys.map(tm => chip(tm, tm, teamCount(tm), f.team === tm, TEAM_COLORS[tm]?.hex || "#7B68EE")).join("")}
+      <span class="spacer"></span>
+      <button class="tl-chip${f.flaggedOnly ? " active" : ""}" data-chip="__flagged"${f.flaggedOnly ? ' style="background:var(--bad)"' : ""}>🚩 Flagged only <span class="ct">${flaggedN}</span></button>
+      <button class="tl-chip${f.last7 ? " active" : ""}" data-chip="__last7"${f.last7 ? ' style="background:var(--accent)"' : ""}>📅 Last 7 days <span class="ct">${last7N}</span></button>
+    </div>`;
+
+  const dod = `<span class="dod-muted" title="Day-over-day delta needs a prior-window snapshot, not loaded here">DoD —</span>`;
   root.innerHTML = `
     <div class="page-head">
       <div>
-        <div class="page-eyebrow">Ownership QA${headDate ? " &middot; " + headDate : ""} &middot; Operations</div>
+        <div class="page-eyebrow">Ownership QA${headDate ? " &middot; " + headDate : ""} &middot; Operations<span class="tl-live"><span class="dot"></span>Live &middot; ${esc(refLabel)}</span></div>
         <h1 class="page-title">Task <em>lifecycle</em></h1>
         <div class="page-subtitle">
-          <span class="num">${tasks.length}</span> tasks
-          <span class="dot-sep">&middot;</span>
-          <span class="num">${kActive}</span> active
-          <span class="dot-sep">&middot;</span>
-          All tagging tasks across the cache window — search &amp; filter by status &amp; age below.
+          All tagging tasks across the cache window — filter by team, status, age.
+          <span class="dot-sep">&middot;</span><span class="num">${kActive}</span> active
+          <span class="dot-sep">&middot;</span><span class="num">${kInFlight.toLocaleString()}</span> records in flight
+          <span class="dot-sep">&middot;</span><span class="num">${flaggedN}</span> flagged
         </div>
       </div>
       <div class="page-head-actions">
+        <button class="btn" id="tasksFilterBtn">Filter</button>
         <button class="btn" id="tasksExportBtn">Export</button>
-        <button class="btn btn-primary" id="tasksOpenBtn">Open</button>
+        <button class="btn btn-primary" id="tasksNewBtn">+ New task</button>
       </div>
     </div>
+    ${chipsHtml}
     <div class="kpis kpis-overview-hero">
       <div class="kpi hero">
         <div class="kpi-top"><div class="label">Active tasks</div><span class="kpi-icon">${KPI_ICONS.file}</span></div>
-        <div class="value-row"><span class="value">${kActive.toLocaleString()}</span></div>
-        <div class="delta">of ${tasks.length} in the cache window</div>
+        <div class="value-row"><span class="value">${kActive.toLocaleString()}</span>${dod}</div>
+        <div class="tl-sub">Across <b>${teamsActive}</b> teams &middot; <b>${newToday}</b> new today</div>
+        <div class="tl-foot">Oldest <span>${oldestDays != null ? oldestDays.toFixed(1) + "d" : "—"}</span> &middot; cache window ${windowDays != null ? Math.round(windowDays) + "d" : "—"}</div>
       </div>
       <div class="kpi k-cyan">
         <div class="kpi-top"><div class="label">Records in flight</div><span class="kpi-icon">${KPI_ICONS.inbox}</span></div>
         <div class="value-row"><span class="value">${kInFlight.toLocaleString()}</span></div>
-        <div class="delta">across active tasks</div>
+        <div class="tl-segbar"><span style="width:${(wSum / segTot * 100).toFixed(1)}%;background:#F9943B"></span><span style="width:${(tgSum / segTot * 100).toFixed(1)}%;background:#7B68EE"></span><span style="width:${(boSum / segTot * 100).toFixed(1)}%;background:#0691B5"></span></div>
+        <div class="tl-foot">Waiting <span class="num">${wSum.toLocaleString()}</span> &middot; Tagged <span class="num">${tgSum.toLocaleString()}</span> &middot; BO QA <span class="num">${boSum.toLocaleString()}</span></div>
       </div>
       <div class="kpi k-green">
         <div class="kpi-top"><div class="label">Properly completed</div><span class="kpi-icon">${KPI_ICONS.check}</span></div>
-        <div class="value-row"><span class="value">${kProperPct.toFixed(1)}<span class="unit">%</span></span></div>
-        <div class="delta">${totProper.toLocaleString()} / ${totRecords.toLocaleString()} records</div>
+        <div class="value-row"><span class="value">${kProperPct.toFixed(1)}<span class="unit">%</span></span>${dod}</div>
+        <div class="kpi-bar"><span class="fill green" style="width:${Math.min(100, kProperPct).toFixed(0)}%"></span></div>
+        <div class="tl-foot"><span class="num">${totProper.toLocaleString()}</span> properly &middot; <span class="num">${totDead.toLocaleString()}</span> dead &middot; <span>—</span> rejected</div>
       </div>
       <div class="kpi k-orange">
         <div class="kpi-top"><div class="label">Median TAT</div><span class="kpi-icon">${KPI_ICONS.clock}</span></div>
-        <div class="value-row"><span class="value">${kMedianTatDays != null ? kMedianTatDays.toFixed(1) + "d" : "—"}</span></div>
-        <div class="delta">${tatDays.length} completed task${tatDays.length === 1 ? "" : "s"}</div>
+        <div class="value-row"><span class="value">${kMedianTatDays != null ? kMedianTatDays.toFixed(1) + "d" : "—"}</span>${dod}</div>
+        <div class="tl-sub">P50 lead ${leadP50d != null ? leadP50d.toFixed(1) + "d" : "—"} &middot; P90 ${leadP90d != null ? leadP90d.toFixed(1) + "d" : "—"}</div>
+        <div class="tl-foot">Bottleneck ${slowTeam ? esc(slowTeam) + " &middot; " + slowDays.toFixed(1) + "d" : "—"}</div>
       </div>
     </div>
-    <div class="controls-row">
-      <label class="small-mono">Search:</label>
-      <input id="tasksSearch" type="text" placeholder="task name…" value="${esc(TASKS_STATE.filter)}" style="font-family:inherit;font-size:13px;padding:7px 12px;border:1px solid var(--border);background:var(--surface);border-radius:6px;color:var(--ink);min-width:240px"/>
-      <label class="small-mono">View:</label>
-      <select id="tasksView">
-        <option value="all"        ${TASKS_STATE.view === 'all'        ? 'selected' : ''}>All tasks</option>
-        <option value="today"      ${TASKS_STATE.view === 'today'      ? 'selected' : ''}>Today's only</option>
-        <option value="incomplete" ${TASKS_STATE.view === 'incomplete' ? 'selected' : ''}>Incomplete only</option>
-        <option value="stuck"      ${TASKS_STATE.view === 'stuck'      ? 'selected' : ''}>Stuck only</option>
-        <option value="stale"      ${TASKS_STATE.view === 'stale'      ? 'selected' : ''}>Stale &gt;24h only</option>
-        <option value="completed"  ${TASKS_STATE.view === 'completed'  ? 'selected' : ''}>Completed only</option>
-        <option value="aging"      ${TASKS_STATE.view === 'aging'      ? 'selected' : ''}>Aging only</option>
-        <option value="flagged"    ${TASKS_STATE.view === 'flagged'    ? 'selected' : ''}>Has flags</option>
-      </select>
-      <span class="small-mono" id="tasksCount"></span>
-    </div>
-    <div class="panel"><div id="tasksTable"></div></div>
+    <div id="tlList"></div>
+    <div id="tlDetail"></div>
   `;
 
-  document.getElementById("tasksSearch").addEventListener("input", (e) => {
-    TASKS_STATE.filter = e.target.value;
-    localStorage.setItem("wqa.tasksFilter", TASKS_STATE.filter);
-    renderTasksTable();
-  });
-  document.getElementById("tasksView").addEventListener("change", (e) => {
-    TASKS_STATE.view = e.target.value;
-    localStorage.setItem("wqa.tasksView", TASKS_STATE.view);
-    renderTasksTable();
-  });
-  // Page-head actions (new chrome). Export → CSV of the visible (filtered+sorted)
-  // task list; Open → drawer for the most-active task (most records in flight),
-  // falling back to the first task in the current filter.
+  // Chip wiring (team filter + flagged-only + last-7) → re-render the list only.
+  document.querySelectorAll("#tlChips .tl-chip").forEach(b => b.addEventListener("click", () => {
+    const id = b.dataset.chip;
+    if (id === "__flagged") STATE.tasksFilters.flaggedOnly = !STATE.tasksFilters.flaggedOnly;
+    else if (id === "__last7") STATE.tasksFilters.last7 = !STATE.tasksFilters.last7;
+    else STATE.tasksFilters.team = id;
+    PAGE_RENDERERS.tasks();  // cheap full re-render keeps chip/badge state in sync
+  }));
+  // Visual-only buttons (no handlers per spec) + Export (real).
   document.getElementById("tasksExportBtn").addEventListener("click", () => {
     const rows = _tasksFiltered();
     const cell = (v) => `"${String(v ?? "").replace(/"/g, '""')}"`;
@@ -4187,14 +4322,9 @@ PAGE_RENDERERS.tasks = function () {
     a.click();
     URL.revokeObjectURL(a.href);
   });
-  document.getElementById("tasksOpenBtn").addEventListener("click", () => {
-    const active = (STATE.v2?.tasks_all || []).filter(t => !t.is_completed);
-    const pick = active.length
-      ? active.slice().sort((a, b) => (b.total_records_in_cache || 0) - (a.total_records_in_cache || 0))[0]
-      : _tasksFiltered()[0];
-    if (pick) openTaskDrawer(pick.name);
-  });
-  renderTasksTable();
+
+  renderTasksList();
+  renderTaskDetail();
 };
 
 function _tasksFiltered() {
@@ -4348,58 +4478,219 @@ function tatCell(t) {
   return `<div style="color:${col};font-weight:600">${esc(formatDuration(age))} open</div><div class="small-mono">since ${esc(shortDate(t.date_first_seen))}</div>`;
 }
 
-function renderTasksTable() {
-  const list = _tasksFiltered();
-  document.getElementById("tasksCount").textContent = `${list.length} of ${(STATE.v2?.tasks_all || []).length}`;
-  const cols = [
-    ["name", "Task name"], ["total", "Total"],
-    ["Valid", "Valid"], ["BO QA", "BO QA"],
-    ["waiting", "Waiting"], ["tagged", "Tagged"],
-    ["completed", "Completed"], ["qa_reviewed", "QA Reviewed"], ["qa_coverage", "QA %"],
-    ["donePct", "Properly done %"],
-    ["teams", "Teams"], ["tat", "Turn-around"], ["flags", "Flags"],
-  ];
-  const sortInd = (k) => k === TASKS_STATE.sortBy ? (TASKS_STATE.sortDir === "asc" ? "▲" : "▼") : "";
-  const rightCols = new Set(['total','Valid','BO QA','waiting','tagged','completed','qa_reviewed','qa_coverage']);
-  const head = `<thead><tr>${cols.map(([k, lab]) => `<th data-sort="${k}" class="${rightCols.has(k) ? 'right' : ''}">${esc(lab)} <span class="sort-ind">${sortInd(k)}</span></th>`).join("")}</tr></thead>`;
-  const body = list.map(t => {
-    const s = t.status_distribution;
-    const total = t.total_records_in_cache;
-    const donePct = total ? (t.properly_completed / total) * 100 : 0;
-    const teams = t.teams_worked.map(x => x.team).join(", ") || "—";
-    const flagsHtml = t.flags.map(f => `<span class="flag-pill ${FLAG_STYLES[f] || 'gray'}">${esc(f)}</span>`).join("");
-    return `<tr>
-      <td><a class="task-name" data-task="${esc(t.name)}">${esc(t.name)}</a></td>
-      <td class="right">${total.toLocaleString()}</td>
-      <td class="right">${s.Valid}</td>
-      <td class="right">${s["Selected for BO QA "]}</td>
-      <td class="right">${s.waiting}</td>
-      <td class="right">${s.tagged}</td>
-      <td class="right">${t.completed || 0}</td>
-      <td class="right">${t.qa_reviewed || 0}</td>
-      <td class="right"><span class="pill-inline ${(t.qa_coverage_pct || 0) >= 15 ? 'good' : (t.qa_coverage_pct || 0) >= 5 ? 'warn' : 'bad'}">${(t.qa_coverage_pct || 0).toFixed(0)}%</span></td>
-      <td class="right"><span class="pill-inline ${pctClass(donePct).replace('warn','warn')}">${donePct.toFixed(0)}%</span></td>
-      <td>${esc(teams)}</td>
-      <td>${tatCell(t)}</td>
-      <td>${flagsHtml || '<span class="small-mono">—</span>'}</td>
-    </tr>`;
-  }).join("");
-  document.getElementById("tasksTable").innerHTML = `<table class="sortable">${head}<tbody>${body || '<tr><td colspan="13" class="empty">No tasks match.</td></tr>'}</tbody></table>`;
-  // Click handlers
-  document.querySelectorAll("#tasksTable th[data-sort]").forEach(th => {
-    th.addEventListener("click", () => {
-      const k = th.dataset.sort;
-      if (TASKS_STATE.sortBy === k) TASKS_STATE.sortDir = TASKS_STATE.sortDir === "asc" ? "desc" : "asc";
-      else { TASKS_STATE.sortBy = k; TASKS_STATE.sortDir = "desc"; }
-      renderTasksTable();
-    });
-  });
-  document.querySelectorAll(".task-name").forEach(a => {
-    a.addEventListener("click", () => openTaskDrawer(a.dataset.task));
-  });
-  fitTableHeight(document.getElementById("tasksTable"));
+// ===== Tasks detail layer — list + inline drawer (Phase 10) =====
+function tlInitials(n){ return String(n||"").split(/\s+/).filter(Boolean).map(p=>p[0].toUpperCase()).slice(0,2).join("")||"··"; }
+function tlTeamHex(tm){ return (TEAM_COLORS[tm]||{}).hex || "#7B68EE"; }
+function _tlBase(){
+  let out = (STATE.v2?.tasks_all || []);
+  const f = STATE.tasksFilters || {};
+  if (f.team && f.team !== "__all__") out = out.filter(t => (t.teams_worked||[]).some(x=>x.team===f.team));
+  if (f.flaggedOnly) out = out.filter(t => (t.flags||[]).length>0);
+  if (f.last7) out = out.filter(t => { const a=ageHours(t.date_first_seen); return a!=null && a<=168; });
+  return out;
+}
+function _tlTab(list, tab){
+  if (tab==="active")    return list.filter(t=>!t.is_completed);
+  if (tab==="flagged")   return list.filter(t=>(t.flags||[]).length>0);
+  if (tab==="boqa")      return list.filter(t=>((t.status_distribution||{})["Selected for BO QA "]||0)>0);
+  if (tab==="sanctions") return list.filter(t=>t.is_sanctions);
+  if (tab==="completed") return list.filter(t=>{ if(!t.is_completed) return false; const a=ageHours(t.end_time||t.date_last_modified); return a!=null && a<=168; });
+  return list;
+}
+function tlStageBar(sd){
+  const tot = Math.max(1, TL_STATUS.reduce((s,st)=>s+((sd||{})[st.key]||0),0));
+  return TL_STATUS.map(st=>{ const v=(sd||{})[st.key]||0; return v>0?`<span style="width:${(v/tot*100).toFixed(1)}%;background:${st.color}"></span>`:""; }).join("");
+}
+function tlDonut(sd){
+  const tot = Math.max(1, TL_STATUS.reduce((s,st)=>s+((sd||{})[st.key]||0),0));
+  let acc=0; const stops=[];
+  for(const st of TL_STATUS){ const v=(sd||{})[st.key]||0; if(v<=0) continue; const a=(acc/tot*360), b=((acc+v)/tot*360); stops.push(`${st.color} ${a.toFixed(1)}deg ${b.toFixed(1)}deg`); acc+=v; }
+  if(!stops.length) stops.push("var(--soft) 0deg 360deg");
+  return `conic-gradient(${stops.join(",")})`;
+}
+function tlEatTime(iso){ return iso ? new Date(iso).toLocaleTimeString("en-GB",{timeZone:"Africa/Nairobi",hour:"2-digit",minute:"2-digit"}) : "—"; }
+
+function renderTasksList(){
+  const base = _tlBase();
+  const tab = STATE.tasksTab || "active";
+  const tabs = [["active","Active"],["flagged","Flagged"],["boqa","BO QA pending"],["sanctions","Sanctions"],["completed","Completed (7d)"]];
+  const cnt = (k)=>_tlTab(base,k).length;
+  const rows = _tlTab(base, tab).slice().sort((a,b)=> new Date(a.date_first_seen||0)-new Date(b.date_first_seen||0)); // oldest first
+  const all = STATE.v2?.tasks_all || [];
+  const compl7 = all.filter(t=>{ if(!t.is_completed) return false; const a=ageHours(t.end_time||t.date_last_modified); return a!=null&&a<=168; }).length;
+  const f = STATE.tasksFilters || {};
+  const fchips=[];
+  fchips.push(`<span class="tl-fchip">Status &middot; ${esc(tabs.find(x=>x[0]===tab)[1])} <span class="x" data-fx="status">×</span></span>`);
+  if(f.last7) fchips.push(`<span class="tl-fchip">Age &middot; ≤ 7 days <span class="x" data-fx="last7">×</span></span>`);
+  if(f.team && f.team!=="__all__") fchips.push(`<span class="tl-fchip">Teams &middot; ${esc(f.team)} <span class="x" data-fx="team">×</span></span>`);
+  if(f.flaggedOnly) fchips.push(`<span class="tl-fchip">Flagged only <span class="x" data-fx="flagged">×</span></span>`);
+  fchips.push(`<span class="tl-clear" data-fx="clear">Clear all</span>`);
+
+  const rowHtml = (t)=>{
+    const sd=t.status_distribution||{}; const total=t.total_records_in_cache||0;
+    const properPct = total? (t.properly_completed/total*100):0;
+    const teams=(t.teams_worked||[]).slice(0,3).map(x=>`<span class="task-team-chip" style="color:${tlTeamHex(x.team)}">&bull; ${esc(x.team)}</span>`).join("");
+    const ags=(t.agents_worked||[]);
+    const avatars=ags.slice(0,4).map(a=>`<span class="task-avatar" style="background:${tlTeamHex(a.team)}">${esc(tlInitials(a.name))}</span>`).join("");
+    const moreAg = ags.length>4? `<span class="small-mono" style="margin-left:4px;color:var(--muted)">+${ags.length-4}</span>`:"";
+    const incompleteN = Math.max(0, total - (t.properly_completed||0));
+    const flagPills = [];
+    if((t.flags||[]).includes("incomplete")) flagPills.push(`<span class="pill-inline warn">${incompleteN.toLocaleString()} incomplete</span>`);
+    if((t.dead_vessels||0)>0) flagPills.push(`<span class="pill-inline" style="background:var(--accent-soft);color:var(--accent)">${t.dead_vessels} dead</span>`);
+    const age = t.is_completed && t.tat_hours!=null ? t.tat_hours : ageHours(t.date_first_seen);
+    const ageD = age!=null? (age/24).toFixed(1)+"d":"—";
+    const typeLbl = t.is_sanctions? "sanctions cohort":"cargo intel";
+    const seen = shortDate(t.date_first_seen);
+    const sel = STATE.selectedTaskId===t.name? " selected":"";
+    return `<div class="tl-row${sel}" data-task="${esc(t.name)}">
+      <div class="tl-tb"><span class="ic">${KPI_ICONS.file}</span><div style="min-width:0"><div class="nm">${esc(t.name)}</div><div class="sub"><span class="pill-inline ${t.is_sanctions?'bad':'good'}" style="padding:0 5px">${t.is_sanctions?'sanctions':'standard'}</span> &middot; <span class="num">${total.toLocaleString()}</span> records &middot; ${typeLbl} &middot; since ${esc(seen)} &middot; ${esc(tlEatTime(t.date_first_seen))}</div></div></div>
+      <div><div class="tl-stage">${tlStageBar(sd)}</div><div class="small-mono" style="margin-top:3px;color:var(--muted)">${properPct.toFixed(0)}% properly</div></div>
+      <div class="tl-teams">${teams||'<span class="small-mono">—</span>'}<span class="tl-ava">${avatars}</span>${moreAg}</div>
+      <div>${flagPills.join(" ")||'<span class="small-mono">—</span>'}</div>
+      <div class="tl-age">${ageD}</div>
+      <div class="tl-pct">${properPct.toFixed(0)}%</div>
+    </div>`;
+  };
+
+  document.getElementById("tlList").innerHTML = `
+    <div class="tl-list-head"><h2>Task list</h2><span class="meta"><b>${cnt("active")}</b> active &middot; <b>${cnt("flagged")}</b> flagged &middot; <b>${compl7}</b> completed in last 7d</span></div>
+    <div class="tl-tabs" id="tlTabs">
+      ${tabs.map(([k,l])=>`<button data-tab="${k}" class="${tab===k?'active':''}">${l} <span class="ct">${cnt(k)}</span></button>`).join("")}
+      <span class="spacer"></span>
+      <span class="tl-sortlabel">Sorted by: Age (oldest first) ↓</span>
+    </div>
+    <div class="tl-fchips" id="tlFchips">${fchips.join("")}</div>
+    <div class="panel" style="padding:6px 10px 10px">
+      <div class="tl-row head"><div>Task &middot; batch</div><div>Stage</div><div>Teams &middot; agents</div><div>Flags</div><div>Age</div><div>Properly</div></div>
+      ${rows.map(rowHtml).join("") || '<div class="empty" style="padding:18px">No tasks match this filter.</div>'}
+    </div>`;
+
+  document.querySelectorAll("#tlTabs button").forEach(b=>b.addEventListener("click",()=>{ STATE.tasksTab=b.dataset.tab; renderTasksList(); renderTaskDetail(); }));
+  document.querySelectorAll("#tlFchips [data-fx]").forEach(x=>x.addEventListener("click",()=>{
+    const fx=x.dataset.fx;
+    if(fx==="status") STATE.tasksTab="active";
+    else if(fx==="last7") STATE.tasksFilters.last7=false;
+    else if(fx==="team") STATE.tasksFilters.team="__all__";
+    else if(fx==="flagged") STATE.tasksFilters.flaggedOnly=false;
+    else if(fx==="clear"){ STATE.tasksTab="active"; STATE.tasksFilters={team:"__all__",flaggedOnly:false,last7:false}; }
+    PAGE_RENDERERS.tasks();
+  }));
+  document.querySelectorAll("#tlList .tl-row[data-task]").forEach(r=>r.addEventListener("click",()=>{ STATE.selectedTaskId=r.dataset.task; renderTasksList(); renderTaskDetail(); }));
 }
 
+function renderTaskDetail(){
+  const cont=document.getElementById("tlDetail"); if(!cont) return;
+  const all = STATE.v2?.tasks_all || [];
+  let t = all.find(x=>x.name===STATE.selectedTaskId);
+  if(!t){ const vis=_tlTab(_tlBase(), STATE.tasksTab||"active").slice().sort((a,b)=>new Date(a.date_first_seen||0)-new Date(b.date_first_seen||0)); t=vis[0]; if(t) STATE.selectedTaskId=t.name; }
+  if(!t){ cont.innerHTML=""; return; }
+  const total=t.total_records_in_cache||0, sd=t.status_distribution||{};
+  const taskId = "task_"+((t.date_first_seen||"").slice(0,10).replace(/-/g,"")||"------");
+  const statusPill = t.is_completed
+    ? `<span class="task-pill completed">Completed</span>`
+    : ((sd.tagged||0)>0||(sd.waiting||0)>0 ? `<span class="task-pill in-progress">Tagging in progress</span>` : `<span class="task-pill bo-qa">In BO QA</span>`);
+  const routed = (t.teams_worked||[]).slice().sort((a,b)=>(b.records||0)-(a.records||0))[0]?.team || "—";
+  const ageH = ageHours(t.date_first_seen);
+  const ageStr = ageH!=null? `${Math.floor(ageH)}h ${Math.round((ageH%1)*60)}m` : "—";
+
+  // 1a — agent allocation
+  const ags=(t.agents_worked||[]).slice().sort((a,b)=>(b.records||0)-(a.records||0));
+  const maxRec=Math.max(1,...ags.map(a=>a.records||0));
+  const assigned=ags.reduce((s,a)=>s+(a.records||0),0);
+  const unassigned=Math.max(0,total-assigned);
+  const agentRows = ags.map(a=>`<div class="tl-prow"><span class="task-avatar" style="background:${tlTeamHex(a.team)}">${esc(tlInitials(a.name))}</span><span class="who">${esc(a.name)}<span class="s"> &middot; ${esc(a.team||"—")}</span></span><span class="tl-barwrap"><span style="width:${((a.records||0)/maxRec*100).toFixed(0)}%"></span></span><span class="ct">${(a.records||0).toLocaleString()}</span></div>`).join("")
+    || '<div class="small-mono" style="padding:8px 0">No assignees in cache window.</div>';
+  const unassignedRow = unassigned>0? `<div class="tl-prow"><span class="task-avatar" style="background:#F9943B">··</span><span class="who">Unassigned<span class="s"> &middot; Pool &middot; awaiting pickup</span></span><span class="tl-barwrap"><span style="width:${(unassigned/Math.max(maxRec,unassigned)*100).toFixed(0)}%;background:#F9943B"></span></span><span class="ct">${unassigned.toLocaleString()}</span></div>`:"";
+
+  // 1b — status distribution donut
+  const legend = TL_STATUS.filter(st=>(sd[st.key]||0)>0 || ["waiting","tagged","Selected for BO QA ","Valid","need to be update"].includes(st.key))
+    .map(st=>`<div class="li"><span class="d" style="background:${st.color}"></span>${st.label}<span class="ct">${(sd[st.key]||0).toLocaleString()}</span></div>`).join("");
+  const zombie=(t.comment_distribution||{})["suspected zombie vessel"]||0;
+
+  // 1c — QA reviewers
+  const revs=(t.qa_reviewers||[]).slice().sort((a,b)=>(b.reviewed||0)-(a.reviewed||0));
+  const revRows = revs.map(r=>`<div class="tl-prow"><span class="task-avatar" style="background:var(--accent)">${esc(tlInitials(r.name))}</span><span class="who">${esc(r.name)}<span class="s"> &middot; QA reviewer</span></span><span class="ct">${(r.reviewed||0).toLocaleString()}</span><span class="pill-inline ${(r.changed||0)===0?'good':'warn'}" style="margin-left:6px">${r.changed||0} changed</span></div>`).join("")
+    || '<div class="small-mono" style="padding:8px 0">No QA reviews yet.</div>';
+  const cov=t.qa_coverage_pct||0;
+  const sancCov = t.is_sanctions ? cov.toFixed(1)+"%" : "—";
+
+  // 2a — turnaround per task (active, top 6 by records); status-share bar scaled to age on a 0–120h axis
+  const activeTT=_tlBase().filter(x=>!x.is_completed).slice().sort((a,b)=>(b.total_records_in_cache||0)-(a.total_records_in_cache||0)).slice(0,6);
+  const ttRows = activeTT.map(x=>{
+    const a=ageHours(x.date_first_seen)||0; const barW=Math.min(100, a/120*100);
+    const xsd=x.status_distribution||{}; const xtot=Math.max(1,TL_STATUS.reduce((s,st)=>s+(xsd[st.key]||0),0));
+    const segs=TL_STATUS.map(st=>{const v=xsd[st.key]||0; return v>0?`<span style="width:${(v/xtot*100).toFixed(1)}%;background:${st.color}"></span>`:"";}).join("");
+    const pp=(x.total_records_in_cache? x.properly_completed/x.total_records_in_cache*100:0);
+    return `<div class="tl-ttrow"><span class="lft">${esc(shortDate(x.date_first_seen))} &middot; <b>${esc(x.name.slice(0,16))}</b> &middot; ${esc(formatDuration(a))}</span><span class="tl-ttbar"><span style="display:flex;height:100%;flex:0 0 ${barW.toFixed(0)}%">${segs}</span></span><span style="flex-shrink:0;color:var(--ink);font-weight:600">${pp.toFixed(0)}%</span></div>`;
+  }).join("");
+
+  // 2b — flag breakdown (best-effort counts derived from emitted fields)
+  const incomplete=Math.max(0,total-(t.properly_completed||0));
+  const flagDefs=[];
+  if(incomplete>0) flagDefs.push(["Incomplete records","not yet properly complete",incomplete,"var(--warn)"]);
+  if((t.without_company||0)>0) flagDefs.push(["Company gap","done / in-flight without company link",t.without_company,"var(--bad)"]);
+  if((t.dead_vessels||0)>0) flagDefs.push(["Dead vessels","ticked dead vessel, any status",t.dead_vessels,"var(--accent)"]);
+  if((t.with_reminder||0)>0) flagDefs.push(["On reminder","flagged for follow-up",t.with_reminder,"#0691B5"]);
+  const flagRows=flagDefs.map(([nm,sub,n,c])=>`<div class="tl-prow"><span class="who"><b>${nm}</b><span class="s"><br>${sub}</span></span><span class="ct">${n.toLocaleString()}</span><span class="tl-minibar"><span style="width:${(n/Math.max(1,total)*100).toFixed(0)}%;background:${c}"></span></span></div>`).join("");
+  const noFlag=Math.max(0,(t.properly_completed||0));
+  const noFlagRow=`<div class="tl-prow"><span class="who"><b style="color:var(--good)">No flag</b><span class="s"><br>of ${total.toLocaleString()} in-flight records</span></span><span class="ct">${noFlag.toLocaleString()}</span><span class="tl-minibar"><span style="width:${(noFlag/Math.max(1,total)*100).toFixed(0)}%;background:var(--good)"></span></span></div>`;
+  const openFlags=(t.flags||[]).length;
+  const blocking=(t.flags||[]).filter(x=>["incomplete","company-gap","unassigned"].includes(x)).length;
+
+  // 2c — dead vessel ratio across active tasks
+  const activeSet=_tlBase().filter(x=>!x.is_completed);
+  const activeRec=activeSet.reduce((s,x)=>s+(x.total_records_in_cache||0),0);
+  const activeDead=activeSet.reduce((s,x)=>s+(x.dead_vessels||0),0);
+  const deadRatio=activeRec? activeDead/activeRec*100:0;
+  const dvRows=activeSet.slice().sort((a,b)=>{const ra=a.total_records_in_cache?a.dead_vessels/a.total_records_in_cache:0,rb=b.total_records_in_cache?b.dead_vessels/b.total_records_in_cache:0;return rb-ra;}).slice(0,6).map(x=>{const r=x.total_records_in_cache? x.dead_vessels/x.total_records_in_cache*100:0; return `<div class="tl-prow"><span class="who">${esc(shortDate(x.date_first_seen))} <span class="task-team-chip" style="color:var(--accent)">&bull; ${esc(x.name.slice(0,16))}</span></span><span class="tl-minibar"><span style="width:${Math.min(100,r).toFixed(0)}%;background:${r>=60?'var(--bad)':'var(--accent)'}"></span></span><span class="ct">${r.toFixed(1)}%</span></div>`;}).join("");
+  const zombieTask=activeSet.find(x=>x.total_records_in_cache && (x.dead_vessels/x.total_records_in_cache)>=0.6);
+
+  cont.innerHTML = `
+    <div class="tl-selhead">SELECTED &middot; ${esc(t.name)} &middot; ${esc(taskId)}<span class="tl-selhint">Drawer view &middot; click any row above to swap detail</span></div>
+    <div class="tl-drawer-card">
+      <div class="tl-dh">
+        <span class="ic">${KPI_ICONS.file}</span>
+        <div style="min-width:0">
+          <div class="nm">${esc(t.name)} <span class="pill-inline ${t.is_sanctions?'bad':'good'}" style="margin-left:4px">${t.is_sanctions?'sanctions':'standard'}</span> ${statusPill}</div>
+          <div class="meta"><span class="num">${total.toLocaleString()}</span> records &middot; Routed to ${esc(routed)} &middot; Uploaded ${esc(tlEatTime(t.date_first_seen))} EAT &middot; Last activity ${esc(tlEatTime(t.date_last_modified))} EAT &middot; Age ${esc(ageStr)}</div>
+        </div>
+        <div class="acts">
+          <button class="btn" data-tlnoop="open">Open task</button>
+          <button class="btn btn-primary" data-tlnoop="reassign">Reassign</button>
+          <button class="btn" id="tlDetailClose" title="Clear selection">×</button>
+        </div>
+      </div>
+    </div>
+    <div class="tl-drow">
+      <div class="panel"><h3>Agent allocation <span class="meta">${ags.length} agents &middot; ${assigned.toLocaleString()} tagged</span></h3>${agentRows}${unassignedRow}</div>
+      <div class="panel"><h3>Status distribution <span class="meta">of ${total.toLocaleString()}</span></h3>
+        <div class="tl-donut" style="background:${tlDonut(sd)}"><div class="hole"><b>${(sd.tagged||0).toLocaleString()}</b><span>tagged</span></div></div>
+        <div class="tl-legend">${legend}</div>
+        <div class="tl-pfoot">Unique IMOs &middot; <span class="num">—</span> &middot; Dead vessels &middot; <span class="num">${(t.dead_vessels||0).toLocaleString()}</span> &middot; Zombie-flagged &middot; <span class="num">${zombie.toLocaleString()}</span></div>
+      </div>
+      <div class="panel"><h3>QA reviewers <span class="meta">${(t.qa_reviewed||0).toLocaleString()} reviewed &middot; ${(t.qa_changed||0).toLocaleString()} changed</span></h3>${revRows}
+        <div class="tl-pfoot">Coverage vs 25% target &middot; <span class="num">${cov.toFixed(1)}%</span><span class="tl-minibar" style="display:inline-block;vertical-align:middle;margin-left:8px;width:90px"><span style="width:${Math.min(100,cov).toFixed(0)}%;background:${cov>=25?'var(--good)':'var(--warn)'}"></span></span><br>Sanctions cohort &middot; 100% target &middot; <span class="num">${sancCov}</span></div>
+      </div>
+    </div>
+    <div class="tl-drow">
+      <div class="panel"><h3>Turnaround per task <span class="meta">Created → Valid &middot; status mix on a 0–120h age axis</span></h3>
+        ${ttRows||'<div class="small-mono" style="padding:8px 0">No active tasks.</div>'}
+        <div class="tl-axis"><span>0h</span><span>24h</span><span>48h</span><span>72h</span><span>96h</span><span>120h</span></div>
+        <div class="tl-legend" style="flex-direction:row;flex-wrap:wrap;gap:12px;margin-top:8px">${TL_STATUS.slice(0,5).map(st=>`<span class="li" style="gap:5px"><span class="d" style="background:${st.color}"></span>${st.label}</span>`).join("")}</div>
+        <div class="tl-pfoot">Segment widths reflect each task's current record distribution across stages — true per-stage transit durations aren't emitted in <code>aggregates_v2</code>.</div>
+      </div>
+      <div class="panel"><h3>Flag breakdown <span class="meta">${openFlags} open &middot; ${blocking} task-blocking</span></h3>${flagRows}${noFlagRow}</div>
+      <div class="panel"><h3>Dead vessel ratio <span class="meta">across active tasks</span></h3>
+        <div style="display:flex;align-items:baseline;gap:10px;margin:4px 0 8px"><span class="tl-bigpct">${deadRatio.toFixed(1)}%</span><span class="small-mono">${activeDead.toLocaleString()} dead of ${activeRec.toLocaleString()} records</span></div>
+        <div class="tl-pfoot" style="border:0;margin:0;padding:0 0 8px">Day-over-day vs 7-day &middot; <span class="num">—</span> <span class="small-mono">(prior-window snapshot not loaded)</span></div>
+        ${dvRows}
+        ${zombieTask? `<div class="tl-pfoot">Threshold ≥ 60% opens a "suspected zombie cohort" for WW review &middot; <b>${esc(zombieTask.name)}</b> crosses it.</div>`:'<div class="tl-pfoot">No active task crosses the ≥ 60% dead-ratio zombie-cohort threshold.</div>'}
+      </div>
+    </div>`;
+
+  const close=document.getElementById("tlDetailClose");
+  if(close) close.addEventListener("click",()=>{ STATE.selectedTaskId=null; renderTasksList(); cont.innerHTML=""; });
+}
 // ----- Task detail drawer -----
 function openTaskDrawer(taskName) {
   const t = (STATE.v2?.tasks_all || []).find(x => x.name === taskName);
