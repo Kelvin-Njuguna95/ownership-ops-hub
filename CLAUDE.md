@@ -67,7 +67,7 @@ Only when you're certain the result set is bounded below 1,000 by the query itse
 - **`last_modified_by == "Automations"`** is Airtable's automation bot, not a human. `completion_detector.py` filters these out via `NON_HUMAN_LAST_MODIFIED` and falls through to `qa_assignee → assignee`.
 - **`.env.local` has `AIRTABLE_PAT` + Supabase service key.** Gitignored. Never commit. Service-role key bypasses RLS — only use server-side.
 - **PostgREST INSERT with `Prefer: resolution=ignore-duplicates`** requires `?on_conflict=<col>` in the URL or it's a no-op (returns 409 on the first dup). (See PR #9.)
-- **GitHub Actions cron runs in UTC.** `*/15 3-17 * * 1-6` = every 15 min, 03:00–17:00 UTC = 06:00–20:00 EAT, Mon–Sat. Sundays off.
+- **The poll pipeline is driven by an EXTERNAL scheduler, not a GitHub `schedule:` cron.** `.github/workflows/poll.yml` has only a `workflow_dispatch:` trigger; cron-job.org hits the dispatch API every 5 min during the EAT business window (see `docs/EXTERNAL_CRON_SETUP.md`). GitHub silently drops `schedule:` events on free-tier public repos (2026-05-19 audit: ~4 of ~60 expected firings ran), which is why the old `*/15 3-17 * * 1-6` GitHub cron was abandoned. So: runs show as `workflow_dispatch` (not `schedule`) at ~5-min cadence; if runs stop, suspect the external scheduler or repo/account access (e.g. a suspended account 403s the runner's Checkout), not a GitHub cron config.
 - **Do NOT auto-merge PRs.** Kelvin reviews everything; standing instruction throughout this project.
 
 ---
