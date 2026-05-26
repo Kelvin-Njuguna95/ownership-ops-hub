@@ -409,6 +409,105 @@
   .overview-details > summary .meta { color: var(--muted); font-weight: 400; font-size: 11.5px; }
   .overview-details .kpis-overview-detail { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; margin-top: 14px; }
 
+  /* ---- Daily Intake detail layer ---------------------------------------- */
+  /* Filter tabs (re-uses scorecard-tabs colour scheme) */
+  .intake-tabs { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; margin-bottom: 16px; }
+  .intake-tabs button { padding: 6px 12px; font-size: 12px; font-family: inherit; color: var(--muted); background: transparent; border: 1px solid var(--border); cursor: pointer; border-radius: 999px; transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease; }
+  .intake-tabs button:hover { color: var(--ink); background: var(--soft); }
+  .intake-tabs button.active { background: var(--ink); color: #fff; border-color: var(--ink); font-weight: 600; }
+  .intake-tabs button .ct { margin-left: 6px; font-size: 11px; padding: 1px 6px; border-radius: 999px; background: var(--soft); color: var(--muted); font-variant-numeric: tabular-nums; }
+  .intake-tabs button.active .ct { background: rgba(255,255,255,0.18); color: rgba(255,255,255,0.9); }
+
+  /* Intake section wrapper (title + meta) */
+  .intake-section { margin-bottom: 18px; }
+  .intake-section-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; margin-bottom: 10px; padding: 0 2px; }
+  .intake-section-head h3 { margin: 0; font-size: 14px; font-weight: 700; letter-spacing: -0.005em; color: var(--ink); }
+  .intake-section-head h3 .batch-name { font-family: "Geist Mono", ui-monospace, Menlo, monospace; color: var(--accent); font-weight: 700; }
+  .intake-section-head .meta { font-size: 11.5px; color: var(--muted); }
+
+  /* Task cards */
+  .task-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 16px 18px; box-shadow: var(--shadow-sm); }
+  .task-card.featured { padding: 18px 22px; }
+  .task-card-head { display: flex; align-items: flex-start; gap: 12px; }
+  .task-card-icon { width: 36px; height: 36px; border-radius: 9px; flex-shrink: 0; display: inline-flex; align-items: center; justify-content: center; }
+  .task-card-icon svg { width: 18px; height: 18px; }
+  .task-card-titles { flex: 1; min-width: 0; }
+  .task-card-name { font-size: 14px; color: var(--ink); margin-bottom: 4px; }
+  .task-card-name strong { font-weight: 700; }
+  .task-card-meta { font-size: 11.5px; color: var(--muted); }
+  .task-card-meta .num { color: var(--ink); font-weight: 600; font-variant-numeric: tabular-nums; }
+  .task-card-meta .warn-text { color: var(--warn); font-weight: 600; }
+
+  /* Status pills used in task cards + upload timeline */
+  .task-pill { display: inline-block; font-size: 10.5px; font-weight: 700; padding: 2px 8px; border-radius: 999px; text-transform: uppercase; letter-spacing: 0.04em; margin-left: 6px; }
+  .task-pill.completed   { background: var(--good-bg); color: var(--good); }
+  .task-pill.sanctions   { background: var(--bad-bg);  color: var(--bad); }
+  .task-pill.in-progress { background: var(--accent-soft); color: var(--accent); }
+  .task-pill.bo-qa       { background: var(--warn-bg); color: var(--warn); }
+
+  /* Featured-card progress ring */
+  .task-card-progress { position: relative; width: 56px; height: 56px; flex-shrink: 0; }
+  .task-card-progress .ring { width: 56px; height: 56px; }
+  .task-card-progress .ring-pct { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 700; color: var(--accent); font-variant-numeric: tabular-nums; }
+
+  /* Featured-card body */
+  .task-card-body { margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--border); display: grid; grid-template-columns: 1fr 2fr; gap: 24px; }
+  @media (max-width: 900px) { .task-card-body { grid-template-columns: 1fr; } }
+  .task-card-assigned .lbl { display: block; font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--muted); font-weight: 700; margin-bottom: 8px; }
+  .task-card-teams { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px; }
+  .task-team-chip { font-size: 11px; padding: 3px 8px; border-radius: 999px; font-weight: 600; }
+  .task-card-avatars { display: flex; gap: 4px; }
+  .task-avatar { width: 26px; height: 26px; border-radius: 7px; display: inline-flex; align-items: center; justify-content: center; color: #fff; font-size: 10px; font-weight: 700; }
+
+  /* Featured-card stat grid */
+  .task-card-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; }
+  .task-card-stats.mini { grid-template-columns: repeat(4, 1fr); gap: 12px; margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--border); }
+  .task-card-stats .stat .lbl { display: block; font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--muted); font-weight: 700; margin-bottom: 4px; }
+  .task-card-stats .stat .val { font-size: 22px; color: var(--ink); font-weight: 700; font-variant-numeric: tabular-nums; line-height: 1; }
+  .task-card-stats .stat .val b { font-weight: 700; }
+  .task-card-stats .stat .val .muted { color: var(--muted); font-size: 14px; font-weight: 500; }
+  .task-card-stats .stat .sub { font-size: 11px; color: var(--muted); margin-top: 4px; }
+  .task-card-stats.mini .stat .val { font-size: 18px; }
+
+  /* Grid of mini task cards (Other active batches) */
+  .task-card-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(360px, 1fr)); gap: 14px; }
+
+  /* Team allocation panel */
+  .team-alloc-panel h3 em { font-style: italic; font-weight: 600; font-family: Georgia, "Times New Roman", serif; color: var(--accent); }
+  .team-alloc { display: flex; flex-direction: column; gap: 8px; }
+  .team-alloc-row { display: grid; grid-template-columns: 8px 80px minmax(0, 1fr) 110px 50px; gap: 12px; align-items: center; padding: 9px 10px; border-radius: var(--radius-sm); background: var(--soft); }
+  .team-alloc-row .dot { width: 8px; height: 8px; border-radius: 50%; }
+  .team-alloc-row .nm strong { font-size: 13px; color: var(--ink); }
+  .team-alloc-row .bar-stack { display: flex; height: 14px; border-radius: 999px; overflow: hidden; background: var(--surface); position: relative; }
+  .team-alloc-row .bar-stack .seg { height: 100%; display: flex; align-items: center; justify-content: flex-end; padding: 0 6px; transition: width 0.3s ease; }
+  .team-alloc-row .bar-stack .seg.inboqa { background: #0691B5; }
+  .team-alloc-row .bar-stack .seg-label { font-size: 9.5px; font-weight: 700; color: #fff; font-variant-numeric: tabular-nums; }
+  .team-alloc-row .tot { font-size: 12px; color: var(--ink); font-variant-numeric: tabular-nums; }
+  .team-alloc-row .tot .muted { color: var(--muted); font-weight: 500; }
+  .team-alloc-row .pct { font-size: 11px; font-weight: 700; text-align: right; font-variant-numeric: tabular-nums; }
+  .team-alloc-row .pct.met   { color: var(--good); }
+  .team-alloc-row .pct.under { color: var(--bad); }
+
+  /* Upload timeline panel */
+  .upload-timeline-panel h3 em { font-style: italic; font-weight: 600; font-family: Georgia, "Times New Roman", serif; color: var(--accent); }
+  .upload-timeline { display: flex; flex-direction: column; gap: 6px; }
+  .upload-row { display: grid; grid-template-columns: 80px 50px 1fr auto; gap: 10px; align-items: flex-start; padding: 10px 10px; border-radius: var(--radius-sm); background: var(--soft); font-size: 12px; }
+  .upload-row.empty-day { color: var(--muted); align-items: center; }
+  .upload-row .day { font-size: 11.5px; color: var(--ink); font-variant-numeric: tabular-nums; }
+  .upload-row .time { font-size: 11px; color: var(--muted); font-family: "Geist Mono", ui-monospace, Menlo, monospace; font-variant-numeric: tabular-nums; }
+  .upload-row .body { color: var(--ink); line-height: 1.5; min-width: 0; }
+  .upload-row .body strong { font-weight: 700; }
+  .upload-row .body .muted { color: var(--muted); }
+  .upload-row .body .num { color: var(--ink); font-weight: 600; font-variant-numeric: tabular-nums; }
+  .upload-row .status .task-pill { margin: 0; }
+
+  /* 2-column bottom row + charts expander grid */
+  .intake-bottom { display: grid; grid-template-columns: 2fr 1fr; gap: 14px; margin-bottom: 18px; }
+  @media (max-width: 1180px) { .intake-bottom { grid-template-columns: 1fr; } }
+  .intake-bottom-main, .intake-bottom-side { display: flex; flex-direction: column; gap: 14px; min-width: 0; }
+  .intake-charts { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-top: 14px; }
+  @media (max-width: 900px) { .intake-charts { grid-template-columns: 1fr; } }
+
   /* Tasks page */
   .sortable th { cursor: pointer; user-select: none; }
   .sortable th:hover { background: #e9ebf0; }
@@ -3497,106 +3596,426 @@ function backlogPanelHtml(title, meta, keyHead, countHead, rows, totalLabel, fla
 // -------- Daily Intake & Assignments --------
 PAGE_RENDERERS.intake = function () {
   const root = document.getElementById("page-intake");
-  const t = STATE.v2?.totals;
-  root.innerHTML = `
-    <div class="kpis">
-      <div class="kpi hero"><div class="label">Records uploaded today (whole table)</div>
-        <div class="value">${(t?.relations_support_intake_today || 0).toLocaleString()}</div>
-        <div class="delta">created in relations_support — any assignee</div></div>
-      <div class="kpi"><div class="label">Distinct tasks uploaded today</div><div class="value">${t?.tasks_today_count || 0}</div><div class="delta">unique requested_by values</div></div>
-      <div class="kpi"><div class="label">Routed to 5 teams today</div><div class="value">${sumByTeam("team_routed_intake_today")}</div></div>
-      <div class="kpi"><div class="label">Tagged today (5 teams)</div><div class="value">${t?.tagged_today || 0}</div></div>
-    </div>
-    <div class="row">
-      <div class="panel">
-        <h3>Per-team intake vs tagging today</h3>
-        <table id="intakeTable"></table>
-        <div class="footer-note">team_routed_intake_today = records created today and assigned to a team member. tagged_today = records the team has actually tagged today. Gap = backlog forming.</div>
-      </div>
-      <div class="panel">
-        <h3>Routing health</h3>
-        <div id="intakeRouting"></div>
-      </div>
-    </div>
-    ${t?.intake_partial ? `<div class="alert-row warn" style="margin-bottom:14px"><span class="icon">!</span><div>Showing top 3,000 of <strong>${(t.relations_support_intake_today || 0).toLocaleString()}</strong> records uploaded today (sorted by most recent). Per-task counts may under-report; click into a task on the Tasks page and use "Fetch all records" to see its full record set.</div></div>` : ""}
-    <div class="panel">
-      <h3>Tasks uploaded today <span class="meta">grouped by requested_by, whole table</span></h3>
-      <div id="tasksTodayPanel"></div>
-    </div>
-    <div class="panel">
-      <h3>Monthly intake (whole table, from snapshots)</h3>
-      <div class="chart-wrap"><canvas id="chart-monthly-intake"></canvas></div>
-      <div class="footer-note">Records uploaded per day for the month chosen in the Month picker above. Derived from daily snapshots in Supabase Storage; only days that have a snapshot are shown.</div>
-    </div>
-    <div class="panel">
-      <h3>Records set to Valid per day <span class="meta">relations_support vs relations_io</span></h3>
-      <div class="chart-wrap"><canvas id="chart-valid-by-table"></canvas></div>
-      <div class="footer-note">Records whose Valid Selected Time fell on each day, per source table, for the month chosen in the Month picker above. From daily snapshots in Supabase Storage; only days that carry the per-table counts are shown (they accumulate from the day this feature shipped).</div>
-    </div>
-  `;
+  const t = STATE.v2?.totals || {};
+  const tasksAll = STATE.v2?.tasks_all || [];
+  const tasksToday = t.tasks_today || [];
+  const teams = Object.keys(STATE.roster || {}).sort();
+  const FLOOR = 280;
 
-  // Tasks panel
-  const tasks = t?.tasks_today || [];
-  const tasksRoot = document.getElementById("tasksTodayPanel");
-  if (tasks.length === 0) {
-    tasksRoot.innerHTML = `<div class="empty">No records created today.</div>`;
-  } else {
-    const MAX_ROWS = 100;
-    const shown = tasks.slice(0, MAX_ROWS);
-    const more = tasks.length > MAX_ROWS ? `<div class="footer-note">${tasks.length - MAX_ROWS} more not shown.</div>` : "";
-    const totalRecords = tasks.reduce((s, x) => s + x.records, 0);
-    const rows = shown.map(task => {
-      const pillCls = task.is_sanctions ? "bad" : "good";
-      const pillTxt = task.is_sanctions ? "Sanctions" : "Standard";
-      const share = totalRecords ? ((task.records / totalRecords) * 100).toFixed(1) : "0.0";
-      return `<tr>
-        <td class="mono">${esc(task.name)}</td>
-        <td class="right"><strong>${task.records.toLocaleString()}</strong></td>
-        <td class="right">${share}%</td>
-        <td><span class="pill-inline ${pillCls}">${pillTxt}</span></td>
-      </tr>`;
-    }).join("");
-    tasksRoot.innerHTML = `
-      <table>
-        <thead><tr><th>Task name</th><th class="right">Records</th><th class="right">Share</th><th>Type</th></tr></thead>
-        <tbody>${rows}</tbody>
-      </table>
-      ${more}`;
+  // Date / time helpers
+  const todayISO = (() => {
+    try { return new Date().toLocaleDateString("en-CA", { timeZone: "Africa/Nairobi" }); } catch { return STATE.v2?.date || ""; }
+  })();
+  const fmtTime = (iso) => {
+    if (!iso) return "—";
+    try { return new Date(iso).toLocaleTimeString("en-GB", { timeZone: "Africa/Nairobi", hour: "2-digit", minute: "2-digit" }); }
+    catch { return "—"; }
+  };
+  const headDate = (() => {
+    const d = STATE.v2?.date; if (!d) return "";
+    const dt = new Date(d + "T00:00:00");
+    return isNaN(dt) ? d : dt.toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short", year: "numeric" });
+  })();
+  const initialsOf = (n) => (n || "").split(/\s+/).filter(Boolean).map(p => p[0].toUpperCase()).slice(0, 2).join("");
+  const daysSince = (iso) => {
+    if (!iso) return 0;
+    const d = new Date(iso); if (isNaN(d)) return 0;
+    return Math.max(0, Math.round((Date.now() - d.getTime()) / 86400000));
+  };
+
+  // Derived: today's task(s) + their first-seen + active tasks
+  const intakeToday = t.relations_support_intake_today || 0;
+  const todaysTasksAll = tasksAll.filter(x => (x.date_first_seen || "").slice(0, 10) === todayISO);
+  const lastUploadISO = todaysTasksAll.map(x => x.date_first_seen).sort().pop() || null;
+  const tasksTodayCount = t.tasks_today_count || tasksToday.length || todaysTasksAll.length;
+  const activeTasks = tasksAll.filter(x => !x.is_completed);
+  const activeTotalRecords = activeTasks.reduce((s, x) => s + (x.total_records_in_cache || 0), 0);
+  const activeTeams = new Set();
+  for (const x of activeTasks) for (const tm of (x.teams_worked || [])) activeTeams.add(tm);
+  const cacheTotal = tasksAll.reduce((s, x) => s + (x.total_records_in_cache || 0), 0);
+  const uniqueImos = t.unique_imos || 0;
+  const newCompaniesOpen = (STATE.v2.add_new_company_records || []).length;
+  const validToday = (t.valid_today_support || 0) + (t.valid_today_io || 0);
+  const properlyToday = t.properly_completed_today || 0;
+  const deadToday = t.dead_vessels_today || 0;
+  const properlyPct = validToday > 0 ? Math.round(((properlyToday + deadToday) / validToday) * 100) : 0;
+
+  // DoD% delta on the intake hero
+  const yIntake = STATE.intakeYesterday?.intake;
+  const dodPct = (today, y) => (y == null || y <= 0) ? null : ((today - y) / y) * 100;
+  const intakeDoD = dodPct(intakeToday, yIntake);
+
+  // 8-day intake trend bars
+  const intake8d = STATE.intakeIntake8d || [];
+  const maxI = Math.max(1, ...intake8d.map(v => v == null ? 0 : v));
+  const trendBarsHtml = intake8d.length === 0 ? "" :
+    `<div class="kpi-trend">${intake8d.map(v => v == null ? `<span class="bar miss" title="no snapshot"></span>` : `<span class="bar" style="height:${Math.max(8, Math.round((v / maxI) * 100))}%" title="${v}"></span>`).join("")}</div>`;
+
+  // ---- Page head ----
+  const pageHeadHtml = `
+    <div class="page-head">
+      <div>
+        <div class="page-eyebrow">Ownership QA${headDate ? " &middot; " + headDate : ""} &middot; Daily intake</div>
+        <h1 class="page-title">Daily <em>intake</em></h1>
+        <div class="page-subtitle">
+          <span class="num">${intakeToday.toLocaleString()}</span> records today
+          <span class="dot-sep">&middot;</span>
+          From <span class="num">${tasksTodayCount}</span> upload${tasksTodayCount === 1 ? "" : "s"}
+          <span class="dot-sep">&middot;</span>
+          <span class="num">${activeTasks.length}</span> tasks active in cache
+          ${lastUploadISO ? `<span class="dot-sep">&middot;</span> Last upload <span class="num">${fmtTime(lastUploadISO)}</span>` : ""}
+        </div>
+      </div>
+      <div class="page-head-actions">
+        <button class="btn" id="intakeExportBtn">Export CSV</button>
+        <a class="btn btn-primary" id="intakeUploadBtn" href="https://airtable.com/appHZdfC2sn9MLGFZ/tblpj9aJP4ExhYCZF" target="_blank" rel="noopener">Manual upload</a>
+      </div>
+    </div>`;
+
+  // ---- Filter tabs ----
+  const filter = STATE.intakeFilter || "all";
+  const cAll       = tasksAll.length;
+  const cToday     = todaysTasksAll.length;
+  const cInProg    = tasksAll.filter(x => !x.is_completed).length;
+  const cCompleted = tasksAll.filter(x => x.is_completed).length;
+  const cSanctions = tasksAll.filter(x => x.is_sanctions).length;
+  const tabsHtml = `
+    <div class="intake-tabs" id="intakeTabs">
+      <button data-if="all"        class="${filter === "all" ? "active" : ""}">All tasks <span class="ct">${cAll}</span></button>
+      <button data-if="today"      class="${filter === "today" ? "active" : ""}">Today's intake <span class="ct">${cToday}</span></button>
+      <button data-if="inprogress" class="${filter === "inprogress" ? "active" : ""}">In progress <span class="ct">${cInProg}</span></button>
+      <button data-if="completed"  class="${filter === "completed" ? "active" : ""}">Completed <span class="ct">${cCompleted}</span></button>
+      <button data-if="sanctions"  class="${filter === "sanctions" ? "active" : ""}">Sanctions <span class="ct">${cSanctions}</span></button>
+    </div>`;
+
+  // ---- 4 KPI hero cards ----
+  const kpiHeroHtml = `
+    <div class="kpis kpis-overview-hero">
+      <div class="kpi hero">
+        <div class="kpi-top"><div class="label">Intake today</div><span class="kpi-icon">${KPI_ICONS.upload}</span></div>
+        <div class="value-row"><span class="value">${intakeToday.toLocaleString()}</span>${intakeDoD == null ? "" : `<span class="kpi-dod">${intakeDoD >= 0 ? "+" : ""}${intakeDoD.toFixed(1)}% DoD</span>`}</div>
+        ${trendBarsHtml}
+        <div class="foot">${tasksTodayCount} upload${tasksTodayCount === 1 ? "" : "s"}${lastUploadISO ? " at " + fmtTime(lastUploadISO) + " EAT" : ""} &middot; Cache total <span class="num">${cacheTotal.toLocaleString()}</span> &middot; Unique IMOs <span class="num">${uniqueImos.toLocaleString()}</span></div>
+      </div>
+      <div class="kpi k-cyan">
+        <div class="kpi-top"><div class="label">Active tasks</div><span class="kpi-icon">${KPI_ICONS.file}</span></div>
+        <div class="value-row"><span class="value">${activeTasks.length}</span></div>
+        <div class="delta">In progress &middot; across <b>${activeTeams.size}</b> team${activeTeams.size === 1 ? "" : "s"}<br>Total work <b>${activeTotalRecords.toLocaleString()}</b> records</div>
+      </div>
+      <div class="kpi k-orange">
+        <div class="kpi-top"><div class="label">Add-new-company</div><span class="kpi-icon">${KPI_ICONS.alert}</span></div>
+        <div class="value-row"><span class="value">${newCompaniesOpen}</span></div>
+        <div class="delta">Need 100% QA &middot; open queue<br>From this week's intake</div>
+      </div>
+      <div class="kpi k-green">
+        <div class="kpi-top"><div class="label">Cleared today</div><span class="kpi-icon">${KPI_ICONS.check}</span></div>
+        <div class="value-row"><span class="value">${validToday.toLocaleString()}</span></div>
+        <div class="delta">Properly <b>${properlyToday.toLocaleString()}</b> &middot; dead <b>${deadToday.toLocaleString()}</b><br>${properlyPct}% properly completed</div>
+      </div>
+    </div>`;
+
+  // ---- Task-card builders ----
+  const taskCardFeaturedHtml = (task, batchName) => {
+    const records  = task.total_records_in_cache || task.records || 0;
+    const tagged   = task.status_distribution?.tagged || 0;
+    const inBoQa   = task.status_distribution?.["Selected for BO QA "] || 0;
+    const valid    = task.status_distribution?.Valid || 0;
+    const waiting  = task.status_distribution?.waiting || 0;
+    const dead     = task.dead_vessels || 0;
+    const teamsOnTask = task.teams_worked || [];
+    const pct = records > 0 ? Math.round((tagged / records) * 100) : 0;
+    const statusPill = task.is_completed ? `<span class="task-pill completed">Completed</span>`
+      : task.is_sanctions ? `<span class="task-pill sanctions">Sanctions</span>`
+      : `<span class="task-pill in-progress">Tagging in progress</span>`;
+    const typeLabel = task.is_sanctions ? "sanctions cohort" : "cargo intel · non-sanctions";
+    // Pick a few agent initials from the most-worked team
+    const primaryTeam = teamsOnTask[0] || "";
+    const sampleAgents = (STATE.roster?.[primaryTeam]?.members || []).slice(0, 4);
+    return `
+      <div class="task-card featured">
+        <div class="task-card-head">
+          <span class="task-card-icon" style="background:${TEAM_COLORS[primaryTeam]?.hex || "#7B68EE"}20;color:${TEAM_COLORS[primaryTeam]?.hex || "#7B68EE"}">${KPI_ICONS.file}</span>
+          <div class="task-card-titles">
+            <div class="task-card-name"><strong>${esc(task.name)}</strong> ${statusPill}</div>
+            <div class="task-card-meta"><span class="num">${records.toLocaleString()}</span> records &middot; ${typeLabel} &middot; First seen <span class="num">${fmtTime(task.date_first_seen)} EAT</span>${task.date_last_modified ? ` &middot; Last activity <span class="num">${fmtTime(task.date_last_modified)} EAT</span>` : ""}</div>
+          </div>
+          <div class="task-card-progress">
+            <svg class="ring" viewBox="0 0 36 36"><circle cx="18" cy="18" r="15.9" fill="none" stroke="var(--soft)" stroke-width="3"/><circle cx="18" cy="18" r="15.9" fill="none" stroke="var(--accent)" stroke-width="3" stroke-dasharray="${pct} ${100 - pct}" stroke-dashoffset="25" transform="rotate(-90 18 18)"/></svg>
+            <span class="ring-pct">${pct}%</span>
+          </div>
+        </div>
+        <div class="task-card-body">
+          <div class="task-card-assigned">
+            <span class="lbl">Assigned to</span>
+            <div class="task-card-teams">
+              ${teamsOnTask.map(tm => `<span class="task-team-chip" style="background:${TEAM_COLORS[tm]?.hex || "#7B68EE"}20;color:${TEAM_COLORS[tm]?.hex || "#7B68EE"}">${esc(tm)}</span>`).join("") || `<span class="muted">—</span>`}
+            </div>
+            <div class="task-card-avatars">
+              ${sampleAgents.map(a => `<span class="task-avatar" style="background:${TEAM_COLORS[primaryTeam]?.hex || "#7B68EE"}">${esc(initialsOf(a.name))}</span>`).join("")}
+            </div>
+          </div>
+          <div class="task-card-stats">
+            <div class="stat"><div class="lbl">Tagged</div><div class="val"><b>${tagged.toLocaleString()}</b> <span class="muted">/ ${records.toLocaleString()}</span></div><div class="sub">${waiting > 0 ? waiting.toLocaleString() + " waiting" : "all started"}</div></div>
+            <div class="stat"><div class="lbl">In BO QA</div><div class="val"><b>${inBoQa.toLocaleString()}</b>${tagged > 0 ? ` <span class="muted">/ ${tagged.toLocaleString()}</span>` : ""}</div><div class="sub">${tagged > 0 ? Math.round(inBoQa / tagged * 100) + "% sampled" : "—"}</div></div>
+            <div class="stat"><div class="lbl">Valid</div><div class="val"><b>${valid.toLocaleString()}</b> <span class="muted">/ ${records.toLocaleString()}</span></div><div class="sub">${dead > 0 ? "Dead vessels " + dead.toLocaleString() : "no dead"}</div></div>
+          </div>
+        </div>
+      </div>`;
+  };
+
+  const taskCardMiniHtml = (task) => {
+    const records  = task.total_records_in_cache || 0;
+    const tagged   = task.status_distribution?.tagged || 0;
+    const inBoQa   = task.status_distribution?.["Selected for BO QA "] || 0;
+    const valid    = task.status_distribution?.Valid || 0;
+    const waiting  = task.status_distribution?.waiting || 0;
+    const dead     = task.dead_vessels || 0;
+    const days = daysSince(task.date_first_seen);
+    const teamsOnTask = task.teams_worked || [];
+    const statusPill = task.is_completed ? `<span class="task-pill completed">Completed</span>`
+      : (task.flags || []).includes("incomplete") ? `<span class="task-pill bo-qa">BO QA pending</span>`
+      : `<span class="task-pill in-progress">In progress</span>`;
+    const unassigned = waiting; // approximation for "21 unassigned" style hint
+    const primaryTeam = teamsOnTask[0] || "";
+    return `
+      <div class="task-card mini">
+        <div class="task-card-head">
+          <span class="task-card-icon" style="background:${TEAM_COLORS[primaryTeam]?.hex || "#7B68EE"}20;color:${TEAM_COLORS[primaryTeam]?.hex || "#7B68EE"}">${KPI_ICONS.file}</span>
+          <div class="task-card-titles">
+            <div class="task-card-name"><strong>${esc(task.name)}</strong> ${statusPill}</div>
+            <div class="task-card-meta"><span class="num">${records.toLocaleString()}</span> records &middot; ${teamsOnTask.map(esc).join(", ") || "—"}${unassigned > 0 ? ` &middot; <span class="warn-text">${unassigned.toLocaleString()} unassigned</span>` : ""}</div>
+          </div>
+        </div>
+        <div class="task-card-stats mini">
+          <div class="stat"><div class="lbl">Valid</div><div class="val"><b>${valid.toLocaleString()}</b></div></div>
+          <div class="stat"><div class="lbl">In BO QA</div><div class="val"><b>${inBoQa.toLocaleString()}</b></div></div>
+          <div class="stat"><div class="lbl">${dead > 0 ? "Dead" : "Waiting"}</div><div class="val"><b>${(dead > 0 ? dead : waiting).toLocaleString()}</b></div></div>
+          <div class="stat"><div class="lbl">Days</div><div class="val"><b>${days}</b></div></div>
+        </div>
+      </div>`;
+  };
+
+  // Today's batch — featured card for the most recent today's task
+  const todaysFeatured = todaysTasksAll.slice().sort((a, b) => (b.date_first_seen || "").localeCompare(a.date_first_seen || ""))[0];
+  const todaysBatchName = todaysFeatured?.name?.split(/\s+/)[0] || (lastUploadISO ? "CargoChangeIntel" : "—");
+  const todaysBatchHtml = todaysFeatured ? `
+    <section class="intake-section">
+      <div class="intake-section-head"><h3>Today's batch &middot; <span class="batch-name">${esc(todaysBatchName)}</span></h3><span class="meta">Uploaded by automation${lastUploadISO ? " &middot; " + fmtTime(lastUploadISO) + " EAT" : ""}</span></div>
+      ${taskCardFeaturedHtml(todaysFeatured, todaysBatchName)}
+    </section>` : `
+    <section class="intake-section">
+      <div class="intake-section-head"><h3>Today's batch</h3><span class="meta">no upload yet today</span></div>
+      <div class="panel"><div class="empty" style="padding:20px;text-align:center;color:var(--muted);">No tasks created today yet — the daily upload usually lands mid-morning EAT.</div></div>
+    </section>`;
+
+  // Other active batches — task cards (filtered by tab)
+  let visibleOther = tasksAll.filter(x => x !== todaysFeatured);
+  if (filter === "today")       visibleOther = visibleOther.filter(x => (x.date_first_seen || "").slice(0, 10) === todayISO);
+  else if (filter === "inprogress") visibleOther = visibleOther.filter(x => !x.is_completed);
+  else if (filter === "completed")  visibleOther = visibleOther.filter(x => x.is_completed);
+  else if (filter === "sanctions")  visibleOther = visibleOther.filter(x => x.is_sanctions);
+  visibleOther = visibleOther.slice().sort((a, b) => (b.date_first_seen || "").localeCompare(a.date_first_seen || ""));
+  const OTHER_MAX = 12;
+  const moreCount = Math.max(0, visibleOther.length - OTHER_MAX);
+  const otherHtml = `
+    <section class="intake-section">
+      <div class="intake-section-head"><h3>Other active batches</h3><span class="meta">${visibleOther.length} task${visibleOther.length === 1 ? "" : "s"}${moreCount > 0 ? ` &middot; showing top ${OTHER_MAX}` : ""}</span></div>
+      <div class="task-card-grid">
+        ${visibleOther.slice(0, OTHER_MAX).map(taskCardMiniHtml).join("")}
+        ${visibleOther.length === 0 ? `<div class="empty" style="padding:14px;color:var(--muted);grid-column:1/-1;">No tasks match this filter.</div>` : ""}
+      </div>
+    </section>`;
+
+  // Team allocation panel
+  const byTeam = STATE.v2?.by_team || {};
+  const teamAllocHtml = `
+    <div class="panel team-alloc-panel">
+      <h3>Team allocation <em>today</em> <span class="meta">routed by team &middot; floor ${FLOOR}/agent &middot; stacked bars include all active batches</span></h3>
+      <div class="team-alloc">
+        ${teams.map(tm => {
+          const m = byTeam[tm] || {};
+          const tagged = m.tagged_today || 0;
+          const inBoQa = m.bo_qa_backlog || 0;
+          const valid  = m.done_today || 0;
+          const total  = tagged + inBoQa;
+          const agents = (STATE.roster?.[tm]?.members || []).length;
+          const floor  = agents * FLOOR;
+          const pct    = floor > 0 ? Math.round(total / floor * 100) : 0;
+          const segMax = Math.max(1, floor, total);
+          return `
+          <div class="team-alloc-row">
+            <span class="dot" style="background:${TEAM_COLORS[tm]?.hex || "#7B68EE"}"></span>
+            <span class="nm"><strong>${esc(tm)}</strong></span>
+            <span class="bar-stack">
+              <span class="seg tagged" style="width:${(tagged / segMax * 100).toFixed(1)}%;background:${TEAM_COLORS[tm]?.hex || "#7B68EE"}" title="Tagged: ${tagged.toLocaleString()}">${tagged > 0 ? `<span class="seg-label">${tagged.toLocaleString()}</span>` : ""}</span>
+              <span class="seg inboqa" style="width:${(inBoQa / segMax * 100).toFixed(1)}%" title="In BO QA: ${inBoQa.toLocaleString()}">${inBoQa > 0 ? `<span class="seg-label">${inBoQa.toLocaleString()}</span>` : ""}</span>
+            </span>
+            <span class="tot"><b>${total.toLocaleString()}</b> <span class="muted">/ ${agents} ag</span></span>
+            <span class="pct ${pct >= 100 ? "met" : "under"}">${pct}%</span>
+          </div>`;
+        }).join("")}
+      </div>
+      <div class="footer-note">Stacked bars: <b>Tagged · Valid</b> (team colour) + <b>In BO QA</b> (cyan). Percent = total / (agents × ${FLOOR}). 100%+ = team met floor.</div>
+    </div>`;
+
+  // Upload timeline (last 4 days, today + 3 prior from STATE.intakeUploads4d)
+  const timeline = STATE.intakeUploads4d || [];
+  const uploadTimelineHtml = `
+    <div class="panel upload-timeline-panel">
+      <h3>Upload <em>timeline</em> <span class="meta">last 4 days</span></h3>
+      <div class="upload-timeline">
+        ${timeline.length === 0 ? `<div class="empty" style="padding:12px;color:var(--muted);">Loading recent uploads…</div>` :
+          timeline.map(d => {
+            const dt = new Date(d.date + "T00:00:00");
+            const lbl = isNaN(dt) ? d.date : dt.toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short" });
+            if (!d.tasks || d.tasks.length === 0) {
+              return `
+              <div class="upload-row empty-day">
+                <span class="day"><b>${esc(lbl)}</b></span>
+                <span class="time">&mdash;</span>
+                <span class="body"><span class="muted">No upload &middot; cron schedule rest day</span></span>
+                <span class="status"><span class="task-pill">&mdash;</span></span>
+              </div>`;
+            }
+            const totalRecs = d.tasks.reduce((s, x) => s + (x.records || 0), 0);
+            const first = d.tasks[0];
+            const taskCount = d.tasks.length;
+            const teams = [...new Set(d.tasks.flatMap(x => x.teams || []))].slice(0, 3);
+            const stat = d.is_today ? `<span class="task-pill in-progress">Tagging</span>`
+              : d.is_completed ? `<span class="task-pill completed">Complete</span>`
+              : `<span class="task-pill bo-qa">BO QA pending</span>`;
+            const typeLbl = first.is_sanctions ? "sanctions cohort" : "cargo intel";
+            return `
+              <div class="upload-row">
+                <span class="day"><b>${esc(lbl)}</b></span>
+                <span class="time">${esc(d.time || "—")}</span>
+                <span class="body">
+                  <strong>${esc(first.name)}</strong>${taskCount > 1 ? ` <span class="muted">+${taskCount - 1} more</span>` : ""}<br>
+                  <span class="num">${totalRecs.toLocaleString()}</span> records${taskCount > 1 ? ` across ${taskCount} tasks` : ""}${teams.length ? " &middot; " + teams.map(esc).join(", ") : ""} &middot; ${typeLbl}
+                </span>
+                <span class="status">${stat}</span>
+              </div>`;
+          }).join("")}
+      </div>
+    </div>`;
+
+  // Detailed metrics expander (the existing 2 charts)
+  const detailHtml = `
+    <details class="overview-details">
+      <summary>Charts &amp; trends <span class="meta">monthly intake + per-day Valid by table</span></summary>
+      <div class="intake-charts">
+        <div class="panel">
+          <h3>Monthly intake <span class="meta">whole table &middot; from snapshots</span></h3>
+          <div class="chart-wrap"><canvas id="chart-monthly-intake"></canvas></div>
+          <div class="footer-note">Records uploaded per day for the month chosen in the Month picker above. Only days that have a snapshot are shown.</div>
+        </div>
+        <div class="panel">
+          <h3>Records set to Valid per day <span class="meta">relations_support vs relations_io</span></h3>
+          <div class="chart-wrap"><canvas id="chart-valid-by-table"></canvas></div>
+          <div class="footer-note">Records whose Valid Selected Time fell on each day, per source table. From daily snapshots.</div>
+        </div>
+      </div>
+    </details>`;
+
+  root.innerHTML = pageHeadHtml + tabsHtml + kpiHeroHtml + todaysBatchHtml + otherHtml + `
+    <div class="intake-bottom">
+      <div class="intake-bottom-main">${teamAllocHtml}</div>
+      <div class="intake-bottom-side">${uploadTimelineHtml}</div>
+    </div>` + detailHtml;
+
+  // ---- Wiring ----
+  document.getElementById("intakeExportBtn")?.addEventListener("click", () => {
+    const lines = ["Task,Records,Type,Teams,First seen,Last activity,Tagged,In BO QA,Valid,Waiting,Completed"];
+    for (const x of tasksAll) {
+      const sd = x.status_distribution || {};
+      lines.push([
+        '"' + (x.name || "").replace(/"/g, '""') + '"',
+        x.total_records_in_cache || 0,
+        x.is_sanctions ? "sanctions" : "standard",
+        '"' + (x.teams_worked || []).join("; ") + '"',
+        x.date_first_seen || "",
+        x.date_last_modified || "",
+        sd.tagged || 0,
+        sd["Selected for BO QA "] || 0,
+        sd.Valid || 0,
+        sd.waiting || 0,
+        x.is_completed ? "yes" : "no",
+      ].join(","));
+    }
+    const blob = new Blob([lines.join("\n")], { type: "text/csv" });
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = `intake-${STATE.v2?.date || "today"}.csv`;
+    a.click();
+    URL.revokeObjectURL(a.href);
+  });
+
+  document.querySelectorAll("#intakeTabs button").forEach(b => b.addEventListener("click", () => {
+    STATE.intakeFilter = b.dataset.if;
+    PAGE_RENDERERS.intake();
+  }));
+
+  // One-time loader: 8-day intake trend + yesterday DoD + 4-day upload timeline
+  if (STATE.intakeIntake8d === undefined && STATE.v2?.date) {
+    STATE.intakeIntake8d = null;
+    (async () => {
+      const anchor = new Date(STATE.v2.date + "T00:00:00Z");
+      const out8 = [];
+      for (let i = 7; i >= 1; i--) {
+        const d = new Date(anchor); d.setUTCDate(d.getUTCDate() - i);
+        const ds = d.toISOString().slice(0, 10);
+        try {
+          const snap = await readJson(`snapshots/${ds}.json`);
+          const v = snap?.totals?.relations_support_intake_today;
+          out8.push(Number.isFinite(v) ? v : null);
+        } catch (_) { out8.push(null); }
+      }
+      out8.push(intakeToday);
+      STATE.intakeIntake8d = out8;
+      // Yesterday DoD
+      const yd = new Date(anchor); yd.setUTCDate(yd.getUTCDate() - 1);
+      const yds = yd.toISOString().slice(0, 10);
+      try {
+        const ys = await readJson(`snapshots/${yds}.json`);
+        STATE.intakeYesterday = { intake: ys?.totals?.relations_support_intake_today ?? null };
+      } catch (_) { STATE.intakeYesterday = null; }
+      // Upload timeline — today + 3 prior days
+      const tl = [];
+      // Today
+      tl.push({
+        date: anchor.toISOString().slice(0, 10),
+        is_today: true,
+        is_completed: false,
+        time: lastUploadISO ? fmtTime(lastUploadISO) : "—",
+        tasks: (tasksToday || []).map(x => ({ name: x.name, records: x.records, is_sanctions: x.is_sanctions, teams: (todaysTasksAll.find(y => y.name === x.name)?.teams_worked || []) })),
+      });
+      for (let i = 1; i <= 3; i++) {
+        const d = new Date(anchor); d.setUTCDate(d.getUTCDate() - i);
+        const ds = d.toISOString().slice(0, 10);
+        try {
+          const snap = await readJson(`snapshots/${ds}.json`);
+          const ts = snap?.totals?.tasks_today || [];
+          // Best-effort: pull first-seen time from tasks_all of that snapshot if present
+          const allTasks = snap?.tasks_all || [];
+          const taskMatch = (n) => allTasks.find(z => z.name === n);
+          const firstSeen = ts.map(x => taskMatch(x.name)?.date_first_seen).filter(Boolean).sort()[0];
+          tl.push({
+            date: ds,
+            is_today: false,
+            is_completed: ts.every(x => (taskMatch(x.name)?.is_completed)),
+            time: firstSeen ? fmtTime(firstSeen) : "—",
+            tasks: ts.map(x => ({ name: x.name, records: x.records, is_sanctions: x.is_sanctions, teams: taskMatch(x.name)?.teams_worked || [] })),
+          });
+        } catch (_) {
+          tl.push({ date: ds, is_today: false, is_completed: false, time: "—", tasks: [] });
+        }
+      }
+      STATE.intakeUploads4d = tl;
+      PAGE_RENDERERS.intake();
+    })();
   }
 
-  // Per-team table
-  const teams = Object.keys(STATE.roster || {}).sort();
-  const rows = teams.map(team => {
-    const m = STATE.v2?.by_team?.[team];
-    if (!m) return `<tr><td><strong>${esc(team)}</strong></td><td colspan="4" class="empty">no cache records</td></tr>`;
-    return `<tr>
-      <td><strong>${esc(team)}</strong></td>
-      <td class="right">${m.team_routed_intake_today}</td>
-      <td class="right">${m.tagged_today}</td>
-      <td class="right">${(m.counts_by_verification_status?.waiting || 0).toLocaleString()}</td>
-      <td class="right">${m.bo_qa_backlog}</td>
-    </tr>`;
-  }).join("");
-  document.getElementById("intakeTable").innerHTML = `
-    <thead><tr><th>Team</th><th class="right">Routed today</th><th class="right">Tagged today</th><th class="right">Assigned &amp; waiting</th><th class="right">BO QA backlog</th></tr></thead>
-    <tbody>${rows}</tbody>`;
-
-  // Routing health
-  const totalIntake = t?.relations_support_intake_today || 0;
-  const routed = sumByTeam("team_routed_intake_today");
-  const unassigned = Math.max(0, totalIntake - routed);
-  document.getElementById("intakeRouting").innerHTML = `
-    <table>
-      <tr><td>Total intake today</td><td class="right"><strong>${totalIntake.toLocaleString()}</strong></td></tr>
-      <tr><td>Routed to 5 ownership teams</td><td class="right">${routed}</td></tr>
-      <tr><td>Assigned elsewhere / unassigned</td><td class="right">${unassigned.toLocaleString()}</td></tr>
-    </table>
-    <div class="footer-note" style="margin-top:8px">Today's intake is being absorbed by upstream taggers, not the 5 ownership teams. Reflect on whether this is expected per SOP.</div>`;
-
-  // Monthly intake chart — totals.relations_support_intake_today per day for the
-  // month picked in the Month selector. Only days that have a snapshot are
-  // plotted (no empty padding). Snapshots come from Supabase Storage via the
-  // shared loadMonthSnapshots() helper.
+  // Monthly intake chart (unchanged behaviour, just moved inside the expander)
   (async () => {
     const monthSnaps = await loadMonthSnapshots(STATE.selectedMonth || _currentMonth());
     const monthDays = monthSnaps
@@ -3613,41 +4032,22 @@ PAGE_RENDERERS.intake = function () {
       type: "bar",
       data: {
         labels: monthDays.map(x => x.d),
-        datasets: [{
-          label: "Records uploaded (whole table)",
-          data: monthDays.map(x => x.n),
-          backgroundColor: "#3d63dd",
-        }],
+        datasets: [{ label: "Records uploaded (whole table)", data: monthDays.map(x => x.n), backgroundColor: "#7B68EE" }],
       },
-      options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        plugins: {
-          legend: { display: false },
-          tooltip: { callbacks: { label: c => monthDays[c.dataIndex].n.toLocaleString() + " records" } },
-        },
-      },
+      options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } },
     });
   })();
 
-  // Records set to Valid per day, split by source table — totals.valid_today_support
-  // and totals.valid_today_io from the daily snapshots, for the month picked in the
-  // Month selector. Grouped bars (one per table per day). Only days whose snapshot
-  // carries the per-table counts are shown (they accumulate from when PR #99 shipped).
   (async () => {
     const monthSnaps = await loadMonthSnapshots(STATE.selectedMonth || _currentMonth());
     const monthDays = monthSnaps
-      .map(s => ({
-        d:  s.date,
-        rs: s.agg?.totals?.valid_today_support,
-        io: s.agg?.totals?.valid_today_io,
-      }))
+      .map(s => ({ d: s.date, rs: s.agg?.totals?.valid_today_support, io: s.agg?.totals?.valid_today_io }))
       .filter(x => typeof x.rs === "number" || typeof x.io === "number");
     const ctx = document.getElementById("chart-valid-by-table");
     if (!ctx) return;
     if (STATE.charts["chart-valid-by-table"]) STATE.charts["chart-valid-by-table"].destroy();
     if (!monthDays.length) {
-      ctx.parentElement.innerHTML = `<div class="empty">No per-table Valid counts for ${esc(STATE.selectedMonth || _currentMonth())} yet — they accumulate from the day this feature shipped.</div>`;
+      ctx.parentElement.innerHTML = `<div class="empty">No per-table Valid counts for ${esc(STATE.selectedMonth || _currentMonth())} yet.</div>`;
       return;
     }
     STATE.charts["chart-valid-by-table"] = new Chart(ctx, {
@@ -3655,19 +4055,11 @@ PAGE_RENDERERS.intake = function () {
       data: {
         labels: monthDays.map(x => x.d),
         datasets: [
-          { label: "relations_support", data: monthDays.map(x => x.rs ?? 0), backgroundColor: "#3d63dd" },
-          { label: "relations_io",      data: monthDays.map(x => x.io ?? 0), backgroundColor: "#e8833a" },
+          { label: "relations_support", data: monthDays.map(x => x.rs ?? 0), backgroundColor: "#7B68EE" },
+          { label: "relations_io",      data: monthDays.map(x => x.io ?? 0), backgroundColor: "#0EA56C" },
         ],
       },
-      options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        scales: { y: { beginAtZero: true, title: { display: true, text: "records set to Valid" } } },
-        plugins: {
-          legend: { display: true },
-          tooltip: { callbacks: { label: c => `${c.dataset.label}: ${(c.parsed.y || 0).toLocaleString()}` } },
-        },
-      },
+      options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true } }, plugins: { legend: { display: true } } },
     });
   })();
 };
