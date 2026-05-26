@@ -598,6 +598,110 @@
   .tl-minibar { width:64px; height:6px; background:var(--soft); border-radius:999px; overflow:hidden; flex-shrink:0; }
   .tl-minibar > span { display:block; height:100%; border-radius:999px; }
 
+  /* ---- Completed Tasks detail layer (Phase 11) -------------------------- */
+  .ct-live { display:inline-flex; align-items:center; gap:5px; margin-left:8px; font-size:11px; color:var(--good); font-weight:600; }
+  .ct-live .dot { width:7px; height:7px; border-radius:50%; background:var(--good); }
+  .ct-chips { display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin-bottom:16px; }
+  .ct-chips .spacer { flex:1; }
+  .ct-chip { display:inline-flex; align-items:center; gap:6px; padding:6px 12px; border-radius:999px; background:var(--surface); border:1px solid var(--border); color:var(--ink); font-size:12.5px; cursor:pointer; font-family:inherit; transition:background .15s ease,color .15s ease,border-color .15s ease; }
+  .ct-chip:hover { background:var(--soft); }
+  .ct-chip.active { color:#fff; border-color:transparent; font-weight:600; }
+  .ct-chip .dot { width:8px; height:8px; border-radius:50%; flex-shrink:0; }
+  .ct-chip .ct { font-size:11px; padding:1px 7px; border-radius:999px; background:var(--soft); color:var(--muted); font-variant-numeric:tabular-nums; }
+  .ct-chip.active .ct { background:rgba(255,255,255,0.22); color:#fff; }
+  .ct-foot { font-size:11px; color:var(--muted); margin-top:6px; }
+  .kpi.hero .ct-foot { color:rgba(255,255,255,0.72); }
+  .ct-sub { font-size:11.5px; color:var(--muted); margin-top:4px; }
+  .kpi.hero .ct-sub { color:rgba(255,255,255,0.85); }
+  .ct-spark { display:block; width:100%; height:30px; margin-top:6px; }
+  .ct-list-head { display:flex; align-items:baseline; justify-content:space-between; gap:12px; margin:4px 2px 10px; }
+  .ct-list-head h2 { margin:0; font-size:16px; font-weight:700; letter-spacing:-0.01em; color:var(--ink); }
+  .ct-list-head .meta, .ct-section-head .meta { font-size:11.5px; color:var(--muted); }
+  .ct-tabs { display:flex; align-items:center; gap:6px; flex-wrap:wrap; margin-bottom:10px; }
+  .ct-tabs button { padding:6px 12px; font-size:12px; font-family:inherit; color:var(--muted); background:transparent; border:1px solid var(--border); cursor:pointer; border-radius:999px; transition:background .15s ease,color .15s ease; }
+  .ct-tabs button:hover { color:var(--ink); }
+  .ct-tabs button.active { background:var(--ink); color:#fff; border-color:var(--ink); font-weight:600; }
+  .ct-tabs button .ct { margin-left:6px; font-size:11px; padding:1px 6px; border-radius:999px; background:var(--soft); color:var(--muted); font-variant-numeric:tabular-nums; }
+  .ct-tabs button.active .ct { background:rgba(255,255,255,0.22); color:#fff; }
+  .ct-tabs .spacer { flex:1; }
+  .ct-sortlabel { font-size:11.5px; color:var(--muted); }
+  .ct-fchips { display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin-bottom:12px; font-size:11.5px; }
+  .ct-fchip { display:inline-flex; align-items:center; gap:6px; padding:4px 10px; border-radius:999px; background:var(--soft); color:var(--muted); }
+  .ct-fchip .x { cursor:pointer; color:var(--muted); font-weight:700; }
+  .ct-fchip .x:hover { color:var(--ink); }
+  .ct-clear { color:var(--accent); cursor:pointer; font-weight:600; }
+  .ct-row { display:grid; grid-template-columns: minmax(200px,2fr) 1.1fr 1.2fr 1.1fr 1.1fr 1fr 1.1fr; gap:12px; align-items:center; padding:11px 10px; border-bottom:1px solid var(--border); cursor:pointer; transition:background .12s ease; font-size:12px; }
+  .ct-row:hover { background:var(--soft); }
+  .ct-row.selected { background:var(--accent-soft); }
+  .ct-row.head { font-size:10.5px; text-transform:uppercase; letter-spacing:0.04em; color:var(--muted); font-weight:700; cursor:default; padding-bottom:8px; }
+  .ct-row.head:hover { background:transparent; }
+  .ct-tb { display:flex; align-items:flex-start; gap:10px; min-width:0; }
+  .ct-tb .ic { width:30px; height:30px; border-radius:8px; flex-shrink:0; display:inline-flex; align-items:center; justify-content:center; }
+  .ct-tb .ic svg { width:15px; height:15px; }
+  .ct-tb .ic.sanc { background:rgba(229,56,79,0.12); color:#E5384F; }
+  .ct-tb .ic.peak { background:var(--warn-bg); color:var(--warn); }
+  .ct-tb .ic.resub { background:var(--warn-bg); color:var(--warn); }
+  .ct-tb .ic.reg { background:var(--good-bg); color:var(--good); }
+  .ct-tb .nm { font-size:13px; font-weight:600; color:var(--ink); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .ct-tb .sub { font-size:11px; color:var(--muted); margin-top:2px; }
+  .ct-when b { color:var(--ink); } .ct-when .s { color:var(--muted); font-size:11px; }
+  .ct-pill { display:inline-block; font-size:10.5px; font-weight:700; padding:2px 8px; border-radius:999px; text-transform:uppercase; letter-spacing:0.03em; white-space:nowrap; }
+  .ct-pill.qamet, .ct-pill.completed { background:var(--good-bg); color:var(--good); }
+  .ct-pill.perfect { background:var(--accent-soft); color:var(--accent); }
+  .ct-pill.resub, .ct-pill.breach { background:var(--warn-bg); color:var(--warn); }
+  .ct-tatbar-wrap { height:5px; background:var(--soft); border-radius:999px; overflow:hidden; margin-top:4px; }
+  .ct-tatbar-wrap > span { display:block; height:100%; border-radius:999px; background:var(--vivid-grad); }
+  .ct-num { font-variant-numeric:tabular-nums; }
+  .ct-pag { display:flex; align-items:center; gap:8px; justify-content:space-between; flex-wrap:wrap; margin-top:12px; font-size:11.5px; color:var(--muted); }
+  .ct-pag .pages { display:flex; gap:4px; }
+  .ct-pag .pages button { min-width:28px; padding:4px 8px; font-size:12px; font-family:inherit; border:1px solid var(--border); background:var(--surface); color:var(--ink); border-radius:6px; cursor:pointer; }
+  .ct-pag .pages button.active { background:var(--ink); color:#fff; border-color:var(--ink); font-weight:600; }
+  .ct-pag .pages button:disabled { opacity:0.4; cursor:default; }
+  /* drawer */
+  .ct-selhead { font-size:11px; text-transform:uppercase; letter-spacing:0.05em; color:var(--muted); font-weight:700; margin:20px 2px 6px; }
+  .ct-selhint { font-size:11px; color:var(--muted); font-weight:400; text-transform:none; letter-spacing:0; margin-left:6px; }
+  .ct-drawer-card { background:var(--surface); border:1px solid var(--border); border-top:3px solid var(--accent); border-radius:var(--radius-lg); padding:16px 18px; box-shadow:var(--shadow-sm); margin-bottom:14px; }
+  .ct-dh { display:flex; align-items:flex-start; gap:12px; }
+  .ct-dh .ic { width:40px; height:40px; border-radius:10px; flex-shrink:0; display:inline-flex; align-items:center; justify-content:center; background:var(--vivid-grad); color:#fff; }
+  .ct-dh .ic svg { width:19px; height:19px; }
+  .ct-dh .nm { font-size:16px; font-weight:700; color:var(--ink); }
+  .ct-dh .meta { font-size:11.5px; color:var(--muted); margin-top:4px; line-height:1.5; }
+  .ct-dh .acts { margin-left:auto; display:flex; gap:8px; flex-shrink:0; }
+  .ct-drow { display:grid; grid-template-columns:repeat(3,1fr); gap:14px; margin-bottom:14px; }
+  @media (max-width:1100px){ .ct-drow { grid-template-columns:1fr; } }
+  .ct-prow { display:flex; align-items:center; gap:10px; padding:6px 0; font-size:12px; }
+  .ct-prow .who { flex:1; min-width:0; color:var(--ink); }
+  .ct-prow .who .s { color:var(--muted); font-size:10.5px; }
+  .ct-prow .ct-num { font-weight:600; color:var(--ink); flex-shrink:0; }
+  .ct-barwrap { flex:1.2; height:6px; background:var(--soft); border-radius:999px; overflow:hidden; }
+  .ct-barwrap > span { display:block; height:100%; border-radius:999px; background:var(--vivid-grad); }
+  .ct-statblocks { display:flex; gap:14px; margin:6px 0; }
+  .ct-statblocks .b { flex:1; }
+  .ct-statblocks .b .v { font-size:20px; font-weight:700; color:var(--ink); font-variant-numeric:tabular-nums; line-height:1; }
+  .ct-statblocks .b .l { font-size:10px; text-transform:uppercase; letter-spacing:0.04em; color:var(--muted); margin-top:4px; }
+  .ct-pfoot { margin-top:10px; padding-top:10px; border-top:1px solid var(--border); font-size:11px; color:var(--muted); line-height:1.6; }
+  .ct-pfoot .num { color:var(--ink); font-weight:600; }
+  /* sections */
+  .ct-section-head { display:flex; align-items:baseline; justify-content:space-between; gap:12px; margin:22px 2px 10px; }
+  .ct-section-head h2 { margin:0; font-size:15px; font-weight:700; color:var(--ink); }
+  .ct-section-head h2 em { font-style:italic; font-family:Georgia,"Times New Roman",serif; color:var(--accent); font-weight:600; }
+  .ct-2col { display:grid; grid-template-columns:1fr 1fr; gap:14px; margin-bottom:14px; }
+  @media (max-width:1100px){ .ct-2col { grid-template-columns:1fr; } }
+  .ct-tatrow { display:grid; grid-template-columns:84px 1fr 44px; gap:10px; align-items:center; font-size:11.5px; padding:4px 0; }
+  .ct-tatrow .lab { color:var(--muted); font-variant-numeric:tabular-nums; }
+  .ct-tatrow .bar { height:10px; background:var(--soft); border-radius:4px; overflow:hidden; }
+  .ct-tatrow .bar > span { display:block; height:100%; border-radius:4px; }
+  .ct-tatrow .v { text-align:right; font-weight:600; color:var(--ink); font-variant-numeric:tabular-nums; }
+  /* leaderboard */
+  .ct-lb { display:grid; grid-template-columns:28px minmax(160px,2fr) 1.1fr 0.8fr 1.4fr 0.9fr 1fr; gap:12px; align-items:center; padding:9px 10px; border-bottom:1px solid var(--border); font-size:12px; }
+  .ct-lb.head { font-size:10.5px; text-transform:uppercase; letter-spacing:0.04em; color:var(--muted); font-weight:700; }
+  .ct-lb .rk { font-weight:700; color:var(--muted); font-variant-numeric:tabular-nums; }
+  .ct-lb .who { display:flex; align-items:center; gap:9px; min-width:0; }
+  .ct-lb .who .nm { font-weight:600; color:var(--ink); }
+  .ct-lb .who .s { font-size:10.5px; color:var(--muted); }
+  .ct-heat { display:flex; flex-wrap:wrap; gap:3px; }
+  .ct-heat span { width:9px; height:9px; border-radius:2px; }
+
   /* Tasks page */
   .sortable th { cursor: pointer; user-select: none; }
   .sortable th:hover { background: #e9ebf0; }
@@ -5141,321 +5245,380 @@ async function loadMonthSnapshots(yyyymm) {
 // ============================================================================
 const COMPLETED_STATE = { filter: "", view: "completed", sortBy: "completedDate", sortDir: "desc" };
 
-// status_distribution keys → legend label → stacked-bar colour (lifecycle trace).
-const TRACE_STATUSES = [
-  ["waiting",              "Waiting",      "#8a93a3"],
-  ["tagged",               "Tagged",       "#3d63dd"],
-  ["Selected for BO QA ",  "BO QA",        "#9a6a12"],
-  ["Selected for WW QA",   "WW QA",        "#7c5cbf"],
-  ["Done",                 "Done",         "#2a9d6f"],
-  ["Valid",                "Valid",        "#1a7a55"],
-  ["need to be update",    "Needs update", "#bb4338"],
-];
+// ===== Completed Tasks detail layer (Phase 11) =====
+const CT_PAGE_SIZE = 12;
+function ctInitials(n){ return String(n||"").split(/\s+/).filter(Boolean).map(p=>p[0].toUpperCase()).slice(0,2).join("")||"··"; }
+function ctTeamHex(tm){ return (TEAM_COLORS[tm]||{}).hex || "#7B68EE"; }
+function ctMonthKey(iso){ return iso? String(iso).slice(0,7) : null; }
+function ctMondayKey(iso){ const d=new Date(iso); if(isNaN(d)) return null; const day=(d.getUTCDay()+6)%7; const m=new Date(Date.UTC(d.getUTCFullYear(),d.getUTCMonth(),d.getUTCDate()-day)); return m.toISOString().slice(0,10); }
+function ctPercentile(arr,p){ const s=[...arr].filter(x=>x!=null).sort((a,b)=>a-b); if(!s.length) return null; const i=Math.min(s.length-1, Math.floor(p/100*s.length)); return s[i]; }
+function ctSpark(vals, color, w, h){ w=w||160; h=h||30; const v=vals.filter(x=>x!=null); if(v.length<2) return ""; const mn=Math.min(...v), mx=Math.max(...v), rng=(mx-mn)||1; const pts=vals.map((y,i)=>{ if(y==null) return null; const x=(i/(vals.length-1))*w; const yy=h-2-((y-mn)/rng)*(h-4); return `${x.toFixed(1)},${yy.toFixed(1)}`; }).filter(Boolean).join(" "); return `<svg class="ct-spark" viewBox="0 0 ${w} ${h}" preserveAspectRatio="none"><polyline points="${pts}" fill="none" stroke="${color}" stroke-width="1.6" stroke-linejoin="round"/></svg>`; }
+function ctEat(iso, opts){ return iso ? new Date(iso).toLocaleString("en-GB", Object.assign({timeZone:"Africa/Nairobi"}, opts)) : "—"; }
+function ctEatTime(iso){ return iso ? new Date(iso).toLocaleTimeString("en-GB",{timeZone:"Africa/Nairobi",hour:"2-digit",minute:"2-digit"}) : "—"; }
+function ctDayDate(iso){ return iso ? new Date(iso).toLocaleDateString("en-GB",{timeZone:"Africa/Nairobi",weekday:"short",day:"numeric",month:"short"}) : "—"; }
 
 PAGE_RENDERERS.completed = async function () {
   const root = document.getElementById("page-completed");
-  COMPLETED_STATE.filter = localStorage.getItem("wqa.completedFilter") || "";
-  COMPLETED_STATE.view   = localStorage.getItem("wqa.completedView") || "completed";
+  if (!STATE.completedFilters) STATE.completedFilters = { team: "__all__", sanctionsOnly: false, tatBreach: false };
+  if (!STATE.completedTab) STATE.completedTab = "all";
+  if (STATE.completedSelectedId === undefined) STATE.completedSelectedId = null;
+  if (!STATE.completedPage) STATE.completedPage = 1;
 
-  root.innerHTML = `
-    <h3 style="font-size:18px;font-weight:600;color:var(--ink);margin-bottom:8px">Completed Tasks <span class="meta" style="font-weight:400;color:var(--muted)">— permanent task history archive</span></h3>
-    <div id="completedBody"><div class="empty">Loading task history…</div></div>
-  `;
+  root.innerHTML = `<div class="page-head"><div><div class="page-eyebrow">Operations &middot; archive</div><h1 class="page-title">Completed <em>tasks</em></h1></div></div><div class="empty">Loading completion archive…</div>`;
 
   const rows = await loadTaskHistory();
-  const body = document.getElementById("completedBody");
-  if (rows === null) {
-    body.innerHTML = `<div class="empty-state"><div class="title">Couldn't load task history</div>The ownership_task_history table could not be read. Check your connection and try again.</div>`;
-    return;
-  }
-  if (!rows.length) {
-    body.innerHTML = `<div class="empty-state"><div class="title">No task history yet</div>Nothing has been recorded into ownership_task_history.</div>`;
-    return;
-  }
-
-  const tasks = groupTaskHistory(rows);
-  STATE.completedTasks = tasks;   // cache the grouped list for the drawer lookup
-
-  // KPIs
-  const kpiTotal     = tasks.length;
-  const kpiCompleted = tasks.filter(t => t.isCompleted).length;
-  const kpiOpen      = kpiTotal - kpiCompleted;
-  const tatVals      = tasks.filter(t => t.isCompleted && t.latest.tat_hours != null).map(t => t.latest.tat_hours);
-  const kpiMedianTat = median(tatVals);
-  const earliest     = tasks.reduce((m, t) => (t.firstSeen && t.firstSeen < m ? t.firstSeen : m), tasks[0].firstSeen);
-
-  body.innerHTML = `
-    <div class="kpis">
-      <div class="kpi"><div class="label">Tasks recorded</div><div class="value">${kpiTotal}</div><div class="delta">since ${esc(shortDate(earliest))}</div></div>
-      <div class="kpi"><div class="label">Completed</div><div class="value">${kpiCompleted}</div></div>
-      <div class="kpi ${kpiOpen > 0 ? 'warn' : ''}"><div class="label">Open</div><div class="value">${kpiOpen}</div></div>
-      <div class="kpi"><div class="label">Median turn-around</div><div class="value">${formatDuration(kpiMedianTat)}</div><div class="delta">${tatVals.length} completed tasks</div></div>
-    </div>
-    <div class="controls-row">
-      <label class="small-mono">Search:</label>
-      <input id="completedSearch" type="text" placeholder="task name…" value="${esc(COMPLETED_STATE.filter)}" style="font-family:inherit;font-size:13px;padding:7px 12px;border:1px solid var(--border);background:var(--surface);border-radius:6px;color:var(--ink);min-width:240px"/>
-      <label class="small-mono">View:</label>
-      <select id="completedView">
-        <option value="completed" ${COMPLETED_STATE.view === 'completed' ? 'selected' : ''}>Completed</option>
-        <option value="open"      ${COMPLETED_STATE.view === 'open'      ? 'selected' : ''}>Open</option>
-        <option value="all"       ${COMPLETED_STATE.view === 'all'       ? 'selected' : ''}>All</option>
-      </select>
-      <span class="small-mono" id="completedCount"></span>
-    </div>
-    <div class="panel"><div id="completedTable"></div></div>
-  `;
-
-  document.getElementById("completedSearch").addEventListener("input", (e) => {
-    COMPLETED_STATE.filter = e.target.value;
-    localStorage.setItem("wqa.completedFilter", COMPLETED_STATE.filter);
-    renderCompletedTable();
-  });
-  document.getElementById("completedView").addEventListener("change", (e) => {
-    COMPLETED_STATE.view = e.target.value;
-    localStorage.setItem("wqa.completedView", COMPLETED_STATE.view);
-    renderCompletedTable();
-  });
-  renderCompletedTable();
+  if (rows === null) { root.innerHTML = `<div class="empty-state"><div class="title">Couldn't load completion archive</div>The ownership_task_history table could not be read. Check your connection and try again.</div>`; return; }
+  STATE.completedTasks = groupTaskHistory(rows);
+  _renderCompletedPage();
 };
 
-function _completedFiltered() {
-  let out = STATE.completedTasks || [];
-  if (COMPLETED_STATE.filter) {
-    const f = COMPLETED_STATE.filter.toLowerCase();
-    out = out.filter(t => t.name.toLowerCase().includes(f));
-  }
-  if (COMPLETED_STATE.view === "completed")  out = out.filter(t => t.isCompleted);
-  else if (COMPLETED_STATE.view === "open")  out = out.filter(t => !t.isCompleted);
-  // Sort
-  const k = COMPLETED_STATE.sortBy, dir = COMPLETED_STATE.sortDir === "asc" ? 1 : -1;
-  out = [...out].sort((a, b) => {
-    let av, bv;
-    if (k === "name") { av = a.name; bv = b.name; }
-    else if (k === "type")    { av = a.latest.is_sanctions ? 1 : 0; bv = b.latest.is_sanctions ? 1 : 0; }
-    else if (k === "records") { av = a.trueTotal; bv = b.trueTotal; }
-    else if (k === "status")  { av = a.isCompleted ? 1 : 0; bv = b.isCompleted ? 1 : 0; }
-    else if (k === "donePct") {
-      av = a.latest.total_records ? (a.latest.properly_completed || 0) / a.latest.total_records : 0;
-      bv = b.latest.total_records ? (b.latest.properly_completed || 0) / b.latest.total_records : 0;
-    }
-    else if (k === "qa_coverage") { av = a.latest.qa_coverage_pct || 0; bv = b.latest.qa_coverage_pct || 0; }
-    else if (k === "teams")   { av = (a.latest.teams_worked || []).length; bv = (b.latest.teams_worked || []).length; }
-    else if (k === "received")      { av = a.latest.date_first_seen || ""; bv = b.latest.date_first_seen || ""; }
-    else if (k === "assigned")      { av = a.assignedDate || ""; bv = b.assignedDate || ""; }
-    else if (k === "completedDate") { av = a.latest.end_time || ""; bv = b.latest.end_time || ""; }
-    else if (k === "tat") {
-      av = (a.isCompleted && a.latest.tat_hours != null) ? a.latest.tat_hours : -1;
-      bv = (b.isCompleted && b.latest.tat_hours != null) ? b.latest.tat_hours : -1;
-    }
-    else /* received */ { av = a.latest.date_first_seen || ""; bv = b.latest.date_first_seen || ""; }
-    if (av < bv) return -1 * dir;
-    if (av > bv) return  1 * dir;
-    return 0;
-  });
-  return out;
-}
+// Synchronous full-page render from STATE.completedTasks (no re-fetch). Re-run by
+// chip / tab / pagination / row handlers.
+function _renderCompletedPage(){
+  const root = document.getElementById("page-completed");
+  if (!STATE.completedFilters) STATE.completedFilters = { team: "__all__", sanctionsOnly: false, tatBreach: false };
+  if (!STATE.completedTab) STATE.completedTab = "all";
+  if (STATE.completedSelectedId === undefined) STATE.completedSelectedId = null;
+  if (!STATE.completedPage) STATE.completedPage = 1;
+  const all = STATE.completedTasks || [];
+  const completed = all.filter(t => t.isCompleted);
+  const f = STATE.completedFilters;
+  const now = Date.now();
+  const cdMs = (t)=>{ const d=new Date(t.latest.end_time||t.lastRecorded); return isNaN(d)?0:d.getTime(); };
+  const within = (t,days)=> (now - cdMs(t)) <= days*86400000;
+  const tatOf = (t)=> (t.latest.tat_hours!=null? t.latest.tat_hours : null);
+  const covOf = (t)=> (t.latest.qa_coverage_pct||0);
+  const recOf = (t)=> (t.trueTotal||0);
+  const teamsOf = (t)=> (t.latest.teams_worked||[]).map(x=>x.team);
+  const sancOf = (t)=> !!t.latest.is_sanctions;
 
-function renderCompletedTable() {
-  const list = _completedFiltered();
-  document.getElementById("completedCount").textContent = `${list.length} of ${(STATE.completedTasks || []).length}`;
-  const cols = [
-    ["name", "Task name"], ["type", "Type"], ["records", "Records"],
-    ["status", "Status"], ["donePct", "Properly done %"], ["qa_coverage", "QA coverage %"],
-    ["teams", "Teams"], ["received", "Received"], ["assigned", "Assigned"],
-    ["completedDate", "Completed"], ["tat", "Turn-around"],
-  ];
-  const sortInd = (k) => k === COMPLETED_STATE.sortBy ? (COMPLETED_STATE.sortDir === "asc" ? "▲" : "▼") : "";
-  const rightCols = new Set(['records']);
-  const head = `<thead><tr>${cols.map(([k, lab]) => `<th data-sort="${k}" class="${rightCols.has(k) ? 'right' : ''}">${esc(lab)} <span class="sort-ind">${sortInd(k)}</span></th>`).join("")}</tr></thead>`;
-  const body = list.map(t => {
-    const L = t.latest;
-    const total = L.total_records || 0;
-    const donePct = total ? ((L.properly_completed || 0) / total) * 100 : 0;
-    const cov = L.qa_coverage_pct || 0;
-    const teams = (L.teams_worked || []).map(x => x.team).join(", ") || "—";
-    return `<tr>
-      <td><a class="completed-task-name" data-task="${esc(t.name)}">${esc(t.name)}</a></td>
-      <td><span class="pill-inline ${L.is_sanctions ? 'bad' : 'good'}">${L.is_sanctions ? 'Sanctions' : 'Standard'}</span></td>
-      <td class="right">${t.trueTotal.toLocaleString()}</td>
-      <td><span class="pill-inline ${t.isCompleted ? 'good' : 'warn'}">${t.isCompleted ? 'Completed' : 'Open'}</span></td>
-      <td><span class="pill-inline ${pctClass(donePct)}">${donePct.toFixed(0)}%</span></td>
-      <td><span class="pill-inline ${cov >= 15 ? 'good' : cov >= 5 ? 'warn' : 'bad'}">${cov.toFixed(0)}%</span></td>
-      <td>${esc(teams)}</td>
-      <td>${esc(shortDate(t.latest.date_first_seen))}</td>
-      <td>${t.assignedDate ? esc(shortDate(t.assignedDate)) : '<span class="small-mono">—</span>'}</td>
-      <td>${t.isCompleted && t.latest.end_time ? esc(shortDate(t.latest.end_time)) : '<span class="small-mono">—</span>'}</td>
-      <td>${t.isCompleted && t.latest.tat_hours != null ? esc(formatDuration(t.latest.tat_hours)) : '<span class="small-mono">—</span>'}</td>
-    </tr>`;
-  }).join("");
-  document.getElementById("completedTable").innerHTML = `<table class="sortable">${head}<tbody>${body || '<tr><td colspan="11" class="empty">No tasks match.</td></tr>'}</tbody></table>`;
-  document.querySelectorAll("#completedTable th[data-sort]").forEach(th => {
-    th.addEventListener("click", () => {
-      const k = th.dataset.sort;
-      if (COMPLETED_STATE.sortBy === k) COMPLETED_STATE.sortDir = COMPLETED_STATE.sortDir === "asc" ? "desc" : "asc";
-      else { COMPLETED_STATE.sortBy = k; COMPLETED_STATE.sortDir = "desc"; }
-      renderCompletedTable();
-    });
-  });
-  document.querySelectorAll(".completed-task-name").forEach(a => {
-    a.addEventListener("click", () => openCompletedTaskDrawer(a.dataset.task));
-  });
-  fitTableHeight(document.getElementById("completedTable"));
-}
+  // ---- headline + history aggregates (all real, from the ledger) ----
+  const allTime = completed.length;
+  const recordsTotal = completed.reduce((s,t)=>s+recOf(t),0);
+  const properTotal = completed.reduce((s,t)=>s+(t.latest.properly_completed||0),0);
+  const validatedPct = recordsTotal? (properTotal/recordsTotal*100):0;
+  const last30 = completed.filter(t=>within(t,30));
+  const prior30 = completed.filter(t=>!within(t,30) && within(t,60));
+  const curMonth = (STATE.v2?.date||new Date().toISOString()).slice(0,7);
+  const thisMo = completed.filter(t=>ctMonthKey(t.latest.end_time)===curMonth).length;
+  // monthly mini-bars (last 9 months)
+  const monthsBack=9; const monKeys=[]; { const base=new Date(curMonth+"-01T00:00:00Z"); for(let i=monthsBack-1;i>=0;i--){ const d=new Date(base); d.setUTCMonth(d.getUTCMonth()-i); monKeys.push(d.toISOString().slice(0,7)); } }
+  const monCount = Object.fromEntries(monKeys.map(k=>[k,0]));
+  for(const t of completed){ const k=ctMonthKey(t.latest.end_time); if(k in monCount) monCount[k]++; }
+  const monVals = monKeys.map(k=>monCount[k]);
+  const maxMon = Math.max(1,...monVals);
+  // median/p90 TAT (30d) + DoD vs prior 30d
+  const med = (xs)=>median(xs.map(tatOf).filter(x=>x!=null));
+  const medTat = med(last30), medTatPrior = med(prior30);
+  const p90Tat = ctPercentile(last30.map(tatOf).filter(x=>x!=null),90);
+  const tatDoD = (medTat!=null && medTatPrior!=null && medTatPrior>0)? ((medTat-medTatPrior)/medTatPrior*100):null;
+  // weekly median tat trend (last 8 weeks) for sparkline
+  const weeks=[]; { const mon=ctMondayKey(new Date().toISOString()); const base=new Date(mon+"T00:00:00Z"); for(let i=7;i>=0;i--){ const d=new Date(base); d.setUTCDate(d.getUTCDate()-i*7); weeks.push(d.toISOString().slice(0,10)); } }
+  const weekBatches=Object.fromEntries(weeks.map(w=>[w,0])), weekRecords=Object.fromEntries(weeks.map(w=>[w,0])), weekTat=Object.fromEntries(weeks.map(w=>[w,[]]));
+  for(const t of completed){ const wk=ctMondayKey(t.latest.end_time); if(wk in weekBatches){ weekBatches[wk]++; weekRecords[wk]+=recOf(t); const tv=tatOf(t); if(tv!=null) weekTat[wk].push(tv); } }
+  const tatTrend = weeks.map(w=>median(weekTat[w]));
+  // QA coverage avg (30d) + DoD
+  const avgCov = last30.length? last30.reduce((s,t)=>s+covOf(t),0)/last30.length:0;
+  const avgCovPrior = prior30.length? prior30.reduce((s,t)=>s+covOf(t),0)/prior30.length:0;
+  const covDoD = avgCovPrior>0? (avgCov-avgCovPrior):null;
+  // reject rate (proxy = qa_changed / qa_reviewed on qaPeak) (30d) + DoD
+  const rejOf = (t)=>{ const q=t.qaPeak||{}; return (q.qa_reviewed||0)>0? (q.qa_changed||0)/(q.qa_reviewed||0)*100 : 0; };
+  const avgRej = last30.length? last30.reduce((s,t)=>s+rejOf(t),0)/last30.length:0;
+  const avgRejPrior = prior30.length? prior30.reduce((s,t)=>s+rejOf(t),0)/prior30.length:0;
+  const rejDoD = avgRejPrior>0? (avgRej-avgRejPrior):null;
+  const rejectedN = last30.reduce((s,t)=>s+((t.qaPeak||{}).qa_changed||0),0);
 
-// ----- Completed-task detail drawer -----
-function openCompletedTaskDrawer(taskName) {
-  const t = (STATE.completedTasks || []).find(x => x.name === taskName);
-  if (!t) return;
-  const drawer = document.getElementById("completedDrawer");
-  const backdrop = document.getElementById("completedDrawerBackdrop");
-  const L = t.latest;
-  const PK = t.peak;     // fullest recorded day — scorecard & agent breakdown
-  const QP = t.qaPeak;   // day QA review peaked — QA reviewers
-  const hist = t.history;
+  // refreshed label
+  const refAge = ageHours(STATE.v2?.computed_at);
+  const refLabel = refAge==null? "freshness unknown" : refAge<1? `Refreshed ${Math.max(1,Math.round(refAge*60))} min ago` : refAge<24? `Refreshed ${Math.round(refAge)}h ago` : `Refreshed ${Math.round(refAge/24)}d ago`;
+  const nowEat = ctEat(STATE.v2?.computed_at||new Date().toISOString(), {weekday:"long",day:"2-digit",month:"short",year:"numeric",hour:"2-digit",minute:"2-digit"});
 
-  const flagsHtml = (L.flags || []).map(f => `<span class="flag-pill ${FLAG_STYLES[f] || 'gray'}">${esc(f)}</span>`).join("") || '<span class="small-mono">no flags</span>';
+  // team chips
+  const teamKeys = Object.keys(STATE.roster||{}).sort();
+  const teamCount=(tm)=>completed.filter(t=>teamsOf(t).includes(tm)).length;
+  const sancN = completed.filter(sancOf).length;
+  const breachN = completed.filter(t=>{const v=tatOf(t); return v!=null && v>96;}).length;
+  const chip=(id,label,count,active,hex)=>`<button class="ct-chip${active?" active":""}" data-cc="${id}"${active&&hex?` style="background:${hex}"`:""}>${hex?`<span class="dot" style="background:${active?"#fff":hex}"></span>`:""}<span>${esc(label)}</span><span class="ct">${count}</span></button>`;
+  const chipsHtml=`<div class="ct-chips" id="ctChips">
+    ${chip("__all__","All teams",completed.length,f.team==="__all__",null)}
+    ${teamKeys.map(tm=>chip(tm,tm,teamCount(tm),f.team===tm,ctTeamHex(tm))).join("")}
+    <span class="spacer"></span>
+    <button class="ct-chip${f.sanctionsOnly?" active":""}" data-cc="__sanc"${f.sanctionsOnly?' style="background:var(--bad)"':""}>⚠ Sanctions only <span class="ct">${sancN}</span></button>
+    <button class="ct-chip${f.tatBreach?" active":""}" data-cc="__breach"${f.tatBreach?' style="background:var(--warn)"':""}>🕒 TAT &gt; 96h <span class="ct">${breachN}</span></button>
+  </div>`;
 
-  // Turn-around: completed → tat_hours; still open → running age + " open".
-  const tatStr = t.isCompleted && L.tat_hours != null
-    ? formatDuration(L.tat_hours)
-    : formatDuration(ageHours(L.date_first_seen)) + " open";
-
-  // Lifecycle day-by-day rows. Every status_distribution access is null-guarded
-  // — older recovered rows can have a thinner shape.
-  const traceRows = hist.map(h => {
-    const sd = h.status_distribution || {};
-    return `<tr>
-      <td>${esc(shortDate(h.snapshot_date))}</td>
-      <td class="right">${(h.total_records || 0).toLocaleString()}</td>
-      <td class="right">${sd.waiting || 0}</td>
-      <td class="right">${sd.tagged || 0}</td>
-      <td class="right">${sd["Selected for BO QA "] || 0}</td>
-      <td class="right">${sd.Valid || 0}</td>
-      <td class="right">${h.completed || 0}</td>
-      <td class="right">${h.qa_reviewed || 0}</td>
-    </tr>`;
-  }).join("");
-
-  const agentsRows = (PK.agents_worked || []).map(a =>
-    `<tr><td class="agent-name">${esc(a.name)}</td><td>${esc(a.team || '—')}</td><td class="right">${a.records || 0}</td><td class="right">${a.qa_checked || 0}</td><td class="right">${a.qa_changed || 0}</td></tr>`
-  ).join("") || '<tr><td colspan="5" class="empty">no agent attribution recorded</td></tr>';
-
-  // QA reviewers — qa_reviewers is null on tasks whose latest row was recovered
-  // from a pre-PR#70 snapshot; fall back to the reviewed/changed totals.
-  let qaReviewersHtml;
-  if (Array.isArray(QP.qa_reviewers)) {
-    const rev = QP.qa_reviewers.map(q =>
-      `<tr><td>${esc(q.name)}</td><td class="right">${q.reviewed || 0}</td><td class="right">${q.changed || 0}</td></tr>`
-    ).join("") || '<tr><td colspan="3" class="empty">no QA reviewers recorded</td></tr>';
-    qaReviewersHtml = `<table>
-            <thead><tr><th>QA reviewer</th><th class="right">Reviewed</th><th class="right">Changed</th></tr></thead>
-            <tbody>${rev}</tbody>
-          </table>`;
-  } else {
-    qaReviewersHtml = `<table>
-            <tr><td>Reviewed</td><td class="right"><strong>${QP.qa_reviewed || 0}</strong></td></tr>
-            <tr><td>Changed</td><td class="right">${QP.qa_changed || 0}</td></tr>
-          </table>
-          <div class="footer-note">Per-reviewer breakdown isn't recorded for this task (it predates the task-history ledger).</div>`;
-  }
-
-  drawer.innerHTML = `
-    <div class="drawer-header">
-      <button class="drawer-close" id="completedDrawerCloseBtn" title="Close">×</button>
-      <h2>${esc(t.name)}</h2>
+  const dod=(v,goodWhenNeg)=>{ if(v==null) return `<span class="kpi-dod">—</span>`; const up=v>=0; const good = goodWhenNeg? !up : up; const cls = good? "up":"down"; return `<span class="kpi-dod-light ${cls}">${up?"+":""}${v.toFixed(1)}${goodWhenNeg||!goodWhenNeg?"":""}</span>`; };
+  // hero uses .kpi-dod (white pill) for the gradient card; others use light pills
+  root.innerHTML = `
+    <div class="page-head">
       <div>
-        <span class="pill-inline ${L.is_sanctions ? 'bad' : 'good'}">${L.is_sanctions ? 'Sanctions' : 'Standard'}</span>
-        <span class="pill-inline ${t.isCompleted ? 'good' : 'warn'}">${t.isCompleted ? 'Completed' : 'Open'}</span>
-        <span class="small-mono"> · ${t.trueTotal.toLocaleString()} records · first seen ${esc(shortDate(t.firstSeen))} · last recorded ${esc(shortDate(t.lastRecorded))}</span>
-      </div>
-      <div style="margin-top:6px">${flagsHtml}</div>
-    </div>
-    <div class="drawer-body">
-
-      <div class="panel">
-        <h3>Lifecycle <span class="meta">received → assigned → completed</span></h3>
-        <table>
-          <tr><td>Received <span class="small-mono">client upload</span></td><td class="right">${esc(shortDate(L.date_first_seen))}</td></tr>
-          <tr><td>Assigned <span class="small-mono">entered "waiting"</span></td><td class="right">${t.assignedDate ? esc(shortDate(t.assignedDate)) : '<span class="small-mono">—</span>'}</td></tr>
-          <tr><td>Completed <span class="small-mono">crossed 95% Valid</span></td><td class="right">${t.isCompleted && L.end_time ? esc(shortDate(L.end_time)) : '<span class="small-mono">in progress</span>'}</td></tr>
-          <tr><td>Turn-around</td><td class="right"><strong>${t.isCompleted && L.tat_hours != null ? esc(formatDuration(L.tat_hours)) : esc(formatDuration(ageHours(L.date_first_seen))) + ' open'}</strong></td></tr>
-        </table>
-        <div class="footer-note">"Assigned" is the first day the task had records in the "waiting" state (assigned to an agent, not yet started) — day-level, from the dashboard's snapshot history.</div>
-      </div>
-
-      <div class="panel">
-        <h3>Lifecycle trace <span class="meta">day-by-day, from the history ledger</span></h3>
-        <div class="chart-wrap"><canvas id="completedTraceChart"></canvas></div>
-        <table style="margin-top:14px">
-          <thead><tr><th>Date</th><th class="right">Records</th><th class="right">Waiting</th><th class="right">Tagged</th><th class="right">BO QA</th><th class="right">Valid</th><th class="right">Completed</th><th class="right">QA reviewed</th></tr></thead>
-          <tbody>${traceRows}</tbody>
-        </table>
-        <div class="footer-note">Counts are the records visible in the dashboard's cache that day; the total shrinks as finished records age out — the task's true size is the peak (shown above).</div>
-      </div>
-
-      <div class="panel">
-        <h3>Scorecard <span class="meta">from the task's fullest recorded day</span></h3>
-        <table>
-          <tr><td>Properly completed</td><td class="right"><strong>${PK.properly_completed || 0}</strong> / ${(PK.total_records || 0).toLocaleString()}</td></tr>
-          <tr><td>With company</td><td class="right">${PK.with_company || 0}</td></tr>
-          <tr><td>Without company</td><td class="right">${PK.without_company || 0}</td></tr>
-          <tr><td>Dead vessels</td><td class="right">${PK.dead_vessels || 0}</td></tr>
-          <tr><td>On reminder</td><td class="right">${PK.with_reminder || 0}</td></tr>
-        </table>
-      </div>
-
-      <div class="row equal">
-        <div class="panel">
-          <h3>Agents who worked this task <span class="meta">from the task's fullest recorded day</span></h3>
-          <table>
-            <thead><tr><th>Agent</th><th>Team</th><th class="right">Records</th><th class="right">Checked</th><th class="right">Changed</th></tr></thead>
-            <tbody>${agentsRows}</tbody>
-          </table>
-        </div>
-        <div class="panel">
-          <h3>QA reviewers <span class="meta">from the day QA review peaked</span></h3>
-          ${qaReviewersHtml}
+        <div class="page-eyebrow">Operations &middot; archive &middot; ${esc(nowEat)} EAT<span class="ct-live"><span class="dot"></span>Live &middot; ${esc(refLabel)}</span></div>
+        <h1 class="page-title">Completed <em>tasks</em></h1>
+        <div class="page-subtitle">
+          Permanent history of completed batches — turn-around, QA coverage, rejection rate.
+          <span class="dot-sep">&middot;</span><span class="num">${allTime.toLocaleString()}</span> completed all-time
+          <span class="dot-sep">&middot;</span><span class="num">${last30.length.toLocaleString()}</span> in last 30 days
+          <span class="dot-sep">&middot;</span><span class="num">${recordsTotal.toLocaleString()}</span> records
         </div>
       </div>
-
+      <div class="page-head-actions">
+        <button class="btn" id="ctRangeBtn">📅 Last 30 days</button>
+        <button class="btn" id="ctExportBtn">Export</button>
+        <button class="btn btn-primary" id="ctReportBtn">Open report builder</button>
+      </div>
     </div>
+    ${chipsHtml}
+    <div class="kpis kpis-overview-hero">
+      <div class="kpi hero">
+        <div class="kpi-top"><div class="label">Completed all-time</div><span class="kpi-icon">${KPI_ICONS.check}</span></div>
+        <div class="value-row"><span class="value">${allTime.toLocaleString()}</span><span class="kpi-dod">+${thisMo} this mo.</span></div>
+        <div class="kpi-trend">${monVals.map((v,i)=>`<span class="bar${v===0?' miss':''}" style="height:${Math.max(8,Math.round(v/maxMon*100))}%" title="${monKeys[i]}: ${v}"></span>`).join("")}</div>
+        <div class="ct-foot"><span class="num">${recordsTotal.toLocaleString()}</span> records &middot; <span class="num">${validatedPct.toFixed(1)}%</span> validated</div>
+      </div>
+      <div class="kpi k-cyan">
+        <div class="kpi-top"><div class="label">Median turnaround</div><span class="kpi-icon">${KPI_ICONS.clock}</span></div>
+        <div class="value-row"><span class="value">${medTat!=null?Math.round(medTat)+"h":"—"}</span>${tatDoD!=null?`<span class="kpi-dod-light ${tatDoD<=0?'up':'down'}">${tatDoD>=0?"+":""}${tatDoD.toFixed(1)}%</span>`:`<span class="kpi-dod-light">—</span>`}</div>
+        ${ctSpark(tatTrend,"#0691B5",170,28)}
+        <div class="ct-sub">P50 across 30d &middot; P90 ${p90Tat!=null?Math.round(p90Tat)+"h":"—"}</div>
+      </div>
+      <div class="kpi k-green">
+        <div class="kpi-top"><div class="label">Avg QA coverage</div><span class="kpi-icon">${KPI_ICONS.percent}</span></div>
+        <div class="value-row"><span class="value">${avgCov.toFixed(1)}<span class="unit">%</span></span>${covDoD!=null?`<span class="kpi-dod-light ${covDoD>=0?'up':'down'}">${covDoD>=0?"+":""}${covDoD.toFixed(1)}</span>`:`<span class="kpi-dod-light">—</span>`}</div>
+        <div class="kpi-bar"><span class="fill" style="width:${Math.min(100,avgCov).toFixed(0)}%;background:var(--accent)"></span></div>
+        <div class="ct-sub">Target 60% &middot; sanctions 100%</div>
+      </div>
+      <div class="kpi k-red">
+        <div class="kpi-top"><div class="label">Avg reject rate</div><span class="kpi-icon">${KPI_ICONS.octagon}</span></div>
+        <div class="value-row"><span class="value">${avgRej.toFixed(1)}<span class="unit">%</span></span>${rejDoD!=null?`<span class="kpi-dod-light ${rejDoD<=0?'up':'down'}">${rejDoD>=0?"+":""}${rejDoD.toFixed(1)}</span>`:`<span class="kpi-dod-light">—</span>`}</div>
+        <div class="kpi-bar"><span class="fill ${avgRej>5?'red':'green'}" style="width:${Math.min(100,avgRej/5*100).toFixed(0)}%"></span></div>
+        <div class="ct-foot"><span class="num">${rejectedN.toLocaleString()}</span> rejected &middot; <span>—</span> resubmitted</div>
+      </div>
+    </div>
+    <div id="ctArchive"></div>
+    <div id="ctDetail"></div>
+    <div id="ctThroughput"></div>
+    <div id="ctLeaderboard"></div>
   `;
 
-  // Lifecycle trace chart — stacked bar of status_distribution over time.
-  const traceCtx = document.getElementById("completedTraceChart");
-  if (traceCtx) {
-    if (STATE.charts["completedTraceChart"]) STATE.charts["completedTraceChart"].destroy();
-    STATE.charts["completedTraceChart"] = new Chart(traceCtx, {
-      type: "bar",
-      data: {
-        labels: hist.map(h => shortDate(h.snapshot_date)),
-        datasets: TRACE_STATUSES.map(([key, label, color]) => ({
-          label,
-          data: hist.map(h => (h.status_distribution || {})[key] || 0),
-          backgroundColor: color,
-        })),
-      },
-      options: {
-        responsive: true, maintainAspectRatio: false,
-        scales: { x: { stacked: true }, y: { stacked: true } },
-        plugins: { legend: { position: "bottom", labels: { font: { size: 10 } } } },
-      },
-    });
-  }
+  // chip wiring
+  document.querySelectorAll("#ctChips .ct-chip").forEach(b=>b.addEventListener("click",()=>{
+    const id=b.dataset.cc;
+    if(id==="__sanc") f.sanctionsOnly=!f.sanctionsOnly;
+    else if(id==="__breach") f.tatBreach=!f.tatBreach;
+    else f.team=id;
+    STATE.completedPage=1; _renderCompletedPage();
+  }));
+  document.getElementById("ctExportBtn").addEventListener("click", _ctExport);
+  // visual-only buttons: ctRangeBtn, ctReportBtn (no handlers)
 
-  document.getElementById("completedDrawerCloseBtn").addEventListener("click", closeCompletedTaskDrawer);
-  document.getElementById("completedDrawerBackdrop").addEventListener("click", closeCompletedTaskDrawer);
-
-  drawer.classList.add("open");
-  backdrop.classList.add("open");
+  renderCompletedArchive();
+  renderCompletedDetail();
+  renderCompletedThroughput();
+  renderCompletedLeaderboard();
 }
 
-function closeCompletedTaskDrawer() {
-  document.getElementById("completedDrawer").classList.remove("open");
-  document.getElementById("completedDrawerBackdrop").classList.remove("open");
-  if (STATE.charts["completedTraceChart"]) { STATE.charts["completedTraceChart"].destroy(); delete STATE.charts["completedTraceChart"]; }
+// base = completed filtered by team chip row (team + sanctions + tatBreach)
+function _ctBase(){
+  const f=STATE.completedFilters; let out=(STATE.completedTasks||[]).filter(t=>t.isCompleted);
+  if(f.team&&f.team!=="__all__") out=out.filter(t=>(t.latest.teams_worked||[]).some(x=>x.team===f.team));
+  if(f.sanctionsOnly) out=out.filter(t=>!!t.latest.is_sanctions);
+  if(f.tatBreach) out=out.filter(t=>t.latest.tat_hours!=null && t.latest.tat_hours>96);
+  return out;
+}
+function _ctTab(list,tab){
+  if(tab==="sanctions") return list.filter(t=>!!t.latest.is_sanctions);
+  if(tab==="qa100") return list.filter(t=>(t.latest.qa_coverage_pct||0)>=100);
+  if(tab==="breach") return list.filter(t=>t.latest.tat_hours!=null && t.latest.tat_hours>96);
+  if(tab==="resub") return list.filter(t=>false); // resubmission not tracked in the ledger
+  return list;
+}
+function _ctStatus(t){
+  const tv=t.latest.tat_hours, cov=t.latest.qa_coverage_pct||0;
+  if(tv!=null&&tv>96) return ["breach","TAT breach"];
+  if(cov>=100) return ["perfect","Perfect"];
+  if(cov>=60) return ["qamet","QA met"];
+  return ["completed","Completed"];
+}
+function _ctExport(){
+  const rows=_ctTab(_ctBase(), STATE.completedTab||"all").slice().sort((a,b)=> new Date(b.latest.end_time||b.lastRecorded)-new Date(a.latest.end_time||a.lastRecorded));
+  const cell=(v)=>`"${String(v??"").replace(/"/g,'""')}"`;
+  const lines=["Task,Completed,TAT hours,Teams,Status,Records,Valid,QA coverage %,Sanctions"];
+  for(const t of rows){ const L=t.latest; lines.push([cell(t.name),cell(L.end_time||""),L.tat_hours!=null?Math.round(L.tat_hours):"",cell((L.teams_worked||[]).map(x=>x.team).join("|")),cell(_ctStatus(t)[1]),t.trueTotal||0,L.properly_completed||0,(L.qa_coverage_pct||0).toFixed(1),L.is_sanctions?"yes":"no"].join(",")); }
+  const blob=new Blob([lines.join("\n")],{type:"text/csv"}); const a=document.createElement("a"); a.href=URL.createObjectURL(blob); a.download=`completed-${STATE.v2?.date||"archive"}.csv`; a.click(); URL.revokeObjectURL(a.href);
 }
 
+function renderCompletedArchive(){
+  const base=_ctBase(); const tab=STATE.completedTab||"all";
+  const tabs=[["all","All completed"],["sanctions","Sanctions"],["qa100","100% QA"],["breach","TAT breach"],["resub","Resubmitted"]];
+  const cnt=(k)=>_ctTab(base,k).length;
+  const rowsAll=_ctTab(base,tab).slice().sort((a,b)=> new Date(b.latest.end_time||b.lastRecorded)-new Date(a.latest.end_time||a.lastRecorded));
+  const total=rowsAll.length; const recsVisible=rowsAll.reduce((s,t)=>s+(t.trueTotal||0),0);
+  const pages=Math.max(1,Math.ceil(total/CT_PAGE_SIZE)); if(STATE.completedPage>pages) STATE.completedPage=pages;
+  const pg=STATE.completedPage; const start=(pg-1)*CT_PAGE_SIZE; const rows=rowsAll.slice(start,start+CT_PAGE_SIZE);
+  const last30n=base.filter(t=>(Date.now()-new Date(t.latest.end_time||t.lastRecorded).getTime())<=30*86400000).length;
+  const f=STATE.completedFilters;
+  const fchips=[`<span class="ct-fchip">Status &middot; ${esc(tabs.find(x=>x[0]===tab)[1])} <span class="x" data-cfx="status">×</span></span>`];
+  if(f.team&&f.team!=="__all__") fchips.push(`<span class="ct-fchip">Teams &middot; ${esc(f.team)} <span class="x" data-cfx="team">×</span></span>`);
+  if(f.sanctionsOnly) fchips.push(`<span class="ct-fchip">Sanctions only <span class="x" data-cfx="sanc">×</span></span>`);
+  if(f.tatBreach) fchips.push(`<span class="ct-fchip">TAT &gt; 96h <span class="x" data-cfx="breach">×</span></span>`);
+  fchips.push(`<span class="ct-clear" data-cfx="clear">Clear all</span>`);
+
+  const tatMax=Math.max(96,...rowsAll.map(t=>t.latest.tat_hours||0));
+  const rowHtml=(t)=>{
+    const L=t.latest; const total=t.trueTotal||0; const [sc,slabel]=_ctStatus(t);
+    const icon = L.is_sanctions? `<span class="ic sanc">${KPI_ICONS.octagon}</span>` : (sc==="breach"? `<span class="ic resub">${KPI_ICONS.clock}</span>` : `<span class="ic reg">${KPI_ICONS.check}</span>`);
+    const teams=(L.teams_worked||[]).slice(0,3).map(x=>`<span class="task-team-chip" style="color:${ctTeamHex(x.team)}">&bull; ${esc(x.team)}</span>`).join("")||'<span class="small-mono">—</span>';
+    const tat=L.tat_hours; const tatW=tat!=null? Math.min(100,tat/tatMax*100):0;
+    const cov=L.qa_coverage_pct||0; const qas=(t.qaPeak?.qa_reviewers||[]).length;
+    const typeLbl=L.is_sanctions?"sanctions cohort":"cargo intel";
+    const sel=STATE.completedSelectedId===t.name?" selected":"";
+    return `<div class="ct-row${sel}" data-ct="${esc(t.name)}">
+      <div class="ct-tb">${icon}<div style="min-width:0"><div class="nm">${esc(t.name)}</div><div class="sub"><span class="pill-inline ${L.is_sanctions?'bad':'good'}" style="padding:0 5px">${L.is_sanctions?'sanctions':'standard'}</span> &middot; <span class="ct-num">${total.toLocaleString()}</span> records &middot; ${typeLbl} &middot; opened ${esc(shortDate(L.date_first_seen))} &middot; ${esc(ctEatTime(L.date_first_seen))}</div></div></div>
+      <div class="ct-when"><b>${esc(ctDayDate(L.end_time))}</b><div class="s">${esc(ctEatTime(L.end_time))} EAT</div></div>
+      <div><span class="ct-num">${tat!=null?Math.round(tat)+"h":"—"}</span><div class="ct-tatbar-wrap"><span style="width:${tatW.toFixed(0)}%"></span></div></div>
+      <div class="ct-teams">${teams}</div>
+      <div><span class="ct-pill ${sc}">${slabel}</span></div>
+      <div><span class="ct-num">${total.toLocaleString()}</span><div class="small-mono">${(L.properly_completed||0).toLocaleString()} properly</div></div>
+      <div><span class="ct-num">${cov.toFixed(1)}%</span><div class="small-mono">${qas} QA${qas===1?"":"s"}</div></div>
+    </div>`;
+  };
+  // pagination buttons (compact)
+  const pbtn=(p,label,dis,active)=>`<button data-cpg="${p}"${dis?" disabled":""}${active?' class="active"':""}>${label||p}</button>`;
+  let pagesHtml="";
+  if(pages>1){ pagesHtml+=pbtn(Math.max(1,pg-1),"‹",pg===1,false); for(let p=1;p<=pages;p++){ if(p===1||p===pages||Math.abs(p-pg)<=1){ pagesHtml+=pbtn(p,null,false,p===pg); } else if(Math.abs(p-pg)===2){ pagesHtml+=`<span style="padding:4px 2px">…</span>`; } } pagesHtml+=pbtn(Math.min(pages,pg+1),"›",pg===pages,false); }
+  const end=Math.min(start+CT_PAGE_SIZE,total);
+
+  document.getElementById("ctArchive").innerHTML=`
+    <div class="ct-list-head"><h2>Completion archive</h2><span class="meta"><b>${last30n}</b> in last 30 days &middot; <b>${recsVisible.toLocaleString()}</b> records &middot; showing ${total?start+1:0}–${end} of ${total}</span></div>
+    <div class="ct-tabs" id="ctTabs">
+      ${tabs.map(([k,l])=>`<button data-ctab="${k}" class="${tab===k?'active':''}">${l} <span class="ct">${cnt(k)}</span></button>`).join("")}
+      <span class="spacer"></span><span class="ct-sortlabel">Sorted by: Completion date (newest) ↓</span>
+    </div>
+    <div class="ct-fchips" id="ctFchips">${fchips.join("")}</div>
+    <div class="panel" style="padding:6px 10px 10px">
+      <div class="ct-row head"><div>Task &middot; batch</div><div>Completed</div><div>Duration TAT</div><div>Teams</div><div>Status</div><div>Records</div><div>QA cov.</div></div>
+      ${rows.map(rowHtml).join("")||'<div class="empty" style="padding:18px">No completed batches match this filter.</div>'}
+    </div>
+    <div class="ct-pag"><span>Showing ${total?start+1:0}–${end} of ${total} &middot; <span class="ct-num">${recsVisible.toLocaleString()}</span> records</span><span class="pages">${pagesHtml}</span></div>`;
+
+  document.querySelectorAll("#ctTabs button").forEach(b=>b.addEventListener("click",()=>{ STATE.completedTab=b.dataset.ctab; STATE.completedPage=1; renderCompletedArchive(); }));
+  document.querySelectorAll("#ctFchips [data-cfx]").forEach(x=>x.addEventListener("click",()=>{ const fx=x.dataset.cfx; const ff=STATE.completedFilters; if(fx==="status")STATE.completedTab="all"; else if(fx==="team")ff.team="__all__"; else if(fx==="sanc")ff.sanctionsOnly=false; else if(fx==="breach")ff.tatBreach=false; else if(fx==="clear"){STATE.completedTab="all";STATE.completedFilters={team:"__all__",sanctionsOnly:false,tatBreach:false};} STATE.completedPage=1; _renderCompletedPage(); }));
+  document.querySelectorAll("#ctArchive .ct-row[data-ct]").forEach(r=>r.addEventListener("click",()=>{ STATE.completedSelectedId=r.dataset.ct; renderCompletedArchive(); renderCompletedDetail(); document.getElementById("ctDetail").scrollIntoView({behavior:"smooth",block:"start"}); }));
+  document.querySelectorAll("#ctArchive [data-cpg]").forEach(b=>b.addEventListener("click",()=>{ if(b.disabled)return; STATE.completedPage=parseInt(b.dataset.cpg,10); renderCompletedArchive(); }));
+}
+
+function renderCompletedDetail(){
+  const cont=document.getElementById("ctDetail"); if(!cont) return;
+  const all=STATE.completedTasks||[];
+  let t=all.find(x=>x.name===STATE.completedSelectedId);
+  if(!t){ const vis=_ctTab(_ctBase(),STATE.completedTab||"all").slice().sort((a,b)=>new Date(b.latest.end_time||0)-new Date(a.latest.end_time||0)); t=vis[0]; if(t) STATE.completedSelectedId=t.name; }
+  if(!t){ cont.innerHTML=""; return; }
+  const L=t.latest, PK=t.peak||{}, QP=t.qaPeak||{};
+  const total=t.trueTotal||0;
+  const [sc,slabel]=_ctStatus(t);
+  const routed=(L.teams_worked||[]).map(x=>x.team).join(", ")||"—";
+  const dur = (L.tat_hours!=null)? formatDuration(L.tat_hours) : "—";
+
+  // (a) peak-day daily totals (hour-by-hour history isn't recorded — daily snapshots only)
+  const pkDate = PK.snapshot_date||t.lastRecorded;
+  const pkTagged = (PK.status_distribution||{}).tagged||0;
+  const pkBoqa = (PK.status_distribution||{})["Selected for BO QA "]||0;
+  const pkValid = (PK.status_distribution||{}).Valid||0;
+
+  // (b) top agents (peak day)
+  const ags=(PK.agents_worked||[]).slice().sort((a,b)=>(b.records||0)-(a.records||0));
+  const maxRec=Math.max(1,...ags.map(a=>a.records||0));
+  const top=ags.slice(0,6); const rest=ags.slice(6);
+  const restSum=rest.reduce((s,a)=>s+(a.records||0),0); const restMax=rest.length?Math.max(...rest.map(a=>a.records||0)):0;
+  const agentRows=top.map(a=>`<div class="ct-prow"><span class="task-avatar" style="background:${ctTeamHex(a.team)}">${esc(ctInitials(a.name))}</span><span class="who">${esc(a.name)}<span class="s"> &middot; ${esc(a.team||"—")} &middot; tagger</span></span><span class="ct-barwrap"><span style="width:${((a.records||0)/maxRec*100).toFixed(0)}%"></span></span><span class="ct-num">${(a.records||0).toLocaleString()}</span></div>`).join("")||'<div class="small-mono" style="padding:8px 0">No agent attribution recorded.</div>';
+  const totalTags=ags.reduce((s,a)=>s+(a.records||0),0);
+
+  // (c) QA reviewers (peak QA day)
+  const revs=Array.isArray(QP.qa_reviewers)? QP.qa_reviewers.slice().sort((a,b)=>(b.reviewed||0)-(a.reviewed||0)) : [];
+  const revRows=revs.map(r=>{ const rate=(r.reviewed||0)>0?((r.changed||0)/(r.reviewed||0)*100):0; return `<div class="ct-prow"><span class="task-avatar" style="background:var(--accent)">${esc(ctInitials(r.name))}</span><span class="who">${esc(r.name)}<span class="s"> &middot; BO QA reviewer</span></span><span class="ct-num">${(r.reviewed||0).toLocaleString()}</span><span class="pill-inline ${rate<10?'good':rate<30?'warn':'bad'}" style="margin-left:6px">${rate.toFixed(1)}%</span></div>`; }).join("")||`<div class="small-mono" style="padding:8px 0">Per-reviewer breakdown not recorded for this batch (reviewed ${QP.qa_reviewed||0} · changed ${QP.qa_changed||0}).</div>`;
+
+  cont.innerHTML=`
+    <div class="ct-selhead">SELECTED &middot; ${esc(t.name)} &middot; PEAK-DAY BREAKDOWN<span class="ct-selhint">Drawer view &middot; click any archive row to swap detail</span></div>
+    <div class="ct-drawer-card">
+      <div class="ct-dh">
+        <span class="ic">${KPI_ICONS.check}</span>
+        <div style="min-width:0"><div class="nm">${esc(t.name)} <span class="pill-inline ${L.is_sanctions?'bad':'good'}" style="margin-left:4px">${L.is_sanctions?'sanctions':'standard'}</span> <span class="ct-pill ${sc}">${slabel}</span></div>
+          <div class="meta"><span class="num">${total.toLocaleString()}</span> records &middot; Routed to ${esc(routed)} &middot; Opened ${esc(ctDayDate(L.date_first_seen))} · ${esc(ctEatTime(L.date_first_seen))} &middot; Closed ${esc(ctDayDate(L.end_time))} · ${esc(ctEatTime(L.end_time))} &middot; Duration ${esc(dur)}</div>
+        </div>
+        <div class="acts"><button class="btn" data-ctnoop="open">Open batch</button><button class="btn btn-primary" data-ctnoop="report">Build report</button><button class="btn" id="ctDetailClose" title="Clear selection">×</button></div>
+      </div>
+    </div>
+    <div class="ct-drow">
+      <div class="panel"><h3>Peak-day hour-by-hour <span class="meta">${esc(shortDate(pkDate))} &middot; fullest recorded day</span></h3>
+        <div class="ct-statblocks"><div class="b"><div class="v" style="color:#7B68EE">${pkTagged.toLocaleString()}</div><div class="l">Tagged</div></div><div class="b"><div class="v" style="color:#0691B5">${pkBoqa.toLocaleString()}</div><div class="l">In BO QA</div></div><div class="b"><div class="v" style="color:#0EA56C">${pkValid.toLocaleString()}</div><div class="l">Validated</div></div></div>
+        <div class="ct-pfoot">Hour-by-hour history isn't recorded — the task-history ledger stores one snapshot per day. Shown: the peak day's end-of-day stage totals.</div>
+      </div>
+      <div class="panel"><h3>Top agents &middot; peak day <span class="meta">${ags.length} taggers &middot; ${totalTags.toLocaleString()} tags</span></h3>${agentRows}
+        ${rest.length?`<div class="ct-prow"><span class="who"><span class="s">+${rest.length} more taggers &middot; ≤ ${restMax} tags each</span></span><span class="ct-num">${restSum.toLocaleString()}</span></div>`:""}</div>
+      <div class="panel"><h3>QA reviewer history <span class="meta">${revs.length} QAs &middot; ${(QP.qa_reviewed||0).toLocaleString()} reviewed</span></h3>${revRows}
+        <div class="ct-pfoot">Rejections <span class="num">${(QP.qa_changed||0).toLocaleString()}</span> &middot; Resubmitted <span class="num">—</span></div></div>
+    </div>`;
+  document.querySelectorAll("#ctDetail [data-ctnoop]").forEach(b=>b.addEventListener("click",()=>{}));
+  const c=document.getElementById("ctDetailClose"); if(c) c.addEventListener("click",()=>{ STATE.completedSelectedId=null; renderCompletedArchive(); cont.innerHTML=""; });
+}
+
+function renderCompletedThroughput(){
+  const cont=document.getElementById("ctThroughput"); if(!cont) return;
+  const completed=(STATE.completedTasks||[]).filter(t=>t.isCompleted);
+  // last 8 weeks
+  const weeks=[]; { const mon=ctMondayKey(new Date().toISOString()); const base=new Date(mon+"T00:00:00Z"); for(let i=7;i>=0;i--){ const d=new Date(base); d.setUTCDate(d.getUTCDate()-i*7); weeks.push(d.toISOString().slice(0,10)); } }
+  const wB=Object.fromEntries(weeks.map(w=>[w,0])), wR=Object.fromEntries(weeks.map(w=>[w,0]));
+  for(const t of completed){ const wk=ctMondayKey(t.latest.end_time); if(wk in wB){ wB[wk]++; wR[wk]+=(t.trueTotal||0); } }
+  const bVals=weeks.map(w=>wB[w]), rVals=weeks.map(w=>wR[w]/1000);
+  const bestIdx=bVals.indexOf(Math.max(...bVals));
+  const avgWk=(bVals.reduce((s,x)=>s+x,0)/bVals.length);
+  // TAT distribution (30d)
+  const last30=completed.filter(t=>(Date.now()-new Date(t.latest.end_time||t.lastRecorded).getTime())<=30*86400000);
+  const tats=last30.map(t=>t.latest.tat_hours).filter(x=>x!=null);
+  const buckets=[["<48h",0,48,"#0EA56C"],["48–72h",48,72,"#16A34A"],["72–96h",72,96,"#7B68EE"],["96–120h",96,120,"#0691B5"],["120–144h",120,144,"#F9943B"],[">144h",144,1e9,"#E5384F"]];
+  const bcount=buckets.map(([l,lo,hi])=>tats.filter(v=>v>=lo&&v<hi).length);
+  const bmax=Math.max(1,...bcount);
+  const p50=ctPercentile(tats,50), p90=ctPercentile(tats,90);
+  const slaDelta = p90!=null? 120-p90 : null;
+
+  document.getElementById("ctThroughput").innerHTML=`
+    <div class="ct-section-head"><h2>Throughput &amp; <em>turnaround</em></h2><span class="meta">last 8 weeks &middot; all teams</span></div>
+    <div class="ct-2col">
+      <div class="panel"><h3>Weekly throughput <span class="meta">completed batches &amp; records &middot; 8w &middot; Best week W${bestIdx+1}</span></h3>
+        <svg viewBox="0 0 320 90" preserveAspectRatio="none" style="width:100%;height:90px;margin-top:6px">
+          ${(()=>{ const bmx=Math.max(1,...bVals), rmx=Math.max(1,...rVals); const pl=(vals,mx,col)=>`<polyline points="${vals.map((y,i)=>`${(i/(vals.length-1)*320).toFixed(1)},${(86-(y/mx)*78).toFixed(1)}`).join(" ")}" fill="none" stroke="${col}" stroke-width="2" stroke-linejoin="round"/>`; const bx=(bestIdx/(bVals.length-1)*320); return pl(bVals,bmx,"#7B68EE")+pl(rVals,rmx,"#0691B5")+`<line x1="${bx.toFixed(1)}" y1="4" x2="${bx.toFixed(1)}" y2="86" stroke="var(--warn)" stroke-width="1" stroke-dasharray="3 3"/>`; })()}
+        </svg>
+        <div class="ct-axis" style="display:flex;justify-content:space-between;font-size:9px;color:var(--muted)">${weeks.map((w,i)=>`<span>W${i+1}</span>`).join("")}</div>
+        <div class="ct-pfoot">8w avg <span class="num">${avgWk.toFixed(1)}</span> batches/wk<br><span class="li" style="color:#7B68EE">●</span> Batches: this wk <span class="num">${bVals[bVals.length-1]}</span> &middot; <span style="color:#0691B5">●</span> Records (k): this wk <span class="num">${rVals[rVals.length-1].toFixed(1)}</span></div>
+      </div>
+      <div class="panel"><h3>TAT distribution <span class="meta">${tats.length} batches &middot; last 30d</span></h3>
+        ${buckets.map(([l,lo,hi,col],i)=>`<div class="ct-tatrow"><span class="lab">${l}</span><span class="bar"><span style="width:${(bcount[i]/bmax*100).toFixed(0)}%;background:${col}"></span></span><span class="v">${bcount[i]}</span></div>`).join("")}
+        <div class="ct-pfoot"><span class="pill-inline ${slaDelta!=null&&slaDelta>=0?'good':'bad'}">🎯 P50 ${p50!=null?Math.round(p50)+"h":"—"} &middot; P90 ${p90!=null?Math.round(p90)+"h":"—"}</span> ${slaDelta!=null? (slaDelta>=0?`beats`:`misses`)+` SLA target of 120h P90 by ${Math.abs(Math.round(slaDelta))}h`:"— SLA target 120h P90"}</div>
+      </div>
+    </div>`;
+}
+
+function renderCompletedLeaderboard(){
+  const cont=document.getElementById("ctLeaderboard"); if(!cont) return;
+  const completed=(STATE.completedTasks||[]).filter(t=>t.isCompleted);
+  const last30=completed.filter(t=>(Date.now()-new Date(t.latest.end_time||t.lastRecorded).getTime())<=30*86400000);
+  // aggregate reviewers across last-30d completed batches (from each batch's QA-peak day)
+  const byRev={};
+  for(const t of last30){ const QP=t.qaPeak||{}; if(!Array.isArray(QP.qa_reviewers)) continue; for(const r of QP.qa_reviewers){ const k=r.name||"—"; const o=byRev[k]||(byRev[k]={name:k,reviewed:0,changed:0,batches:[]}); o.reviewed+=(r.reviewed||0); o.changed+=(r.changed||0); o.batches.push(_ctStatus(t)[0]); } }
+  let revs=Object.values(byRev).sort((a,b)=>b.reviewed-a.reviewed).slice(0,15);
+  const totalReviewed=Object.values(byRev).reduce((s,o)=>s+o.reviewed,0);
+  const avgCov=last30.length? last30.reduce((s,t)=>s+(t.latest.qa_coverage_pct||0),0)/last30.length:0;
+  const stColor={qamet:"#0EA56C",completed:"#16A34A",perfect:"#7B68EE",breach:"#F9943B",resub:"#F9943B"};
+  const lbRows=revs.map((r,i)=>{ const rate=r.reviewed>0?(r.changed/r.reviewed*100):0; const cov=r.batches.length?100*r.batches.filter(b=>b==="qamet"||b==="perfect").length/r.batches.length:0; const heat=r.batches.slice(0,24).map(b=>`<span style="background:${stColor[b]||'#8a93a3'}"></span>`).join("");
+    return `<div class="ct-lb"><span class="rk">${i+1}</span><span class="who"><span class="task-avatar" style="background:var(--accent)">${esc(ctInitials(r.name))}</span><span style="min-width:0"><span class="nm">${esc(r.name)}</span> <span class="s">&middot; BO QA reviewer</span></span></span><span><span class="ct-num">${r.reviewed.toLocaleString()}</span> <span class="small-mono">${(r.reviewed/Math.max(1,r.batches.length)).toFixed(0)} / batch</span></span><span class="ct-num" style="color:${rate>30?'var(--bad)':'var(--ink)'}">${rate.toFixed(1)}%</span><span class="ct-heat" title="${r.batches.length} batches">${heat}</span><span class="ct-num">${cov.toFixed(1)}%</span><span class="ct-num">—</span></div>`; }).join("")||'<div class="empty" style="padding:18px">No QA reviewer history in the last 30 days.</div>';
+
+  document.getElementById("ctLeaderboard").innerHTML=`
+    <div class="ct-section-head"><h2>QA reviewer <em>leaderboard</em> &middot; last 30 days</h2><span class="meta">${revs.length} reviewers &middot; ${totalReviewed.toLocaleString()} reviewed &middot; avg coverage ${avgCov.toFixed(1)}%</span></div>
+    <div class="panel" style="padding:6px 10px 10px">
+      <div class="ct-lb head"><span>#</span><span>Reviewer</span><span>Reviewed · 30d</span><span>Reject</span><span>Batches touched</span><span>Coverage</span><span>Median QA TAT</span></div>
+      ${lbRows}
+    </div>`;
+}
 // ============================================================================
 //  Report Builder (PR #87) — period presets + custom range, three downloadable
 //  Excel workbooks (Tasks / Agents / QAs) built client-side with SheetJS.
