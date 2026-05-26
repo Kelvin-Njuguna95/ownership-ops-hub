@@ -289,6 +289,8 @@
   .insight-card .ttl { font-size: 14px; font-weight: 700; color: var(--ink); letter-spacing: -0.005em; }
   .insight-card .body { font-size: 12px; color: var(--muted); margin-top: 6px; line-height: 1.5; }
   .insight-card .body .num { color: var(--ink); font-weight: 600; font-variant-numeric: tabular-nums; }
+  /* DoD% badge on the Hourly Output hero KPI (purple-gradient card) */
+  .kpi-dod { display: inline-flex; align-items: center; padding: 2px 8px; border-radius: 999px; font-size: 11px; font-weight: 700; background: rgba(255,255,255,0.22); color: #fff; font-variant-numeric: tabular-nums; margin-right: 8px; }
 
   /* Tasks page */
   .sortable th { cursor: pointer; user-select: none; }
@@ -2270,6 +2272,26 @@ PAGE_RENDERERS.hourly = function () {
   });
 
   renderHourlyGrid(selectedTeam);
+
+  // Yesterday's overall tagged_today — fetched once per page mount, used for
+  // the DoD% badge on the hero KPI card. The snapshot file is the
+  // aggregates_v2 object directly, so totals.tagged_today is the right field.
+  if (STATE.hourlyYesterdayTotal === undefined && STATE.v2?.date) {
+    STATE.hourlyYesterdayTotal = null; // claim the slot so we don't double-fetch
+    (async () => {
+      try {
+        const d = new Date(STATE.v2.date + "T00:00:00Z");
+        d.setUTCDate(d.getUTCDate() - 1);
+        const ds = d.toISOString().slice(0, 10);
+        const snap = await readJson(`snapshots/${ds}.json`);
+        const t = snap?.totals?.tagged_today;
+        STATE.hourlyYesterdayTotal = Number.isFinite(t) ? t : null;
+      } catch (_) {
+        STATE.hourlyYesterdayTotal = null;
+      }
+      renderHourlyGrid(localStorage.getItem("wqa.hourlyTeam") || "__all__");
+    })();
+  }
 };
 
 function renderHourlyGrid(filterTeam) {
@@ -2366,7 +2388,14 @@ function renderHourlyGrid(filterTeam) {
       <div class="kpi hero">
         <div class="kpi-top"><div class="label">Total tagged ${filterLabel}</div><span class="kpi-icon">${KPI_ICONS.tag}</span></div>
         <div class="value">${grand.toLocaleString()}</div>
-        <div class="delta">Floor ${FLOOR}/agent &middot; ${metFloor}/${agentCount} agents met floor</div>
+        <div class="delta">${(() => {
+          const y = STATE.hourlyYesterdayTotal;
+          const allTeams = !filterTeam || filterTeam === "__all__";
+          if (!allTeams || y == null || y <= 0) return `Floor ${FLOOR}/agent &middot; ${metFloor}/${agentCount} agents met floor`;
+          const pct = ((grand - y) / y) * 100;
+          const sign = pct >= 0 ? "+" : "";
+          return `<span class="kpi-dod">${sign}${pct.toFixed(1)}% DoD</span>Floor ${FLOOR}/agent &middot; ${metFloor}/${agentCount} agents met floor`;
+        })()}</div>
       </div>
       <div class="kpi k-cyan">
         <div class="kpi-top"><div class="label">Peak hour</div><span class="kpi-icon">${KPI_ICONS.activity}</span></div>
