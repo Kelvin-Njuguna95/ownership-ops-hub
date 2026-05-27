@@ -7277,6 +7277,144 @@ function noDataHtml(msg) {
   return `<div class="empty-state"><div class="title">No data</div>${esc(msg)}</div>`;
 }
 
+// --- Restored by PR #126 (hotfix) ---------------------------------------
+// computeStaleTasks() + renderBoqa7Day() were deleted by the PR #124
+// (BO QA Console) splice when its PAGE_RENDERERS.boqa replacement swept past
+// the old renderer's end-marker. computeStaleTasks() is awaited by init()
+// before renderNav(), so its absence crashed boot (empty nav, stuck pill).
+// Re-inserted verbatim from commit 507d4d0 (parent of acfce76).
+async function computeStaleTasks() {
+  STATE.staleTaskNames = new Set();
+  STATE.staleCompareDate = null;
+  const v2 = STATE.v2;
+  if (!v2 || !Array.isArray(v2.tasks_all) || !v2.date) return;
+  const anchorIso = v2.computed_at || (v2.date + "T23:59:59Z");
+  const anchorMs = new Date(anchorIso).getTime();
+  if (isNaN(anchorMs)) return;
+  const anchorDate = new Date(v2.date.slice(0, 10) + "T00:00:00Z");
+  // Walk back day by day; take the first snapshot whose computed_at is at
+  // least 24h before the anchor.
+  let cmp = null;
+  for (let back = 1; back <= 10; back++) {
+    const d = new Date(anchorDate.getTime() - back * 86400000);
+    const ds = d.toISOString().slice(0, 10);
+    const snap = await readJson(`snapshots/${ds}.json`);
+    if (!snap) continue;
+    const snapMs = new Date(snap.computed_at || (ds + "T23:59:59Z")).getTime();
+    if (!isNaN(snapMs) && anchorMs - snapMs >= 24 * 3600 * 1000) {
+      cmp = { ds, snap };
+      break;
+    }
+  }
+  if (!cmp) return;   // not enough snapshot history yet
+  STATE.staleCompareDate = cmp.ds;
+  const prevWaiting = {};
+  for (const pt of (cmp.snap.tasks_all || [])) {
+    prevWaiting[pt.name] = (pt.status_distribution && pt.status_distribution.waiting) || 0;
+  }
+  for (const t of v2.tasks_all) {
+    const nowWaiting = (t.status_distribution && t.status_distribution.waiting) || 0;
+    const assigned = Array.isArray(t.agents_worked) && t.agents_worked.length > 0;
+    const wasWaiting = prevWaiting[t.name] || 0;
+    // Idempotent: strip any prior stale-24h flag before re-deciding (this
+    // function re-runs whenever the viewed snapshot changes).
+    if (Array.isArray(t.flags)) {
+      t.flags = t.flags.filter(f => f !== "stale-24h");
+    }
+    if (assigned && nowWaiting > 0 && wasWaiting > 0 && nowWaiting >= wasWaiting) {
+      STATE.staleTaskNames.add(t.name);
+      if (Array.isArray(t.flags)) t.flags.push("stale-24h");
+    }
+  }
+}
+
+async function renderBoqa7Day() {
+  const anchor = STATE.v2?.date || todayEat();
+  const dates = [];
+  for (let i = 6; i >= 0; i--) {
+    const dt = new Date(anchor + "T00:00:00+03:00");
+    dt.setDate(dt.getDate() - i);
+    dates.push(dt.toLocaleDateString("en-CA", { timeZone: "Africa/Nairobi" }));
+  }
+  const snaps = await Promise.all(dates.map(async d => {
+    if (d === anchor) return { d, agg: STATE.v2 || null };
+    return { d, agg: await readJson(`snapshots/${d}.json`) };  // null if missing
+  }));
+  const threshold = (typeof STATE.v2?.reject_threshold === "number") ? STATE.v2.reject_threshold : 30;
+  const rejCls = (rate) => rate >= threshold ? "bad" : "good";
+  const rate = (chg, rev) => rev > 0 ? (chg / rev * 100) : null;
+
+  // Sum across the window, per team and per agent.
+  const teamAgg = {}, agentAgg = {};
+  for (const s of snaps) {
+    for (const [team, m] of Object.entries(s.agg?.by_team || {})) {
+      const a = (teamAgg[team] = teamAgg[team] || { reviews: 0, changes: 0 });
+      a.reviews += m.qa_inspected_today || 0; a.changes += m.qa_changed_today || 0;
+    }
+    for (const [agent, m] of Object.entries(s.agg?.by_agent || {})) {
+      const a = (agentAgg[agent] = agentAgg[agent] || { reviews: 0, changes: 0 });
+      a.reviews += m.qa_inspected_today || 0; a.changes += m.qa_changed_today || 0;
+    }
+  }
+
+  // Team scoreboard — best first (lowest reject rate; no-review teams sort last).
+  const teamRows = Object.entries(teamAgg)
+    .map(([team, a]) => ({ team, ...a, rate: rate(a.changes, a.reviews) }))
+    .sort((x, y) => (x.rate == null ? Infinity : x.rate) - (y.rate == null ? Infinity : y.rate));
+  const teamScore = document.getElementById("boqaTeamScore");
+  if (teamScore) {
+    teamScore.innerHTML = teamRows.length === 0
+      ? `<div class="empty">No QA reviews in the last 7 days.</div>`
+      : `<table><thead><tr><th>Team</th><th class="right">Reviews</th><th class="right">Changes</th><th class="right">Reject rate</th></tr></thead><tbody>${
+          teamRows.map(r => `<tr><td>${esc(r.team)}</td><td class="right">${r.reviews}</td><td class="right">${r.changes}</td><td class="right">${r.rate == null ? '<span class="small-mono">—</span>' : `<span class="pill-inline ${rejCls(r.rate)}">${r.rate.toFixed(1)}%</span>`}</td></tr>`).join("")
+        }</tbody></table>`;
+  }
+
+  // Agent error leaderboard — worst first, only agents with >= 10 reviews over the window.
+  const MIN_REVIEWS = 10;
+  const agentRows = Object.entries(agentAgg)
+    .map(([agent, a]) => ({ agent, ...a, rate: rate(a.changes, a.reviews) }))
+    .filter(r => r.reviews >= MIN_REVIEWS)
+    .sort((x, y) => (y.rate || 0) - (x.rate || 0));
+  const agentLeader = document.getElementById("boqaAgentLeader");
+  if (agentLeader) {
+    agentLeader.innerHTML = agentRows.length === 0
+      ? `<div class="empty">No agents with ≥${MIN_REVIEWS} reviews in the last 7 days.</div>`
+      : `<table><thead><tr><th>Agent</th><th>Team</th><th class="right">Reviews</th><th class="right">Changes</th><th class="right">Reject rate</th></tr></thead><tbody>${
+          agentRows.map(r => `<tr><td class="agent-name">${esc(r.agent)}</td><td>${esc(teamForAgent(r.agent) || "—")}</td><td class="right">${r.reviews}</td><td class="right">${r.changes}</td><td class="right"><span class="pill-inline ${rejCls(r.rate)}">${r.rate.toFixed(1)}%</span></td></tr>`).join("")
+        }</tbody></table>`;
+  }
+
+  // 7-day reject-rate heatmap — rows = teams, cols = days; intensity by rate (redder
+  // = higher). A day with no snapshot or no reviews renders muted.
+  let teams = Object.keys(STATE.roster || {}).sort();
+  if (!teams.length) teams = Object.keys(teamAgg).sort();
+  const hm = document.getElementById("boqaRejectHeatmap");
+  if (hm) {
+    if (!teams.length) {
+      hm.innerHTML = `<div class="empty">No teams to chart.</div>`;
+    } else {
+      const shortDay = d => new Date(d + "T00:00:00+03:00").toLocaleDateString("en-GB", { timeZone: "Africa/Nairobi", day: "numeric", month: "short" });
+      const headerCells = snaps.map(s => `<div class="header">${esc(shortDay(s.d))}</div>`).join("");
+      const rows = teams.map(team => {
+        const cells = snaps.map(s => {
+          if (!s.agg) return `<div class="cell z" title="${esc(s.d)}: no snapshot"></div>`;
+          const m = s.agg.by_team?.[team];
+          const rev = m?.qa_inspected_today || 0;
+          if (rev === 0) return `<div class="cell z" title="${esc(team)} · ${esc(s.d)}: no reviews"></div>`;
+          const chg = m?.qa_changed_today || 0;
+          const rt = chg / rev * 100;
+          const alpha = (0.2 + 0.8 * Math.min(1, rt / 50)).toFixed(2);
+          return `<div class="cell" style="background:rgba(155,34,34,${alpha})" title="${esc(team)} · ${esc(s.d)}: ${chg}/${rev} = ${rt.toFixed(0)}%">${rt.toFixed(0)}%</div>`;
+        }).join("");
+        return `<div class="label">${esc(team)}</div>${cells}`;
+      }).join("");
+      hm.innerHTML = `<div class="heatmap" style="grid-template-columns: 120px repeat(7, minmax(40px, 1fr));"><div class="header"></div>${headerCells}${rows}</div>`;
+    }
+  }
+}
+
+
 async function init() {
   const ok = await loadAll();
   if (!ok) return;
