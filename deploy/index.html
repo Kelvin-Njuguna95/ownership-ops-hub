@@ -910,7 +910,18 @@
   .bq-rolechip { font-size:10px; color:var(--muted); background:var(--soft); padding:1px 7px; border-radius:999px; white-space:nowrap; }
   .bq-commentchip { font-size:10px; color:var(--ink); background:var(--soft); padding:2px 7px; border-radius:999px; max-width:130px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; display:inline-block; vertical-align:middle; }
   .bq-agepill { font-size:10.5px; font-weight:700; padding:2px 8px; border-radius:999px; font-variant-numeric:tabular-nums; white-space:nowrap; }
-  .bq-cb { width:14px; height:14px; border-radius:3px; border:1.5px solid var(--border); display:inline-block; } .bq-row.selected .bq-cb { background:var(--accent); border-color:var(--accent); }
+  .bq-cb { width:14px; height:14px; border-radius:3px; border:1.5px solid var(--border); display:inline-block; flex-shrink:0; } .bq-row.selected .bq-cb { background:var(--accent); border-color:var(--accent); }
+  /* QA-disposition worklist (PR #128) */
+  .bq-row.qd { grid-template-columns:minmax(118px,138px) 88px 1.6fr minmax(116px,1fr) 104px minmax(104px,0.95fr) 46px 80px; }
+  .bq-imocell { display:flex; align-items:center; gap:6px; min-width:0; } .bq-imocell .imo { overflow:hidden; text-overflow:ellipsis; }
+  .bq-copy { border:0; background:transparent; color:var(--muted); cursor:pointer; font-size:12px; padding:0 2px; line-height:1; border-radius:4px; flex-shrink:0; } .bq-copy:hover { color:var(--accent); background:var(--soft); }
+  .bq-statepill { font-size:10.5px; font-weight:700; padding:2px 9px; border-radius:999px; white-space:nowrap; display:inline-block; } .bq-statepill.lg { font-size:12px; padding:4px 12px; }
+  .bq-verifchip { font-size:10px; font-weight:600; padding:2px 8px; border-radius:6px; white-space:nowrap; display:inline-block; }
+  .bq-acts { display:flex; gap:4px; } .bq-act { width:24px; height:24px; border:1px solid var(--border); background:var(--surface); border-radius:6px; cursor:pointer; font-size:11px; color:var(--muted); display:inline-flex; align-items:center; justify-content:center; padding:0; } .bq-act:hover { color:var(--accent); border-color:var(--accent); background:var(--accent-soft); }
+  .bq-subhead { font-size:12px; color:var(--muted); margin:-6px 2px 12px; line-height:1.5; }
+  .bq-chip-static { cursor:default; opacity:0.92; } .bq-chip-static:hover { background:var(--surface); }
+  .bq-dispwrap { display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin-bottom:8px; }
+  .bq-dispmean { font-size:11.5px; color:var(--muted); line-height:1.5; padding:6px 0 8px; border-bottom:1px solid var(--border); margin-bottom:4px; }
   .bq-pag { display:flex; align-items:center; justify-content:space-between; gap:8px; margin-top:10px; font-size:11.5px; color:var(--muted); } .bq-pag .pages { display:flex; gap:4px; } .bq-pag .pages button { min-width:26px; padding:3px 7px; font-size:12px; font-family:inherit; border:1px solid var(--border); background:var(--surface); color:var(--ink); border-radius:6px; cursor:pointer; } .bq-pag .pages button.active { background:var(--ink); color:#fff; border-color:var(--ink); font-weight:600; } .bq-pag .pages button:disabled { opacity:0.4; cursor:default; }
   .bq-selhead { font-size:11px; text-transform:uppercase; letter-spacing:0.05em; color:var(--muted); font-weight:700; margin:20px 2px 6px; } .bq-selhint { font-size:11px; color:var(--muted); font-weight:400; text-transform:none; letter-spacing:0; margin-left:6px; }
   .bq-drawer-card { background:var(--surface); border:1px solid var(--border); border-top:3px solid var(--accent); border-radius:var(--radius-lg); padding:16px 18px; box-shadow:var(--shadow-sm); margin-bottom:14px; }
@@ -3562,17 +3573,54 @@ PAGE_RENDERERS.boqa = function () {
 function bqInitials(n){ return String(n||"").split(/\s+/).filter(Boolean).map(p=>p[0].toUpperCase()).slice(0,2).join("")||"··"; }
 function bqTeamHex(tm){ return (TEAM_COLORS[tm]||{}).hex || "#7B68EE"; }
 function bqAgePill(d){ d=d||0; let bg,fg; if(d<=0){bg="var(--good-bg)";fg="var(--good)";} else if(d===1){bg="rgba(6,145,181,0.13)";fg="#0691B5";} else if(d<=3){bg="var(--warn-bg)";fg="var(--warn)";} else {bg="var(--bad-bg)";fg="var(--bad)";} return `<span class="bq-agepill" style="background:${bg};color:${fg}">${d}d</span>`; }
+// Worklist source = the QA QUEUE: every aggregates_v2 *_records array that
+// actually carries a qa_status field (today only add_new_company_records).
+// This auto-includes any future case_* array that starts emitting qa_status —
+// no code change needed. We do NOT union the company-gap / no-IMO arrays here:
+// they have no QA disposition and live on the New Companies page.
 function _bqRecords(){
+  const v2=STATE.v2||{};
   const out=[];
-  for(const r of (STATE.v2?.add_new_company_records||[])) out.push(Object.assign({},r,{cohort:"add",company:r.add_new_company||null,comment:null}));
-  for(const r of (STATE.v2?.case_company_gap_records||[])) out.push(Object.assign({},r,{cohort:"gap",company:null,role:null}));
-  for(const r of (STATE.v2?.case_no_imo_records||[])) out.push(Object.assign({},r,{cohort:"noimo",company:null,role:null}));
+  for(const [k,arr] of Object.entries(v2)){
+    if(!Array.isArray(arr) || !k.endsWith("_records")) continue;
+    if(!arr.some(x=>x && Object.prototype.hasOwnProperty.call(x,"qa_status"))) continue;
+    for(const r of arr) out.push(Object.assign({},r,{srcArray:k,company:r.add_new_company||r.company||null}));
+  }
   return out;
 }
+// Disposition bucket for the QA-state pill. Real data records only "approve"
+// or null qa_status (100% approval — 0 changes recorded), so we surface the
+// closest-to-"changed" signal, verification_status "need to be update", as
+// "needsupdate". No fabricated change/reject state.
 function _bqStatus(r){
-  if(r.qa_status==="approve"||r.verification_status==="Valid") return "approved";
-  if(r.verification_status==="need to be update") return r.qa_assignee?"returned":"changed";
+  if((r.verification_status||"").trim()==="need to be update") return "needsupdate";
+  if(r.qa_status==="approve") return "approved";
   return "pending";
+}
+// Tab predicates (views, not a partition — "All reviewed" overlaps "Approved").
+function _bqTabPred(tab){
+  if(tab==="needsupdate") return r=> (r.verification_status||"").trim()==="need to be update";
+  if(tab==="approved")    return r=> r.qa_status==="approve";
+  if(tab==="reviewed")    return r=> r.qa_status!=null && r.qa_status!=="";
+  return r=> r.qa_status==null || r.qa_status===""; // pending (default)
+}
+function bqStatePill(r,lg){
+  const map={pending:["Pending","var(--soft)","var(--muted)"],needsupdate:["Needs update","var(--warn-bg)","var(--warn)"],approved:["Approved","var(--good-bg)","var(--good)"]};
+  const [lab,bg,fg]=map[_bqStatus(r)]||map.pending;
+  return `<span class="bq-statepill${lg?" lg":""}" style="background:${bg};color:${fg}">${lab}</span>`;
+}
+function bqVerifChip(v){
+  const t=(v||"").trim(); let bg="var(--soft)",fg="var(--muted)";
+  if(t==="Valid"){bg="var(--good-bg)";fg="var(--good)";}
+  else if(t==="Selected for BO QA"){bg="rgba(6,145,181,0.13)";fg="#0691B5";}
+  else if(t==="Done"){bg="rgba(139,92,246,0.13)";fg="#8B5CF6";}
+  else if(t==="need to be update"){bg="var(--warn-bg)";fg="var(--warn)";}
+  return `<span class="bq-verifchip" style="background:${bg};color:${fg}">${esc(t||"—")}</span>`;
+}
+function bqQaReviewerCell(r){
+  if(!r.qa_assignee) return `<span class="small-mono" style="color:var(--muted)">—</span>`;
+  const tm=teamForAgent(r.qa_assignee);
+  return `<span class="bq-cob" style="display:flex;align-items:center;gap:6px"><span class="task-avatar" style="background:${bqTeamHex(tm)};width:20px;height:20px;font-size:8px">${esc(bqInitials(r.qa_assignee))}</span><span class="nm" style="font-weight:500">${esc(r.qa_assignee)}</span></span>`;
 }
 function _bqFiltered(){
   const f=STATE.bqFilters||{}; let out=_bqRecords();
@@ -3607,6 +3655,12 @@ function _renderBoqaPage(){
   const cohorts={add:ancAll.length,gap:(STATE.v2?.case_company_gap_records||[]).length,noimo:(STATE.v2?.case_no_imo_records||[]).length};
   const ancApproved=ancAll.filter(r=>_bqStatus(r)==="approved").length, ancPending=ancAll.length-ancApproved;
   const todayN=recs.filter(r=>(r.days_open||0)===0).length;
+  // QA-disposition worklist counts (from the qa_status-carrying records)
+  const wlRecs=_bqRecords();
+  const pendingN=wlRecs.filter(_bqTabPred("pending")).length;
+  const needsUpdateN=wlRecs.filter(_bqTabPred("needsupdate")).length;
+  const cbq=t.counts_by_qa_status||{}; const apvd=cbq.approve||0, chgd=cbq.changed||0;
+  const approvalRate=(apvd+chgd)>0?apvd/(apvd+chgd)*100:(allTimeReject!=null?100-allTimeReject:null);
 
   // 14d backlog-trend (from completedTasks if present) for the banner; else skip
   const refAge=ageHours(v2.computed_at);
@@ -3626,9 +3680,8 @@ function _renderBoqaPage(){
     ${chip("__all__","All teams",recs.length,f.team==="__all__",null)}
     ${teamKeys.map(tm=>chip(tm,tm,teamCount(tm),f.team===tm,bqTeamHex(tm))).join("")}
     <span class="spacer"></span>
-    <button class="bq-chip${f.cohort==="add"?" active":""}" data-bq="__add"${f.cohort==="add"?' style="background:var(--accent)"':""}>🏢 Add-new-company <span class="ct">${cohorts.add}</span></button>
-    <button class="bq-chip${f.cohort==="noimo"?" active":""}" data-bq="__noimo"${f.cohort==="noimo"?' style="background:var(--bad)"':""}>🔍 No-IMO <span class="ct">${cohorts.noimo}</span></button>
-    <button class="bq-chip${f.today?" active":""}" data-bq="__today"${f.today?' style="background:var(--good)"':""}>🆕 Today <span class="ct">${todayN}</span></button>
+    <span class="bq-chip bq-chip-static" title="QA disposition (qa_status) is tracked on add-new-company records">🆕 Add-new-company <span class="ct">${recs.length}</span></span>
+    <button class="bq-chip${f.today?" active":""}" data-bq="__today"${f.today?' style="background:var(--good)"':""}>📅 Today <span class="ct">${todayN}</span></button>
   </div>`;
 
   const reviewerBadge=(p)=> p>=98?`<span class="bq-badge" style="background:var(--good-bg);color:var(--good)">${p.toFixed(0)}% appr</span>`:p>=90?`<span class="bq-badge" style="background:rgba(6,145,181,0.13);color:#0691B5">${p.toFixed(0)}% appr</span>`:`<span class="bq-badge" style="background:var(--warn-bg);color:var(--warn)">${p.toFixed(0)}% appr</span>`;
@@ -3682,7 +3735,8 @@ function _renderBoqaPage(){
     <div class="bq-section-head"><h2>Today's <em>reviewers</em></h2><span class="meta">${reviewers.length} reviewers · ${reviewedToday} reviewed today (aggregate) · per-reviewer stats are all-time</span></div>
     <div class="bq-reviewers">${reviewerCards}</div>
 
-    <div class="bq-section-head"><h2>Sampling <em>worklist</em></h2><span class="meta">${_bqFiltered().length} in view · ${reviewedToday} reviewed today</span></div>
+    <div class="bq-section-head"><h2>QA <em>worklist</em></h2><span class="meta">${totReviews.toLocaleString()} reviewed all-time · ${pendingN} pending · ${needsUpdateN} flagged for update</span></div>
+    <div class="bq-subhead">Records by QA disposition. Approval rate ${approvalRate!=null?approvalRate.toFixed(1)+"%":"—"} — when QAs flag changes, they're not currently recorded as such in the source data.</div>
     <div class="bq-cohorts">
       <div class="bq-cohort"><div class="l">Add-new-company</div><div class="v">${cohorts.add}</div><div class="sub">100% QA mandatory</div></div>
       <div class="bq-cohort"><div class="l">Company-gap</div><div class="v">${cohorts.gap}</div><div class="sub">done without company link</div></div>
@@ -3703,7 +3757,7 @@ function _renderBoqaPage(){
       </div>
     </div>`;
 
-  document.querySelectorAll("#bqChips .bq-chip").forEach(b=>b.addEventListener("click",()=>{ const id=b.dataset.bq; if(id==="__add")f.cohort=f.cohort==="add"?null:"add"; else if(id==="__noimo")f.cohort=f.cohort==="noimo"?null:"noimo"; else if(id==="__today")f.today=!f.today; else f.team=id; STATE.bqPage=1; _renderBoqaPage(); }));
+  document.querySelectorAll("#bqChips .bq-chip").forEach(b=>b.addEventListener("click",()=>{ const id=b.dataset.bq; if(!id) return; if(id==="__today")f.today=!f.today; else f.team=id; STATE.bqPage=1; _renderBoqaPage(); }));
   document.getElementById("bqExportBtn").addEventListener("click",_bqExport);
   document.querySelectorAll("[data-bqnoop]").forEach(b=>b.addEventListener("click",()=>{}));
   renderBqHourly();
@@ -3738,43 +3792,47 @@ function renderBqHourly(){
 }
 
 function _bqExport(){
-  const tab=STATE.bqTab; const rows=_bqFiltered().filter(r=>_bqStatus(r)===tab);
+  const tab=STATE.bqTab||"pending"; const rows=_bqFiltered().filter(_bqTabPred(tab));
   const cell=(v)=>`"${String(v??"").replace(/"/g,'""')}"`;
-  const lines=["IMO,Company,Role,Comment,Agent,Team,DaysOpen,VerificationStatus,QAStatus,QAAssignee,Cohort"];
-  for(const r of rows) lines.push([cell(r.imo),cell(r.company),cell(r.role),cell(r.comment),cell(r.assignee),cell(r.team),r.days_open||0,cell(r.verification_status),cell(r.qa_status),cell(r.qa_assignee),cell(r.cohort)].join(","));
-  const blob=new Blob([lines.join("\n")],{type:"text/csv"}); const a=document.createElement("a"); a.href=URL.createObjectURL(blob); a.download=`bo-qa-${tab}-${STATE.v2?.date||"export"}.csv`; a.click(); URL.revokeObjectURL(a.href);
+  const lines=["IMO,Company,Role,Agent,Team,QAReviewer,QAStatus,VerificationStatus,DaysOpen"];
+  for(const r of rows) lines.push([cell(r.imo),cell(r.company),cell(r.role),cell(r.assignee),cell(r.team),cell(r.qa_assignee),cell(r.qa_status),cell(r.verification_status),r.days_open||0].join(","));
+  const blob=new Blob([lines.join("\n")],{type:"text/csv"}); const a=document.createElement("a"); a.href=URL.createObjectURL(blob); a.download=`qa-worklist-${tab}-${STATE.v2?.date||"export"}.csv`; a.click(); URL.revokeObjectURL(a.href);
 }
 
 function renderBqWorklist(){
   const cont=document.getElementById("bqWorklist"); if(!cont) return;
   const base=_bqFiltered();
   const tab=STATE.bqTab||"pending";
-  const tabs=[["pending","Pending"],["approved","Approved"],["changed","Changed"],["returned","Returned"]];
-  const cnt=(k)=>base.filter(r=>_bqStatus(r)===k).length;
-  const rowsAll=base.filter(r=>_bqStatus(r)===tab).slice().sort((a,b)=>(b.days_open||0)-(a.days_open||0));
+  const tabs=[["pending","Pending QA"],["needsupdate","Needs update"],["approved","Approved"],["reviewed","All reviewed"]];
+  const cnt=(k)=>base.filter(_bqTabPred(k)).length;
+  const rowsAll=base.filter(_bqTabPred(tab)).slice().sort((a,b)=>(b.days_open||0)-(a.days_open||0));
   const total=rowsAll.length, pages=Math.max(1,Math.ceil(total/12)); if(STATE.bqPage>pages)STATE.bqPage=pages;
   const start=(STATE.bqPage-1)*12, end=Math.min(start+12,total), rows=rowsAll.slice(start,end);
   const reviewedToday=(STATE.v2?.qa_today_all||{}).reviewed||0;
   const rowHtml=(r)=>{ const sel=STATE.bqSelectedImo===String(r.imo)?" selected":"";
-    return `<div class="bq-row${sel}" data-imo="${esc(String(r.imo))}">
-      <span class="bq-cb"></span><span class="imo">${esc(r.imo||"—")}</span>
+    return `<div class="bq-row qd${sel}" data-imo="${esc(String(r.imo))}">
+      <span class="bq-imocell"><span class="bq-cb"></span><span class="imo">${esc(r.imo||"—")}</span><button class="bq-copy" data-bqcopy="${esc(String(r.imo||""))}" title="Copy IMO">⧉</button></span>
       <span><span class="bq-rolechip">${esc((r.role||"—").replace(/_/g," "))}</span></span>
-      <span class="bq-cob"><div class="nm">${esc(r.company||(r.cohort==="add"?"(no company)":r.comment||"(case record)"))}</div><div class="s">${esc(r.cohort)} · ${r.days_open||0}d open</div></span>
-      <span class="bq-cob" style="display:flex;align-items:center;gap:7px"><span class="task-avatar" style="background:${bqTeamHex(r.team)};width:22px;height:22px;font-size:9px">${esc(bqInitials(r.assignee))}</span><span style="min-width:0"><span class="nm" style="font-weight:500">${esc(r.assignee||"—")}</span> <span class="task-team-chip" style="color:${bqTeamHex(r.team)}">&bull; ${esc(r.team||"—")}</span></span></span>
-      <span><span class="bq-commentchip">${esc(r.comment||(r.cohort==="add"?"add-new-company":"—"))}</span></span>
+      <span class="bq-cob"><div class="nm">${esc(r.company||"(no company)")}</div><div class="s">Tagged by ${esc(r.assignee||"—")} <span class="task-team-chip" style="color:${bqTeamHex(r.team)}">&bull; ${esc(r.team||"—")}</span></div></span>
+      <span>${bqQaReviewerCell(r)}</span>
+      <span>${bqStatePill(r)}</span>
+      <span>${bqVerifChip(r.verification_status)}</span>
       <span>${bqAgePill(r.days_open)}</span>
+      <span class="bq-acts"><button class="bq-act" data-bqnoop="approve" title="Approve (action in Airtable)">✓</button><button class="bq-act" data-bqnoop="edit" title="Edit (action in Airtable)">✎</button><button class="bq-act" data-bqnoop="open" title="Open record">↗</button></span>
     </div>`; };
   const pbtn=(p,l,dis,act)=>`<button data-bqpg="${p}"${dis?" disabled":""}${act?' class="active"':""}>${l||p}</button>`;
   let pagesHtml=""; if(pages>1){ pagesHtml+=pbtn(Math.max(1,STATE.bqPage-1),"‹",STATE.bqPage===1); for(let p=1;p<=pages;p++){ if(p===1||p===pages||Math.abs(p-STATE.bqPage)<=1)pagesHtml+=pbtn(p,null,false,p===STATE.bqPage); else if(Math.abs(p-STATE.bqPage)===2)pagesHtml+=`<span style="padding:3px 2px">…</span>`; } pagesHtml+=pbtn(Math.min(pages,STATE.bqPage+1),"›",STATE.bqPage===pages); }
   cont.innerHTML=`
     <div class="bq-tabs" id="bqTabs">${tabs.map(([k,l])=>`<button data-bqt="${k}" class="${tab===k?'active':''}">${l} <span class="ct">${cnt(k)}</span></button>`).join("")}<span class="spacer"></span><input id="bqSearch" type="text" placeholder="search imo / company / agent…" value="${esc(STATE.bqSearch)}"/></div>
     <div class="panel" style="padding:6px 10px 10px">
-      <div class="bq-row head"><span></span><span>IMO</span><span>Role</span><span>Company</span><span>Agent</span><span>Comment / age</span></div>
+      <div class="bq-row qd head"><span>IMO</span><span>Role</span><span>Company / agent</span><span>QA reviewer</span><span>QA state</span><span>Verification</span><span>Age</span><span>Actions</span></div>
       ${rows.map(rowHtml).join("")||'<div class="empty" style="padding:16px">No records in this tab/filter.</div>'}
     </div>
     <div class="bq-pag"><span>Showing ${total?start+1:0}–${end} of ${total} · ${reviewedToday} reviewed today</span><span class="pages">${pagesHtml}</span></div>`;
   cont.querySelectorAll("#bqTabs button[data-bqt]").forEach(b=>b.addEventListener("click",()=>{STATE.bqTab=b.dataset.bqt;STATE.bqPage=1;renderBqWorklist();}));
   const si=document.getElementById("bqSearch"); if(si) si.addEventListener("input",(e)=>{ STATE.bqSearch=e.target.value; STATE.bqPage=1; renderBqWorklist(); const x=document.getElementById("bqSearch"); if(x){x.focus();x.setSelectionRange(x.value.length,x.value.length);} });
+  cont.querySelectorAll("[data-bqcopy]").forEach(b=>b.addEventListener("click",(e)=>{e.stopPropagation(); try{navigator.clipboard&&navigator.clipboard.writeText(b.dataset.bqcopy);}catch{} }));
+  cont.querySelectorAll(".bq-act[data-bqnoop]").forEach(b=>b.addEventListener("click",(e)=>e.stopPropagation()));
   cont.querySelectorAll(".bq-row[data-imo]").forEach(row=>row.addEventListener("click",()=>{STATE.bqSelectedImo=row.dataset.imo;renderBqWorklist();renderBqDrawer();document.getElementById("bqDrawer").scrollIntoView({behavior:"smooth",block:"start"});}));
   cont.querySelectorAll("[data-bqpg]").forEach(b=>b.addEventListener("click",()=>{if(b.disabled)return;STATE.bqPage=parseInt(b.dataset.bqpg,10);renderBqWorklist();}));
 }
@@ -3785,17 +3843,18 @@ function renderBqDrawer(){
   let r=all.find(x=>String(x.imo)===String(STATE.bqSelectedImo));
   if(!r){ r=_bqFiltered().filter(x=>_bqStatus(x)===STATE.bqTab)[0]||_bqFiltered()[0]; if(r) STATE.bqSelectedImo=String(r.imo); }
   if(!r){ cont.innerHTML=""; return; }
-  const co=r.company||(r.cohort==="add"?"(no company)":(r.comment||"(case record)"));
-  const field=(k,v,hl)=> (v||v===0)?`<div class="bq-field"><span class="k">${k}</span><span class="val${hl?' hl':''}">${esc(v)}</span></div>`:"";
-  const detail=field("IMO",r.imo)+field("Role",(r.role||"").replace(/_/g," "))+field("Company",r.company,true)+field("Comment",r.comment)+field("Agent",r.assignee)+`<div class="bq-field"><span class="k">Team</span><span class="val"><span class="task-team-chip" style="color:${bqTeamHex(r.team)}">&bull; ${esc(r.team||"—")}</span></span></div>`+`<div class="bq-field"><span class="k">Days open</span><span class="val">${r.days_open||0}d</span></div>`+field("Verification",r.verification_status)+field("QA status",r.qa_status)+field("QA assignee",r.qa_assignee)+field("Requested by",r.requested_by);
-  // comment context
-  const shareN=r.comment? all.filter(x=>x.comment===r.comment).length:0;
-  const arrName=r.cohort==="add"?"add_new_company_records":r.cohort==="gap"?"case_company_gap_records":"case_no_imo_records";
-  const commentCtx=r.comment? `<div style="font-size:13px;color:var(--ink);margin-bottom:8px">"${esc(r.comment)}"</div><div class="bq-field"><span class="k">Appears in</span><span class="val">${arrName}</span></div><div class="bq-field"><span class="k">Records sharing it</span><span class="val">${shareN.toLocaleString()}</span></div>` : `<div class="empty" style="padding:12px">No reviewer comment on this record. Cohort: <b>${esc(arrName)}</b>.</div>`;
-  // audit trail (real)
-  const ev=[]; ev.push(["var(--accent)",`Tagged by <b>${esc(r.assignee||"—")}</b>`,`${r.team||"—"} · ${r.days_open||0}d in pipeline`]);
-  if(r.qa_assignee) ev.push(["#0691B5",`QA assigned to <b>${esc(r.qa_assignee)}</b>`,"BO QA review"]);
-  if(r.qa_status) ev.push([r.qa_status==="approve"?"var(--good)":"var(--warn)",`QA status: <b>${esc(r.qa_status)}</b>`,""]);
+  const co=r.company||"(no company)";
+  const field=(k,v,hl)=> (v||v===0)?`<div class="bq-field"><span class="k">${k}</span><span class="val${hl?' hl':''}">${esc(v)}</span></div>`:`<div class="bq-field"><span class="k">${k}</span><span class="val" style="color:var(--muted);font-weight:500">—</span></div>`;
+  const detail=field("IMO",r.imo)+field("Role",(r.role||"").replace(/_/g," "))+field("Company",r.company,true)+field("Agent",r.assignee)+`<div class="bq-field"><span class="k">Team</span><span class="val"><span class="task-team-chip" style="color:${bqTeamHex(r.team)}">&bull; ${esc(r.team||"—")}</span></span></div>`+field("QA reviewer",r.qa_assignee)+field("QA status",r.qa_status)+field("Verification",r.verification_status)+`<div class="bq-field"><span class="k">Days open</span><span class="val">${r.days_open||0}d</span></div>`+field("Requested by",r.requested_by);
+  // QA disposition (no fabricated change-diffs — before-state isn't stored)
+  const meaning={approved:"Approved as new — QA accepted the add-new-company record.",pending:"Awaiting QA review — not yet dispositioned.",needsupdate:"Flagged for update — verification marked “need to be update”."}[_bqStatus(r)]||"";
+  const rv=(STATE.v2?.qa_reviewers||[]).find(x=>x.name===r.qa_assignee);
+  const rvCtx = rv ? field(rv.name+" · approval",(rv.approval_pct||0).toFixed(1)+"%")+field("Reviews · all-time",(rv.reviews||0).toLocaleString())+field("Changes · all-time",(rv.changes||0))+field("Median review",rv.median_review_time_hours!=null?rv.median_review_time_hours.toFixed(1)+"h":null) : `<div class="empty" style="padding:12px">No QA reviewer assigned yet — this record is still in the pending queue.</div>`;
+  const dispPanel=`<div class="bq-dispwrap">${bqStatePill(r,true)} ${bqVerifChip(r.verification_status)}</div><div class="bq-dispmean">${esc(meaning)}</div>${rvCtx}`;
+  // audit trail (real events only)
+  const ev=[]; ev.push(["var(--accent)",`Tagged by <b>${esc(r.assignee||"—")}</b>`,`${esc(r.team||"—")} · ${r.days_open||0}d in pipeline`]);
+  if(r.qa_assignee) ev.push(["#0691B5",`Assigned to <b>${esc(r.qa_assignee)}</b>`,"BO QA review"]);
+  ev.push([r.qa_status==="approve"?"var(--good)":(r.qa_status?"var(--warn)":"var(--muted)"),`QA action: <b>${esc(r.qa_status||"pending")}</b>`,r.qa_status?"":"not yet reviewed"]);
   ev.push([r.verification_status==="Valid"?"var(--good)":"var(--muted)",`Verification: <b>${esc(r.verification_status||"—")}</b>`,""]);
   const trail=ev.map(([c,a,b])=>`<div class="ev"><span class="d" style="background:${c}"></span><span class="tx">${a}${b?`<br><span class="s">${esc(b)}</span>`:""}</span></div>`).join("");
 
@@ -3804,15 +3863,15 @@ function renderBqDrawer(){
     <div class="bq-drawer-card">
       <div class="bq-dh">
         <span class="ic">${KPI_ICONS.anchor}</span>
-        <div style="min-width:0"><div class="nm">${esc(co)} <span class="pill-inline" style="margin-left:4px;background:var(--soft);color:var(--muted)">IMO ${esc(r.imo||"—")}</span> ${r.comment?`<span class="bq-commentchip">${esc(r.comment)}</span>`:""} ${bqAgePill(r.days_open)}</div>
-          <div class="meta">Tagged by ${esc(r.assignee||"—")} &middot; ${esc(r.team||"—")} &middot; Role ${esc((r.role||"—").replace(/_/g," "))} &middot; QA ${esc(r.qa_status||"—")} &middot; Assigned to ${esc(r.qa_assignee||"—")}</div>
+        <div style="min-width:0"><div class="nm">${esc(co)} <span class="pill-inline" style="margin-left:4px;background:var(--soft);color:var(--muted)">IMO ${esc(r.imo||"—")}</span> ${bqStatePill(r)} ${bqAgePill(r.days_open)}</div>
+          <div class="meta">Tagged by ${esc(r.assignee||"—")} &middot; ${esc(r.team||"—")} &middot; Role ${esc((r.role||"—").replace(/_/g," "))} &middot; QA ${esc(r.qa_status||"pending")} &middot; Reviewer ${esc(r.qa_assignee||"—")}</div>
         </div>
         <div class="bq-dh acts"><button class="btn" data-bqnoop="airtable">Open in Airtable</button><button class="btn" id="bqDrawerClose" title="Clear selection">×</button></div>
       </div>
     </div>
     <div class="bq-drow">
       <div class="panel"><h3>Record detail</h3>${detail}</div>
-      <div class="panel"><h3>Comment context</h3>${commentCtx}</div>
+      <div class="panel"><h3>QA disposition</h3>${dispPanel}</div>
       <div class="panel"><h3>Audit trail <span class="meta">real events</span></h3><div class="bq-trail">${trail}</div></div>
     </div>
     <div class="bq-pfoot" style="text-align:center;border:0">ⓘ Decisions happen in Airtable — this dashboard is read-only. Open the record above to action it.</div>`;
