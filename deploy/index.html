@@ -2517,7 +2517,8 @@ function computeTeamAlerts() {
 //  Agent Scorecard — Vivid detail layer (PR #137). Per-agent drill-in on
 //  today's by_agent[name] block: tagged_today, REAL per-agent QA approval rate
 //  (qa_inspected_today / qa_changed_today), comment + role mix, sanctions split,
-//  hourly tagging (by_agent[name].hourly_buckets). Deep-dive reuses the PR #131
+//  hourly tagging (from STATE.completions / ownership_completions — same source as
+//  the Hourly Output heatmap; PR #138). Deep-dive reuses the PR #131
 //  side panel. No per-agent history → "today vs floor" + cohort averages; no
 //  fabrication, defensive "—" where data isn't tracked.
 // ============================================================================
@@ -2636,9 +2637,14 @@ function renderAgentBody(name){
   // switch dropdown (all agents, tagged desc)
   const opts = D.agents.map(a => `<option value="${esc(a.name)}"${a.name === sel.name ? " selected" : ""}>${esc(a.name)} · ${a.tagged} · ${esc(a.team || "—")}</option>`).join("");
 
-  // hourly buckets (real per-agent, company-linked tagging by EAT hour)
+  // Hourly tagging — sourced from STATE.completions (the per-record
+  // ownership_completions table), the SAME data the Hourly Output heatmap uses.
+  // NOT by_agent.hourly_buckets, which buckets by start_tagging — a batch-shared
+  // Airtable field that clumps every record in a task into one hour (BUG 1).
   const hours = Array.from({ length: 18 }, (_, i) => i + 6);
-  const hb = m.hourly_buckets || {};
+  const completionsReady  = STATE.completions != null;                                  // null = not loaded / load failed
+  const completionsFailed = !completionsReady && STATE.completionsDate === (STATE.v2?.date || null);
+  const hb = (STATE.completions && STATE.completions[sel.name]) || {};
   const hCounts = hours.map(h => hb[h] ?? hb[String(h)] ?? 0);
   const hMax = Math.max(1, ...hCounts);
   const hSum = hCounts.reduce((s, v) => s + v, 0);
@@ -2724,9 +2730,13 @@ function renderAgentBody(name){
     </div>
 
     <div class="tl-drow" style="grid-template-columns:1.3fr 1fr">
-      <div class="panel"><h3>Hourly tagging <span class="meta">today &middot; ${hSum.toLocaleString()} company-linked</span></h3>
-        <div class="qh-hbars">${hourlyBars}</div>
-        <div class="tl-pfoot">Records this agent tagged per EAT hour (company-linked subset from <code>by_agent.hourly_buckets</code>; raw per-record tag timestamps aren't emitted).</div>
+      <div class="panel"><h3>Hourly tagging <span class="meta">today${completionsReady ? ` &middot; ${hSum.toLocaleString()} observed` : ""}</span></h3>
+        ${completionsReady
+          ? `<div class="qh-hbars">${hourlyBars}</div>
+        <div class="tl-pfoot">Records this agent's batch first observed in BO QA per EAT hour (source: <code>ownership_completions</code>, bucketed by detector observation time — accurate to ≈5 min at the 5-min poll cadence; bursts at finalization shift the apparent peak slightly later than real tag time).</div>`
+          : completionsFailed
+          ? `<div class="empty-state" style="margin:6px 0"><div class="title">Couldn't load completions</div>The <code>ownership_completions</code> table could not be read this session.</div>`
+          : `<div class="empty-state" style="margin:6px 0"><div class="title">Loading hourly tagging activity…</div>Fetching per-record completions.</div>`}
       </div>
       <div class="panel"><h3>QA decisions · today <span class="meta">${sel.insp.toLocaleString()} reviewed</span></h3>
         ${sel.insp ? `<div class="tl-donut" style="background:${donut}"><div class="hole"><b>${sel.insp.toLocaleString()}</b><span>reviewed</span></div></div>
@@ -2767,6 +2777,16 @@ function renderAgentBody(name){
   document.getElementById("agPrev").addEventListener("click", () => { STATE.agentSelected = prev.name; localStorage.setItem("wqa.agent", prev.name); renderAgentBody(prev.name); });
   document.getElementById("agNext").addEventListener("click", () => { STATE.agentSelected = next.name; localStorage.setItem("wqa.agent", next.name); renderAgentBody(next.name); });
   body.querySelector(".ag-rank")?.addEventListener("click", renderAgentDeepDive);
+
+  // Lazy-load completions if they weren't fetched at init (loadAll normally does).
+  // Guarded so a persistent failure (completionsFailed) doesn't loop.
+  if (!completionsReady && !completionsFailed && !STATE._agCompletionsLoading) {
+    STATE._agCompletionsLoading = true;
+    loadCompletions(STATE.v2?.date || null).finally(() => {
+      STATE._agCompletionsLoading = false;
+      if (STATE.agentSelected === sel.name && document.getElementById("agentBody")) renderAgentBody(sel.name);
+    });
+  }
 }
 
 function renderAgentDeepDive(){
