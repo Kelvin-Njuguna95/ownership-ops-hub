@@ -1085,6 +1085,59 @@
   @media (max-width: 767px) { .side-panel { width: 100vw; } }
   body.side-panel-open { overflow: hidden; }
 
+  /* ----- QA Hourly Output — Vivid detail layer (PR #132). Non-slide-out styling only. ----- */
+  .task-avatar.lg { width: 40px; height: 40px; border-radius: 10px; font-size: 13px; }
+  .task-avatar.sm { width: 20px; height: 20px; border-radius: 5px; font-size: 8.5px; }
+  .qh-banner { display: flex; align-items: center; gap: 12px; background: var(--warn-bg); border: 1px solid var(--warn); border-radius: var(--radius-md); padding: 12px 16px; margin-bottom: 16px; }
+  .qh-banner-ic { font-size: 18px; line-height: 1; }
+  .qh-banner-txt { flex: 1 1 auto; font-size: 13px; color: var(--ink); line-height: 1.45; }
+  .qh-banner-sub { color: var(--warn); font-weight: 600; margin-left: 4px; }
+  .qh-idledur { color: var(--warn); font-weight: 700; }
+  .qh-banner-acts { display: flex; gap: 8px; flex-shrink: 0; }
+  .qh-avatars { display: flex; gap: 4px; margin-top: 8px; }
+  .qh-hm { display: flex; flex-direction: column; gap: 3px; margin-top: 4px; overflow-x: auto; }
+  .qh-hm-head { display: grid; gap: 3px; align-items: center; }
+  .qh-hrow { display: grid; gap: 3px; align-items: center; cursor: pointer; border-radius: 8px; padding: 3px 4px; transition: background 0.12s ease; }
+  .qh-hrow:hover { background: var(--soft); }
+  .qh-hrow.sel { background: var(--accent-soft); box-shadow: inset 0 0 0 1px var(--accent); }
+  .qh-rowhead { display: flex; align-items: center; gap: 6px; min-width: 0; }
+  .qh-rowhead .nm { font-size: 12px; font-weight: 600; color: var(--ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .qh-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+  .qh-tag { font-size: 8.5px; font-weight: 700; padding: 1px 4px; border-radius: 4px; flex-shrink: 0; }
+  .qh-tag.idle { background: var(--warn-bg); color: var(--warn); }
+  .qh-tag.on { color: var(--good); }
+  .qh-colhead { font-size: 9.5px; color: var(--muted); text-align: center; font-variant-numeric: tabular-nums; }
+  .qh-colhead.pk { color: var(--accent); font-weight: 700; }
+  .qh-cell { height: 24px; border-radius: 5px; display: flex; align-items: center; justify-content: center; font-size: 10px; font-variant-numeric: tabular-nums; color: var(--ink); }
+  .qh-cell.z { background: var(--soft); color: var(--muted); }
+  .qh-cell.future { background: repeating-linear-gradient(45deg, var(--soft), var(--soft) 3px, transparent 3px, transparent 6px); }
+  .qh-cell.peak { box-shadow: inset 0 0 0 2px var(--accent); }
+  .qh-cell.idle { border: 1px dashed var(--warn); background: var(--warn-bg); }
+  .qh-cell.tot { background: var(--soft); font-weight: 700; }
+  .qh-totrow { display: grid; gap: 3px; align-items: end; margin-top: 6px; border-top: 1px solid var(--border); padding-top: 6px; }
+  .qh-tcell { height: 34px; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; gap: 2px; }
+  .qh-tbar { width: 58%; background: var(--accent); border-radius: 2px 2px 0 0; min-height: 2px; }
+  .qh-tcell.pk .qh-tbar { background: var(--bad); }
+  .qh-tnum { font-size: 8.5px; color: var(--muted); font-variant-numeric: tabular-nums; }
+  .qh-legend { display: flex; align-items: center; gap: 8px; margin-top: 10px; font-size: 11px; color: var(--muted); flex-wrap: wrap; }
+  .qh-ramp { width: 80px; height: 8px; border-radius: 4px; background: linear-gradient(90deg, rgba(123,104,238,0.18), rgba(123,104,238,1)); }
+  .qh-legdot { width: 11px; height: 11px; border-radius: 3px; margin-left: 6px; }
+  .qh-legdot.peak { box-shadow: inset 0 0 0 2px var(--accent); }
+  .qh-legdot.idle { border: 1px dashed var(--warn); background: var(--warn-bg); }
+  .qh-legdot.future { background: repeating-linear-gradient(45deg, var(--soft), var(--soft) 3px, transparent 3px, transparent 6px); }
+  .qh-hbars { display: flex; align-items: flex-end; gap: 3px; height: 90px; margin: 6px 0 4px; }
+  .qh-hbar { flex: 1 1 0; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; height: 100%; gap: 3px; }
+  .qh-hbar-fill { width: 100%; border-radius: 2px 2px 0 0; min-height: 2px; }
+  .qh-hbar-fill.future { background: repeating-linear-gradient(45deg, var(--soft), var(--soft) 3px, transparent 3px, transparent 6px) !important; }
+  .qh-hbar-h { font-size: 8px; color: var(--muted); }
+  .qh-pace-head { display: grid; grid-template-columns: 1.6fr 1fr 0.8fr 1fr; gap: 8px; font-size: 10px; text-transform: uppercase; letter-spacing: 0.04em; color: var(--muted); font-weight: 600; padding: 4px 0; border-bottom: 1px solid var(--border); }
+  .qh-pace-row { display: grid; grid-template-columns: 1.6fr 1fr 0.8fr 1fr; gap: 8px; align-items: center; font-size: 12px; padding: 6px 0; border-bottom: 1px solid var(--soft); font-variant-numeric: tabular-nums; }
+  .qh-pace-nm { display: flex; align-items: center; gap: 7px; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .qh-pace-bar { display: flex; align-items: center; }
+  .qh-cohort { margin-top: 10px; border-top: 1px solid var(--border); padding-top: 8px; }
+  .qh-cohort-h { font-size: 11px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: 6px; }
+  .qh-cfg { color: var(--accent); cursor: pointer; }
+
   /* Charts */
   .chart-wrap { position: relative; height: 280px; }
   .chart-wrap.small { height: 160px; }
@@ -1827,6 +1880,7 @@ function goto(pageId) {
   // Navigating between pages dismisses any open detail side-panel.
   STATE.selectedTaskId = null;
   STATE.completedSelectedId = null;
+  STATE.qhSelectedReviewer = null;
   _hideSidePanel();
   const renderer = PAGE_RENDERERS[pageId];
   if (renderer) renderer();
@@ -3344,101 +3398,328 @@ function renderHourlyGrid(filterTeam) {
 }
 
 // -------- QA Hourly Output --------
-// Two heatmaps: QA reviews per hour (qa_hourly) and companies created per hour
-// (companies_hourly). Both render purely from the snapshot (STATE.v2), so they
-// follow the global date picker automatically. Flat lists — no team
-// grouping/filter, no Supabase read. Each section owns its own empty-state.
+// ============================================================================
+//  QA Hourly Output — Vivid detail layer (PR #132). Per-QA × per-hour heatmap
+//  from qa_hourly; click a reviewer row → the shared PR #131 side panel.
+//  QA reviewers carry no team in aggregates_v2, so cells are tinted per reviewer
+//  (shaded by volume), not by team — see the substitution footnotes inline.
+//  The Companies-created-by-hour heatmap (companies_hourly) is kept below.
+// ============================================================================
+// EAT hour-of-day (0..23) for an ISO timestamp, via Intl (no Date.getHours TZ drift).
+function _eatHour(iso){
+  if(!iso) return null;
+  try{ const p=new Intl.DateTimeFormat("en-GB",{timeZone:"Africa/Nairobi",hour:"2-digit",hour12:false}).formatToParts(new Date(iso)).find(x=>x.type==="hour"); return p? (parseInt(p.value,10)%24) : null; }
+  catch(e){ return null; }
+}
+// Stable per-reviewer colours (QA reviewers are NOT team-mapped in aggregates_v2 —
+// no team field on qa_reviewers/by_qa and they're absent from the tagging roster —
+// so cells are tinted per reviewer, shaded by volume, NOT by team).
+const QH_RGB = ["123,104,238","6,145,181","14,165,108","249,148,59","229,56,79","251,98,161","92,73,212","201,138,63"];
+
+// Shared dataset for the QA-hourly page + heatmap + reviewer detail. Recomputed
+// from STATE.v2 on each call so every surface stays in sync (no cached drift).
+function _qhCompute(){
+  const v2 = STATE.v2 || null;
+  const qh = v2?.qa_hourly || {};
+  const byqa = v2?.by_qa || {};
+  const meta = {}; (v2?.qa_reviewers || []).forEach(r=>{ meta[r.name]=r; });
+  const hours = Array.from({length:18},(_,i)=>i+6);            // 06..23 EAT business window
+  const currentHour = _eatHour(v2?.computed_at);
+  const reviewers = Object.keys(qh).map((name,_i)=>{
+    const buckets = qh[name] || {};
+    const counts = hours.map(h => buckets[h] ?? buckets[String(h)] ?? 0);
+    const today = Object.values(buckets).reduce((a,b)=>a+b,0);  // all 24h
+    const outside = today - counts.reduce((a,b)=>a+b,0);
+    const activeHours = Object.keys(buckets).map(Number).filter(h=>buckets[h]>0);
+    const lastHour = activeHours.length ? Math.max(...activeHours) : null;
+    const m = meta[name] || {}, bq = byqa[name] || {};
+    return { name, buckets, counts, today, outside, lastHour,
+      approvalPct:m.approval_pct, medHrs:m.median_review_time_hours, p90Hrs:m.p90_review_time_hours,
+      reviews:m.reviews, approvals:m.approvals, changes:m.changes,
+      backlog:bq.bo_qa_backlog, inspectedToday:bq.qa_inspected_today, changedToday:bq.qa_changed_today,
+      sancToday:bq.qa_inspected_today_sanctions, nonSancToday:bq.qa_inspected_today_non_sanctions };
+  }).sort((a,b)=> b.today - a.today);
+  const colSums = hours.map((_,i)=> reviewers.reduce((s,r)=>s+r.counts[i],0));
+  const peakIdx = colSums.length ? colSums.indexOf(Math.max(...colSums)) : -1;
+  const workHours = currentHour!=null && currentHour>=6 && currentHour<=19;
+  reviewers.forEach((r,i)=>{
+    r.idx = i;
+    r.active = r.lastHour!=null && currentHour!=null && r.lastHour >= currentHour-1;
+    r.idle   = !r.active && r.lastHour!=null && workHours;
+    r.idleHrs= (r.idle && currentHour!=null && r.lastHour!=null) ? (currentHour - r.lastHour) : 0;
+  });
+  return { v2, hours, currentHour, workHours, reviewers, colSums, peakIdx };
+}
+
 PAGE_RENDERERS.qa_hourly = function () {
   const root = document.getElementById("page-qa_hourly");
-  const date = STATE.v2?.date || "—";
+  if(!STATE.qhFilters) STATE.qhFilters = { view:"all" };
+  if(STATE.qhSelectedReviewer===undefined) STATE.qhSelectedReviewer = null;
+  const D = _qhCompute();
+  const v2 = D.v2;
+  if(!v2){ root.innerHTML = noDataHtml("aggregates_v2 not in daily_aggregates.json — run aggregate_v2.py"); return; }
+
+  const hasHourly = D.reviewers.length>0;
+  const reviewed  = v2.qa_today_all?.reviewed ?? 0;
+  const totalRev  = D.reviewers.length;
+  const activeN   = D.reviewers.filter(r=>r.active).length;
+  const idleN     = D.reviewers.filter(r=>r.idle).length;
+  const idleList  = D.reviewers.filter(r=>r.idle);
+  const peakHour  = D.peakIdx>=0 ? D.hours[D.peakIdx] : null;
+  const peakRate  = D.peakIdx>=0 ? D.colSums[D.peakIdx] : 0;
+  const curIdx    = D.currentHour!=null ? D.hours.indexOf(D.currentHour) : -1;
+  const curRate   = curIdx>=0 ? D.colSums[curIdx] : 0;
+  const lastHrRev = curRate;
+  const troughHour= (()=>{ let best=null,bv=Infinity; D.colSums.forEach((v,i)=>{ if(v>0 && v<bv){bv=v;best=D.hours[i];} }); return best; })();
+  // P50/P90 review time — substitution: real median_review_time_hours is HOURS (tag→review
+  // turnaround), not the mockup's minutes; shown in hours, bar scaled 0 → pool P90.
+  const medList = D.reviewers.map(r=>r.medHrs).filter(x=>x!=null);
+  const p50h    = median(medList);
+  const p90List = D.reviewers.map(r=>r.p90Hrs).filter(x=>x!=null);
+  const p90h    = p90List.length ? Math.max(...p90List) : null;
+  const slowest = D.reviewers.slice().filter(r=>r.medHrs!=null).sort((a,b)=>b.medHrs-a.medHrs)[0];
+  const backlog = v2.totals?.bo_qa_backlog ?? null;
+
+  const headDate = (()=>{ const d=v2.date; if(!d) return ""; const dt=new Date(d+"T00:00:00"); return isNaN(dt)?d:dt.toLocaleDateString("en-GB",{weekday:"short",day:"numeric",month:"short",year:"numeric"}); })();
+  const nowTime  = tlEatTime(v2.computed_at);
+  const refAge   = ageHours(v2.computed_at);
+  const refLabel = refAge==null?"freshness unknown": refAge<1?`Refreshed ${Math.max(1,Math.round(refAge*60))} min ago`: refAge<24?`Refreshed ${Math.round(refAge)}h ago`:`Refreshed ${Math.round(refAge/24)}d ago`;
+  const dod = `<span class="dod-muted" title="Day-over-day delta needs a prior-day QA snapshot, not loaded here">DoD —</span>`;
+
+  // hero mini-bars + peak sparkline = today's per-hour volume (no multi-day QA history loaded)
+  const maxCol = Math.max(1,...D.colSums);
+  const miniBars = D.colSums.map((v,i)=>`<span class="bar${v===0?' miss':''}" style="height:${Math.max(8,Math.round(v/maxCol*100))}%" title="${D.hours[i]}:00 → ${v}"></span>`).join("");
+
+  const f = STATE.qhFilters;
+  const chipsHtml = `
+    <div class="tl-chips" id="qhChips">
+      <button class="tl-chip${f.view==='all'?' active':''}" data-qh="all"${f.view==='all'?' style="background:var(--accent)"':''}><span>All reviewers</span><span class="ct">${totalRev}</span></button>
+      <span class="spacer"></span>
+      <button class="tl-chip${f.view==='idle'?' active':''}" data-qh="idle"${f.view==='idle'?' style="background:var(--warn)"':''}>👤 Idle &gt; 60m <span class="ct">${idleN}</span></button>
+      <button class="tl-chip${f.view==='active'?' active':''}" data-qh="active"${f.view==='active'?' style="background:var(--good)"':''}>⚡ Active <span class="ct">${activeN}</span></button>
+    </div>`;
+
+  const banner = (idleN>=1 && D.workHours) ? `
+    <div class="qh-banner">
+      <span class="qh-banner-ic">⚠</span>
+      <div class="qh-banner-txt">
+        <b>${idleN} reviewer${idleN===1?'':'s'} idle</b> during work hours —
+        ${idleList.slice(0,3).map(r=>`${esc(r.name)} <span class="qh-idledur">~${r.idleHrs}h</span>`).join(", ")}${idleList.length>3?` +${idleList.length-3} more`:""}.
+        ${backlog!=null?`<span class="qh-banner-sub">Backlog ${backlog.toLocaleString()} records awaiting BO QA.</span>`:""}
+      </div>
+      <div class="qh-banner-acts"><button class="btn" data-qhnoop="view">View activity</button><button class="btn" data-qhnoop="ping">Ping ${idleN} reviewer${idleN===1?'':'s'}</button></div>
+    </div>` : "";
+
+  const avatars = D.reviewers.slice(0,5).map(r=>`<span class="task-avatar" style="background:rgba(${QH_RGB[r.idx%QH_RGB.length]},${r.active?1:0.4})" title="${esc(r.name)} · ${r.active?'active':'idle'}">${esc(tlInitials(r.name))}</span>`).join("");
+
   root.innerHTML = `
-    <div class="controls-row">
-      <span class="small-mono">QA Hourly Output — ${esc(date)}</span>
+    <div class="page-head">
+      <div>
+        <div class="page-eyebrow">Quality &middot; hourly${headDate?" &middot; "+headDate:""}${nowTime!=="—"?" &middot; "+nowTime+" EAT":""}<span class="tl-live"><span class="dot"></span>Live &middot; ${esc(refLabel)}</span></div>
+        <h1 class="page-title">QA hourly <em>output</em></h1>
+        <div class="page-subtitle">
+          Per-QA &times; per-hour heatmap — who's reviewing right now, who's idle.
+          <span class="dot-sep">&middot;</span><span class="num">${totalRev}</span> reviewers
+          <span class="dot-sep">&middot;</span><span class="num">${reviewed.toLocaleString()}</span> reviews today${peakHour!=null?`<span class="dot-sep">&middot;</span>Peak ${String(peakHour).padStart(2,'0')}:00`:""}
+        </div>
+      </div>
+      <div class="page-head-actions">
+        <button class="btn" id="qhRangeBtn">📅 Today</button>
+        <button class="btn" id="qhExportBtn">Export</button>
+        <button class="btn btn-primary" id="qhWakeBtn">⚡ Wake idle reviewers</button>
+      </div>
+    </div>
+    ${chipsHtml}
+    ${banner}
+    <div class="kpis kpis-overview-hero">
+      <div class="kpi hero">
+        <div class="kpi-top"><div class="label">Reviews today</div><span class="kpi-icon">${KPI_ICONS.check}</span></div>
+        <div class="value-row"><span class="value">${reviewed.toLocaleString()}</span>${dod}</div>
+        <div class="kpi-trend">${miniBars}</div>
+        <div class="ct-foot">${totalRev} reviewers &middot; <span class="num">${activeN}</span> active &middot; <span class="num">${idleN}</span> idle</div>
+      </div>
+      <div class="kpi k-cyan">
+        <div class="kpi-top"><div class="label">Peak hour</div><span class="kpi-icon">${KPI_ICONS.activity}</span></div>
+        <div class="value-row"><span class="value">${peakHour!=null?String(peakHour).padStart(2,'0')+":00":"—"}</span>${peakHour!=null?`<span class="kpi-dod-light up">⚡ ${peakRate}/h</span>`:""}</div>
+        ${ctSpark(D.colSums,"#0691B5",170,28)}
+        <div class="ct-sub">Now ${curRate}/h${troughHour!=null?` &middot; trough ${String(troughHour).padStart(2,'0')}:00`:""}</div>
+      </div>
+      <div class="kpi k-green">
+        <div class="kpi-top"><div class="label">P50 review time</div><span class="kpi-icon">${KPI_ICONS.clock}</span></div>
+        <div class="value-row"><span class="value">${p50h!=null?formatDuration(p50h):"—"}</span>${dod}</div>
+        <div class="kpi-bar"><span class="fill" style="width:${p90h&&p50h!=null?Math.min(100,p50h/p90h*100).toFixed(0):0}%;background:var(--accent)"></span></div>
+        <div class="ct-sub">P90 ${p90h!=null?formatDuration(p90h):"—"}${slowest?` &middot; slowest ${esc(slowest.name.split(" ")[0])} ${formatDuration(slowest.medHrs)}`:""}</div>
+      </div>
+      <div class="kpi k-orange">
+        <div class="kpi-top"><div class="label">Active QAs · now</div><span class="kpi-icon">${KPI_ICONS.activity}</span></div>
+        <div class="value-row"><span class="value">${activeN} <span class="unit">/ ${totalRev}</span></span><span class="kpi-dod-light ${idleN>0?'down':'up'}">${idleN} idle</span></div>
+        <div class="qh-avatars">${avatars}</div>
+        <div class="ct-foot">last hr &middot; <span class="num">${lastHrRev.toLocaleString()}</span> reviews</div>
+      </div>
     </div>
     <div class="panel">
-      <h3>QA reviews by hour</h3>
-      <div id="qaHourlyGrid"></div>
-      <div class="footer-note">Cells = records each QA set to approve/changed during that EAT hour (source: <code>QA_status_ts</code>, the dedicated last-modified-time field watching <code>QA_status</code>). The Total covers all 24 hours; the grid shows the 06:00–23:00 business window (* = the QA also has reviews stamped outside it).</div>
+      <div class="tl-list-head"><h2>Reviewer &times; hour heatmap <span class="meta">today</span></h2><span class="meta"><b>${reviewed.toLocaleString()}</b> reviews &middot; ${totalRev} reviewers${peakHour!=null?` &middot; peak ${String(peakHour).padStart(2,'0')}:00 (${peakRate})`:""} &middot; now ${curRate}/h</span></div>
+      <div id="qhHeatmap"></div>
+      <div class="footer-note">Cells = reviews each QA stamped that EAT hour (source <code>qa_hourly</code>). Tinted per reviewer (shaded by volume) — QA reviewers aren't team-mapped in <code>aggregates_v2</code>. Bordered = peak hour; dashed = idle this hour; striped = future. Window 06:00–23:00 EAT (* = reviews outside it).</div>
+    </div>
+    <div class="tl-drow" style="grid-template-columns:1fr 1fr">
+      <div class="panel"><h3>Idle reviewers <span class="meta">${idleN} idle &middot; threshold 60m</span></h3>
+        ${idleList.length? idleList.map(r=>`<div class="tl-prow"><span class="task-avatar" style="background:rgba(${QH_RGB[r.idx%QH_RGB.length]},0.5)">${esc(tlInitials(r.name))}</span><span class="who">${esc(r.name)}<span class="s"> &middot; BO QA &middot; ${r.today.toLocaleString()} today &middot; last active ${r.lastHour!=null?String(r.lastHour).padStart(2,'0')+":00":"—"} EAT</span></span><span class="pill-inline ${r.idleHrs>=2?'bad':'warn'}" style="margin-left:auto">idle ~${r.idleHrs}h</span></div>`).join("") : '<div class="small-mono" style="padding:10px 0">No reviewers idle right now — all active within the last hour.</div>'}
+        <div class="tl-pfoot">Idle threshold 60m &middot; work hours 06:00 → 19:00 EAT &middot; derived from hourly buckets (no minute precision). <span class="qh-cfg">Configure →</span></div>
+      </div>
+      <div class="panel"><h3>Today's pace <span class="meta">${totalRev} reviewers &middot; by reviews desc</span></h3>
+        <div class="qh-pace-head"><span>Reviewer</span><span>Reviews today</span><span>P50/record</span><span>Peak hour</span></div>
+        ${D.reviewers.map(r=>{ const mx=Math.max(1,...D.reviewers.map(x=>x.today)); const pIdx=r.counts.indexOf(Math.max(...r.counts)); const ph=r.counts[pIdx]>0?D.hours[pIdx]:null; return `<div class="qh-pace-row"><span class="qh-pace-nm"><span class="task-avatar sm" style="background:rgba(${QH_RGB[r.idx%QH_RGB.length]},0.85)">${esc(tlInitials(r.name))}</span>${esc(r.name)}</span><span class="qh-pace-bar"><b>${r.today.toLocaleString()}</b><span class="tl-minibar" style="width:70px;margin-left:8px"><span style="width:${(r.today/mx*100).toFixed(0)}%;background:rgba(${QH_RGB[r.idx%QH_RGB.length]},0.85)"></span></span></span><span>${r.medHrs!=null?formatDuration(r.medHrs):"—"}</span><span>${ph!=null?String(ph).padStart(2,'0')+":00 ("+r.counts[pIdx]+")":"—"}</span></div>`; }).join("")}
+        <div class="tl-pfoot">Median P50 across pool &middot; <span class="num">${p50h!=null?formatDuration(p50h):"—"}</span> &middot; per-record review turnaround from <code>qa_reviewers</code>.</div>
+      </div>
     </div>
     <div class="panel">
-      <h3>Companies created by hour</h3>
+      <h3>Companies created by hour <span class="meta">from companies_hourly</span></h3>
       <div id="companiesHourlyGrid"></div>
       <div class="footer-note">Cells = companies each person created during that EAT hour (source: the companies table — <code>created_at</code> / <code>created_by</code>). The Total covers all 24 hours; the grid shows the 06:00–23:00 window.</div>
     </div>`;
 
-  renderQaHourlyGrid();
+  // chip filter wiring → re-render the page (cheap; keeps state in sync)
+  document.querySelectorAll("#qhChips .tl-chip").forEach(b=>b.addEventListener("click",()=>{ STATE.qhFilters.view = (STATE.qhFilters.view===b.dataset.qh && b.dataset.qh!=="all") ? "all" : b.dataset.qh; PAGE_RENDERERS.qa_hourly(); }));
+  // Export = reviewer × hour CSV (real)
+  document.getElementById("qhExportBtn").addEventListener("click", _qhExport);
+  // visual-only: range / wake / banner buttons
+  document.querySelectorAll("[data-qhnoop]").forEach(b=>b.addEventListener("click",()=>{}));
+
+  renderQaHeatmap();
   renderCompaniesHourlyGrid();
+  // Restore the detail panel in place if a reviewer was selected before this re-render.
+  if (STATE.sidePanelOpen && STATE.qhSelectedReviewer) renderQaReviewerDetail();
 };
 
-function renderQaHourlyGrid() {
-  const date = STATE.v2?.date || "—";
-  const qaHourly = STATE.v2?.qa_hourly || {};
-  // Empty-state lives here now — the page renderer no longer early-returns,
-  // because it must still render the companies section below.
-  if (!qaHourly || Object.keys(qaHourly).length === 0) {
-    document.getElementById("qaHourlyGrid").innerHTML = `
-      <div class="empty-state">
-        <div class="title">No QA reviews recorded yet</div>
-        No QA set a record to approve/changed for <strong>${esc(date)}</strong> yet.
-      </div>`;
-    return;
-  }
-  const hours = Array.from({ length: 18 }, (_, i) => i + 6);  // 6..23
-  const names = Object.keys(qaHourly).sort((a, b) => a.localeCompare(b));
-
-  // First pass: gather rows so we can compute the global max for intensity scaling.
-  const rows = [];
-  let gridMax = 0;
-  for (const name of names) {
-    const buckets = qaHourly[name] || {};
-    const counts = hours.map(h => buckets[h] ?? buckets[String(h)] ?? 0);
-    // Total covers ALL 24 hours, not just the visible 6–23 columns. `outside` =
-    // reviews whose EAT hour falls outside that window — flagged with a * on the Total.
-    const total = Object.values(buckets).reduce((a, b) => a + b, 0);
-    const outside = total - counts.reduce((a, b) => a + b, 0);
-    gridMax = Math.max(gridMax, ...counts);
-    rows.push({ name, counts, total, outside });
-  }
-
-  const colSums = hours.map((_, i) => rows.reduce((s, r) => s + r.counts[i], 0));
-  const grand = rows.reduce((s, r) => s + r.total, 0);
-  const grandOutside = rows.reduce((s, r) => s + r.outside, 0);
-
-  const cellHtml = (v, h, scale) => {
-    if (v === 0) return `<div class="cell z" title="${h}:00 EAT">0</div>`;
-    const alpha = scale === 0 ? 0 : (0.2 + 0.8 * (v / scale)).toFixed(2);
-    return `<div class="cell" style="background:rgba(123,104,238,${alpha});" title="${h}:00 EAT → ${v}">${v}</div>`;
-  };
-  const headers = hours.map(h => `<div class="header">${h}</div>`).join("");
-
-  let html = "";
-  for (const r of rows) {
-    html += `<div class="label">${esc(r.name)}</div>`;
-    html += r.counts.map((v, i) => cellHtml(v, hours[i], gridMax)).join("");
-    const outTip = r.outside > 0 ? ` title="includes ${r.outside} review${r.outside === 1 ? "" : "s"} stamped outside 06:00–23:00 EAT"` : "";
-    html += `<div class="cell" style="background:var(--soft);color:var(--ink);font-weight:600;"${outTip}>${r.total}${r.outside > 0 ? "*" : ""}</div>`;
-  }
-  // Footer "All QAs" sum row
-  html += `<div class="hourly-spacer"></div>`;
-  html += `<div class="label" style="font-weight:600;">All QAs</div>`;
-  html += colSums.map((v, i) => {
-    if (v === 0) return `<div class="cell z" title="${hours[i]}:00 EAT total">0</div>`;
-    const colMax = Math.max(1, ...colSums);
-    const alpha = (0.2 + 0.8 * (v / colMax)).toFixed(2);
-    return `<div class="cell" style="background:rgba(14,165,108,${alpha});" title="${hours[i]}:00 EAT total → ${v}">${v}</div>`;
-  }).join("");
-  const grandTip = grandOutside > 0 ? ` title="includes ${grandOutside} review${grandOutside === 1 ? "" : "s"} stamped outside 06:00–23:00 EAT"` : "";
-  html += `<div class="cell" style="background:var(--accent);color:#fff;font-weight:600;"${grandTip}>${grand}${grandOutside > 0 ? "*" : ""}</div>`;
-
-  document.getElementById("qaHourlyGrid").innerHTML = `
-    <div class="hourly-heatmap" style="grid-template-columns: 180px repeat(${hours.length}, 1fr) 70px;">
-      <div class="header"></div>${headers}<div class="header">Total</div>
-      ${html}
-    </div>`;
+function _qhExport(){
+  const D=_qhCompute();
+  const cell=(v)=>`"${String(v??"").replace(/"/g,'""')}"`;
+  const header=["Reviewer", ...D.hours.map(h=>String(h).padStart(2,'0')+":00"), "Today","P50_hours","Approval_pct"];
+  const lines=[header.join(",")];
+  for(const r of D.reviewers){ lines.push([cell(r.name), ...r.counts, r.today, r.medHrs??"", r.approvalPct??""].join(",")); }
+  const blob=new Blob([lines.join("\n")],{type:"text/csv"}); const a=document.createElement("a"); a.href=URL.createObjectURL(blob); a.download=`qa-hourly-${STATE.v2?.date||"today"}.csv`; a.click(); URL.revokeObjectURL(a.href);
 }
 
-// Companies-created-per-hour heatmap — clone of renderQaHourlyGrid: reads
-// STATE.v2.companies_hourly, writes #companiesHourlyGrid, "All creators" footer.
+function renderQaHeatmap(){
+  const host=document.getElementById("qhHeatmap"); if(!host) return;
+  const D=_qhCompute();
+  if(!D.reviewers.length){
+    host.innerHTML = `<div class="empty-state"><div class="title">No QA reviews recorded yet</div>No QA set a record to approve/changed for <strong>${esc(D.v2?.date||"—")}</strong> yet.</div>`;
+    return;
+  }
+  const view = STATE.qhFilters?.view || "all";
+  let rows = D.reviewers;
+  if(view==="idle") rows = D.reviewers.filter(r=>r.idle);
+  else if(view==="active") rows = D.reviewers.filter(r=>r.active);
+  if(!rows.length) rows = D.reviewers;   // never show a fully-empty grid
+  const gridMax = Math.max(1,...D.reviewers.flatMap(r=>r.counts));
+  const cols = D.hours.length;
+  const gtc = `grid-template-columns:170px repeat(${cols},1fr) 60px;`;
+  const colHead = D.hours.map(h=>`<div class="qh-colhead${D.peakIdx>=0 && D.hours[D.peakIdx]===h?' pk':''}">${String(h).padStart(2,'0')}</div>`).join("");
+
+  const cellFor=(r,i)=>{
+    const h=D.hours[i], v=r.counts[i];
+    const future = D.currentHour!=null && h>D.currentHour;
+    const peak = i===D.peakIdx;
+    const idleCell = r.idle && D.currentHour!=null && h===D.currentHour && v===0;
+    let cls="qh-cell", style="";
+    if(future){ cls+=" future"; }
+    else if(v===0){ cls+=" z"; }
+    else { const a=(0.18+0.82*(v/gridMax)).toFixed(2); style=`background:rgba(${QH_RGB[r.idx%QH_RGB.length]},${a});`; }
+    if(peak && !future) cls+=" peak";
+    if(idleCell) cls+=" idle";
+    const label = future? "" : v;
+    return `<div class="${cls}" style="${style}" title="${esc(r.name)} · ${h}:00 EAT → ${future?'future':v}">${label}</div>`;
+  };
+
+  let html = `<div class="qh-hm-head" style="${gtc}"><div></div>${colHead}<div class="qh-colhead">Σ</div></div>`;
+  for(const r of rows){
+    const sel = STATE.qhSelectedReviewer===r.name ? " sel" : "";
+    const dotA = r.active?1:0.4;
+    html += `<div class="qh-hrow${sel}" data-rv="${esc(r.name)}" style="${gtc}" title="Open ${esc(r.name)} detail">
+      <div class="qh-rowhead"><span class="qh-dot" style="background:rgba(${QH_RGB[r.idx%QH_RGB.length]},${dotA})"></span><span class="nm">${esc(r.name)}</span>${r.idle?'<span class="qh-tag idle">idle</span>':(r.active?'<span class="qh-tag on">●</span>':'')}</div>
+      ${r.counts.map((_,i)=>cellFor(r,i)).join("")}
+      <div class="qh-cell tot"${r.outside>0?` title="+${r.outside} outside 06–23"`:""}>${r.today}${r.outside>0?'*':''}</div></div>`;
+  }
+  // hour-total row + inline per-hour bar line with peak marker
+  const colMax = Math.max(1,...D.colSums);
+  html += `<div class="qh-hm-head qh-totrow" style="${gtc}"><div class="qh-rowhead"><span class="nm" style="font-weight:700">Hour total</span></div>${D.colSums.map((v,i)=>`<div class="qh-tcell${i===D.peakIdx?' pk':''}" title="${D.hours[i]}:00 → ${v}"><span class="qh-tbar" style="height:${Math.max(6,Math.round(v/colMax*100))}%"></span><span class="qh-tnum">${v}</span></div>`).join("")}<div class="qh-cell tot" style="background:var(--accent);color:#fff">${D.colSums.reduce((a,b)=>a+b,0)}</div></div>`;
+
+  host.innerHTML = `<div class="qh-hm">${html}</div>
+    <div class="qh-legend"><span>Reviews/hr</span><span class="qh-ramp"></span><span>0 → ${gridMax}+</span><span class="qh-legdot peak"></span>peak hour<span class="qh-legdot idle"></span>idle<span class="qh-legdot future"></span>future</div>`;
+
+  host.querySelectorAll(".qh-hrow[data-rv]").forEach(row=>row.addEventListener("click",()=>{ STATE.qhSelectedReviewer=row.dataset.rv; renderQaReviewerDetail(); renderQaHeatmap(); }));
+}
+
+function renderQaReviewerDetail(){
+  const cont=document.getElementById("sidePanelBody"); if(!cont) return;
+  const D=_qhCompute();
+  const r=D.reviewers.find(x=>x.name===STATE.qhSelectedReviewer);
+  if(!r){ STATE.qhSelectedReviewer=null; _hideSidePanel(); return; }
+  const rank=r.idx+1, rgb=QH_RGB[r.idx%QH_RGB.length];
+
+  // (a) hour-by-hour bars (total reviews/hour — per-decision-per-hour not tracked)
+  const maxc=Math.max(1,...r.counts);
+  const hb=D.hours.map((h,i)=>{ const v=r.counts[i]; const future=D.currentHour!=null && h>D.currentHour; return `<div class="qh-hbar" title="${h}:00 → ${future?'future':v}"><span class="qh-hbar-fill${future?' future':''}" style="height:${v===0?2:Math.max(6,Math.round(v/maxc*100))}%;background:rgba(${rgb},${v===0?0.12:0.85})"></span><span class="qh-hbar-h">${String(h).padStart(2,'0')}</span></div>`; }).join("");
+  const rPeakIdx=r.counts.indexOf(Math.max(...r.counts)); const rPeakH=r.counts[rPeakIdx]>0?D.hours[rPeakIdx]:null;
+
+  // (b) decisions today donut (approve/change from by_qa today; Return not a tracked QA status)
+  const insp=r.inspectedToday ?? r.today, chg=r.changedToday ?? 0, app=Math.max(0,insp-chg);
+  const appPct=insp?app/insp*100:0, chgPct=insp?chg/insp*100:0;
+  const donut=`conic-gradient(var(--good) 0deg ${(appPct*3.6).toFixed(1)}deg, var(--warn) ${(appPct*3.6).toFixed(1)}deg ${((appPct+chgPct)*3.6).toFixed(1)}deg, var(--soft) ${((appPct+chgPct)*3.6).toFixed(1)}deg 360deg)`;
+
+  // (c) reviews by source team — substitution: global by_team distribution (per-reviewer source not tracked)
+  const bt=D.v2.by_team || {};
+  const teamRows=Object.keys(bt).map(tm=>{ const c=(bt[tm].counts_by_qa_status||{}); return [tm,(c.approve||0)+(c.changed||0)]; }).filter(x=>x[1]>0).sort((a,b)=>b[1]-a[1]);
+  const teamMax=Math.max(1,...teamRows.map(x=>x[1]));
+  const teamHtml=teamRows.length? teamRows.map(([tm,n])=>`<div class="tl-prow"><span class="who" style="flex:0 0 70px">${esc(tm)}</span><span class="tl-barwrap"><span style="width:${(n/teamMax*100).toFixed(0)}%;background:${tlTeamHex(tm)}"></span></span><span class="ct">${n.toLocaleString()}</span></div>`).join("") : '<div class="small-mono">No team QA activity.</div>';
+
+  // cohort split — substitution: Sanctions vs Standard per reviewer (TOP/MID/BOT stratum not tracked)
+  const sanc=r.sancToday||0, nonSanc=r.nonSancToday||0, cohTot=Math.max(1,sanc+nonSanc);
+
+  const subtitle = `${r.active?'Active now':'Idle'} · #${rank} today · ${r.today.toLocaleString()} reviewed`;
+  cont.innerHTML = `
+    <div class="tl-drawer-card">
+      <div class="tl-dh">
+        <span class="task-avatar lg" style="background:rgba(${rgb},1)">${esc(tlInitials(r.name))}</span>
+        <div style="min-width:0">
+          <div class="nm">${esc(r.name)} <span class="pill-inline" style="background:var(--accent-soft);color:var(--accent);margin-left:4px">#${rank} today</span> ${r.active?'<span class="task-pill in-progress">Active now</span>':'<span class="task-pill bo-qa">Idle</span>'}</div>
+          <div class="meta">BO QA &middot; In queue <b>${r.backlog!=null?r.backlog.toLocaleString():"—"}</b> &middot; Today <b>${r.today.toLocaleString()}</b> reviewed &middot; P50 ${r.medHrs!=null?formatDuration(r.medHrs):"—"}/record &middot; Streak —</div>
+        </div>
+      </div>
+    </div>
+    <div class="tl-drow">
+      <div class="panel"><h3>Hour-by-hour <span class="meta">today${rPeakH!=null?` &middot; peak ${String(rPeakH).padStart(2,'0')}:00 (${r.counts[rPeakIdx]})`:""}</span></h3>
+        <div class="qh-hbars">${hb}</div>
+        <div class="tl-pfoot">Bars = total reviews per EAT hour. Per-decision (approve/change/return) per hour isn't tracked in <code>qa_hourly</code> — Change/Return shown only in the totals below.</div>
+      </div>
+      <div class="panel"><h3>Decisions <span class="meta">today &middot; ${insp.toLocaleString()}</span></h3>
+        <div class="tl-donut" style="background:${donut}"><div class="hole"><b>${insp.toLocaleString()}</b><span>today</span></div></div>
+        <div class="tl-legend">
+          <div class="li"><span class="d" style="background:var(--good)"></span>Approve<span class="ct">${app.toLocaleString()} &middot; ${appPct.toFixed(1)}%</span></div>
+          <div class="li"><span class="d" style="background:var(--warn)"></span>Change<span class="ct">${chg.toLocaleString()} &middot; ${chgPct.toFixed(1)}%</span></div>
+          <div class="li"><span class="d" style="background:var(--soft)"></span>Return<span class="ct">—</span></div>
+        </div>
+        <div class="tl-pfoot">Approve / Change from <code>by_qa</code> (today). "Return" isn't a tracked QA status (only approve / changed). Lifetime approval ${r.approvalPct!=null?r.approvalPct.toFixed(1)+"%":"—"}.</div>
+      </div>
+      <div class="panel"><h3>Reviews by source team <span class="meta">today &middot; ${teamRows.length} teams</span></h3>
+        ${teamHtml}
+        <div class="tl-pfoot">Global tagging-team QA distribution — per-reviewer source-team breakdown isn't emitted in <code>aggregates_v2</code>.</div>
+        <div class="qh-cohort">
+          <div class="qh-cohort-h">Cohort split &middot; this reviewer, today</div>
+          <div class="tl-prow"><span class="who" style="flex:0 0 90px">Sanctions</span><span class="tl-barwrap"><span style="width:${(sanc/cohTot*100).toFixed(0)}%;background:var(--bad)"></span></span><span class="ct">${sanc.toLocaleString()}</span></div>
+          <div class="tl-prow"><span class="who" style="flex:0 0 90px">Standard</span><span class="tl-barwrap"><span style="width:${(nonSanc/cohTot*100).toFixed(0)}%;background:var(--accent)"></span></span><span class="ct">${nonSanc.toLocaleString()}</span></div>
+          <div class="tl-pfoot" style="border:0;padding:6px 0 0">Substitutes TOP/MID/BOT stratum (not tracked). <code>add_new_company</code> is a global-only metric (${(D.v2.totals?.add_new_company_today??0).toLocaleString()} today), not per-reviewer.</div>
+        </div>
+      </div>
+    </div>`;
+
+  openSidePanel(r.name, subtitle);
+}
+
+// Companies-created-per-hour heatmap — reads STATE.v2.companies_hourly, writes
+// #companiesHourlyGrid, "All creators" footer. (Kept below the QA Vivid layer.)
 function renderCompaniesHourlyGrid() {
   const date = STATE.v2?.date || "—";
   const companiesHourly = STATE.v2?.companies_hourly || {};
@@ -5101,8 +5382,10 @@ function closeSidePanel(){
   _hideSidePanel();
   STATE.selectedTaskId = null;
   STATE.completedSelectedId = null;
+  STATE.qhSelectedReviewer = null;
   if(document.getElementById("tlList")) renderTasksList();
   if(document.getElementById("ctArchive")) renderCompletedArchive();
+  if(document.getElementById("qhHeatmap")) renderQaHeatmap();
 }
 let _sidePanelWired = false;
 function _wireSidePanel(){
