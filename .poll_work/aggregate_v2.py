@@ -55,7 +55,11 @@ QA_KEYS = {
     "qa_changed_today_non_sanctions",
     "tagged_today_sanctions",                 # cohort context for sampling %
     "tagged_today_non_sanctions",
-    "sampling_actual_pct",                    # combined 25% target (legacy)
+    # NOTE: sampling_actual_pct intentionally NOT in by_qa — at the QA grain its
+    # denominator (tagged_today within the reviewer's own already-reviewed slice)
+    # is circular (~0). The meaningful per-reviewer sampling % lives on
+    # qa_reviewers[].sampling_pct_today (team-based, yesterday cohort — PR #134).
+    # sampling_actual_pct stays on by_team where it's correct.
     "sampling_target_pct",
     "sampling_non_sanctions_pct",             # 15% target
     "sampling_target_non_sanctions_pct",
@@ -760,18 +764,63 @@ def _percentile_hours(values_hours, p):
     return round(s[lo] + (s[hi] - s[lo]) * (k - lo), 2)
 
 
-def compute_qa_reviewers(records):
+def compute_qa_reviewers(records, today_eat=None, qa_team_map=None):
     """Per-QA aggregations across all in-cache records.
 
     A 'review' = qa_assignee filled AND qa_status filled. Review time =
     qa_status_ts minus start_tagging_date in hours. Records with missing
     timestamps or negative deltas are dropped from the time calculation
     but still counted as reviews.
+
+    Per-reviewer sampling % (PR #134, team-based / yesterday cohort): each entry
+    also carries ``assigned_team`` / ``eligible_pool_today`` / ``reviews_today`` /
+    ``sampling_pct_today`` / ``sampling_target_pct``. The denominator is the
+    reviewer's team's *yesterday* tagged-into-BO-QA cohort — mirroring
+    ``bo_qa_coverage``'s next-day-review model (records reviewed today were
+    tagged yesterday). Experts (EXPERT_NAMES) get a cross-team sanctions cohort
+    (target 100%); team-QAs get the 25% floor. All five sampling fields are
+    ``None`` when ``today_eat`` isn't supplied (unit tests) or the reviewer has
+    no team mapping and isn't an expert — no fabrication, defensive nulls.
+    ``records`` is expected to be ``in_scope`` (team already stamped per record).
     """
+    qa_team_map = qa_team_map or {}
     by_qa = defaultdict(list)
     for info in records:
         if info.get("qa_assignee") and info.get("qa_status"):
             by_qa[info["qa_assignee"]].append(info)
+
+    # Sampling-% inputs: cohort denominators (yesterday, tagged-into-BO-QA) and
+    # strict today numerators (reviews stamped today, scoped to the reviewer's
+    # own cohort). Only computed when today_eat is known.
+    team_cohort = defaultdict(int)                          # team -> yesterday cohort size
+    sanctions_cohort = 0                                    # cross-team yesterday sanctions cohort
+    rev_today_team = defaultdict(lambda: defaultdict(int))  # qa_lower -> team -> reviews today
+    rev_today_sanc = defaultdict(int)                       # qa_lower -> sanctions reviews today
+    if today_eat is not None:
+        yesterday = today_eat - timedelta(days=1)
+        for r in records:
+            # Denominator: yesterday's tagged cohort that entered BO QA
+            # (verification == Selected for BO QA, or already has a qa_status) —
+            # identical entry rule to bo_qa_coverage.
+            if (_parse_eat_date(r.get("start_tagging")) == yesterday
+                    and (r.get("verification_status") == SELECTED_FOR_BO_QA or r.get("qa_status"))):
+                t = r.get("team")
+                if t:
+                    team_cohort[t] += 1
+                if is_sanctions(r.get("requested_by")):
+                    sanctions_cohort += 1
+            # Numerator: a verdict (approve/changed) stamped today (qa_status_ts
+            # in EAT), attributed to qa_assignee — same rule as compute_qa_today_all.
+            if r.get("qa_status") in ("approve", "changed"):
+                dt = _parse_iso(r.get("qa_status_ts"))
+                if dt and dt.astimezone(EAT).date() == today_eat:
+                    qa = (r.get("qa_assignee") or "").strip().lower()
+                    if qa:
+                        t = r.get("team")
+                        if t:
+                            rev_today_team[qa][t] += 1
+                        if is_sanctions(r.get("requested_by")):
+                            rev_today_sanc[qa] += 1
 
     out = []
     for name, recs in by_qa.items():
@@ -785,6 +834,28 @@ def compute_qa_reviewers(records):
             if t1 and t2 and t2 >= t1:
                 times_h.append((t2 - t1).total_seconds() / 3600.0)
         avg_h = round(sum(times_h) / len(times_h), 2) if times_h else 0.0
+
+        # --- Per-reviewer sampling % (PR #134) ---
+        key = name.strip().lower()
+        assigned_team = eligible_pool_today = reviews_today = None
+        sampling_pct_today = sampling_target_pct = None
+        if today_eat is None:
+            assigned_team = qa_team_map.get(key)            # team if known, else None
+        elif key in EXPERT_NAMES:
+            eligible_pool_today = sanctions_cohort
+            reviews_today = rev_today_sanc.get(key, 0)
+            sampling_pct_today = (round(reviews_today / eligible_pool_today * 100, 1)
+                                  if eligible_pool_today else None)
+            sampling_target_pct = 100.0                     # sanctions cohort = mandatory 100% QA
+        elif key in qa_team_map:
+            assigned_team = qa_team_map[key]
+            eligible_pool_today = team_cohort.get(assigned_team, 0)
+            reviews_today = rev_today_team.get(key, {}).get(assigned_team, 0)
+            sampling_pct_today = (round(reviews_today / eligible_pool_today * 100, 1)
+                                  if eligible_pool_today else None)
+            sampling_target_pct = SAMPLING_TARGET_PCT       # 25% floor
+        # else: no mapping and not an expert — leave all five None (defensive).
+
         out.append({
             "name": name,
             "reviews": n,
@@ -794,6 +865,12 @@ def compute_qa_reviewers(records):
             "avg_review_time_hours":    avg_h,
             "median_review_time_hours": _percentile_hours(times_h, 50),
             "p90_review_time_hours":    _percentile_hours(times_h, 90),
+            # PR #134 — per-reviewer sampling % (team-based, yesterday cohort)
+            "assigned_team":       assigned_team,
+            "eligible_pool_today": eligible_pool_today,
+            "reviews_today":       reviews_today,
+            "sampling_pct_today":  sampling_pct_today,
+            "sampling_target_pct": sampling_target_pct,
         })
     out.sort(key=lambda x: -x["reviews"])
     return out
@@ -1157,7 +1234,7 @@ def compute_expert_activity(records, today_eat):
     return {"experts": expert_list, "tasks": task_list}
 
 
-def aggregate(records, today_eat, ownership_assignees):
+def aggregate(records, today_eat, ownership_assignees, qa_team_map=None):
     """Build the aggregates_v2 block.
 
     Parameters
@@ -1227,7 +1304,7 @@ def aggregate(records, today_eat, ownership_assignees):
     totals["tasks_today_count"] = len(tasks_today)
 
     tasks_all = compute_task_breakdowns(records, today_eat, ownership_assignees)
-    qa_reviewers = compute_qa_reviewers(in_scope)
+    qa_reviewers = compute_qa_reviewers(in_scope, today_eat, qa_team_map)
     not_yet_finalized, nyf_truncated = compute_not_yet_finalized(in_scope, today_eat, ownership_assignees)
     qa_done_not_finalized = compute_qa_done_not_finalized(not_yet_finalized)
     add_new_company_records, anc_truncated = compute_add_new_company_records(in_scope, today_eat, ownership_assignees)
@@ -1408,6 +1485,28 @@ def _build_ownership_assignees(roster):
             out[canonical.strip().lower()] = {"team": team, "canonical": canonical}
             for alias in member.get("aliases", []):
                 out[alias.strip().lower()] = {"team": team, "canonical": canonical}
+    return out
+
+
+def _build_qa_team_map(roster):
+    """Map lowercased QA-reviewer name → team, from ``roster[team]["qa"]["name"]``.
+
+    Only the 5 team-assigned QAs appear. The 2 Ownership Experts (EXPERT_NAMES)
+    are deliberately absent — they review a cross-team sanctions cohort, not a
+    single team, so the per-reviewer sampling % handles them separately. Keys are
+    lowercased for case-insensitive matching against raw Airtable ``qa_assignee``
+    text, which (unlike the tagging ``assignee``) is never roster-canonicalized.
+    """
+    out = {}
+    for team, info in (roster or {}).items():
+        qa = info.get("qa") if isinstance(info, dict) else None
+        if not qa:
+            continue
+        name = (qa.get("name") if isinstance(qa, dict) else qa) or ""
+        key = name.strip().lower()
+        if not key or key in EXPERT_NAMES:
+            continue
+        out[key] = team
     return out
 
 
@@ -1849,11 +1948,13 @@ def _write_task_history(aggs):
 def main():
     here = Path(__file__).resolve().parent.parent
     work = here / ".poll_work"
-    ownership_assignees = _build_ownership_assignees(_load_roster(here))
+    roster = _load_roster(here)
+    ownership_assignees = _build_ownership_assignees(roster)
+    qa_team_map = _build_qa_team_map(roster)
 
     today_eat = datetime.now(EAT).date()
     records = _load_records(work)
-    aggs = aggregate(records, today_eat, ownership_assignees)
+    aggs = aggregate(records, today_eat, ownership_assignees, qa_team_map)
     aggs["companies_hourly"] = compute_companies_hourly(work, today_eat)
 
     # Per-table "set to Valid today" counts — records whose Valid Selected Time
