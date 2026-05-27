@@ -214,12 +214,16 @@ def _lead_time_today(records, today_eat):
     return out
 
 
-def compute_metrics(records, today_eat):
+def compute_metrics(records, today_eat, qa_exclude=None):
     """Compute the full metric block for a slice of records.
 
     ``today_eat`` is an EAT-local date — used to decide what counts as
     "today" for daily_intake, tagged_today, reminder_overdue, etc.
+    ``qa_exclude`` is a set of lowercased team-leader names whose QA verdicts
+    are NOT counted as QA activity (qa_inspected_today / qa_changed_today and
+    their sanctions splits / reject rate) — team leaders aren't QA reviewers.
     """
+    qa_exclude = qa_exclude or set()
     vs_counts = Counter()
     qa_counts = Counter()
     comment_counts = Counter({v: 0 for v in COMMENT_VALUES})
@@ -374,7 +378,9 @@ def compute_metrics(records, today_eat):
         # review model (a record tagged on day N is reviewed on N+1), "today's
         # reviews" means verdicts whose qa_status_ts is today — i.e. reviews of the
         # prior day's work. Deliberately a separate pass: independent of start_tagging.
-        if qs in ("approve", "changed") and _parse_eat_date(info.get("qa_status_ts")) == today_eat:
+        if (qs in ("approve", "changed")
+                and (info.get("qa_assignee") or "").strip().lower() not in qa_exclude
+                and _parse_eat_date(info.get("qa_status_ts")) == today_eat):
             san_rev = is_sanctions(info.get("requested_by"))
             qa_inspected_today += 1
             if san_rev: qa_inspected_today_sanctions += 1
@@ -764,7 +770,7 @@ def _percentile_hours(values_hours, p):
     return round(s[lo] + (s[hi] - s[lo]) * (k - lo), 2)
 
 
-def compute_qa_reviewers(records, today_eat=None, qa_team_map=None):
+def compute_qa_reviewers(records, today_eat=None, qa_team_map=None, qa_exclude=None):
     """Per-QA aggregations across all in-cache records.
 
     A 'review' = qa_assignee filled AND qa_status filled. Review time =
@@ -784,9 +790,12 @@ def compute_qa_reviewers(records, today_eat=None, qa_team_map=None):
     ``records`` is expected to be ``in_scope`` (team already stamped per record).
     """
     qa_team_map = qa_team_map or {}
+    qa_exclude = qa_exclude or set()
     by_qa = defaultdict(list)
     for info in records:
         if info.get("qa_assignee") and info.get("qa_status"):
+            if (info["qa_assignee"] or "").strip().lower() in qa_exclude:
+                continue   # team leaders aren't QA reviewers — drop from qa_reviewers[]
             by_qa[info["qa_assignee"]].append(info)
 
     # Sampling-% inputs: cohort denominators (yesterday, tagged-into-BO-QA) and
@@ -876,13 +885,15 @@ def compute_qa_reviewers(records, today_eat=None, qa_team_map=None):
     return out
 
 
-def compute_qa_hourly(records, today_eat):
+def compute_qa_hourly(records, today_eat, qa_exclude=None):
     """Per-QA hourly review counts for today. A review = a record whose
     qa_status is 'approve' or 'changed' and whose qa_status_ts (the dedicated
     last-modified-time field watching qa_status) lands on today (EAT). Bucketed
     by the EAT hour of qa_status_ts, attributed to qa_assignee. Run over the
     FULL record set (not in_scope) so the two Ownership Experts are included.
+    Team leaders in ``qa_exclude`` are dropped (not QA reviewers).
     Returns {qa_name: {hour:int -> count}}."""
+    qa_exclude = qa_exclude or set()
     out = {}
     for info in records:
         if info.get("qa_status") not in ("approve", "changed"):
@@ -894,21 +905,23 @@ def compute_qa_hourly(records, today_eat):
         if eat.date() != today_eat:
             continue
         qa = (info.get("qa_assignee") or "").strip()
-        if not qa:
+        if not qa or qa.lower() in qa_exclude:
             continue
         bucket = out.setdefault(qa, {})
         bucket[eat.hour] = bucket.get(eat.hour, 0) + 1
     return out
 
 
-def compute_qa_today_all(records, today_eat):
+def compute_qa_today_all(records, today_eat, qa_exclude=None):
     """All-QA count of today's QA verdicts — the all-inclusive companion to
     the ownership-team-scoped qa_inspected_today / qa_changed_today. Uses the
     IDENTICAL record-selection rule as compute_qa_hourly, so the BO QA Console
     headline always equals the QA Hourly Output grand total: a record counts
     when qa_status is 'approve' or 'changed', its qa_status_ts lands on today
     (EAT), and it has a qa_assignee. Run over the FULL record set so the two
-    Ownership Experts are included. Returns {'reviewed': int, 'changed': int}."""
+    Ownership Experts are included. Team leaders in ``qa_exclude`` are dropped
+    (not QA reviewers). Returns {'reviewed': int, 'changed': int}."""
+    qa_exclude = qa_exclude or set()
     reviewed = changed = 0
     for info in records:
         qs = info.get("qa_status")
@@ -919,7 +932,8 @@ def compute_qa_today_all(records, today_eat):
             continue
         if dt.astimezone(EAT).date() != today_eat:
             continue
-        if not (info.get("qa_assignee") or "").strip():
+        qa = (info.get("qa_assignee") or "").strip()
+        if not qa or qa.lower() in qa_exclude:
             continue
         reviewed += 1
         if qs == "changed":
@@ -1234,7 +1248,7 @@ def compute_expert_activity(records, today_eat):
     return {"experts": expert_list, "tasks": task_list}
 
 
-def aggregate(records, today_eat, ownership_assignees, qa_team_map=None):
+def aggregate(records, today_eat, ownership_assignees, qa_team_map=None, qa_exclude=None):
     """Build the aggregates_v2 block.
 
     Parameters
@@ -1252,6 +1266,7 @@ def aggregate(records, today_eat, ownership_assignees, qa_team_map=None):
         stamped onto each in-scope record's ``assignee`` field so that
         downstream grouping produces canonical keys.
     """
+    qa_exclude = qa_exclude or set()   # lowercased team-leader names — excluded from all QA aggregations
     # Normalize to {lowercase_key: {"team": ..., "canonical": ...}}. Accepts both
     # the rich shape and the legacy {name: team} shape (where canonical defaults
     # to the original key as-passed).
@@ -1298,13 +1313,13 @@ def aggregate(records, today_eat, ownership_assignees, qa_team_map=None):
         for name, n in task_counts.most_common()
     ]
 
-    totals = compute_metrics(in_scope, today_eat)
+    totals = compute_metrics(in_scope, today_eat, qa_exclude)
     totals["relations_support_intake_today"] = relations_support_intake_today
     totals["tasks_today"] = tasks_today
     totals["tasks_today_count"] = len(tasks_today)
 
     tasks_all = compute_task_breakdowns(records, today_eat, ownership_assignees)
-    qa_reviewers = compute_qa_reviewers(in_scope, today_eat, qa_team_map)
+    qa_reviewers = compute_qa_reviewers(in_scope, today_eat, qa_team_map, qa_exclude)
     not_yet_finalized, nyf_truncated = compute_not_yet_finalized(in_scope, today_eat, ownership_assignees)
     qa_done_not_finalized = compute_qa_done_not_finalized(not_yet_finalized)
     add_new_company_records, anc_truncated = compute_add_new_company_records(in_scope, today_eat, ownership_assignees)
@@ -1341,8 +1356,8 @@ def aggregate(records, today_eat, ownership_assignees, qa_team_map=None):
         "lead_time_today":            _lead_time_today(in_scope, today_eat),
         "tasks_all":                  tasks_all,
         "qa_reviewers":               qa_reviewers,
-        "qa_hourly":                  compute_qa_hourly(records, today_eat),
-        "qa_today_all":               compute_qa_today_all(records, today_eat),
+        "qa_hourly":                  compute_qa_hourly(records, today_eat, qa_exclude),
+        "qa_today_all":               compute_qa_today_all(records, today_eat, qa_exclude),
         "not_yet_finalized":          not_yet_finalized,
         "not_yet_finalized_truncated": nyf_truncated,
         "qa_done_not_finalized":      qa_done_not_finalized,
@@ -1356,12 +1371,14 @@ def aggregate(records, today_eat, ownership_assignees, qa_team_map=None):
         "ww_qa_review_records":           ww_qa_reviews,
         "ww_qa_review_records_truncated": ww_qa_reviews_trunc,
         "expert_activity":            expert_activity,
-        "by_team":  {k: compute_metrics(v, today_eat)
+        "by_team":  {k: compute_metrics(v, today_eat, qa_exclude)
                      for k, v in _group(in_scope, lambda r: r.get("team")).items()},
-        "by_agent": {k: compute_metrics(v, today_eat)
+        "by_agent": {k: compute_metrics(v, today_eat, qa_exclude)
                      for k, v in _group(in_scope, lambda r: r.get("assignee")).items()},
-        "by_qa":    {k: _slim(compute_metrics(v, today_eat), QA_KEYS)
-                     for k, v in _group(in_scope, lambda r: r.get("qa_assignee")).items()},
+        # Team leaders are dropped as a by_qa key entirely (they're not QA reviewers).
+        "by_qa":    {k: _slim(compute_metrics(v, today_eat, qa_exclude), QA_KEYS)
+                     for k, v in _group(in_scope, lambda r: r.get("qa_assignee")).items()
+                     if (k or "").strip().lower() not in qa_exclude},
         "by_ww_qa": {k: _slim(compute_metrics(v, today_eat), WW_QA_KEYS)
                      for k, v in _group(in_scope, lambda r: r.get("ww_qa_assignee")).items()},
     }
@@ -1517,6 +1534,27 @@ def _load_roster(here):
     if roster_path.exists():
         return json.loads(roster_path.read_text())["teams"]
     return json.loads((here / "ww_audit_log.json").read_text())["roster"]
+
+
+def _load_team_leaders(here):
+    """Lowercased team-leader names from config/roster.json's top-level
+    ``team_leaders`` array (entries are ``{"name": ...}``). Team leaders are NOT
+    QA reviewers — their qa_assignee verdicts are excluded from every QA
+    aggregation (qa_reviewers, qa_hourly, by_qa, qa_today_all, totals.qa_*).
+    Returns an empty set if the key/file is absent (back-compatible)."""
+    roster_path = here / "config" / "roster.json"
+    if not roster_path.exists():
+        return set()
+    try:
+        leaders = json.loads(roster_path.read_text()).get("team_leaders") or []
+    except Exception:
+        return set()
+    out = set()
+    for entry in leaders:
+        name = (entry.get("name") if isinstance(entry, dict) else entry) or ""
+        if name.strip():
+            out.add(name.strip().lower())
+    return out
 
 
 # ---------------------------------------------------------------------------
@@ -1951,10 +1989,11 @@ def main():
     roster = _load_roster(here)
     ownership_assignees = _build_ownership_assignees(roster)
     qa_team_map = _build_qa_team_map(roster)
+    qa_exclude = _load_team_leaders(here)
 
     today_eat = datetime.now(EAT).date()
     records = _load_records(work)
-    aggs = aggregate(records, today_eat, ownership_assignees, qa_team_map)
+    aggs = aggregate(records, today_eat, ownership_assignees, qa_team_map, qa_exclude)
     aggs["companies_hourly"] = compute_companies_hourly(work, today_eat)
 
     # Per-table "set to Valid today" counts — records whose Valid Selected Time
