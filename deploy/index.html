@@ -858,6 +858,73 @@
   .pl-quad .qv { font-size:24px; font-weight:800; color:var(--ink); font-variant-numeric:tabular-nums; line-height:1; margin-top:4px; }
   .pl-quad .qs { font-size:10.5px; color:var(--muted); margin-top:4px; }
 
+  /* ---- BO QA Console detail layer (Phase 14) ---------------------------- */
+  .bq-live { display:inline-flex; align-items:center; gap:5px; margin-left:8px; font-size:11px; color:var(--good); font-weight:600; }
+  .bq-live .dot { width:7px; height:7px; border-radius:50%; background:var(--good); }
+  .bq-chips { display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin-bottom:16px; }
+  .bq-chips .spacer { flex:1; }
+  .bq-chip { display:inline-flex; align-items:center; gap:6px; padding:6px 12px; border-radius:999px; background:var(--surface); border:1px solid var(--border); color:var(--ink); font-size:12.5px; cursor:pointer; font-family:inherit; transition:background .15s ease,color .15s ease,border-color .15s ease; }
+  .bq-chip:hover { background:var(--soft); }
+  .bq-chip.active { color:#fff; border-color:transparent; font-weight:600; }
+  .bq-chip .dot { width:8px; height:8px; border-radius:50%; flex-shrink:0; }
+  .bq-chip .ct { font-size:11px; padding:1px 7px; border-radius:999px; background:var(--soft); color:var(--muted); font-variant-numeric:tabular-nums; }
+  .bq-chip.active .ct { background:rgba(255,255,255,0.22); color:#fff; }
+  .bq-banner { display:flex; align-items:center; gap:12px; padding:12px 16px; border-radius:var(--radius-md); background:var(--warn-bg); border:1px solid color-mix(in srgb, var(--warn) 30%, transparent); margin-bottom:16px; font-size:13px; color:var(--ink); }
+  .bq-banner .ic { width:30px; height:30px; border-radius:8px; flex-shrink:0; display:inline-flex; align-items:center; justify-content:center; background:var(--warn); color:#fff; }
+  .bq-banner .bd { flex:1; min-width:0; } .bq-banner .bd b { color:var(--warn); } .bq-banner .acts { display:flex; gap:8px; flex-shrink:0; }
+  .bq-foot { font-size:11px; color:var(--muted); margin-top:6px; } .kpi.hero .bq-foot { color:rgba(255,255,255,0.72); }
+  .bq-sub { font-size:11.5px; color:var(--muted); margin-top:4px; } .kpi.hero .bq-sub { color:rgba(255,255,255,0.85); }
+  .bq-spark { display:block; width:100%; height:28px; margin-top:6px; }
+  .bq-section-head { display:flex; align-items:baseline; justify-content:space-between; gap:12px; margin:20px 2px 10px; }
+  .bq-section-head h2 { margin:0; font-size:15px; font-weight:700; color:var(--ink); } .bq-section-head h2 em { font-style:italic; font-family:Georgia,serif; color:var(--accent); font-weight:600; }
+  .bq-section-head .meta { font-size:11.5px; color:var(--muted); }
+  .bq-reviewers { display:grid; grid-template-columns:repeat(auto-fill,minmax(220px,1fr)); gap:12px; margin-bottom:16px; }
+  .bq-rvcard { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius-lg); padding:14px 16px; box-shadow:var(--shadow-sm); }
+  .bq-rvcard .top { display:flex; align-items:center; gap:9px; }
+  .bq-rvcard .nm { font-weight:600; color:var(--ink); font-size:13px; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .bq-rvcard .v { font-size:24px; font-weight:800; color:var(--ink); font-variant-numeric:tabular-nums; margin-top:8px; line-height:1; }
+  .bq-rvcard .l { font-size:9.5px; text-transform:uppercase; letter-spacing:0.04em; color:var(--muted); margin-top:2px; }
+  .bq-rvcard .sub { font-size:10.5px; color:var(--muted); margin-top:6px; }
+  .bq-badge { font-size:9px; font-weight:700; padding:2px 7px; border-radius:999px; margin-left:auto; white-space:nowrap; }
+  .bq-cohorts { display:grid; grid-template-columns:repeat(3,1fr); gap:12px; margin-bottom:14px; }
+  @media(max-width:900px){ .bq-cohorts { grid-template-columns:1fr; } }
+  .bq-cohort { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius-md); padding:12px 14px; box-shadow:var(--shadow-sm); }
+  .bq-cohort .l { font-size:10px; text-transform:uppercase; letter-spacing:0.04em; color:var(--muted); font-weight:700; }
+  .bq-cohort .v { font-size:22px; font-weight:700; color:var(--ink); font-variant-numeric:tabular-nums; margin-top:5px; line-height:1; }
+  .bq-cohort .sub { font-size:10.5px; color:var(--muted); margin-top:4px; }
+  .bq-mandatory { display:flex; align-items:center; gap:12px; padding:12px 16px; border-radius:var(--radius-md); background:var(--vivid-grad); color:#fff; margin-bottom:14px; }
+  .bq-mandatory .ic { width:30px; height:30px; border-radius:8px; flex-shrink:0; display:inline-flex; align-items:center; justify-content:center; background:rgba(255,255,255,0.2); }
+  .bq-mandatory .bd { flex:1; min-width:0; font-size:12.5px; } .bq-mandatory .bd b { font-weight:700; }
+  .bq-tabs { display:flex; align-items:center; gap:6px; flex-wrap:wrap; margin-bottom:10px; }
+  .bq-tabs button { padding:5px 11px; font-size:12px; font-family:inherit; color:var(--muted); background:transparent; border:1px solid var(--border); cursor:pointer; border-radius:999px; }
+  .bq-tabs button.active { background:var(--ink); color:#fff; border-color:var(--ink); font-weight:600; }
+  .bq-tabs button .ct { margin-left:5px; font-size:10.5px; padding:1px 6px; border-radius:999px; background:var(--soft); color:var(--muted); }
+  .bq-tabs button.active .ct { background:rgba(255,255,255,0.22); color:#fff; }
+  .bq-tabs .spacer { flex:1; }
+  .bq-tabs input { font-family:inherit; font-size:12px; padding:5px 10px; border:1px solid var(--border); background:var(--surface); border-radius:6px; color:var(--ink); }
+  .bq-row { display:grid; grid-template-columns:22px 84px 1fr 1.2fr minmax(140px,1.3fr) 70px; gap:10px; align-items:center; padding:9px 8px; border-bottom:1px solid var(--border); cursor:pointer; font-size:12px; transition:background .12s ease; }
+  .bq-row:hover { background:var(--soft); } .bq-row.selected { background:var(--accent-soft); }
+  .bq-row.head { font-size:10px; text-transform:uppercase; letter-spacing:0.04em; color:var(--muted); font-weight:700; cursor:default; } .bq-row.head:hover { background:transparent; }
+  .bq-row .imo { font-family:"Geist Mono",ui-monospace,Menlo,monospace; font-variant-numeric:tabular-nums; color:var(--ink); }
+  .bq-cob { min-width:0; } .bq-cob .nm { font-weight:600; color:var(--ink); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; } .bq-cob .s { font-size:10px; color:var(--muted); }
+  .bq-rolechip { font-size:10px; color:var(--muted); background:var(--soft); padding:1px 7px; border-radius:999px; white-space:nowrap; }
+  .bq-commentchip { font-size:10px; color:var(--ink); background:var(--soft); padding:2px 7px; border-radius:999px; max-width:130px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; display:inline-block; vertical-align:middle; }
+  .bq-agepill { font-size:10.5px; font-weight:700; padding:2px 8px; border-radius:999px; font-variant-numeric:tabular-nums; white-space:nowrap; }
+  .bq-cb { width:14px; height:14px; border-radius:3px; border:1.5px solid var(--border); display:inline-block; } .bq-row.selected .bq-cb { background:var(--accent); border-color:var(--accent); }
+  .bq-pag { display:flex; align-items:center; justify-content:space-between; gap:8px; margin-top:10px; font-size:11.5px; color:var(--muted); } .bq-pag .pages { display:flex; gap:4px; } .bq-pag .pages button { min-width:26px; padding:3px 7px; font-size:12px; font-family:inherit; border:1px solid var(--border); background:var(--surface); color:var(--ink); border-radius:6px; cursor:pointer; } .bq-pag .pages button.active { background:var(--ink); color:#fff; border-color:var(--ink); font-weight:600; } .bq-pag .pages button:disabled { opacity:0.4; cursor:default; }
+  .bq-selhead { font-size:11px; text-transform:uppercase; letter-spacing:0.05em; color:var(--muted); font-weight:700; margin:20px 2px 6px; } .bq-selhint { font-size:11px; color:var(--muted); font-weight:400; text-transform:none; letter-spacing:0; margin-left:6px; }
+  .bq-drawer-card { background:var(--surface); border:1px solid var(--border); border-top:3px solid var(--accent); border-radius:var(--radius-lg); padding:16px 18px; box-shadow:var(--shadow-sm); margin-bottom:14px; }
+  .bq-dh { display:flex; align-items:flex-start; gap:12px; } .bq-dh .ic { width:40px; height:40px; border-radius:10px; flex-shrink:0; display:inline-flex; align-items:center; justify-content:center; background:var(--vivid-grad); color:#fff; } .bq-dh .ic svg { width:19px; height:19px; } .bq-dh .nm { font-size:16px; font-weight:700; color:var(--ink); } .bq-dh .meta { font-size:11.5px; color:var(--muted); margin-top:4px; line-height:1.5; } .bq-dh .acts { margin-left:auto; display:flex; gap:8px; flex-shrink:0; }
+  .bq-drow { display:grid; grid-template-columns:repeat(3,1fr); gap:14px; margin-bottom:8px; } @media(max-width:1100px){ .bq-drow { grid-template-columns:1fr; } }
+  .bq-field { display:flex; justify-content:space-between; gap:10px; padding:5px 0; font-size:12px; border-bottom:1px solid var(--border); } .bq-field .k { color:var(--muted); text-transform:uppercase; font-size:10px; letter-spacing:0.04em; flex-shrink:0; } .bq-field .val { color:var(--ink); font-weight:600; text-align:right; word-break:break-word; } .bq-field .val.hl { color:var(--accent); }
+  .bq-trail { display:flex; flex-direction:column; gap:0; } .bq-trail .ev { display:flex; gap:10px; padding:7px 0; font-size:12px; border-bottom:1px solid var(--border); } .bq-trail .ev .d { width:8px; height:8px; border-radius:50%; margin-top:4px; flex-shrink:0; } .bq-trail .ev .tx { color:var(--ink); } .bq-trail .ev .tx .s { color:var(--muted); font-size:10.5px; }
+  .bq-3col { display:grid; grid-template-columns:1.3fr 1fr 1.3fr; gap:14px; margin-bottom:14px; } @media(max-width:1100px){ .bq-3col { grid-template-columns:1fr; } }
+  .bq-donut { width:124px; height:124px; border-radius:50%; margin:8px auto; position:relative; } .bq-donut .hole { position:absolute; inset:24px; background:var(--surface); border-radius:50%; display:flex; flex-direction:column; align-items:center; justify-content:center; } .bq-donut .hole b { font-size:17px; color:var(--ink); font-variant-numeric:tabular-nums; line-height:1; } .bq-donut .hole span { font-size:9px; text-transform:uppercase; letter-spacing:0.04em; color:var(--muted); margin-top:2px; }
+  .bq-legend { display:flex; flex-direction:column; gap:4px; font-size:11px; margin-top:8px; } .bq-legend .li { display:flex; align-items:center; gap:7px; } .bq-legend .li .d { width:8px; height:8px; border-radius:2px; flex-shrink:0; } .bq-legend .li .nm { min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; } .bq-legend .li .ct { margin-left:auto; font-variant-numeric:tabular-nums; color:var(--ink); font-weight:600; }
+  .bq-sanc-row { display:grid; grid-template-columns:1.6fr 0.7fr 0.9fr 0.9fr; gap:10px; align-items:center; padding:7px 0; border-bottom:1px solid var(--border); font-size:12px; } .bq-sanc-row.head { font-size:10px; text-transform:uppercase; letter-spacing:0.04em; color:var(--muted); font-weight:700; }
+  .bq-pfoot { margin-top:10px; padding-top:10px; border-top:1px solid var(--border); font-size:11px; color:var(--muted); line-height:1.5; } .bq-pfoot .num { color:var(--ink); font-weight:600; }
+  .bq-hbars { display:flex; align-items:flex-end; gap:3px; height:90px; margin-top:6px; } .bq-hbars .hb { flex:1; display:flex; flex-direction:column; justify-content:flex-end; height:100%; } .bq-hbars .hb .bar { width:100%; background:var(--accent); border-radius:2px 2px 0 0; min-height:2px; } .bq-hbars .hb .lab { font-size:8px; color:var(--muted); text-align:center; margin-top:2px; }
+
   /* Tasks page */
   .sortable th { cursor: pointer; user-select: none; }
   .sortable th:hover { background: #e9ebf0; }
@@ -3478,208 +3545,280 @@ PAGE_RENDERERS.qa_performance = function () {
 
 // -------- BO QA Console --------
 PAGE_RENDERERS.boqa = function () {
-  const root = document.getElementById("page-boqa");
-  const t = STATE.v2?.totals;
-  if (!t) { root.innerHTML = noDataHtml("aggregates_v2 not in daily_aggregates.json — run aggregate_v2.py"); return; }
-  // Yesterday-cohort coverage. BO QA reviews the prior day's tagged work, so coverage
-  // is measured against yesterday's cohort. Guarded — absent on snapshots predating it.
-  const cov = STATE.v2?.bo_qa_coverage;
-  let covPanel = "";
-  if (cov && typeof cov.cohort === "number") {
-    const pct = cov.cohort > 0 ? Math.round((cov.reviewed / cov.cohort) * 100) : 0;
-    const cls = pct >= 90 ? "good" : pct >= 60 ? "warn" : "bad";
-    covPanel = `
-    <div class="panel">
-      <h3>BO QA coverage <span class="meta">next-day review — yesterday's cohort</span></h3>
-      <div>Yesterday (<strong>${esc(cov.date)}</strong>): <strong>${cov.cohort}</strong> records went to BO QA → <strong>${cov.reviewed}</strong> reviewed → <span class="pill-inline ${cls}">${pct}% covered</span></div>
-      <div class="footer-note">A record tagged on day N is reviewed on day N+1, so coverage tracks how much of yesterday's work has been reviewed.</div>
-    </div>`;
-  }
-  // CONSIST-1: headline "Today's reviews/changes" use the all-inclusive count
-  // (all QAs incl. the Ownership Experts) so this card ties out with the QA
-  // Hourly Output grand total. Falls back to the ownership-team-scoped totals
-  // for snapshots saved before qa_today_all existed.
-  const qaToday = STATE.v2?.qa_today_all;
-  const reviews = (qaToday?.reviewed ?? t.qa_inspected_today) || 0;
-  const changes = (qaToday?.changed ?? t.qa_changed_today) || 0;
-  const rejectToday = reviews > 0 ? (changes / reviews * 100) : null;
-  root.innerHTML = `
-    <div class="kpis">
-      <div class="kpi"><div class="label">Today's reviews</div><div class="value">${reviews}</div><div class="delta">verdicts set today · all QAs incl. experts</div></div>
-      <div class="kpi"><div class="label">Today's changes</div><div class="value">${changes}</div><div class="delta">QA bounced back</div></div>
-      <div class="kpi"><div class="label">Today's reject rate</div><div class="value">${rejectToday == null ? "—" : rejectToday.toFixed(1) + "%"}</div><div class="delta">changes ÷ reviews</div></div>
-      <div class="kpi"><div class="label">BO QA backlog</div><div class="value">${t.bo_qa_backlog || 0}</div></div>
-    </div>
-    ${covPanel}
-    <div class="panel">
-      <h3>Team QA scoreboard <span class="meta">last 7 days · best first (lowest reject rate)</span></h3>
-      <div id="boqaTeamScore"><div class="empty"><span class="spinning-icon">↻</span> Loading 7-day window…</div></div>
-    </div>
-    <div class="panel">
-      <h3>Agent error leaderboard <span class="meta">last 7 days · worst first · min 10 reviews</span></h3>
-      <div class="case-scroll" id="boqaAgentLeader"><div class="empty"><span class="spinning-icon">↻</span> Loading…</div></div>
-    </div>
-    <div class="panel">
-      <h3>7-day reject-rate heatmap <span class="meta">by team · higher reject rate = redder</span></h3>
-      <div id="boqaRejectHeatmap"><div class="empty"><span class="spinning-icon">↻</span> Loading…</div></div>
-    </div>
-    <div class="panel">
-      <h3>Per-reviewer BO QA load <span class="meta">assigned vs reviewed today</span></h3>
-      <div id="boqaReviewerLoad"></div>
-      <div class="footer-note">Coverage % = reviewed today / assigned. Sustained low coverage on heavily-assigned reviewers = bottleneck.</div>
-    </div>
-      <div id="boqaBacklogTeam"></div>
-      <div id="boqaBacklogQa"></div>
-      <div id="boqaTurnaround"></div>
-  `;
-  renderQaReviewerLoad();
-  renderBoqa7Day();  // async — fills the team scoreboard, agent leaderboard and heatmap
-  renderQaBacklogSla();   // async — fills the backlog + turnaround panels
+  if (!STATE.bqFilters) STATE.bqFilters = { team:"__all__", cohort:null, today:false };
+  if (!STATE.bqTab) STATE.bqTab = "pending";
+  if (STATE.bqSelectedImo === undefined) STATE.bqSelectedImo = null;
+  if (!STATE.bqPage) STATE.bqPage = 1;
+  if (STATE.bqSearch === undefined) STATE.bqSearch = "";
+  _renderBoqaPage();
 };
 
-// 7-day QA window: sum qa_inspected_today / qa_changed_today (reviews are bucketed
-// by review date — PR #54 — so summing review-day counts across the window is the
-// right rolling lens) across the viewed date + 6 prior days. The viewed date's data
-// is STATE.v2; the 6 prior come from snapshots/<date>.json (same approach as the
-// Case Scenarios 7-day heatmap). Fills the team scoreboard, agent leaderboard and
-// reject-rate heatmap. Fully snapshot-based — works in browser mode, no Cowork.
-// ---- Stale assigned-task detection (PR #67) ----
-// "Stale" = an assigned task whose waiting-record count has NOT decreased since
-// the most recent snapshot that is >=24h older than the data on screen. The
-// dashboard's own daily snapshots are the trusted clock; there is no reliable
-// per-record "assigned at" timestamp in the source data. Going-forward only:
-// it can see no further back than snapshot history exists.
-async function computeStaleTasks() {
-  STATE.staleTaskNames = new Set();
-  STATE.staleCompareDate = null;
-  const v2 = STATE.v2;
-  if (!v2 || !Array.isArray(v2.tasks_all) || !v2.date) return;
-  const anchorIso = v2.computed_at || (v2.date + "T23:59:59Z");
-  const anchorMs = new Date(anchorIso).getTime();
-  if (isNaN(anchorMs)) return;
-  const anchorDate = new Date(v2.date.slice(0, 10) + "T00:00:00Z");
-  // Walk back day by day; take the first snapshot whose computed_at is at
-  // least 24h before the anchor.
-  let cmp = null;
-  for (let back = 1; back <= 10; back++) {
-    const d = new Date(anchorDate.getTime() - back * 86400000);
-    const ds = d.toISOString().slice(0, 10);
-    const snap = await readJson(`snapshots/${ds}.json`);
-    if (!snap) continue;
-    const snapMs = new Date(snap.computed_at || (ds + "T23:59:59Z")).getTime();
-    if (!isNaN(snapMs) && anchorMs - snapMs >= 24 * 3600 * 1000) {
-      cmp = { ds, snap };
-      break;
-    }
-  }
-  if (!cmp) return;   // not enough snapshot history yet
-  STATE.staleCompareDate = cmp.ds;
-  const prevWaiting = {};
-  for (const pt of (cmp.snap.tasks_all || [])) {
-    prevWaiting[pt.name] = (pt.status_distribution && pt.status_distribution.waiting) || 0;
-  }
-  for (const t of v2.tasks_all) {
-    const nowWaiting = (t.status_distribution && t.status_distribution.waiting) || 0;
-    const assigned = Array.isArray(t.agents_worked) && t.agents_worked.length > 0;
-    const wasWaiting = prevWaiting[t.name] || 0;
-    // Idempotent: strip any prior stale-24h flag before re-deciding (this
-    // function re-runs whenever the viewed snapshot changes).
-    if (Array.isArray(t.flags)) {
-      t.flags = t.flags.filter(f => f !== "stale-24h");
-    }
-    if (assigned && nowWaiting > 0 && wasWaiting > 0 && nowWaiting >= wasWaiting) {
-      STATE.staleTaskNames.add(t.name);
-      if (Array.isArray(t.flags)) t.flags.push("stale-24h");
-    }
-  }
+// ===== BO QA Console detail layer (Phase 14) =====
+// Worklist = the per-record case arrays (add_new_company / case_company_gap /
+// case_no_imo) — the general bo_qa_backlog count isn't enumerated per record.
+// qa_today_all is an aggregate {reviewed,changed} (no per-reviewer split), so
+// per-reviewer stats come from qa_reviewers (all-time, with review times).
+// qa_hourly is empty early in the day → hourly panel shows an empty state.
+function bqInitials(n){ return String(n||"").split(/\s+/).filter(Boolean).map(p=>p[0].toUpperCase()).slice(0,2).join("")||"··"; }
+function bqTeamHex(tm){ return (TEAM_COLORS[tm]||{}).hex || "#7B68EE"; }
+function bqAgePill(d){ d=d||0; let bg,fg; if(d<=0){bg="var(--good-bg)";fg="var(--good)";} else if(d===1){bg="rgba(6,145,181,0.13)";fg="#0691B5";} else if(d<=3){bg="var(--warn-bg)";fg="var(--warn)";} else {bg="var(--bad-bg)";fg="var(--bad)";} return `<span class="bq-agepill" style="background:${bg};color:${fg}">${d}d</span>`; }
+function _bqRecords(){
+  const out=[];
+  for(const r of (STATE.v2?.add_new_company_records||[])) out.push(Object.assign({},r,{cohort:"add",company:r.add_new_company||null,comment:null}));
+  for(const r of (STATE.v2?.case_company_gap_records||[])) out.push(Object.assign({},r,{cohort:"gap",company:null,role:null}));
+  for(const r of (STATE.v2?.case_no_imo_records||[])) out.push(Object.assign({},r,{cohort:"noimo",company:null,role:null}));
+  return out;
+}
+function _bqStatus(r){
+  if(r.qa_status==="approve"||r.verification_status==="Valid") return "approved";
+  if(r.verification_status==="need to be update") return r.qa_assignee?"returned":"changed";
+  return "pending";
+}
+function _bqFiltered(){
+  const f=STATE.bqFilters||{}; let out=_bqRecords();
+  if(f.team&&f.team!=="__all__") out=out.filter(r=>r.team===f.team);
+  if(f.cohort) out=out.filter(r=>r.cohort===f.cohort);
+  if(f.today) out=out.filter(r=>(r.days_open||0)===0);
+  if(STATE.bqSearch){ const q=STATE.bqSearch.toLowerCase(); out=out.filter(r=>String(r.imo||"").includes(q)||String(r.company||"").toLowerCase().includes(q)||String(r.assignee||"").toLowerCase().includes(q)||String(r.comment||"").toLowerCase().includes(q)); }
+  return out;
+}
+function bqComments(){ const cd={}; for(const x of (STATE.v2?.tasks_all||[])){ for(const [k,n] of Object.entries(x.comment_distribution||{})){ if(k==="(no comment)") continue; cd[k]=(cd[k]||0)+n; } } return Object.entries(cd).filter(([,n])=>n>0).sort((a,b)=>b[1]-a[1]); }
+
+function _renderBoqaPage(){
+  const root=document.getElementById("page-boqa");
+  const v2=STATE.v2||{}, t=v2.totals||{};
+  if(!t || !v2.tasks_all){ root.innerHTML=noDataHtml("aggregates_v2 not in daily_aggregates.json — run aggregate_v2.py"); return; }
+  const f=STATE.bqFilters;
+  const recs=_bqRecords();
+  const reviewers=(v2.qa_reviewers||[]).slice().sort((a,b)=>(b.reviews||0)-(a.reviews||0));
+  const qaToday=v2.qa_today_all||{reviewed:0,changed:0};
+  const reviewedToday=qaToday.reviewed||0, changedToday=qaToday.changed||0;
+  const backlog=t.bo_qa_backlog||0;
+  const validToday=(t.valid_today_support||0)+(t.valid_today_io||0);
+  // all-time reviewer aggregates
+  const totReviews=reviewers.reduce((s,r)=>s+(r.reviews||0),0);
+  const totChanges=reviewers.reduce((s,r)=>s+(r.changes||0),0);
+  const allTimeReject=totReviews>0?totChanges/totReviews*100:null;
+  const medReviewTime=reviewers.length?median(reviewers.map(r=>r.median_review_time_hours).filter(x=>x!=null)):null;
+  const coverageProxy=(reviewedToday+validToday)>0?reviewedToday/(reviewedToday+validToday)*100:null;
+  const rejectToday=reviewedToday>0?changedToday/reviewedToday*100:null;
+  // cohorts
+  const ancAll=STATE.v2?.add_new_company_records||[];
+  const cohorts={add:ancAll.length,gap:(STATE.v2?.case_company_gap_records||[]).length,noimo:(STATE.v2?.case_no_imo_records||[]).length};
+  const ancApproved=ancAll.filter(r=>_bqStatus(r)==="approved").length, ancPending=ancAll.length-ancApproved;
+  const todayN=recs.filter(r=>(r.days_open||0)===0).length;
+
+  // 14d backlog-trend (from completedTasks if present) for the banner; else skip
+  const refAge=ageHours(v2.computed_at);
+  const refLabel=refAge==null?"freshness unknown":refAge<1?`Refreshed ${Math.max(1,Math.round(refAge*60))} min ago`:refAge<24?`Refreshed ${Math.round(refAge)}h ago`:`Refreshed ${Math.round(refAge/24)}d ago`;
+  const nowEat=(v2.computed_at?new Date(v2.computed_at):new Date()).toLocaleString("en-GB",{timeZone:"Africa/Nairobi",weekday:"long",day:"2-digit",month:"short",year:"numeric",hour:"2-digit",minute:"2-digit"});
+
+  // banner: today's reviewed well below all-time daily pace, or big backlog (real, no fabrication)
+  const ct=STATE.completedTasks; let banner="";
+  // proxy 14d daily review avg from reviewers all-time isn't a daily series; use a simple real trigger:
+  // fire if there is a real backlog AND nothing reviewed today yet.
+  if(backlog>0 && reviewedToday===0){ banner=`<div class="bq-banner"><span class="ic">${KPI_ICONS.alert}</span><div class="bd">Backlog standing at <b>${backlog.toLocaleString()}</b> records selected for BO QA, with <b>0</b> reviewed so far today.</div><div class="acts"><button class="btn" data-bqnoop="see">See worklist</button><button class="btn btn-primary" data-bqnoop="strat">Auto-stratify</button></div></div>`; }
+
+  const teamKeys=Object.keys(STATE.roster||{}).sort();
+  const teamCount=(tm)=>recs.filter(r=>r.team===tm).length;
+  const chip=(id,label,count,active,hex)=>`<button class="bq-chip${active?" active":""}" data-bq="${id}"${active&&hex?` style="background:${hex}"`:""}>${hex?`<span class="dot" style="background:${active?"#fff":hex}"></span>`:""}<span>${esc(label)}</span><span class="ct">${count}</span></button>`;
+  const chipsHtml=`<div class="bq-chips" id="bqChips">
+    ${chip("__all__","All teams",recs.length,f.team==="__all__",null)}
+    ${teamKeys.map(tm=>chip(tm,tm,teamCount(tm),f.team===tm,bqTeamHex(tm))).join("")}
+    <span class="spacer"></span>
+    <button class="bq-chip${f.cohort==="add"?" active":""}" data-bq="__add"${f.cohort==="add"?' style="background:var(--accent)"':""}>🏢 Add-new-company <span class="ct">${cohorts.add}</span></button>
+    <button class="bq-chip${f.cohort==="noimo"?" active":""}" data-bq="__noimo"${f.cohort==="noimo"?' style="background:var(--bad)"':""}>🔍 No-IMO <span class="ct">${cohorts.noimo}</span></button>
+    <button class="bq-chip${f.today?" active":""}" data-bq="__today"${f.today?' style="background:var(--good)"':""}>🆕 Today <span class="ct">${todayN}</span></button>
+  </div>`;
+
+  const reviewerBadge=(p)=> p>=98?`<span class="bq-badge" style="background:var(--good-bg);color:var(--good)">${p.toFixed(0)}% appr</span>`:p>=90?`<span class="bq-badge" style="background:rgba(6,145,181,0.13);color:#0691B5">${p.toFixed(0)}% appr</span>`:`<span class="bq-badge" style="background:var(--warn-bg);color:var(--warn)">${p.toFixed(0)}% appr</span>`;
+  const reviewerCards=reviewers.map(r=>`<div class="bq-rvcard"><div class="top"><span class="task-avatar" style="background:var(--accent)">${esc(bqInitials(r.name))}</span><span class="nm">${esc(r.name)}</span>${reviewerBadge(r.approval_pct||0)}</div><div class="v">${(r.reviews||0).toLocaleString()}</div><div class="l">Reviews · all-time</div><div class="sub">${(r.changes||0)} changed · median ${r.median_review_time_hours!=null?r.median_review_time_hours.toFixed(1)+"h":"—"} · p90 ${r.p90_review_time_hours!=null?r.p90_review_time_hours.toFixed(1)+"h":"—"}</div></div>`).join("")||'<div class="empty" style="padding:14px">No QA reviewer history recorded.</div>';
+
+  root.innerHTML=`
+    <div class="page-head">
+      <div>
+        <div class="page-eyebrow">Quality · sampling · ${esc(nowEat)} EAT<span class="bq-live"><span class="dot"></span>Live &middot; ${esc(refLabel)}</span></div>
+        <h1 class="page-title">BO QA <em>console</em></h1>
+        <div class="page-subtitle">
+          <span class="num">${backlog.toLocaleString()}</span> awaiting review
+          <span class="dot-sep">&middot;</span><span class="num">${reviewedToday}</span> reviewed today
+          <span class="dot-sep">&middot;</span><span class="num">${t.add_new_company_open||0}</span> add-new-company need 100% QA
+          <span class="dot-sep">&middot;</span><span class="num">${reviewers.length}</span> reviewers
+        </div>
+      </div>
+      <div class="page-head-actions">
+        <button class="btn" id="bqTodayBtn">📅 Today</button>
+        <button class="btn" id="bqExportBtn">Export queue</button>
+        <button class="btn btn-primary" id="bqStratBtn">⚡ Auto-stratify</button>
+      </div>
+    </div>
+    ${banner}
+    ${chipsHtml}
+    <div class="kpis kpis-overview-hero">
+      <div class="kpi hero">
+        <div class="kpi-top"><div class="label">In queue · selected for BO QA</div><span class="kpi-icon">${KPI_ICONS.inbox}</span></div>
+        <div class="value-row"><span class="value">${backlog.toLocaleString()}</span><span class="kpi-dod">WoW —</span></div>
+        <div class="bq-foot">awaiting review · backlog trend needs snapshots —</div>
+      </div>
+      <div class="kpi k-cyan">
+        <div class="kpi-top"><div class="label">Inspected today</div><span class="kpi-icon">${KPI_ICONS.check}</span></div>
+        <div class="value-row"><span class="value">${reviewedToday.toLocaleString()}</span><span class="kpi-dod-light">DoD —</span></div>
+        <div class="bq-foot">${reviewers.length} reviewers · median review ${medReviewTime!=null?medReviewTime.toFixed(1)+"h":"—"}</div>
+      </div>
+      <div class="kpi k-green">
+        <div class="kpi-top"><div class="label">Coverage proxy</div><span class="kpi-icon">${KPI_ICONS.percent}</span></div>
+        <div class="value-row"><span class="value">${coverageProxy!=null?coverageProxy.toFixed(1)+"%":"—"}</span></div>
+        <div class="kpi-bar"><span class="fill green" style="width:${Math.min(100,coverageProxy||0).toFixed(0)}%"></span></div>
+        <div class="bq-foot">${reviewedToday} reviewed of ${reviewedToday+validToday} (reviewed+valid) today</div>
+      </div>
+      <div class="kpi k-red">
+        <div class="kpi-top"><div class="label">Reject rate</div><span class="kpi-icon">${KPI_ICONS.octagon}</span></div>
+        <div class="value-row"><span class="value">${rejectToday!=null?rejectToday.toFixed(1)+"%":(allTimeReject!=null?allTimeReject.toFixed(1)+"%":"—")}</span></div>
+        <div class="kpi-bar"><span class="fill ${(rejectToday??allTimeReject??0)>30?'red':'green'}" style="width:${Math.min(100,(rejectToday??allTimeReject??0)/30*100).toFixed(0)}%"></span></div>
+        <div class="bq-foot">${rejectToday!=null?`${changedToday} changed of ${reviewedToday} today`:`${totChanges} changed of ${totReviews.toLocaleString()} (all-time)`} · target 30%</div>
+      </div>
+    </div>
+
+    <div class="bq-section-head"><h2>Today's <em>reviewers</em></h2><span class="meta">${reviewers.length} reviewers · ${reviewedToday} reviewed today (aggregate) · per-reviewer stats are all-time</span></div>
+    <div class="bq-reviewers">${reviewerCards}</div>
+
+    <div class="bq-section-head"><h2>Sampling <em>worklist</em></h2><span class="meta">${_bqFiltered().length} in view · ${reviewedToday} reviewed today</span></div>
+    <div class="bq-cohorts">
+      <div class="bq-cohort"><div class="l">Add-new-company</div><div class="v">${cohorts.add}</div><div class="sub">100% QA mandatory</div></div>
+      <div class="bq-cohort"><div class="l">Company-gap</div><div class="v">${cohorts.gap}</div><div class="sub">done without company link</div></div>
+      <div class="bq-cohort"><div class="l">No-IMO</div><div class="v">${cohorts.noimo}</div><div class="sub">IMO not verified</div></div>
+    </div>
+    <div class="bq-mandatory"><span class="ic">${KPI_ICONS.alert}</span><div class="bd"><b>100% mandatory QA</b> — ${ancAll.length} add-new-company records: <b>${ancApproved}</b> approved · <b>${ancPending}</b> still pending · ${t.add_new_company_open||0} flagged open.</div></div>
+    <div id="bqWorklist"></div>
+    <div id="bqDrawer"></div>
+
+    <div class="bq-section-head"><h2>Today's <em>coverage</em></h2><span class="meta">hourly · comments · sanctions</span></div>
+    <div class="bq-3col">
+      <div class="panel"><h3>Hourly intake &amp; review <span class="meta">from qa_hourly</span></h3><div id="bqHourly"></div></div>
+      <div class="panel"><h3>Comment distribution <span class="meta">flagged records</span></h3>${_bqDonut()}</div>
+      <div class="panel"><h3>Sanctions cohort <span class="meta">today sanctions inspected: ${t.qa_inspected_today_sanctions||0}</span></h3>
+        <div class="bq-sanc-row head"><span>Reviewer</span><span>Reviews</span><span>Approval</span><span>Median TAT</span></div>
+        ${reviewers.slice(0,6).map(r=>`<div class="bq-sanc-row"><span>${esc(r.name)}</span><span class="num">${(r.reviews||0).toLocaleString()}</span><span>${(r.approval_pct||0).toFixed(0)}%</span><span>${r.median_review_time_hours!=null?r.median_review_time_hours.toFixed(1)+"h":"—"}</span></div>`).join("")}
+        <div class="bq-pfoot">Per-reviewer sanctions split isn't tracked — showing review leaders (all-time). Sanctions inspected today (aggregate): <span class="num">${t.qa_inspected_today_sanctions||0}</span> · changed <span class="num">${t.qa_changed_today_sanctions||0}</span>.</div>
+      </div>
+    </div>`;
+
+  document.querySelectorAll("#bqChips .bq-chip").forEach(b=>b.addEventListener("click",()=>{ const id=b.dataset.bq; if(id==="__add")f.cohort=f.cohort==="add"?null:"add"; else if(id==="__noimo")f.cohort=f.cohort==="noimo"?null:"noimo"; else if(id==="__today")f.today=!f.today; else f.team=id; STATE.bqPage=1; _renderBoqaPage(); }));
+  document.getElementById("bqExportBtn").addEventListener("click",_bqExport);
+  document.querySelectorAll("[data-bqnoop]").forEach(b=>b.addEventListener("click",()=>{}));
+  renderBqHourly();
+  renderBqWorklist();
+  renderBqDrawer();
 }
 
-async function renderBoqa7Day() {
-  const anchor = STATE.v2?.date || todayEat();
-  const dates = [];
-  for (let i = 6; i >= 0; i--) {
-    const dt = new Date(anchor + "T00:00:00+03:00");
-    dt.setDate(dt.getDate() - i);
-    dates.push(dt.toLocaleDateString("en-CA", { timeZone: "Africa/Nairobi" }));
-  }
-  const snaps = await Promise.all(dates.map(async d => {
-    if (d === anchor) return { d, agg: STATE.v2 || null };
-    return { d, agg: await readJson(`snapshots/${d}.json`) };  // null if missing
-  }));
-  const threshold = (typeof STATE.v2?.reject_threshold === "number") ? STATE.v2.reject_threshold : 30;
-  const rejCls = (rate) => rate >= threshold ? "bad" : "good";
-  const rate = (chg, rev) => rev > 0 ? (chg / rev * 100) : null;
-
-  // Sum across the window, per team and per agent.
-  const teamAgg = {}, agentAgg = {};
-  for (const s of snaps) {
-    for (const [team, m] of Object.entries(s.agg?.by_team || {})) {
-      const a = (teamAgg[team] = teamAgg[team] || { reviews: 0, changes: 0 });
-      a.reviews += m.qa_inspected_today || 0; a.changes += m.qa_changed_today || 0;
-    }
-    for (const [agent, m] of Object.entries(s.agg?.by_agent || {})) {
-      const a = (agentAgg[agent] = agentAgg[agent] || { reviews: 0, changes: 0 });
-      a.reviews += m.qa_inspected_today || 0; a.changes += m.qa_changed_today || 0;
-    }
-  }
-
-  // Team scoreboard — best first (lowest reject rate; no-review teams sort last).
-  const teamRows = Object.entries(teamAgg)
-    .map(([team, a]) => ({ team, ...a, rate: rate(a.changes, a.reviews) }))
-    .sort((x, y) => (x.rate == null ? Infinity : x.rate) - (y.rate == null ? Infinity : y.rate));
-  const teamScore = document.getElementById("boqaTeamScore");
-  if (teamScore) {
-    teamScore.innerHTML = teamRows.length === 0
-      ? `<div class="empty">No QA reviews in the last 7 days.</div>`
-      : `<table><thead><tr><th>Team</th><th class="right">Reviews</th><th class="right">Changes</th><th class="right">Reject rate</th></tr></thead><tbody>${
-          teamRows.map(r => `<tr><td>${esc(r.team)}</td><td class="right">${r.reviews}</td><td class="right">${r.changes}</td><td class="right">${r.rate == null ? '<span class="small-mono">—</span>' : `<span class="pill-inline ${rejCls(r.rate)}">${r.rate.toFixed(1)}%</span>`}</td></tr>`).join("")
-        }</tbody></table>`;
-  }
-
-  // Agent error leaderboard — worst first, only agents with >= 10 reviews over the window.
-  const MIN_REVIEWS = 10;
-  const agentRows = Object.entries(agentAgg)
-    .map(([agent, a]) => ({ agent, ...a, rate: rate(a.changes, a.reviews) }))
-    .filter(r => r.reviews >= MIN_REVIEWS)
-    .sort((x, y) => (y.rate || 0) - (x.rate || 0));
-  const agentLeader = document.getElementById("boqaAgentLeader");
-  if (agentLeader) {
-    agentLeader.innerHTML = agentRows.length === 0
-      ? `<div class="empty">No agents with ≥${MIN_REVIEWS} reviews in the last 7 days.</div>`
-      : `<table><thead><tr><th>Agent</th><th>Team</th><th class="right">Reviews</th><th class="right">Changes</th><th class="right">Reject rate</th></tr></thead><tbody>${
-          agentRows.map(r => `<tr><td class="agent-name">${esc(r.agent)}</td><td>${esc(teamForAgent(r.agent) || "—")}</td><td class="right">${r.reviews}</td><td class="right">${r.changes}</td><td class="right"><span class="pill-inline ${rejCls(r.rate)}">${r.rate.toFixed(1)}%</span></td></tr>`).join("")
-        }</tbody></table>`;
-  }
-
-  // 7-day reject-rate heatmap — rows = teams, cols = days; intensity by rate (redder
-  // = higher). A day with no snapshot or no reviews renders muted.
-  let teams = Object.keys(STATE.roster || {}).sort();
-  if (!teams.length) teams = Object.keys(teamAgg).sort();
-  const hm = document.getElementById("boqaRejectHeatmap");
-  if (hm) {
-    if (!teams.length) {
-      hm.innerHTML = `<div class="empty">No teams to chart.</div>`;
-    } else {
-      const shortDay = d => new Date(d + "T00:00:00+03:00").toLocaleDateString("en-GB", { timeZone: "Africa/Nairobi", day: "numeric", month: "short" });
-      const headerCells = snaps.map(s => `<div class="header">${esc(shortDay(s.d))}</div>`).join("");
-      const rows = teams.map(team => {
-        const cells = snaps.map(s => {
-          if (!s.agg) return `<div class="cell z" title="${esc(s.d)}: no snapshot"></div>`;
-          const m = s.agg.by_team?.[team];
-          const rev = m?.qa_inspected_today || 0;
-          if (rev === 0) return `<div class="cell z" title="${esc(team)} · ${esc(s.d)}: no reviews"></div>`;
-          const chg = m?.qa_changed_today || 0;
-          const rt = chg / rev * 100;
-          const alpha = (0.2 + 0.8 * Math.min(1, rt / 50)).toFixed(2);
-          return `<div class="cell" style="background:rgba(155,34,34,${alpha})" title="${esc(team)} · ${esc(s.d)}: ${chg}/${rev} = ${rt.toFixed(0)}%">${rt.toFixed(0)}%</div>`;
-        }).join("");
-        return `<div class="label">${esc(team)}</div>${cells}`;
-      }).join("");
-      hm.innerHTML = `<div class="heatmap" style="grid-template-columns: 120px repeat(7, minmax(40px, 1fr));"><div class="header"></div>${headerCells}${rows}</div>`;
-    }
-  }
+function _bqDonut(){
+  const cm=bqComments().slice(0,6); const tot=cm.reduce((s,[,n])=>s+n,0);
+  const colors=["#7B68EE","#0691B5","#F9943B","#E5384F","#16A34A","#8B5CF6"];
+  let acc=0; const stops=[]; cm.forEach(([,n],i)=>{ const a=acc/Math.max(1,tot)*360, b=(acc+n)/Math.max(1,tot)*360; stops.push(`${colors[i]} ${a.toFixed(1)}deg ${b.toFixed(1)}deg`); acc+=n; });
+  if(!stops.length) stops.push("var(--soft) 0deg 360deg");
+  const legend=cm.map(([k,n],i)=>`<div class="li"><span class="d" style="background:${colors[i]}"></span><span class="nm">${esc(k)}</span><span class="ct">${n.toLocaleString()}</span></div>`).join("")||'<div class="small-mono">No flagged comments.</div>';
+  return `<div class="bq-donut" style="background:conic-gradient(${stops.join(",")})"><div class="hole"><b>${tot.toLocaleString()}</b><span>flagged</span></div></div><div class="bq-legend">${legend}</div><div class="bq-pfoot">Aggregated <code>comment_distribution</code> across tasks; "(no comment)" excluded.</div>`;
 }
 
+function renderBqHourly(){
+  const cont=document.getElementById("bqHourly"); if(!cont) return;
+  const qh=STATE.v2?.qa_hourly||{}; const qt=STATE.v2?.qa_today_all||{};
+  // tolerant flatten to hour→count (supports {hour:count} or {reviewer:{hour:count}})
+  const byHour={};
+  for(const [k,val] of Object.entries(qh)){
+    if(typeof val==="number"){ byHour[k]=(byHour[k]||0)+val; }
+    else if(val&&typeof val==="object"){ for(const [h,c] of Object.entries(val)) if(typeof c==="number") byHour[h]=(byHour[h]||0)+c; }
+  }
+  const hours=Array.from({length:18},(_,i)=>i+6); // 06–23
+  const vals=hours.map(h=>byHour[String(h)]||byHour[h]||0);
+  const tot=vals.reduce((a,b)=>a+b,0);
+  if(tot===0){ cont.innerHTML=`<div class="empty" style="padding:18px">No hourly review activity recorded today yet.</div><div class="bq-pfoot" style="border:0">Today (aggregate): <span class="num">${qt.reviewed||0}</span> reviewed · <span class="num">${qt.changed||0}</span> changed.</div>`; return; }
+  const mx=Math.max(1,...vals); const peak=hours[vals.indexOf(Math.max(...vals))];
+  cont.innerHTML=`<div class="bq-hbars">${vals.map((v,i)=>`<div class="hb"><div class="bar" style="height:${Math.max(2,Math.round(v/mx*82))}px${hours[i]===peak?';background:var(--accent)':''}" title="${hours[i]}:00 → ${v}"></div><div class="lab">${hours[i]}</div></div>`).join("")}</div><div class="bq-pfoot">Reviews by hour (EAT) · peak ${peak}:00 · total <span class="num">${tot}</span> · today changed <span class="num">${qt.changed||0}</span>.</div>`;
+}
+
+function _bqExport(){
+  const tab=STATE.bqTab; const rows=_bqFiltered().filter(r=>_bqStatus(r)===tab);
+  const cell=(v)=>`"${String(v??"").replace(/"/g,'""')}"`;
+  const lines=["IMO,Company,Role,Comment,Agent,Team,DaysOpen,VerificationStatus,QAStatus,QAAssignee,Cohort"];
+  for(const r of rows) lines.push([cell(r.imo),cell(r.company),cell(r.role),cell(r.comment),cell(r.assignee),cell(r.team),r.days_open||0,cell(r.verification_status),cell(r.qa_status),cell(r.qa_assignee),cell(r.cohort)].join(","));
+  const blob=new Blob([lines.join("\n")],{type:"text/csv"}); const a=document.createElement("a"); a.href=URL.createObjectURL(blob); a.download=`bo-qa-${tab}-${STATE.v2?.date||"export"}.csv`; a.click(); URL.revokeObjectURL(a.href);
+}
+
+function renderBqWorklist(){
+  const cont=document.getElementById("bqWorklist"); if(!cont) return;
+  const base=_bqFiltered();
+  const tab=STATE.bqTab||"pending";
+  const tabs=[["pending","Pending"],["approved","Approved"],["changed","Changed"],["returned","Returned"]];
+  const cnt=(k)=>base.filter(r=>_bqStatus(r)===k).length;
+  const rowsAll=base.filter(r=>_bqStatus(r)===tab).slice().sort((a,b)=>(b.days_open||0)-(a.days_open||0));
+  const total=rowsAll.length, pages=Math.max(1,Math.ceil(total/12)); if(STATE.bqPage>pages)STATE.bqPage=pages;
+  const start=(STATE.bqPage-1)*12, end=Math.min(start+12,total), rows=rowsAll.slice(start,end);
+  const reviewedToday=(STATE.v2?.qa_today_all||{}).reviewed||0;
+  const rowHtml=(r)=>{ const sel=STATE.bqSelectedImo===String(r.imo)?" selected":"";
+    return `<div class="bq-row${sel}" data-imo="${esc(String(r.imo))}">
+      <span class="bq-cb"></span><span class="imo">${esc(r.imo||"—")}</span>
+      <span><span class="bq-rolechip">${esc((r.role||"—").replace(/_/g," "))}</span></span>
+      <span class="bq-cob"><div class="nm">${esc(r.company||(r.cohort==="add"?"(no company)":r.comment||"(case record)"))}</div><div class="s">${esc(r.cohort)} · ${r.days_open||0}d open</div></span>
+      <span class="bq-cob" style="display:flex;align-items:center;gap:7px"><span class="task-avatar" style="background:${bqTeamHex(r.team)};width:22px;height:22px;font-size:9px">${esc(bqInitials(r.assignee))}</span><span style="min-width:0"><span class="nm" style="font-weight:500">${esc(r.assignee||"—")}</span> <span class="task-team-chip" style="color:${bqTeamHex(r.team)}">&bull; ${esc(r.team||"—")}</span></span></span>
+      <span><span class="bq-commentchip">${esc(r.comment||(r.cohort==="add"?"add-new-company":"—"))}</span></span>
+      <span>${bqAgePill(r.days_open)}</span>
+    </div>`; };
+  const pbtn=(p,l,dis,act)=>`<button data-bqpg="${p}"${dis?" disabled":""}${act?' class="active"':""}>${l||p}</button>`;
+  let pagesHtml=""; if(pages>1){ pagesHtml+=pbtn(Math.max(1,STATE.bqPage-1),"‹",STATE.bqPage===1); for(let p=1;p<=pages;p++){ if(p===1||p===pages||Math.abs(p-STATE.bqPage)<=1)pagesHtml+=pbtn(p,null,false,p===STATE.bqPage); else if(Math.abs(p-STATE.bqPage)===2)pagesHtml+=`<span style="padding:3px 2px">…</span>`; } pagesHtml+=pbtn(Math.min(pages,STATE.bqPage+1),"›",STATE.bqPage===pages); }
+  cont.innerHTML=`
+    <div class="bq-tabs" id="bqTabs">${tabs.map(([k,l])=>`<button data-bqt="${k}" class="${tab===k?'active':''}">${l} <span class="ct">${cnt(k)}</span></button>`).join("")}<span class="spacer"></span><input id="bqSearch" type="text" placeholder="search imo / company / agent…" value="${esc(STATE.bqSearch)}"/></div>
+    <div class="panel" style="padding:6px 10px 10px">
+      <div class="bq-row head"><span></span><span>IMO</span><span>Role</span><span>Company</span><span>Agent</span><span>Comment / age</span></div>
+      ${rows.map(rowHtml).join("")||'<div class="empty" style="padding:16px">No records in this tab/filter.</div>'}
+    </div>
+    <div class="bq-pag"><span>Showing ${total?start+1:0}–${end} of ${total} · ${reviewedToday} reviewed today</span><span class="pages">${pagesHtml}</span></div>`;
+  cont.querySelectorAll("#bqTabs button[data-bqt]").forEach(b=>b.addEventListener("click",()=>{STATE.bqTab=b.dataset.bqt;STATE.bqPage=1;renderBqWorklist();}));
+  const si=document.getElementById("bqSearch"); if(si) si.addEventListener("input",(e)=>{ STATE.bqSearch=e.target.value; STATE.bqPage=1; renderBqWorklist(); const x=document.getElementById("bqSearch"); if(x){x.focus();x.setSelectionRange(x.value.length,x.value.length);} });
+  cont.querySelectorAll(".bq-row[data-imo]").forEach(row=>row.addEventListener("click",()=>{STATE.bqSelectedImo=row.dataset.imo;renderBqWorklist();renderBqDrawer();document.getElementById("bqDrawer").scrollIntoView({behavior:"smooth",block:"start"});}));
+  cont.querySelectorAll("[data-bqpg]").forEach(b=>b.addEventListener("click",()=>{if(b.disabled)return;STATE.bqPage=parseInt(b.dataset.bqpg,10);renderBqWorklist();}));
+}
+
+function renderBqDrawer(){
+  const cont=document.getElementById("bqDrawer"); if(!cont) return;
+  const all=_bqRecords();
+  let r=all.find(x=>String(x.imo)===String(STATE.bqSelectedImo));
+  if(!r){ r=_bqFiltered().filter(x=>_bqStatus(x)===STATE.bqTab)[0]||_bqFiltered()[0]; if(r) STATE.bqSelectedImo=String(r.imo); }
+  if(!r){ cont.innerHTML=""; return; }
+  const co=r.company||(r.cohort==="add"?"(no company)":(r.comment||"(case record)"));
+  const field=(k,v,hl)=> (v||v===0)?`<div class="bq-field"><span class="k">${k}</span><span class="val${hl?' hl':''}">${esc(v)}</span></div>`:"";
+  const detail=field("IMO",r.imo)+field("Role",(r.role||"").replace(/_/g," "))+field("Company",r.company,true)+field("Comment",r.comment)+field("Agent",r.assignee)+`<div class="bq-field"><span class="k">Team</span><span class="val"><span class="task-team-chip" style="color:${bqTeamHex(r.team)}">&bull; ${esc(r.team||"—")}</span></span></div>`+`<div class="bq-field"><span class="k">Days open</span><span class="val">${r.days_open||0}d</span></div>`+field("Verification",r.verification_status)+field("QA status",r.qa_status)+field("QA assignee",r.qa_assignee)+field("Requested by",r.requested_by);
+  // comment context
+  const shareN=r.comment? all.filter(x=>x.comment===r.comment).length:0;
+  const arrName=r.cohort==="add"?"add_new_company_records":r.cohort==="gap"?"case_company_gap_records":"case_no_imo_records";
+  const commentCtx=r.comment? `<div style="font-size:13px;color:var(--ink);margin-bottom:8px">"${esc(r.comment)}"</div><div class="bq-field"><span class="k">Appears in</span><span class="val">${arrName}</span></div><div class="bq-field"><span class="k">Records sharing it</span><span class="val">${shareN.toLocaleString()}</span></div>` : `<div class="empty" style="padding:12px">No reviewer comment on this record. Cohort: <b>${esc(arrName)}</b>.</div>`;
+  // audit trail (real)
+  const ev=[]; ev.push(["var(--accent)",`Tagged by <b>${esc(r.assignee||"—")}</b>`,`${r.team||"—"} · ${r.days_open||0}d in pipeline`]);
+  if(r.qa_assignee) ev.push(["#0691B5",`QA assigned to <b>${esc(r.qa_assignee)}</b>`,"BO QA review"]);
+  if(r.qa_status) ev.push([r.qa_status==="approve"?"var(--good)":"var(--warn)",`QA status: <b>${esc(r.qa_status)}</b>`,""]);
+  ev.push([r.verification_status==="Valid"?"var(--good)":"var(--muted)",`Verification: <b>${esc(r.verification_status||"—")}</b>`,""]);
+  const trail=ev.map(([c,a,b])=>`<div class="ev"><span class="d" style="background:${c}"></span><span class="tx">${a}${b?`<br><span class="s">${esc(b)}</span>`:""}</span></div>`).join("");
+
+  cont.innerHTML=`
+    <div class="bq-selhead">SELECTED · IMO ${esc(r.imo||"—")} · ${esc(co)}<span class="bq-selhint">Click any worklist row to swap detail</span></div>
+    <div class="bq-drawer-card">
+      <div class="bq-dh">
+        <span class="ic">${KPI_ICONS.anchor}</span>
+        <div style="min-width:0"><div class="nm">${esc(co)} <span class="pill-inline" style="margin-left:4px;background:var(--soft);color:var(--muted)">IMO ${esc(r.imo||"—")}</span> ${r.comment?`<span class="bq-commentchip">${esc(r.comment)}</span>`:""} ${bqAgePill(r.days_open)}</div>
+          <div class="meta">Tagged by ${esc(r.assignee||"—")} &middot; ${esc(r.team||"—")} &middot; Role ${esc((r.role||"—").replace(/_/g," "))} &middot; QA ${esc(r.qa_status||"—")} &middot; Assigned to ${esc(r.qa_assignee||"—")}</div>
+        </div>
+        <div class="bq-dh acts"><button class="btn" data-bqnoop="airtable">Open in Airtable</button><button class="btn" id="bqDrawerClose" title="Clear selection">×</button></div>
+      </div>
+    </div>
+    <div class="bq-drow">
+      <div class="panel"><h3>Record detail</h3>${detail}</div>
+      <div class="panel"><h3>Comment context</h3>${commentCtx}</div>
+      <div class="panel"><h3>Audit trail <span class="meta">real events</span></h3><div class="bq-trail">${trail}</div></div>
+    </div>
+    <div class="bq-pfoot" style="text-align:center;border:0">ⓘ Decisions happen in Airtable — this dashboard is read-only. Open the record above to action it.</div>`;
+  cont.querySelectorAll("[data-bqnoop]").forEach(b=>b.addEventListener("click",()=>{}));
+  const c=document.getElementById("bqDrawerClose"); if(c)c.addEventListener("click",()=>{STATE.bqSelectedImo=null;renderBqWorklist();cont.innerHTML="";});
+}
 // Per-reviewer BO QA load — from the cached snapshot's by_qa block (works in
 // browser + Cowork, today + historical). assigned = bo_qa_backlog (records in
 // this reviewer's BO QA queue), reviewed = qa_inspected_today. Skips reviewers
