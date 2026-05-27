@@ -3,6 +3,7 @@
 ## Housekeeping — 2026-05-27
 
 - **Branch cleanup**: deleted 41 merged-via-PR branches from the remote (`gh api -X DELETE refs/heads/...`) and pruned local tracking. All `*-detail-layer`, `changelog-*`, `hotfix-*`, and earlier phase/refactor branches that had landed via squash-merge are gone; only `main` remains on `origin`. No code change — production unchanged (live SHA-256 `6f6530e6…`, main HEAD `fb69666`). Branch list was getting long enough to make `gh pr` / `git branch` output noisy.
+- **Branch cleanup #2**: deleted 8 merged-via-PR branches from the remote (`agent-scorecard-detail-layer`, `agent-scorecard-hourly-fix`, `changelog-pr134-135`, `changelog-pr137-138`, `changelog-pr140`, `exclude-team-leaders`, `hourly-observation-relabel`, `qa-performance-with-sampling`) and pruned local tracking. Covers PRs #134–#141 plus their CHANGELOG follow-ups. Only `main` remains on `origin`. No code change — production unchanged (live SHA-256 `f919bac9…a54c`, main HEAD `654d18f`).
 
 ## Vivid detail layers — 2026-05-26
 
