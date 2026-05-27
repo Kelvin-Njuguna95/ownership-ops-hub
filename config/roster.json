@@ -1,5 +1,8 @@
 {
   "_note": "Source of truth for the 5 ownership teams' roster. A deprecation shim in ww_audit_log.json mirrors this file for one release. ww_qa entries are null pending a cache refresh — backfill once qa_assignee/ww_qa_assignee start appearing in the polled records.",
+  "team_leaders": [
+    { "name": "James Mwangi" }
+  ],
   "teams": {
     "Simba": {
       "qa": {
