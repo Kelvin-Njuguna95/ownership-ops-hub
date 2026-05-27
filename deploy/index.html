@@ -1193,6 +1193,29 @@
   .qp-pfill.good { background: var(--good); } .qp-pfill.warn { background: var(--warn); } .qp-pfill.bad { background: var(--bad); }
   .qp-ptgt { position: absolute; top: -2px; bottom: -2px; width: 2px; background: var(--ink); }
 
+  /* ----- Agent Scorecard — Vivid detail layer (PR #137). Non-slide-out styling only. ----- */
+  .ag-card { display: flex; align-items: center; justify-content: space-between; gap: 14px; flex-wrap: wrap; background: var(--surface); border: 1px solid var(--border); border-top: 3px solid var(--accent); border-radius: var(--radius-lg); padding: 14px 18px; box-shadow: var(--shadow-sm); margin-bottom: 16px; }
+  .ag-id { display: flex; align-items: center; gap: 12px; min-width: 0; }
+  .ag-nm { font-size: 16px; font-weight: 700; color: var(--ink); }
+  .ag-rank { cursor: pointer; }
+  .ag-meta { font-size: 11.5px; color: var(--muted); margin-top: 3px; }
+  .ag-meta .num { color: var(--ink); font-weight: 600; }
+  .ag-nav { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
+  .ag-idx { font-size: 11px; color: var(--muted); font-variant-numeric: tabular-nums; }
+  .ag-switch { font-family: inherit; font-size: 12px; padding: 5px 9px; border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--surface); color: var(--ink); max-width: 200px; }
+  .ag-table { width: 100%; border-collapse: collapse; }
+  .ag-table th { text-align: left; font-size: 10px; text-transform: uppercase; letter-spacing: 0.04em; color: var(--muted); font-weight: 600; padding: 6px 8px; border-bottom: 1px solid var(--border); }
+  .ag-table td { font-size: 12px; padding: 7px 8px; border-bottom: 1px solid var(--soft); color: var(--ink); }
+  .ag-dd-head { font-size: 11px; color: var(--muted); margin-bottom: 8px; }
+  .ag-dd { display: flex; flex-direction: column; gap: 4px; }
+  .ag-dd-row { display: grid; grid-template-columns: 28px 1fr auto auto; gap: 9px; align-items: center; padding: 7px 8px; border-radius: var(--radius-sm); cursor: pointer; transition: background 0.12s ease; }
+  .ag-dd-row:hover { background: var(--soft); }
+  .ag-dd-row.sel { background: var(--accent-soft); box-shadow: inset 0 0 0 1px var(--accent); }
+  .ag-dd-nm { font-size: 12.5px; font-weight: 600; color: var(--ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .ag-dd-tag { font-size: 12px; color: var(--ink); font-variant-numeric: tabular-nums; }
+  .ag-dd-tag .s { color: var(--muted); font-size: 10px; }
+  .ag-dd-appr { font-size: 12px; font-weight: 600; color: var(--accent); font-variant-numeric: tabular-nums; min-width: 38px; text-align: right; }
+
   /* Charts */
   .chart-wrap { position: relative; height: 280px; }
   .chart-wrap.small { height: 160px; }
@@ -2490,178 +2513,283 @@ function computeTeamAlerts() {
 }
 
 // -------- Agent Scorecard --------
+// ============================================================================
+//  Agent Scorecard — Vivid detail layer (PR #137). Per-agent drill-in on
+//  today's by_agent[name] block: tagged_today, REAL per-agent QA approval rate
+//  (qa_inspected_today / qa_changed_today), comment + role mix, sanctions split,
+//  hourly tagging (by_agent[name].hourly_buckets). Deep-dive reuses the PR #131
+//  side panel. No per-agent history → "today vs floor" + cohort averages; no
+//  fabrication, defensive "—" where data isn't tracked.
+// ============================================================================
+function _agData(){
+  const v2 = STATE.v2 || null;
+  const byAgent = v2?.by_agent || {};
+  const teamOf = {};
+  for (const [team, info] of Object.entries(STATE.roster || {}))
+    for (const mm of (info.members || [])) teamOf[mm.name] = team;
+  const agents = Object.keys(byAgent).map(name => {
+    const m = byAgent[name];
+    return { name, team: teamOf[name] || null, m,
+             tagged: m.tagged_today || 0, insp: m.qa_inspected_today || 0, chg: m.qa_changed_today || 0 };
+  }).sort((a, b) => b.tagged - a.tagged);
+  const n = agents.length || 1;
+  const avgTagged = agents.reduce((s, a) => s + a.tagged, 0) / n;
+  const pInsp = agents.reduce((s, a) => s + a.insp, 0);
+  const pChg  = agents.reduce((s, a) => s + a.chg, 0);
+  const poolApproval = pInsp ? ((pInsp - pChg) / pInsp * 100) : null;
+  return { v2, byAgent, agents, teamOf, avgTagged, poolApproval };
+}
+
+function _agFloor(){ return STATE.audit?.config?.thresholds?.daily_productivity_minimum || 280; }
+
+// Agent's records found in the emitted cohort arrays (add-new-company / case /
+// pending-QA) — a partial view (not the full tag log, which aggregates_v2
+// doesn't carry). Each row tagged with a scenario label.
+function _agRecords(name){
+  const v2 = STATE.v2 || {};
+  const out = [];
+  const push = (arr, scen) => (arr || []).forEach(r => { if (r.assignee === name) out.push(Object.assign({ _scen: scen }, r)); });
+  push(v2.add_new_company_records, "Add new company");
+  push(v2.case_company_gap_records, "Company gap");
+  push(v2.case_no_imo_records, "No IMO");
+  push(v2.not_yet_finalized, "Pending finalize");
+  const seen = new Set(); const dedup = [];
+  for (const r of out) { const k = r.imo || JSON.stringify(r); if (!seen.has(k)) { seen.add(k); dedup.push(r); } }
+  return dedup;
+}
+
 PAGE_RENDERERS.agent = function () {
   const root = document.getElementById("page-agent");
-  const byAgent = STATE.v2?.by_agent || {};
-  const allAgents = [];
-  for (const team of Object.keys(STATE.roster || {}).sort()) {
-    for (const m of (STATE.roster[team].members || [])) allAgents.push({ name: m.name, team });
-  }
-  const dataAgents = new Set(Object.keys(byAgent));
-  const selectedAgent = STATE.currentAgent && byAgent[STATE.currentAgent] ? STATE.currentAgent
-                       : (Object.keys(byAgent).sort()[0] || null);
+  const D = _agData();
+  if (!D.v2) { root.innerHTML = noDataHtml("aggregates_v2 not in daily_aggregates.json — run aggregate_v2.py"); return; }
+  if (!D.agents.length) { root.innerHTML = `<div class="page-head"><div><div class="page-eyebrow">People</div><h1 class="page-title">Agent <em>scorecard</em></h1></div></div><div class="empty-state"><div class="title">No agent data in aggregates_v2</div>No records have an ownership-team assignee in the current cache window.</div>`; return; }
+  if (!STATE.agentSelected || !D.byAgent[STATE.agentSelected]) STATE.agentSelected = D.agents[0].name;  // default: highest tagged
 
-  const opts = allAgents.map(a => {
-    const hasData = dataAgents.has(a.name);
-    return `<option value="${esc(a.name)}" ${a.name === selectedAgent ? "selected" : ""}>${esc(a.name)} (${esc(a.team)})${hasData ? "" : " — no records"}</option>`;
-  }).join("");
+  const headDate = (() => { const d = D.v2.date; if (!d) return ""; const dt = new Date(d + "T00:00:00"); return isNaN(dt) ? d : dt.toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short", year: "numeric" }); })();
+  const nowTime = tlEatTime(D.v2.computed_at);
 
   root.innerHTML = `
-    <div class="controls-row">
-      <label class="small-mono">Agent:</label>
-      <select id="agentSelect">${opts}</select>
-      <span class="small-mono" id="agentMeta"></span>
+    <div class="page-head">
+      <div>
+        <div class="page-eyebrow">People${headDate ? " &middot; " + headDate : ""}${nowTime !== "—" ? " &middot; " + nowTime + " EAT" : ""}<span class="tl-live"><span class="dot"></span>Live &middot; today's data</span></div>
+        <h1 class="page-title">Agent <em>scorecard</em></h1>
+        <div class="page-subtitle">Per-agent drill-in — today's tagged, QA approval rate, comment mix, role mix, reminder backlog.</div>
+      </div>
+      <div class="page-head-actions">
+        <button class="btn" id="agCompareBtn">👥 Compare</button>
+        <button class="btn" id="agExportBtn">Export</button>
+        <button class="btn btn-primary" id="agMsgBtn">💬 Send message</button>
+      </div>
     </div>
     <div id="agentBody"></div>`;
 
-  const select = document.getElementById("agentSelect");
-  select.addEventListener("change", () => {
-    STATE.currentAgent = select.value;
-    localStorage.setItem("wqa.agent", select.value);
-    renderAgentBody(select.value);
-  });
-  if (selectedAgent) renderAgentBody(selectedAgent);
-  else document.getElementById("agentBody").innerHTML = noDataHtml("No agent data in aggregates_v2");
+  document.getElementById("agCompareBtn").addEventListener("click", renderAgentDeepDive);
+  document.getElementById("agExportBtn").addEventListener("click", _agExport);
+  document.getElementById("agMsgBtn").addEventListener("click", () => {});
+  renderAgentBody(STATE.agentSelected);
 };
 
-function renderAgentBody(agentName) {
-  const m = STATE.v2?.by_agent?.[agentName];
-  const body = document.getElementById("agentBody");
-  if (!m) {
-    body.innerHTML = noDataHtml(`No cache records for ${esc(agentName)} in past 24h window`);
-    return;
-  }
-  const team = teamForAgent(agentName);
-  document.getElementById("agentMeta").textContent = `${team || "—"} team`;
-  const min280 = STATE.audit?.config?.thresholds?.daily_productivity_minimum || 280;
-  const tagged = m.tagged_today || 0;
-  const prodClass = tagged >= min280 ? "good" : "bad";
-  const rejectClass = m.reject_rate > m.reject_threshold ? "bad" : "good";
-  const nsT = m.sampling_target_non_sanctions_pct;
-  const sCT = m.sampling_target_sanctions_pct;
-  const nsCls = (m.tagged_today_non_sanctions || 0) === 0 ? "" : (m.sampling_non_sanctions_pct >= nsT ? "good" : "bad");
-  const sCls  = (m.tagged_today_sanctions || 0) === 0     ? "" : (m.sampling_sanctions_pct     >= sCT ? "good" : "bad");
+function _agExport(){
+  const recs = _agRecords(STATE.agentSelected);
+  const cell = (v) => `"${String(v ?? "").replace(/"/g, '""')}"`;
+  const lines = ["IMO,Company,Scenario,Role,Team,QA reviewer,QA status,Verification,Days open"];
+  for (const r of recs) lines.push([cell(r.imo), cell(r.add_new_company || ""), cell(r._scen), cell(r.role || ""), cell(r.team || ""), cell(r.qa_assignee || ""), cell(r.qa_status || ""), cell(r.verification_status || ""), r.days_open ?? ""].join(","));
+  const blob = new Blob([lines.join("\n")], { type: "text/csv" });
+  const a = document.createElement("a"); a.href = URL.createObjectURL(blob);
+  a.download = `agent-${STATE.agentSelected || "x"}-${STATE.v2?.date || "today"}.csv`; a.click(); URL.revokeObjectURL(a.href);
+}
+
+function renderAgentBody(name){
+  const body = document.getElementById("agentBody"); if (!body) return;
+  const D = _agData();
+  const sel = D.agents.find(a => a.name === name) || D.agents[0];
+  if (!sel) { body.innerHTML = noDataHtml("No agent selected"); return; }
+  STATE.agentSelected = sel.name;
+  const m = sel.m, team = sel.team, hex = tlTeamHex(team);
+  const FLOOR = _agFloor();
+
+  // rank within team + global index for prev/next
+  const teamAgents = D.agents.filter(a => a.team === team);
+  const teamRank = teamAgents.findIndex(a => a.name === sel.name) + 1;
+  const gIdx = D.agents.findIndex(a => a.name === sel.name);
+  const prev = D.agents[(gIdx - 1 + D.agents.length) % D.agents.length];
+  const next = D.agents[(gIdx + 1) % D.agents.length];
+  const active = sel.tagged > 0;
+  const mgr = (STATE.roster?.[team]?.qa?.name) || null;
+
+  // hero numbers
+  const vsCohort = sel.tagged - D.avgTagged;
+  const approval = sel.insp ? ((sel.insp - sel.chg) / sel.insp * 100) : null;
+  const approved = sel.insp - sel.chg;
+  const apprSig = approval == null ? "" : approval >= 98 ? "good" : approval >= 90 ? "warn" : "bad";
+  const curHour = _eatHour(D.v2.computed_at);
+  const hoursElapsed = (curHour != null && curHour >= 6) ? (curHour - 6 + 1) : 1;
+  const perHour = Math.round(sel.tagged / Math.max(1, hoursElapsed));
+  const poolPerHour = Math.round(D.avgTagged / Math.max(1, hoursElapsed));
+  const floorMargin = sel.tagged - FLOOR;
+
+  // top-5 mini-bars (team-coloured)
+  const top5 = D.agents.slice(0, 5);
+  const max5 = Math.max(1, ...top5.map(a => a.tagged));
+  const miniBars = top5.map(a => `<span class="bar" style="height:${Math.max(8, Math.round(a.tagged / max5 * 100))}%;background:${tlTeamHex(a.team)}" title="${esc(a.name)} · ${a.tagged}"></span>`).join("");
+
+  // switch dropdown (all agents, tagged desc)
+  const opts = D.agents.map(a => `<option value="${esc(a.name)}"${a.name === sel.name ? " selected" : ""}>${esc(a.name)} · ${a.tagged} · ${esc(a.team || "—")}</option>`).join("");
+
+  // hourly buckets (real per-agent, company-linked tagging by EAT hour)
+  const hours = Array.from({ length: 18 }, (_, i) => i + 6);
+  const hb = m.hourly_buckets || {};
+  const hCounts = hours.map(h => hb[h] ?? hb[String(h)] ?? 0);
+  const hMax = Math.max(1, ...hCounts);
+  const hSum = hCounts.reduce((s, v) => s + v, 0);
+  const hourlyBars = hours.map((h, i) => `<div class="qh-hbar" title="${h}:00 → ${hCounts[i]}"><span class="qh-hbar-fill" style="height:${hCounts[i] === 0 ? 2 : Math.max(6, Math.round(hCounts[i] / hMax * 100))}%;background:rgba(${(TEAM_COLORS[team]||{}).rgb || '123,104,238'},${hCounts[i] === 0 ? 0.12 : 0.85})"></span><span class="qh-hbar-h">${String(h).padStart(2, '0')}</span></div>`).join("");
+
+  // QA decisions donut (today, real)
+  const donut = sel.insp
+    ? `conic-gradient(var(--good) 0deg ${((approved / sel.insp) * 360).toFixed(1)}deg, var(--warn) ${((approved / sel.insp) * 360).toFixed(1)}deg 360deg)`
+    : `conic-gradient(var(--soft) 0deg 360deg)`;
+  const sancInsp = m.qa_inspected_today_sanctions || 0, sancChg = m.qa_changed_today_sanctions || 0;
+  const nsInsp = m.qa_inspected_today_non_sanctions || 0, nsChg = m.qa_changed_today_non_sanctions || 0;
+
+  // comment mix (real)
+  const cdist = Object.entries(m.comment_distribution || {}).filter(([k, v]) => v > 0).sort((a, b) => b[1] - a[1]).slice(0, 11);
+  const cMax = Math.max(1, ...cdist.map(x => x[1]));
+  const commentRows = cdist.length ? cdist.map(([k, v]) => `<div class="tl-prow"><span class="who" style="flex:0 0 150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${esc(k)}">${esc(k)}</span><span class="tl-barwrap"><span style="width:${(v / cMax * 100).toFixed(0)}%;background:var(--accent)"></span></span><span class="ct">${v.toLocaleString()}</span></div>`).join("") : '<div class="small-mono" style="padding:8px 0">No comment-flagged records.</div>';
+
+  // role mix (real)
+  const rdist = Object.entries(m.per_role_volume || {}).filter(([k, v]) => v > 0).sort((a, b) => b[1] - a[1]);
+  const rMax = Math.max(1, ...rdist.map(x => x[1]));
+  const roleRows = rdist.length ? rdist.map(([k, v]) => `<div class="tl-prow"><span class="who" style="flex:0 0 150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(k)}</span><span class="tl-barwrap"><span style="width:${(v / rMax * 100).toFixed(0)}%;background:#0691B5"></span></span><span class="ct">${v.toLocaleString()}</span></div>`).join("") : '<div class="small-mono" style="padding:8px 0">No role data.</div>';
+
+  // sanctions split (real) — substitutes TOP/MID/BOT stratum
+  const sanc = m.tagged_today_sanctions || 0, nonSanc = m.tagged_today_non_sanctions || 0, sTot = Math.max(1, sanc + nonSanc);
+
+  // reminders (count only — no per-record reminder array emitted)
+  const remOpen = m.reminder_open || 0, remOver = m.reminder_overdue || 0;
+
+  // recent activity (partial — emitted cohorts only)
+  const recs = _agRecords(sel.name).slice(0, 8);
+  const statusPill = (qs) => qs === "changed" ? '<span class="pill-inline warn">Changed</span>' : qs === "approve" ? '<span class="pill-inline good">Approved</span>' : '<span class="pill-inline">Pending</span>';
+  const recRows = recs.length ? recs.map(r => `<tr>
+      <td class="small-mono">—</td>
+      <td>${esc(r.imo || "—")}</td>
+      <td>${esc(r.add_new_company || "—")}</td>
+      <td>${esc(r.comment || r._scen)}</td>
+      <td><span class="task-team-chip" style="color:${tlTeamHex(r.team)}">&bull; ${esc(r.team || "—")}</span></td>
+      <td>${esc(r.qa_assignee || "—")}</td>
+      <td>${statusPill(r.qa_status)}</td>
+    </tr>`).join("") : `<tr><td colspan="7" class="empty" style="padding:14px">No records for ${esc(sel.name)} in the emitted cohorts.</td></tr>`;
+  const totalRecs = _agRecords(sel.name).length;
 
   body.innerHTML = `
-    <div class="kpis">
-      <div class="kpi ${prodClass}"><div class="label">Tagged today</div><div class="value">${tagged}</div><div class="delta">target ≥ ${min280}</div></div>
-      <div class="kpi"><div class="label">Assigned &amp; waiting</div><div class="value">${(m.counts_by_verification_status?.waiting || 0).toLocaleString()}</div><div class="delta">assigned, not yet started</div></div>
-      <div class="kpi"><div class="label">QA reviewed</div><div class="value">${m.qa_inspected_today || 0}</div><div class="delta">approve+changed</div></div>
-      <div class="kpi ${rejectClass}"><div class="label">Reject %</div><div class="value">${m.reject_rate.toFixed(1)}%</div><div class="delta">threshold ${m.reject_threshold}%</div></div>
-      <div class="kpi"><div class="label">Reminder backlog</div><div class="value">${m.reminder_open || 0}</div><div class="delta">${m.reminder_overdue || 0} overdue</div></div>
-      <div class="kpi ${nsCls}"><div class="label">Sampling % — Non-sanctions</div><div class="value">${m.sampling_non_sanctions_pct.toFixed(1)}%</div><div class="delta">target ≥ ${nsT}% (of ${m.tagged_today_non_sanctions || 0} tagged)</div></div>
-      <div class="kpi ${sCls}"><div class="label">Sampling % — Sanctions</div><div class="value">${m.sampling_sanctions_pct.toFixed(1)}%</div><div class="delta">target ≥ ${sCT}% (of ${m.tagged_today_sanctions || 0} tagged)</div></div>
-      <div class="kpi" title="Properly completed = start_date filled AND (company_id filled OR Dead vessel ticked)."><div class="label">Properly completed today</div><div class="value">${m.properly_completed_today || 0}</div><div class="delta">${tagged - (m.properly_completed_today || 0) > 0 ? `${tagged - (m.properly_completed_today || 0)} tagged but not yet complete` : "&nbsp;"}</div></div>
-      <div class="kpi"><div class="label">Dead vessels today</div><div class="value">${m.dead_vessels_today || 0}</div><div class="delta">checkbox-ticked, tagged today</div></div>
-      <div class="kpi"><div class="label">Unique IMOs</div><div class="value">${m.unique_imos || 0}</div><div class="delta">distinct vessels in cache</div></div>
-    </div>
-    <div class="panel">
-      <h3>Flow framework <span class="meta">A=no QA, B=reviewed, C=completed after QA</span></h3>
-      <div class="chart-wrap small"><canvas id="agent-flow-chart"></canvas></div>
-    </div>
-    <div class="row equal">
-      <div class="panel">
-        <h3>Hourly heatmap (today, EAT)</h3>
-        <div id="agent-heatmap"></div>
-        <div class="footer-note">Hourly heatmap reflects records cached for today only; will populate as agents start tagging.</div>
+    <div class="ag-card">
+      <div class="ag-id">
+        <span class="task-avatar lg" style="background:${hex}">${esc(tlInitials(sel.name))}</span>
+        <div style="min-width:0">
+          <div class="ag-nm">${esc(sel.name)} <span class="pill-inline ag-rank" style="background:var(--accent-soft);color:var(--accent)" title="Open team comparison">#${teamRank} in ${esc(team || "team")}</span> <span class="task-team-chip" style="color:${hex}">&bull; ${esc(team || "—")}</span> ${active ? '<span class="task-pill in-progress">Active</span>' : '<span class="task-pill bo-qa">Idle</span>'}</div>
+          <div class="ag-meta"><span class="num">${sel.tagged.toLocaleString()}</span> tagged today &middot; Manager: ${esc(mgr || "—")} &middot; Team ${esc(team || "—")}</div>
+        </div>
       </div>
-      <div class="panel">
-        <h3>Comment mix <span class="meta">non-zero buckets only</span></h3>
-        <div class="chart-wrap"><canvas id="chart-comment-mix"></canvas></div>
+      <div class="ag-nav">
+        <button class="btn" id="agPrev" title="${esc(prev.name)}">‹ Prev</button>
+        <span class="ag-idx">${gIdx + 1} / ${D.agents.length} agents</span>
+        <button class="btn" id="agNext" title="${esc(next.name)}">Next ›</button>
+        <select id="agSwitch" class="ag-switch">${opts}</select>
       </div>
     </div>
-    <div class="row equal">
-      <div class="panel">
-        <h3>Role mix</h3>
-        <div class="chart-wrap"><canvas id="chart-role-mix"></canvas></div>
-      </div>
-      <div class="panel">
-        <h3>Verification status counts</h3>
-        <table id="agent-vs"></table>
-      </div>
-    </div>
-  `;
 
-  // Hourly heatmap — reads from STATE.completions (Supabase ownership_completions
-  // table). 6..23 EAT working hours. Empty when the detector hasn't stamped
-  // anything for this agent on the displayed date.
-  const buckets = STATE.completions?.[agentName] || {};
-  const hours = Array.from({ length: 18 }, (_, i) => i + 6);  // 6..23 EAT
-  const counts = hours.map(h => buckets[h] ?? buckets[String(h)] ?? 0);
-  const max = Math.max(1, ...counts);
-  const cells = hours.map((h, i) => {
-    const v = counts[i];
-    if (v === 0) return `<div class="cell z" title="${h}:00 EAT">0</div>`;
-    const alpha = (0.2 + 0.8 * (v / max)).toFixed(2);
-    return `<div class="cell" style="background:rgba(123,104,238,${alpha});" title="${h}:00 EAT → ${v} records">${v}</div>`;
-  }).join("");
-  const headers = hours.map(h => `<div class="header">${h}</div>`).join("");
-  const total = counts.reduce((a, b) => a + b, 0);
-  document.getElementById("agent-heatmap").innerHTML = `
-    <div class="heatmap" style="grid-template-columns: 130px repeat(${hours.length}, 1fr);">
-      <div class="header"></div>${headers}
-      <div class="label">${esc(agentName)} (${total})</div>${cells}
+    <div class="kpis kpis-overview-hero">
+      <div class="kpi hero">
+        <div class="kpi-top"><div class="label">Tagged today</div><span class="kpi-icon">${KPI_ICONS.tag}</span></div>
+        <div class="value-row"><span class="value">${sel.tagged.toLocaleString()}</span><span class="kpi-dod ${vsCohort >= 0 ? '' : ''}">${vsCohort >= 0 ? "↑ +" : "↓ "}${Math.abs(vsCohort).toFixed(0)} vs cohort</span></div>
+        <div class="kpi-trend">${miniBars}</div>
+        <div class="ct-foot">Floor ${FLOOR} &middot; margin ${floorMargin >= 0 ? "+" : ""}${floorMargin.toLocaleString()}</div>
+      </div>
+      <div class="kpi ${sel.tagged >= FLOOR ? 'k-green' : 'k-red'}">
+        <div class="kpi-top"><div class="label">Today vs floor</div><span class="kpi-icon">${KPI_ICONS.activity}</span></div>
+        <div class="value-row"><span class="value">${sel.tagged.toLocaleString()}<span class="unit">/${FLOOR}</span></span><span class="kpi-dod-light ${sel.tagged >= FLOOR ? 'up' : 'down'}">${sel.tagged >= FLOOR ? "above +" + floorMargin.toLocaleString() : "below " + floorMargin.toLocaleString()}</span></div>
+        <div class="kpi-bar"><span class="fill ${sel.tagged >= FLOOR ? 'green' : 'red'}" style="width:${Math.min(100, sel.tagged / FLOOR * 100).toFixed(0)}%"></span></div>
+        <div class="ct-sub">Cohort avg ${Math.round(D.avgTagged).toLocaleString()}/${FLOOR}</div>
+      </div>
+      <div class="kpi k-green">
+        <div class="kpi-top"><div class="label">QA approval · today</div><span class="kpi-icon">${KPI_ICONS.check}</span></div>
+        <div class="value-row"><span class="value">${approval != null ? approval.toFixed(1) + "%" : "—"}</span>${approval != null ? `<span class="kpi-dod-light ${apprSig === 'good' ? 'up' : 'down'}">${apprSig === 'good' ? 'clean' : apprSig === 'warn' ? 'watch' : 'high change'}</span>` : ""}</div>
+        ${approval != null ? `<div class="kpi-bar"><span class="fill ${apprSig === 'bad' ? 'red' : 'green'}" style="width:${Math.min(100, approval).toFixed(0)}%"></span></div><div class="ct-foot"><span class="num">${approved.toLocaleString()}</span> approved &middot; <span class="num">${sel.chg.toLocaleString()}</span> changed &middot; of ${sel.insp.toLocaleString()} reviewed${D.poolApproval != null ? ` &middot; cohort ${D.poolApproval.toFixed(1)}%` : ""}</div>` : `<div class="ct-sub">QA hasn't reviewed today's tags yet</div>`}
+      </div>
+      <div class="kpi k-cyan">
+        <div class="kpi-top"><div class="label">Records / hour</div><span class="kpi-icon">${KPI_ICONS.clock}</span></div>
+        <div class="value-row"><span class="value">${perHour}<span class="unit">/h</span></span><span class="kpi-dod-light ${perHour >= poolPerHour ? 'up' : 'down'}">${perHour >= poolPerHour ? "≥" : "<"} pool</span></div>
+        <div class="ct-sub">${sel.tagged.toLocaleString()} over ${hoursElapsed}h elapsed &middot; vs pool avg ${poolPerHour}/h</div>
+      </div>
+    </div>
+
+    <div class="tl-drow" style="grid-template-columns:1.3fr 1fr">
+      <div class="panel"><h3>Hourly tagging <span class="meta">today &middot; ${hSum.toLocaleString()} company-linked</span></h3>
+        <div class="qh-hbars">${hourlyBars}</div>
+        <div class="tl-pfoot">Records this agent tagged per EAT hour (company-linked subset from <code>by_agent.hourly_buckets</code>; raw per-record tag timestamps aren't emitted).</div>
+      </div>
+      <div class="panel"><h3>QA decisions · today <span class="meta">${sel.insp.toLocaleString()} reviewed</span></h3>
+        ${sel.insp ? `<div class="tl-donut" style="background:${donut}"><div class="hole"><b>${sel.insp.toLocaleString()}</b><span>reviewed</span></div></div>
+        <div class="tl-legend"><div class="li"><span class="d" style="background:var(--good)"></span>Approved<span class="ct">${approved.toLocaleString()} &middot; ${(approved / sel.insp * 100).toFixed(1)}%</span></div><div class="li"><span class="d" style="background:var(--warn)"></span>Changed<span class="ct">${sel.chg.toLocaleString()} &middot; ${(sel.chg / sel.insp * 100).toFixed(1)}%</span></div></div>
+        <div class="tl-pfoot">Of this agent's records QA touched today. Sanctions: approved ${(sancInsp - sancChg).toLocaleString()} of ${sancInsp.toLocaleString()} &middot; standard: approved ${(nsInsp - nsChg).toLocaleString()} of ${nsInsp.toLocaleString()}.</div>`
+        : `<div class="empty-state" style="margin:6px 0"><div class="title">QA hasn't reviewed today's tags yet</div>Under the next-day review model, today's tags are reviewed tomorrow.</div>`}
+      </div>
+    </div>
+
+    <div class="tl-drow">
+      <div class="panel"><h3>Comment scenario mix <span class="meta">cache window</span></h3>${commentRows}</div>
+      <div class="panel"><h3>Role mix <span class="meta">records by role</span></h3>${roleRows}</div>
+      <div class="panel"><h3>Sanctions split <span class="meta">today &middot; tagged</span></h3>
+        <div class="tl-prow"><span class="who" style="flex:0 0 90px">Sanctions</span><span class="tl-barwrap"><span style="width:${(sanc / sTot * 100).toFixed(0)}%;background:var(--bad)"></span></span><span class="ct">${sanc.toLocaleString()}</span></div>
+        <div class="tl-prow"><span class="who" style="flex:0 0 90px">Standard</span><span class="tl-barwrap"><span style="width:${(nonSanc / sTot * 100).toFixed(0)}%;background:var(--accent)"></span></span><span class="ct">${nonSanc.toLocaleString()}</span></div>
+        <div class="tl-pfoot">Substitutes TOP/MID/BOT stratum (not tracked) with the real sanctions/standard split.</div>
+      </div>
+    </div>
+
+    <div class="tl-drow" style="grid-template-columns:1fr 1fr">
+      <div class="panel"><h3>Reminder backlog <span class="meta">open ${remOpen} &middot; overdue ${remOver}</span></h3>
+        ${(remOpen || remOver) ? `<div style="display:flex;gap:18px;margin:6px 0"><div><div class="tl-bigpct">${remOpen}</div><div class="small-mono">open reminders</div></div><div><div class="tl-bigpct" style="color:var(--bad)">${remOver}</div><div class="small-mono">overdue</div></div></div>` : '<div class="small-mono" style="padding:8px 0">No open reminders for this agent.</div>'}
+        <div class="tl-pfoot">Counts from <code>by_agent.reminder_open/overdue</code>. Per-record reminder rows (company / IMO / days-open) aren't emitted in <code>aggregates_v2</code> &middot; cleared last 30d —.</div>
+      </div>
+      <div class="panel"><h3>Quality flags this week <span class="meta">QA-changed</span></h3>
+        <div style="display:flex;align-items:baseline;gap:10px;margin:6px 0"><span class="tl-bigpct" style="color:${sel.chg > 0 ? 'var(--bad)' : 'var(--good)'}">${sel.chg}</span><span class="small-mono">records QA marked changed today</span></div>
+        <div class="tl-pfoot">Real count from <code>by_agent.qa_changed_today</code> (${sel.chg} of ${sel.insp.toLocaleString()} reviewed). The per-record changed list isn't carried in the emitted cohort arrays, so only the count is shown.</div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="tl-list-head"><h2>Tagged records <span class="meta">emitted cohorts</span></h2><span class="meta">showing ${recs.length} of ${totalRecs} in add-new-company / case / pending cohorts</span></div>
+      <table class="sortable ag-table"><thead><tr><th>When</th><th>IMO</th><th>Company</th><th>Scenario</th><th>Team</th><th>QA reviewer</th><th>Status</th></tr></thead><tbody>${recRows}</tbody></table>
+      <div class="tl-pfoot">${totalRecs.toLocaleString()} of this agent's records appear in the emitted record cohorts (not the full ${sel.tagged.toLocaleString()}-record tag log — <code>aggregates_v2</code> doesn't carry a full per-agent record list). Tag timestamps aren't emitted, so When is —. <span class="qh-cfg">View full activity log →</span></div>
     </div>`;
 
-  // Comment mix chart
-  const cm = m.comment_distribution || {};
-  const cmEntries = Object.entries(cm).filter(([_, v]) => v > 0).sort((a, b) => b[1] - a[1]);
-  const cmCtx = document.getElementById("chart-comment-mix");
-  if (cmCtx && cmEntries.length > 0) {
-    STATE.charts["chart-comment-mix"] = new Chart(cmCtx, {
-      type: "bar",
-      data: {
-        labels: cmEntries.map(e => e[0]),
-        datasets: [{ data: cmEntries.map(e => e[1]), backgroundColor: "#3d63dd" }]
-      },
-      options: { indexAxis: "y", responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } }
-    });
-  } else if (cmCtx) {
-    cmCtx.parentElement.innerHTML = `<div class="empty">No comments set on this agent's cached records.</div>`;
-  }
+  document.getElementById("agSwitch").addEventListener("change", (e) => { STATE.agentSelected = e.target.value; localStorage.setItem("wqa.agent", e.target.value); renderAgentBody(e.target.value); });
+  document.getElementById("agPrev").addEventListener("click", () => { STATE.agentSelected = prev.name; localStorage.setItem("wqa.agent", prev.name); renderAgentBody(prev.name); });
+  document.getElementById("agNext").addEventListener("click", () => { STATE.agentSelected = next.name; localStorage.setItem("wqa.agent", next.name); renderAgentBody(next.name); });
+  body.querySelector(".ag-rank")?.addEventListener("click", renderAgentDeepDive);
+}
 
-  // Role mix pie
-  const rm = m.per_role_volume || {};
-  const rmEntries = Object.entries(rm).sort((a, b) => b[1] - a[1]);
-  const rmCtx = document.getElementById("chart-role-mix");
-  if (rmCtx && rmEntries.length > 0) {
-    STATE.charts["chart-role-mix"] = new Chart(rmCtx, {
-      type: "doughnut",
-      data: {
-        labels: rmEntries.map(e => e[0]),
-        datasets: [{ data: rmEntries.map(e => e[1]), backgroundColor: ["#2b3440","#8a93a3","#3d63dd","#1a7a55","#9a6a12","#bb4338","#7c5cbf"] }]
-      },
-      options: { responsive: true, maintainAspectRatio: false }
-    });
-  } else if (rmCtx) {
-    rmCtx.parentElement.innerHTML = `<div class="empty">No role data.</div>`;
-  }
-
-  // Verification status table
-  const vs = m.counts_by_verification_status || {};
-  const vsRows = Object.entries(vs).map(([k, v]) => `<tr><td>${esc(k)}</td><td class="right">${v}</td></tr>`).join("");
-  document.getElementById("agent-vs").innerHTML = `<thead><tr><th>Status</th><th class="right">Count</th></tr></thead><tbody>${vsRows || '<tr><td colspan="2" class="empty">empty</td></tr>'}</tbody>`;
-
-  // Flow A/B/C stacked horizontal bar
-  const flowCtx = document.getElementById("agent-flow-chart");
-  if (flowCtx) {
-    STATE.charts["agent-flow-chart"] = new Chart(flowCtx, {
-      type: "bar",
-      data: {
-        labels: [esc(agentName)],
-        datasets: [
-          { label: `Flow A — Completed w/o QA (${m.flow_a_today || 0})`, data: [m.flow_a_today || 0], backgroundColor: "#c98a3f" },
-          { label: `Flow B — QA reviewed (${m.flow_b_today || 0})`,       data: [m.flow_b_today || 0], backgroundColor: "#3d63dd" },
-          { label: `Flow C — Completed after QA (${m.flow_c_today || 0})`,data: [m.flow_c_today || 0], backgroundColor: "#1a7a55" },
-        ],
-      },
-      options: {
-        indexAxis: "y", responsive: true, maintainAspectRatio: false,
-        scales: { x: { stacked: true }, y: { stacked: true, display: false } },
-        plugins: { legend: { position: "right", labels: { font: { size: 11 } } } },
-      },
-    });
-  }
+function renderAgentDeepDive(){
+  const cont = document.getElementById("sidePanelBody"); if (!cont) return;
+  const D = _agData();
+  const sel = D.agents.find(a => a.name === STATE.agentSelected) || D.agents[0];
+  if (!sel) { _hideSidePanel(); return; }
+  const team = sel.team, hex = tlTeamHex(team);
+  const teamAgents = D.agents.filter(a => a.team === team);
+  const rows = teamAgents.map((a, i) => {
+    const appr = a.insp ? ((a.insp - a.chg) / a.insp * 100) : null;
+    return `<div class="ag-dd-row${a.name === sel.name ? " sel" : ""}" data-agpick="${esc(a.name)}" title="Switch to ${esc(a.name)}">
+      <span class="task-avatar" style="background:${hex}">${esc(tlInitials(a.name))}</span>
+      <span class="ag-dd-nm">#${i + 1} ${esc(a.name)}</span>
+      <span class="ag-dd-tag"><b>${a.tagged.toLocaleString()}</b><span class="s"> tagged</span></span>
+      <span class="ag-dd-appr">${appr != null ? appr.toFixed(0) + "%" : "—"}</span></div>`;
+  }).join("") || '<div class="small-mono" style="padding:10px 0">No agents on this team in cache.</div>';
+  cont.innerHTML = `<div class="ag-dd-head">Ranked by tagged today &middot; approval % shown right.</div><div class="ag-dd">${rows}</div>`;
+  cont.querySelectorAll(".ag-dd-row[data-agpick]").forEach(r => r.addEventListener("click", () => {
+    STATE.agentSelected = r.dataset.agpick; localStorage.setItem("wqa.agent", r.dataset.agpick);
+    closeSidePanel(); renderAgentBody(r.dataset.agpick);
+  }));
+  openSidePanel(`Team ${team || "—"}`, `${teamAgents.length} agents · ranked by tagged today`);
 }
 
 // -------- Ownership Experts --------
