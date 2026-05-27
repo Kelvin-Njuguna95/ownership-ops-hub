@@ -3273,7 +3273,7 @@ PAGE_RENDERERS.hourly = function () {
         <span class="dot-sep">&middot;</span>
         <span class="num">${teams.length}</span> teams
         <span class="dot-sep">&middot;</span>
-        waiting &rarr; tagged transitions by EAT hour
+        Observation time &middot; bucketed when the detector first saw each record — may lag real tag time in bursts
       </div>
     </div>`;
 
@@ -3320,7 +3320,7 @@ PAGE_RENDERERS.hourly = function () {
   root.innerHTML = pageHeadHtml + chipsHtml + sortHtml + `
     <div id="hourlyKpis"></div>
     <div class="panel">
-      <h3>Per-agent &middot; per-hour heatmap <span class="meta">waiting &rarr; tagged transitions &middot; 06:00&ndash;23:00 EAT &middot; rows colour-coded by team</span><button id="hourlyRefreshBtn" class="btn" style="margin-left:auto;">↻ Refresh</button></h3>
+      <h3>Per-agent &middot; per-hour heatmap <span class="pill-inline" style="background:var(--warn-bg);color:var(--warn);margin:0 6px" title="Cells are bucketed by detector observation time (completed_at), not the agent's real tag time. The detector bulk-stamps every record it first sees in a 5-min poll cycle, so a finalization burst can shift the apparent peak an hour later than when tagging actually happened.">ⓘ observation time</span><span class="meta">Observation time &middot; 06:00&ndash;23:00 EAT &middot; rows colour-coded by team &middot; bursts may shift the apparent peak later than real tag time</span><button id="hourlyRefreshBtn" class="btn" style="margin-left:auto;">↻ Refresh</button></h3>
       <div id="hourlyGrid"></div>
       <div id="hourlyLegend" class="hourly-legend"></div>
       <div class="footer-note">Cells = records each agent moved waiting→tagged during that EAT hour (source: <code>ownership_completions</code>, bucketed by detector observation time — accurate to ≈5 min at the 5-min poll cadence). The Total covers all 24 hours; the grid shows the 06:00–23:00 business window (* = the agent also has rows tagged outside it, e.g. overnight). Data auto-refreshes when the browser tab regains focus; tap Refresh to fetch immediately.</div>
