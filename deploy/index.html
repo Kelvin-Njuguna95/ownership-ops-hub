@@ -1066,6 +1066,25 @@
   .drawer-close:hover { color: var(--ink); }
   .drawer-body { padding: 16px 22px 32px; }
 
+  /* ----- Shared right-side slide-out panel (Tasks + Completed detail) ----- */
+  .side-panel-backdrop { position: fixed; inset: 0; background: rgba(15,17,22,0.45); opacity: 0; pointer-events: none; transition: opacity 220ms ease; z-index: 50; }
+  .side-panel-backdrop.open { opacity: 1; pointer-events: auto; }
+  .side-panel { position: fixed; top: 0; right: 0; bottom: 0; width: 520px; max-width: 100vw; background: var(--surface); border-left: 1px solid var(--border); box-shadow: -18px 0 50px rgba(16,24,40,0.22); transform: translateX(100%); transition: transform 220ms ease; z-index: 51; display: flex; flex-direction: column; }
+  .side-panel.open { transform: translateX(0); }
+  .side-panel-header { position: relative; flex: 0 0 auto; display: flex; align-items: flex-start; gap: 12px; padding: 18px 20px 14px; border-bottom: 1px solid var(--border); background: var(--surface); }
+  .side-panel-header::before { content: ""; position: absolute; top: 0; left: 0; right: 0; height: 3px; background: var(--vivid-grad); }
+  .side-panel-head-text { min-width: 0; flex: 1 1 auto; }
+  .side-panel-title { font-size: 16px; font-weight: 700; color: var(--ink); line-height: 1.25; word-break: break-word; }
+  .side-panel-subtitle { font-size: 11px; color: var(--muted); margin-top: 3px; text-transform: uppercase; letter-spacing: 0.05em; font-weight: 600; }
+  .side-panel-close { flex: 0 0 auto; width: 30px; height: 30px; border-radius: var(--radius-sm); border: 1px solid var(--border); background: var(--surface); color: var(--muted); font-size: 20px; line-height: 1; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; transition: background 0.12s ease, color 0.12s ease; }
+  .side-panel-close:hover { background: var(--soft); color: var(--ink); }
+  .side-panel-body { flex: 1 1 auto; overflow-y: auto; padding: 16px 18px 28px; }
+  /* In the 520px panel, the detail grids stack vertically (the spec's "all drawer panels stacked"). */
+  .side-panel-body .tl-drow, .side-panel-body .ct-drow { grid-template-columns: 1fr; }
+  .side-panel-body .tl-selhead, .side-panel-body .ct-selhead { margin-top: 0; }
+  @media (max-width: 767px) { .side-panel { width: 100vw; } }
+  body.side-panel-open { overflow: hidden; }
+
   /* Charts */
   .chart-wrap { position: relative; height: 280px; }
   .chart-wrap.small { height: 160px; }
@@ -1238,6 +1257,18 @@
       <div id="taskDrawer"         class="drawer"></div>
       <div id="completedDrawerBackdrop" class="drawer-backdrop"></div>
       <div id="completedDrawer"         class="drawer"></div>
+      <!-- Shared right-side slide-out detail panel (Tasks + Completed). Fixed-position; escapes the grid. -->
+      <div id="sidePanelBackdrop" class="side-panel-backdrop"></div>
+      <aside id="sidePanel" class="side-panel" aria-hidden="true">
+        <div class="side-panel-header">
+          <div class="side-panel-head-text">
+            <div class="side-panel-title" id="sidePanelTitle"></div>
+            <div class="side-panel-subtitle" id="sidePanelSubtitle"></div>
+          </div>
+          <button class="side-panel-close" id="sidePanelClose" type="button" title="Close (Esc)" aria-label="Close panel">×</button>
+        </div>
+        <div class="side-panel-body" id="sidePanelBody"></div>
+      </aside>
     </div>
   </main>
 </div>
@@ -1371,6 +1402,7 @@ const STATE = {
   currentPage: localStorage.getItem("wqa.page") || "overview",
   currentAgent: localStorage.getItem("wqa.agent") || null,
   freshness: null,   // {label, level: "fresh"|"stale"|"alert"}
+  sidePanelOpen: false,  // shared Tasks/Completed slide-out detail panel — auto-syncs with selectedTaskId/completedSelectedId
   charts: {},        // chart instances by element id (so we can destroy/redraw)
   staleTaskNames: new Set(),   // task names flagged stale-24h (PR #67)
   staleCompareDate: null,      // snapshot date the stale check compared against
@@ -1792,6 +1824,10 @@ function goto(pageId) {
   document.getElementById("pageTitle").textContent = PAGES.find(p => p.id === pageId)?.label || "";
   // Re-render the active page each time so charts can be destroyed cleanly.
   for (const id in STATE.charts) destroyChart(id);
+  // Navigating between pages dismisses any open detail side-panel.
+  STATE.selectedTaskId = null;
+  STATE.completedSelectedId = null;
+  _hideSidePanel();
   const renderer = PAGE_RENDERERS[pageId];
   if (renderer) renderer();
 }
@@ -4747,7 +4783,6 @@ PAGE_RENDERERS.tasks = function () {
       </div>
     </div>
     <div id="tlList"></div>
-    <div id="tlDetail"></div>
   `;
 
   // Chip wiring (team filter + flagged-only + last-7) → re-render the list only.
@@ -4782,7 +4817,9 @@ PAGE_RENDERERS.tasks = function () {
   });
 
   renderTasksList();
-  renderTaskDetail();
+  // Restore the detail panel in-place if a task was selected before this re-render
+  // (filter/tab change) — never auto-open on a fresh page load.
+  if (STATE.sidePanelOpen && STATE.selectedTaskId) renderTaskDetail();
 };
 
 function _tasksFiltered() {
@@ -5023,7 +5060,7 @@ function renderTasksList(){
       ${rows.map(rowHtml).join("") || '<div class="empty" style="padding:18px">No tasks match this filter.</div>'}
     </div>`;
 
-  document.querySelectorAll("#tlTabs button").forEach(b=>b.addEventListener("click",()=>{ STATE.tasksTab=b.dataset.tab; renderTasksList(); renderTaskDetail(); }));
+  document.querySelectorAll("#tlTabs button").forEach(b=>b.addEventListener("click",()=>{ STATE.tasksTab=b.dataset.tab; renderTasksList(); if(STATE.sidePanelOpen && STATE.selectedTaskId) renderTaskDetail(); }));
   document.querySelectorAll("#tlFchips [data-fx]").forEach(x=>x.addEventListener("click",()=>{
     const fx=x.dataset.fx;
     if(fx==="status") STATE.tasksTab="active";
@@ -5036,14 +5073,52 @@ function renderTasksList(){
   document.querySelectorAll("#tlList .tl-row[data-task]").forEach(r=>r.addEventListener("click",()=>{ STATE.selectedTaskId=r.dataset.task; renderTasksList(); renderTaskDetail(); }));
 }
 
+// ============================================================================
+//  Shared right-side slide-out panel — used by Tasks + Completed detail.
+//  Open: row click. Close: × button, backdrop click, or Escape (all wired once
+//  in _wireSidePanel, called from init()). Page scroll is locked via the
+//  .side-panel-open class on <body>; the panel body scrolls internally.
+// ============================================================================
+function openSidePanel(title, subtitle){
+  STATE.sidePanelOpen = true;
+  const t=document.getElementById("sidePanelTitle"); if(t) t.textContent = title || "";
+  const s=document.getElementById("sidePanelSubtitle"); if(s) s.textContent = subtitle || "";
+  const p=document.getElementById("sidePanel"); if(p){ p.classList.add("open"); p.setAttribute("aria-hidden","false"); }
+  const b=document.getElementById("sidePanelBackdrop"); if(b) b.classList.add("open");
+  document.body.classList.add("side-panel-open");
+}
+// Visual reset only (used on page navigation) — does not re-render the lists.
+function _hideSidePanel(){
+  STATE.sidePanelOpen = false;
+  const p=document.getElementById("sidePanel"); if(p){ p.classList.remove("open"); p.setAttribute("aria-hidden","true"); }
+  const b=document.getElementById("sidePanelBackdrop"); if(b) b.classList.remove("open");
+  document.body.classList.remove("side-panel-open");
+  const body=document.getElementById("sidePanelBody"); if(body) body.innerHTML="";
+}
+// User-triggered close (× / backdrop / Escape): clears selection + refreshes the
+// underlying list so the selected-row highlight drops.
+function closeSidePanel(){
+  _hideSidePanel();
+  STATE.selectedTaskId = null;
+  STATE.completedSelectedId = null;
+  if(document.getElementById("tlList")) renderTasksList();
+  if(document.getElementById("ctArchive")) renderCompletedArchive();
+}
+let _sidePanelWired = false;
+function _wireSidePanel(){
+  if(_sidePanelWired) return;
+  _sidePanelWired = true;
+  document.getElementById("sidePanelClose").addEventListener("click", closeSidePanel);
+  document.getElementById("sidePanelBackdrop").addEventListener("click", closeSidePanel);
+  document.addEventListener("keydown", (e)=>{ if(e.key==="Escape" && STATE.sidePanelOpen) closeSidePanel(); });
+}
+
 function renderTaskDetail(){
-  const cont=document.getElementById("tlDetail"); if(!cont) return;
+  const cont=document.getElementById("sidePanelBody"); if(!cont) return;
   const all = STATE.v2?.tasks_all || [];
-  let t = all.find(x=>x.name===STATE.selectedTaskId);
-  if(!t){ const vis=_tlTab(_tlBase(), STATE.tasksTab||"active").slice().sort((a,b)=>new Date(a.date_first_seen||0)-new Date(b.date_first_seen||0)); t=vis[0]; if(t) STATE.selectedTaskId=t.name; }
-  if(!t){ cont.innerHTML=""; return; }
+  const t = all.find(x=>x.name===STATE.selectedTaskId);
+  if(!t){ STATE.selectedTaskId=null; _hideSidePanel(); return; }
   const total=t.total_records_in_cache||0, sd=t.status_distribution||{};
-  const taskId = "task_"+((t.date_first_seen||"").slice(0,10).replace(/-/g,"")||"------");
   const statusPill = t.is_completed
     ? `<span class="task-pill completed">Completed</span>`
     : ((sd.tagged||0)>0||(sd.waiting||0)>0 ? `<span class="task-pill in-progress">Tagging in progress</span>` : `<span class="task-pill bo-qa">In BO QA</span>`);
@@ -5104,7 +5179,6 @@ function renderTaskDetail(){
   const zombieTask=activeSet.find(x=>x.total_records_in_cache && (x.dead_vessels/x.total_records_in_cache)>=0.6);
 
   cont.innerHTML = `
-    <div class="tl-selhead">SELECTED &middot; ${esc(t.name)} &middot; ${esc(taskId)}<span class="tl-selhint">Drawer view &middot; click any row above to swap detail</span></div>
     <div class="tl-drawer-card">
       <div class="tl-dh">
         <span class="ic">${KPI_ICONS.file}</span>
@@ -5146,8 +5220,9 @@ function renderTaskDetail(){
       </div>
     </div>`;
 
-  const close=document.getElementById("tlDetailClose");
-  if(close) close.addEventListener("click",()=>{ STATE.selectedTaskId=null; renderTasksList(); cont.innerHTML=""; });
+  openSidePanel(t.name, `${total.toLocaleString()} records · since ${shortDate(t.date_first_seen)}`);
+  const close=cont.querySelector("#tlDetailClose");
+  if(close) close.addEventListener("click", closeSidePanel);
 }
 // ----- Task detail drawer -----
 function openTaskDrawer(taskName) {
@@ -5933,7 +6008,6 @@ function _renderCompletedPage(){
       </div>
     </div>
     <div id="ctArchive"></div>
-    <div id="ctDetail"></div>
     <div id="ctThroughput"></div>
     <div id="ctLeaderboard"></div>
   `;
@@ -5950,7 +6024,9 @@ function _renderCompletedPage(){
   // visual-only buttons: ctRangeBtn, ctReportBtn (no handlers)
 
   renderCompletedArchive();
-  renderCompletedDetail();
+  // Restore the detail panel in-place if a batch was selected before this re-render
+  // (filter/tab change) — never auto-open on a fresh page load.
+  if (STATE.sidePanelOpen && STATE.completedSelectedId) renderCompletedDetail();
   renderCompletedThroughput();
   renderCompletedLeaderboard();
 }
@@ -6041,16 +6117,15 @@ function renderCompletedArchive(){
 
   document.querySelectorAll("#ctTabs button").forEach(b=>b.addEventListener("click",()=>{ STATE.completedTab=b.dataset.ctab; STATE.completedPage=1; renderCompletedArchive(); }));
   document.querySelectorAll("#ctFchips [data-cfx]").forEach(x=>x.addEventListener("click",()=>{ const fx=x.dataset.cfx; const ff=STATE.completedFilters; if(fx==="status")STATE.completedTab="all"; else if(fx==="team")ff.team="__all__"; else if(fx==="sanc")ff.sanctionsOnly=false; else if(fx==="breach")ff.tatBreach=false; else if(fx==="clear"){STATE.completedTab="all";STATE.completedFilters={team:"__all__",sanctionsOnly:false,tatBreach:false};} STATE.completedPage=1; _renderCompletedPage(); }));
-  document.querySelectorAll("#ctArchive .ct-row[data-ct]").forEach(r=>r.addEventListener("click",()=>{ STATE.completedSelectedId=r.dataset.ct; renderCompletedArchive(); renderCompletedDetail(); document.getElementById("ctDetail").scrollIntoView({behavior:"smooth",block:"start"}); }));
+  document.querySelectorAll("#ctArchive .ct-row[data-ct]").forEach(r=>r.addEventListener("click",()=>{ STATE.completedSelectedId=r.dataset.ct; renderCompletedArchive(); renderCompletedDetail(); }));
   document.querySelectorAll("#ctArchive [data-cpg]").forEach(b=>b.addEventListener("click",()=>{ if(b.disabled)return; STATE.completedPage=parseInt(b.dataset.cpg,10); renderCompletedArchive(); }));
 }
 
 function renderCompletedDetail(){
-  const cont=document.getElementById("ctDetail"); if(!cont) return;
+  const cont=document.getElementById("sidePanelBody"); if(!cont) return;
   const all=STATE.completedTasks||[];
-  let t=all.find(x=>x.name===STATE.completedSelectedId);
-  if(!t){ const vis=_ctTab(_ctBase(),STATE.completedTab||"all").slice().sort((a,b)=>new Date(b.latest.end_time||0)-new Date(a.latest.end_time||0)); t=vis[0]; if(t) STATE.completedSelectedId=t.name; }
-  if(!t){ cont.innerHTML=""; return; }
+  const t=all.find(x=>x.name===STATE.completedSelectedId);
+  if(!t){ STATE.completedSelectedId=null; _hideSidePanel(); return; }
   const L=t.latest, PK=t.peak||{}, QP=t.qaPeak||{};
   const total=t.trueTotal||0;
   const [sc,slabel]=_ctStatus(t);
@@ -6076,7 +6151,6 @@ function renderCompletedDetail(){
   const revRows=revs.map(r=>{ const rate=(r.reviewed||0)>0?((r.changed||0)/(r.reviewed||0)*100):0; return `<div class="ct-prow"><span class="task-avatar" style="background:var(--accent)">${esc(ctInitials(r.name))}</span><span class="who">${esc(r.name)}<span class="s"> &middot; BO QA reviewer</span></span><span class="ct-num">${(r.reviewed||0).toLocaleString()}</span><span class="pill-inline ${rate<10?'good':rate<30?'warn':'bad'}" style="margin-left:6px">${rate.toFixed(1)}%</span></div>`; }).join("")||`<div class="small-mono" style="padding:8px 0">Per-reviewer breakdown not recorded for this batch (reviewed ${QP.qa_reviewed||0} · changed ${QP.qa_changed||0}).</div>`;
 
   cont.innerHTML=`
-    <div class="ct-selhead">SELECTED &middot; ${esc(t.name)} &middot; PEAK-DAY BREAKDOWN<span class="ct-selhint">Drawer view &middot; click any archive row to swap detail</span></div>
     <div class="ct-drawer-card">
       <div class="ct-dh">
         <span class="ic">${KPI_ICONS.check}</span>
@@ -6096,8 +6170,9 @@ function renderCompletedDetail(){
       <div class="panel"><h3>QA reviewer history <span class="meta">${revs.length} QAs &middot; ${(QP.qa_reviewed||0).toLocaleString()} reviewed</span></h3>${revRows}
         <div class="ct-pfoot">Rejections <span class="num">${(QP.qa_changed||0).toLocaleString()}</span> &middot; Resubmitted <span class="num">—</span></div></div>
     </div>`;
-  document.querySelectorAll("#ctDetail [data-ctnoop]").forEach(b=>b.addEventListener("click",()=>{}));
-  const c=document.getElementById("ctDetailClose"); if(c) c.addEventListener("click",()=>{ STATE.completedSelectedId=null; renderCompletedArchive(); cont.innerHTML=""; });
+  openSidePanel(t.name, `Peak-day breakdown · ${total.toLocaleString()} records`);
+  cont.querySelectorAll("[data-ctnoop]").forEach(b=>b.addEventListener("click",()=>{}));
+  const c=cont.querySelector("#ctDetailClose"); if(c) c.addEventListener("click", closeSidePanel);
 }
 
 function renderCompletedThroughput(){
@@ -7500,6 +7575,7 @@ async function init() {
   await computeStaleTasks();
   renderNav();
   renderFreshness();
+  _wireSidePanel();   // idempotent: × / backdrop / Escape close handlers (once)
   goto(STATE.currentPage);
 }
 
