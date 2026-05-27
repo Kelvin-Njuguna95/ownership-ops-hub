@@ -790,6 +790,74 @@
   .nc-pag .pages button.active { background:var(--ink); color:#fff; border-color:var(--ink); font-weight:600; }
   .nc-pag .pages button:disabled { opacity:0.4; cursor:default; }
 
+  /* ---- Pipeline & lead-time detail layer (Phase 13) --------------------- */
+  .pl-live { display:inline-flex; align-items:center; gap:5px; margin-left:8px; font-size:11px; color:var(--good); font-weight:600; }
+  .pl-live .dot { width:7px; height:7px; border-radius:50%; background:var(--good); }
+  .pl-chips { display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin-bottom:16px; }
+  .pl-chips .spacer { flex:1; }
+  .pl-chip { display:inline-flex; align-items:center; gap:6px; padding:6px 12px; border-radius:999px; background:var(--surface); border:1px solid var(--border); color:var(--ink); font-size:12.5px; cursor:pointer; font-family:inherit; transition:background .15s ease,color .15s ease,border-color .15s ease; }
+  .pl-chip:hover { background:var(--soft); }
+  .pl-chip.active { color:#fff; border-color:transparent; font-weight:600; }
+  .pl-chip .dot { width:8px; height:8px; border-radius:50%; flex-shrink:0; }
+  .pl-chip .ct { font-size:11px; padding:1px 7px; border-radius:999px; background:var(--soft); color:var(--muted); font-variant-numeric:tabular-nums; }
+  .pl-chip.active .ct { background:rgba(255,255,255,0.22); color:#fff; }
+  .pl-banner { display:flex; align-items:center; gap:12px; padding:12px 16px; border-radius:var(--radius-md); background:var(--warn-bg); border:1px solid color-mix(in srgb, var(--warn) 30%, transparent); margin-bottom:16px; font-size:13px; color:var(--ink); }
+  .pl-banner .ic { width:30px; height:30px; border-radius:8px; flex-shrink:0; display:inline-flex; align-items:center; justify-content:center; background:var(--warn); color:#fff; }
+  .pl-banner .bd { flex:1; min-width:0; } .pl-banner .bd b { color:var(--warn); }
+  .pl-banner .acts { display:flex; gap:8px; flex-shrink:0; }
+  .pl-segbar { display:flex; height:8px; border-radius:999px; overflow:hidden; background:var(--soft); margin-top:8px; } .kpi.hero .pl-segbar { background:rgba(255,255,255,0.22); }
+  .pl-segbar > span { height:100%; }
+  .pl-seglabels { display:flex; justify-content:space-between; font-size:9px; margin-top:4px; color:var(--muted); } .kpi.hero .pl-seglabels { color:rgba(255,255,255,0.8); }
+  .pl-foot { font-size:11px; color:var(--muted); margin-top:6px; } .kpi.hero .pl-foot { color:rgba(255,255,255,0.72); }
+  .pl-sub { font-size:11.5px; color:var(--muted); margin-top:4px; } .kpi.hero .pl-sub { color:rgba(255,255,255,0.85); }
+  .pl-stagecard-icon { font-weight:700; }
+  .pl-section-head { display:flex; align-items:baseline; justify-content:space-between; gap:12px; margin:20px 2px 10px; }
+  .pl-section-head h2 { margin:0; font-size:15px; font-weight:700; color:var(--ink); } .pl-section-head h2 em { font-style:italic; font-family:Georgia,serif; color:var(--accent); font-weight:600; }
+  .pl-section-head .meta { font-size:11.5px; color:var(--muted); }
+  .pl-stages { display:grid; grid-template-columns:repeat(5,1fr); gap:12px; margin-bottom:16px; }
+  @media(max-width:1100px){ .pl-stages { grid-template-columns:repeat(2,1fr); } }
+  .pl-stage { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius-lg); padding:14px 16px; box-shadow:var(--shadow-sm); position:relative; }
+  .pl-stage.bottleneck { border-color:var(--warn); box-shadow:0 0 0 2px var(--warn-bg); }
+  .pl-stage .s { font-size:10px; font-weight:700; color:var(--muted); }
+  .pl-stage .lab { font-size:12px; font-weight:600; color:var(--ink); margin-top:2px; }
+  .pl-stage .v { font-size:26px; font-weight:800; color:var(--ink); font-variant-numeric:tabular-nums; line-height:1.1; margin-top:6px; }
+  .pl-stage .sub { font-size:10.5px; color:var(--muted); margin-top:4px; }
+  .pl-stage .bt { position:absolute; top:10px; right:12px; font-size:8.5px; font-weight:700; color:var(--warn); text-transform:uppercase; letter-spacing:0.04em; }
+  .pl-dot { width:9px; height:9px; border-radius:3px; display:inline-block; vertical-align:middle; margin-right:4px; }
+  .pl-summary { display:grid; grid-template-columns:repeat(4,1fr); gap:12px; margin-bottom:16px; }
+  @media(max-width:900px){ .pl-summary { grid-template-columns:repeat(2,1fr); } }
+  .pl-scard { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius-md); padding:12px 14px; box-shadow:var(--shadow-sm); }
+  .pl-scard .l { font-size:10px; text-transform:uppercase; letter-spacing:0.04em; color:var(--muted); font-weight:700; }
+  .pl-scard .v { font-size:22px; font-weight:700; color:var(--ink); font-variant-numeric:tabular-nums; line-height:1; margin-top:6px; }
+  .pl-scard .sub { font-size:10.5px; color:var(--muted); margin-top:4px; }
+  .pl-2col { display:grid; grid-template-columns:1fr 1fr; gap:14px; margin-bottom:14px; }
+  @media(max-width:1100px){ .pl-2col { grid-template-columns:1fr; } }
+  .pl-volrow { display:grid; grid-template-columns:90px 1fr 46px; gap:10px; align-items:center; font-size:11.5px; padding:5px 0; }
+  .pl-volrow .lab { color:var(--ink); } .pl-volrow .lab .pl-dot { } .pl-volrow .age { font-size:10px; color:var(--muted); }
+  .pl-volrow .bar { height:12px; background:var(--soft); border-radius:4px; overflow:hidden; } .pl-volrow .bar > span { display:block; height:100%; border-radius:4px; }
+  .pl-volrow .v { text-align:right; font-weight:600; color:var(--ink); font-variant-numeric:tabular-nums; }
+  .pl-heat { display:grid; gap:4px; font-size:11px; }
+  .pl-heat .hc { padding:5px 4px; text-align:center; border-radius:4px; font-variant-numeric:tabular-nums; }
+  .pl-heat .hh { font-size:10px; color:var(--muted); font-weight:700; text-align:center; }
+  .pl-heat .rl { font-size:11px; color:var(--ink); font-weight:600; display:flex; align-items:center; }
+  .pl-stuck-row { display:grid; grid-template-columns:minmax(150px,2fr) 1fr 1fr 80px 90px 1.2fr 90px; gap:10px; align-items:center; padding:9px 8px; border-bottom:1px solid var(--border); font-size:12px; }
+  .pl-stuck-row.head { font-size:10px; text-transform:uppercase; letter-spacing:0.04em; color:var(--muted); font-weight:700; }
+  .pl-stuck-row .tn { font-weight:600; color:var(--ink); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .pl-stuck-row .flow { display:flex; height:8px; border-radius:999px; overflow:hidden; background:var(--soft); } .pl-stuck-row .flow > span { height:100%; }
+  .pl-tabs { display:flex; align-items:center; gap:6px; flex-wrap:wrap; margin-bottom:10px; }
+  .pl-tabs button { padding:5px 11px; font-size:12px; font-family:inherit; color:var(--muted); background:transparent; border:1px solid var(--border); cursor:pointer; border-radius:999px; }
+  .pl-tabs button.active { background:var(--ink); color:#fff; border-color:var(--ink); font-weight:600; }
+  .pl-tabs button .ct { margin-left:5px; font-size:10.5px; padding:1px 6px; border-radius:999px; background:var(--soft); color:var(--muted); }
+  .pl-tabs button.active .ct { background:rgba(255,255,255,0.22); color:#fff; }
+  .pl-tabs .spacer { flex:1; }
+  .pl-pag { display:flex; align-items:center; justify-content:space-between; gap:8px; margin-top:10px; font-size:11.5px; color:var(--muted); }
+  .pl-pill { font-size:10px; font-weight:700; padding:2px 7px; border-radius:999px; white-space:nowrap; }
+  .pl-flow { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+  .pl-quad { border-radius:var(--radius-md); padding:12px 14px; border:1px solid var(--border); }
+  .pl-quad .ql { font-size:11px; font-weight:700; }
+  .pl-quad .qv { font-size:24px; font-weight:800; color:var(--ink); font-variant-numeric:tabular-nums; line-height:1; margin-top:4px; }
+  .pl-quad .qs { font-size:10.5px; color:var(--muted); margin-top:4px; }
+
   /* Tasks page */
   .sortable th { cursor: pointer; user-select: none; }
   .sortable th:hover { background: #e9ebf0; }
@@ -6660,207 +6728,271 @@ function _rollupClientSide(dayList) {
 }
 
 // -------- Pipeline & Lead Time (stub) --------
+// ===== Pipeline & lead-time detail layer (Phase 13) =====
+// Per-stage transit timings are NOT tracked, so every "stage P50/P90/WoW" mockup
+// section is substituted with current-volume / current-age metrics derived from
+// tasks_all status_distribution + date_first_seen. Whole-funnel lead time comes
+// from lead_time_today (Created→Valid). No fabrication.
+const PL_STAGES = [
+  { key:"waiting",             label:"Waiting", s:"S1", extra:[],                  color:"#F9943B" },
+  { key:"tagged",              label:"Tagged",  s:"S2", extra:["need to be update"], color:"#7B68EE" },
+  { key:"Selected for BO QA ", label:"BO QA",   s:"S3", extra:[],                  color:"#0691B5" },
+  { key:"Selected for WW QA",  label:"WW QA",   s:"S4", extra:[],                  color:"#8B5CF6" },
+  { key:"Done",                label:"Done",    s:"S5", extra:["Valid"],           color:"#0EA56C" },
+];
+const PL_PAGE_SIZE = 12;
+function plInitials(n){ return String(n||"").split(/\s+/).filter(Boolean).map(p=>p[0].toUpperCase()).slice(0,2).join("")||"··"; }
+function plTeamHex(tm){ return (TEAM_COLORS[tm]||{}).hex || "#7B68EE"; }
+function plFmtHM(sec){ if(sec==null||isNaN(sec)) return null; const h=Math.floor(sec/3600), m=Math.round((sec%3600)/60); return h>0?`${h}h ${m}m`:`${m}m`; }
+function plAgeDays(iso){ const h=ageHours(iso); return h==null?null:h/24; }
+function plStageCounts(t){ const sd=t.status_distribution||{}; const o={}; for(const st of PL_STAGES){ o[st.s]=(sd[st.key]||0)+st.extra.reduce((s,k)=>s+(sd[k]||0),0); } return o; }
+function plPrimaryTeam(t){ const tw=(t.teams_worked||[]).slice().sort((a,b)=>(b.records||0)-(a.records||0)); return tw[0]?.team||"—"; }
+function plDominant(t){ const c=plStageCounts(t); let best=null,bv=-1; for(const st of PL_STAGES){ if(c[st.s]>bv){bv=c[st.s];best=st;} } return best; }
+function plHeatColor(ratio){ if(ratio<=0) return "var(--soft)"; if(ratio<0.25) return "rgba(14,165,108,0.18)"; if(ratio<0.5) return "rgba(6,145,181,0.22)"; if(ratio<0.75) return "rgba(249,148,59,0.28)"; return "rgba(229,56,79,0.30)"; }
+
 PAGE_RENDERERS.pipeline = function () {
-  const root = document.getElementById("page-pipeline");
-  // Today-scoped, end-to-end lead time (start_tagging → completion). Added to
-  // the aggregator as the top-level `lead_time_today` key. Falls back to {}
-  // for aggregates written before that key shipped — every tile/row degrades
-  // to "—" / empty-state rather than throwing.
-  const ltt   = STATE.v2?.lead_time_today || {};
-  // Per-stage breakdown over the whole cache window (NOT today-scoped). Kept
-  // from the previous stub — answers "where does pipeline time accrue", which
-  // the today-scoped tiles above don't.
-  const stage = STATE.v2?.totals?.lead_time_seconds || {};
-  const hrs    = (s) => (s == null) ? "—" : (s / 3600).toFixed(1);          // bare number, 1dp
-  const hrsKpi = (s) => (s == null) ? "—" : `${(s / 3600).toFixed(1)} h`;   // with unit, for tiles
-  const completed = (typeof ltt.count === "number") ? ltt.count : null;
-
-  // Per-team rows: only teams with completions today, most completions first.
-  const teamRows = Object.entries(ltt.by_team || {})
-    .sort((a, b) => b[1].count - a[1].count)
-    .map(([team, s]) => `<tr>
-      <td><strong>${esc(team)}</strong></td>
-      <td class="right">${s.count}</td>
-      <td class="right">${hrs(s.p50)}</td>
-      <td class="right">${hrs(s.p90)}</td>
-    </tr>`).join("");
-
-  // Sanctions vs non-sanctions cohorts. by_cohort omits count=0 cohorts (same
-  // empty convention as by_team), so always render both fixed rows and default
-  // a missing cohort to count 0 / "—". by_cohort itself is absent on aggregates
-  // written before the split shipped → single empty-state row.
-  const bc = ltt.by_cohort;
-  const cohortRow = (label, key) => {
-    const s = bc && bc[key];
-    return `<tr>
-      <td><strong>${label}</strong></td>
-      <td class="right">${s ? s.count : 0}</td>
-      <td class="right">${hrs(s && s.p50)}</td>
-      <td class="right">${hrs(s && s.p90)}</td>
-    </tr>`;
-  };
-  const cohortRows = bc
-    ? cohortRow("Sanctions", "sanctions") + cohortRow("Non-sanctions", "non_sanctions")
-    : `<tr><td colspan="4" class="empty">No cohort breakdown in this aggregate yet.</td></tr>`;
-
-  // Today's pipeline flow funnel — split tagged_today into the Flow Framework
-  // v3 stages (data already on totals; no fetch). Computed here, before the
-  // template, so the chart (below) and the DOM stage-list (in the template)
-  // read one source of truth. Zero/missing stages stay at 0 (0%), never
-  // hidden — a zero stage is itself a signal.
-  const fTot = STATE.v2?.totals || {};
-  const fNum = (v) => (typeof v === "number" ? v : 0);
-  const fTagged = fNum(fTot.tagged_today);
-  const funnelStages = [
-    { name: "Tagged today",         value: fTagged },
-    { name: "In BO QA (Flow B)",    value: fNum(fTot.flow_b_today) },
-    { name: "Completed (Flow A+C)", value: fNum(fTot.flow_a_today) + fNum(fTot.flow_c_today) },
-    { name: "QA reviewed (Flow C)", value: fNum(fTot.flow_c_today) },
-  ];
-  const funnelPct = (v) => fTagged > 0 ? Math.round(v / fTagged * 100) : 0;
-  const funnelList = funnelStages.map(s => `<li style="margin-bottom:10px">
-            <strong>${esc(s.name)}</strong>
-            <div class="small-mono">${s.value.toLocaleString()} records · ${funnelPct(s.value)}% of tagged today</div>
-          </li>`).join("");
-
-  root.innerHTML = `
-    <div class="kpis">
-      <div class="kpi hero">
-        <div class="label">Lead time p50 (today)</div>
-        <div class="value">${hrsKpi(ltt.p50)}</div>
-        <div class="delta">median start_tagging → completion</div>
-      </div>
-      <div class="kpi">
-        <div class="label">Lead time p90 (today)</div>
-        <div class="value">${hrsKpi(ltt.p90)}</div>
-        <div class="delta">90th percentile</div>
-      </div>
-      <div class="kpi">
-        <div class="label">Records completed today</div>
-        <div class="value">${completed == null ? "—" : completed.toLocaleString()}</div>
-        <div class="delta">done or valid today (5 ownership teams)</div>
-      </div>
-    </div>
-    <div class="panel">
-      <h3>Per-team lead time <span class="meta">records completed today, start_tagging → completion</span></h3>
-      <table>
-        <thead><tr><th>Team</th><th class="right">Completed today</th><th class="right">p50 (h)</th><th class="right">p90 (h)</th></tr></thead>
-        <tbody>${teamRows || `<tr><td colspan="4" class="empty">No records completed yet today.</td></tr>`}</tbody>
-      </table>
-    </div>
-    <div class="panel">
-      <h3>Sanctions vs non-sanctions <span class="meta">records completed today</span></h3>
-      <table>
-        <thead><tr><th>Cohort</th><th class="right">Completed today</th><th class="right">p50 (h)</th><th class="right">p90 (h)</th></tr></thead>
-        <tbody>${cohortRows}</tbody>
-      </table>
-      <div class="footer-note">Sanctions tasks require 100% QA per SOP — watch this row for material drift vs non-sanctions.</div>
-    </div>
-    <div class="panel">
-      <h3>Today's pipeline flow <span class="meta">tagged today by stage reached</span></h3>
-      <div style="display:flex; gap:18px; align-items:flex-start">
-        <div class="chart-wrap" style="flex:1; min-width:0"><canvas id="chart-today-funnel"></canvas></div>
-        <ul style="flex:0 0 220px; list-style:none; margin:0; padding:0">
-          ${funnelList}
-        </ul>
-      </div>
-      <div class="footer-note">Stages aren't strictly sequential — Flow A bypasses BO QA, Flow D (in-flight) isn't shown. See Flow Framework v3 in CLAUDE.md for the definitions.</div>
-    </div>
-    <div class="panel">
-      <h3>Monthly p50 lead-time trend <span class="meta">from snapshots</span></h3>
-      <div class="chart-wrap"><canvas id="chart-monthly-leadtime"></canvas></div>
-      <div class="footer-note">p50 lead time = median time from start_tagging to completion, per day for the month chosen in the Month picker above. Derived from daily snapshots in Supabase Storage; only days that have lead-time data are shown.</div>
-    </div>
-    <div class="panel">
-      <h3>Stage breakdown <span class="meta">all cached records, from aggregates_v2.totals.lead_time_seconds</span></h3>
-      <table>
-        <tr><td>created → tagged (p50)</td><td class="right">${hrs(stage.created_to_tagged_p50)}</td></tr>
-        <tr><td>created → tagged (p90)</td><td class="right">${hrs(stage.created_to_tagged_p90)}</td></tr>
-        <tr><td>tagged → BO QA (p50)</td><td class="right">${hrs(stage.tagged_to_bo_qa_p50)}</td></tr>
-        <tr><td>tagged → BO QA (p90)</td><td class="right">${hrs(stage.tagged_to_bo_qa_p90)}</td></tr>
-        <tr><td>BO QA → Done (p50)</td><td class="right">${hrs(stage.bo_qa_to_done_p50)}</td></tr>
-        <tr><td>BO QA → Done (p90)</td><td class="right">${hrs(stage.bo_qa_to_done_p90)}</td></tr>
-      </table>
-      <div class="footer-note">Per-stage p50/p90 in hours, across the whole cache window (not today-scoped) — shows where pipeline time accrues.</div>
-    </div>
-  `;
-
-  // Today's pipeline flow funnel — one bar per Flow Framework v3 stage,
-  // sharing the funnelStages/funnelPct computed above with the DOM stage-list.
-  // Single color + descending counts give the funnel feel; the count/% now
-  // live in the list beside the chart, so y-axis labels are just stage names.
-  (() => {
-    const ctx = document.getElementById("chart-today-funnel");
-    if (!ctx) return;
-    if (STATE.charts["chart-today-funnel"]) STATE.charts["chart-today-funnel"].destroy();
-    STATE.charts["chart-today-funnel"] = new Chart(ctx, {
-      type: "bar",
-      data: {
-        labels: funnelStages.map(s => s.name),
-        datasets: [{
-          label: "records",
-          data: funnelStages.map(s => s.value),
-          backgroundColor: "#3d63dd",
-        }],
-      },
-      options: {
-        indexAxis: "y",
-        responsive: true,
-        maintainAspectRatio: false,
-        scales: { x: { beginAtZero: true } },
-        plugins: {
-          legend: { display: false },
-          tooltip: { callbacks: { label: c => {
-            const v = funnelStages[c.dataIndex].value;
-            return `${v.toLocaleString()} records (${funnelPct(v)}% of tagged today)`;
-          }}},
-        },
-      },
-    });
-  })();
-
-  // Monthly p50 lead-time chart — lead_time_today.p50 per day for the month
-  // chosen in the Month picker. Only days that have lead-time data are plotted
-  // (no empty padding). Snapshots come from Supabase Storage via the shared
-  // loadMonthSnapshots() helper.
-  (async () => {
-    const monthSnaps = await loadMonthSnapshots(STATE.selectedMonth || _currentMonth());
-    const monthDays = monthSnaps
-      .map(s => {
-        const p50 = s.agg?.lead_time_today?.p50;   // int seconds, or undefined
-        return { d: s.date, h: (typeof p50 === "number") ? +(p50 / 3600).toFixed(1) : null };
-      })
-      .filter(x => x.h != null);
-    const ctx = document.getElementById("chart-monthly-leadtime");
-    if (!ctx) return;
-    if (STATE.charts["chart-monthly-leadtime"]) STATE.charts["chart-monthly-leadtime"].destroy();
-    if (!monthDays.length) {
-      ctx.parentElement.innerHTML = `<div class="empty">No lead-time data for ${esc(STATE.selectedMonth || _currentMonth())} yet.</div>`;
-      return;
-    }
-    STATE.charts["chart-monthly-leadtime"] = new Chart(ctx, {
-      type: "bar",
-      data: {
-        labels: monthDays.map(x => x.d),
-        datasets: [{
-          label: "p50 lead time (h)",
-          data: monthDays.map(x => x.h),
-          backgroundColor: "#3d63dd",
-        }],
-      },
-      options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        scales: { y: { beginAtZero: true, title: { display: true, text: "hours" } } },
-        plugins: {
-          legend: { display: false },
-          tooltip: { callbacks: { label: c => monthDays[c.dataIndex].h.toFixed(1) + " h" } },
-        },
-      },
-    });
-  })();
+  if (!STATE.plFilters) STATE.plFilters = { team:"__all__", stuck48:false, anc:false, sanctions:false };
+  if (!STATE.plStuckTab) STATE.plStuckTab = "all";
+  if (!STATE.plStuckPage) STATE.plStuckPage = 1;
+  _renderPipelinePage();
+  // 14-day throughput needs the ownership_task_history ledger; load once, best-effort.
+  if (STATE.completedTasks === undefined) {
+    STATE.completedTasks = null;
+    loadTaskHistory().then(rows => { STATE.completedTasks = rows ? groupTaskHistory(rows) : []; renderPlThroughput(); })
+                     .catch(() => { STATE.completedTasks = []; renderPlThroughput(); });
+  }
 };
 
+function _plFiltered(){
+  const f=STATE.plFilters||{}; let out=STATE.v2?.tasks_all||[];
+  const ancSet=new Set((STATE.v2?.add_new_company_records||[]).map(r=>r.requested_by));
+  if(f.team&&f.team!=="__all__") out=out.filter(t=>(t.teams_worked||[]).some(x=>x.team===f.team));
+  if(f.sanctions) out=out.filter(t=>t.is_sanctions);
+  if(f.anc) out=out.filter(t=>ancSet.has(t.name));
+  if(f.stuck48) out=out.filter(t=>{ const d=plDominant(t); return d && d.s!=="S5" && (ageHours(t.date_first_seen)||0)>48; });
+  return out;
+}
+
+function _renderPipelinePage(){
+  const root=document.getElementById("page-pipeline");
+  const v2=STATE.v2||{}, t=v2.totals||{};
+  const f=STATE.plFilters;
+  const tasks=_plFiltered();
+  const allTasks=v2.tasks_all||[];
+
+  // pipeline-wide stage totals (filtered)
+  const stageTot={S1:0,S2:0,S3:0,S4:0,S5:0};
+  for(const x of tasks){ const c=plStageCounts(x); for(const k in stageTot) stageTot[k]+=c[k]; }
+  const backlog=[stageTot.S1,stageTot.S2,stageTot.S3,stageTot.S4];
+  const wip=backlog.reduce((a,b)=>a+b,0);
+  const pipelineTot=wip+stageTot.S5;
+  const medStageVol=median(backlog)||0;
+  // largest backlog stage (S1–S4)
+  let largest=PL_STAGES[0], lv=-1; for(const st of PL_STAGES.slice(0,4)){ if(stageTot[st.s]>lv){lv=stageTot[st.s];largest=st;} }
+  const largestPct=pipelineTot? lv/pipelineTot*100:0;
+  // per-stage age proxy (days, by contributing tasks)
+  const stageAge={}; for(const st of PL_STAGES){ const ages=tasks.filter(x=>plStageCounts(x)[st.s]>0).map(x=>plAgeDays(x.date_first_seen)).filter(v=>v!=null); stageAge[st.s]={med:ages.length?median(ages):null,max:ages.length?Math.max(...ages):null}; }
+  const largestAge=stageAge[largest.s]?.med;
+  // stuck > 48h
+  const stuck=tasks.filter(x=>{ const d=plDominant(x); return d&&d.s!=="S5"&&(ageHours(x.date_first_seen)||0)>48; });
+  const stuckByStage={}; for(const x of stuck){ const d=plDominant(x); stuckByStage[d.s]=(stuckByStage[d.s]||0)+1; }
+  const oldestStuck=stuck.length? Math.max(...stuck.map(x=>plAgeDays(x.date_first_seen)||0)):null;
+  let stuckTopStage=null,stv=-1; for(const k in stuckByStage){ if(stuckByStage[k]>stv){stv=stuckByStage[k];stuckTopStage=k;} }
+
+  // lead time (whole-funnel)
+  const lt=v2.lead_time_today||{};
+  const p50=plFmtHM(lt.p50), p90=plFmtHM(lt.p90);
+  const completedToday=t.total_completions_today||0;
+
+  // chips
+  const teamKeys=Object.keys(STATE.roster||{}).sort();
+  const teamCount=(tm)=>allTasks.filter(x=>(x.teams_worked||[]).some(y=>y.team===tm)).length;
+  const stuckAllN=allTasks.filter(x=>{const d=plDominant(x);return d&&d.s!=="S5"&&(ageHours(x.date_first_seen)||0)>48;}).length;
+  const ancN=(STATE.v2?.add_new_company_records||[]).length;
+  const sancN=allTasks.filter(x=>x.is_sanctions).length;
+  const refAge=ageHours(v2.computed_at);
+  const refLabel=refAge==null?"freshness unknown":refAge<1?`Refreshed ${Math.max(1,Math.round(refAge*60))} min ago`:refAge<24?`Refreshed ${Math.round(refAge)}h ago`:`Refreshed ${Math.round(refAge/24)}d ago`;
+  const nowEat=(v2.computed_at?new Date(v2.computed_at):new Date()).toLocaleString("en-GB",{timeZone:"Africa/Nairobi",weekday:"long",day:"2-digit",month:"short",year:"numeric",hour:"2-digit",minute:"2-digit"});
+  const chip=(id,label,count,active,hex)=>`<button class="pl-chip${active?" active":""}" data-pl="${id}"${active&&hex?` style="background:${hex}"`:""}>${hex?`<span class="dot" style="background:${active?"#fff":hex}"></span>`:""}<span>${esc(label)}</span><span class="ct">${count}</span></button>`;
+  const chipsHtml=`<div class="pl-chips" id="plChips">
+    ${chip("__all__","All teams",allTasks.length,f.team==="__all__",null)}
+    ${teamKeys.map(tm=>chip(tm,tm,teamCount(tm),f.team===tm,plTeamHex(tm))).join("")}
+    <span class="spacer"></span>
+    <button class="pl-chip${f.stuck48?" active":""}" data-pl="__stuck"${f.stuck48?' style="background:var(--bad)"':""}>⚠ Stuck &gt; 48h <span class="ct">${stuckAllN}</span></button>
+    <button class="pl-chip${f.anc?" active":""}" data-pl="__anc"${f.anc?' style="background:var(--accent)"':""}>🏢 Add-new-company <span class="ct">${ancN}</span></button>
+    <button class="pl-chip${f.sanctions?" active":""}" data-pl="__sanc"${f.sanctions?' style="background:var(--bad)"':""}>🛡 Sanctions <span class="ct">${sancN}</span></button>
+  </div>`;
+
+  // largest-backlog banner (only if > 2× median stage)
+  const showBanner = medStageVol>0 && lv > 2*medStageVol;
+  const ancDominant = (t.add_new_company_open||0) > wip*0.25;
+  const bannerHtml = showBanner? `<div class="pl-banner"><span class="ic">${KPI_ICONS.alert}</span><div class="bd">Largest backlog: <b>${esc(largest.label)}</b> — <b>${lv.toLocaleString()}</b> records, ${(lv/Math.max(1,medStageVol)).toFixed(1)}× the median stage.${ancDominant?` Auto-route ${(t.add_new_company_open||0)} add-new-company first?`:""}</div><div class="acts"><button class="btn" data-plnoop="stuck">See stuck list</button>${ancDominant?`<button class="btn btn-primary" data-plnoop="route">Auto-route ${t.add_new_company_open||0}</button>`:""}</div></div>`:"";
+
+  // hero segbar (5 stages)
+  const segTot=Math.max(1,pipelineTot);
+  const heroSeg=PL_STAGES.map(st=>`<span style="width:${(stageTot[st.s]/segTot*100).toFixed(1)}%;background:${st.color};${st.s===largest.s?'outline:2px solid #fff;outline-offset:-2px':''}"></span>`).join("");
+  const stuckSeg=PL_STAGES.slice(0,4).map(st=>{const v=stuckByStage[st.s]||0; return `<span style="width:${(stuck.length?v/stuck.length*100:0).toFixed(1)}%;background:${st.color}"></span>`;}).join("");
+
+  root.innerHTML=`
+    <div class="page-head">
+      <div>
+        <div class="page-eyebrow">Operations &middot; ${esc(nowEat)} EAT<span class="pl-live"><span class="dot"></span>Live &middot; ${esc(refLabel)}</span></div>
+        <h1 class="page-title">Pipeline &amp; <em>lead-time</em></h1>
+        <div class="page-subtitle">
+          Waiting → Tagged → BO QA → WW QA → Done &middot; current backlog + whole-funnel lead time. End-to-end P50 <span class="num">${p50||"—"}</span>
+          <span class="dot-sep">&middot;</span>P90 <span class="num">${p90||"—"}</span> &middot; <span class="num">${stuck.length}</span> records stuck
+        </div>
+      </div>
+      <div class="page-head-actions">
+        <button class="btn" id="plRangeBtn">📅 Last 14 days</button>
+        <button class="btn" id="plExportBtn">Export</button>
+        <button class="btn btn-primary" id="plUnblockBtn">⚡ Unblock bottleneck</button>
+      </div>
+    </div>
+    ${bannerHtml}
+    ${chipsHtml}
+    <div class="kpis kpis-overview-hero">
+      <div class="kpi hero">
+        <div class="kpi-top"><div class="label">End-to-end P50</div><span class="kpi-icon">${KPI_ICONS.clock}</span></div>
+        <div class="value-row"><span class="value">${p50||"—"}</span><span class="kpi-dod" title="WoW needs prior-window lead-time, not loaded">DoD —</span></div>
+        <div class="pl-foot">P90 ${p90||"—"} &middot; target &lt;36h${lt.p50==null?" &middot; no completions yet today":""}</div>
+      </div>
+      <div class="kpi k-orange">
+        <div class="kpi-top"><div class="label">Largest backlog stage</div><span class="kpi-icon">${KPI_ICONS.inbox}</span></div>
+        <div class="value-row"><span class="value" style="font-size:24px">${esc(largest.label)}</span></div>
+        <div class="pl-segbar">${heroSeg}</div>
+        <div class="pl-seglabels">${PL_STAGES.map(st=>`<span>${st.s}</span>`).join("")}</div>
+      </div>
+      <div class="kpi k-cyan">
+        <div class="kpi-top"><div class="label">Largest backlog volume</div><span class="kpi-icon">${KPI_ICONS.activity}</span></div>
+        <div class="value-row"><span class="value">${lv.toLocaleString()}</span><span class="kpi-dod-light">DoD —</span></div>
+        <div class="pl-foot">${largestPct.toFixed(1)}% of pipeline &middot; median age ${largestAge!=null?largestAge.toFixed(1)+"d":"—"}</div>
+      </div>
+      <div class="kpi k-red ${stuck.length>0?'bad':''}">
+        <div class="kpi-top"><div class="label">Stuck &gt; 48h</div><span class="kpi-icon">${KPI_ICONS.alert}</span></div>
+        <div class="value-row"><span class="value">${stuck.length.toLocaleString()}</span><span class="kpi-dod-light">DoD —</span></div>
+        <div class="pl-segbar" style="background:var(--soft)">${stuckSeg}</div>
+        <div class="pl-foot">Oldest ${oldestStuck!=null?oldestStuck.toFixed(1)+"d":"—"} &middot; ${stuckTopStage?PL_STAGES.find(s=>s.s===stuckTopStage).label+" holds "+stv:"—"}</div>
+      </div>
+    </div>
+
+    <div class="pl-section-head"><h2>Today's <em>flow</em> <span class="meta">${f.team==="__all__"?"all teams":esc(f.team)}</span></h2><span class="meta">WIP ${wip.toLocaleString()} &middot; stuck ${stuck.length}</span></div>
+    <div class="pl-stages">
+      ${PL_STAGES.map(st=>`<div class="pl-stage${st.s===largest.s?' bottleneck':''}">${st.s===largest.s?'<span class="bt">bottleneck</span>':''}<div class="s">${st.s}</div><div class="lab"><span class="pl-dot" style="background:${st.color}"></span>${st.label}</div><div class="v">${stageTot[st.s].toLocaleString()}</div><div class="sub">median age ${stageAge[st.s].med!=null?stageAge[st.s].med.toFixed(1)+"d":"—"} &middot; max ${stageAge[st.s].max!=null?stageAge[st.s].max.toFixed(1)+"d":"—"}</div><div class="sub">P50/P90 — <span title="per-stage transit not tracked">ⓘ</span></div></div>`).join("")}
+    </div>
+
+    <div class="pl-summary">
+      <div class="pl-scard"><div class="l">Records in pipeline</div><div class="v">${wip.toLocaleString()}</div><div class="sub">W ${stageTot.S1} · T ${stageTot.S2} · BQ ${stageTot.S3} · WQ ${stageTot.S4}</div></div>
+      <div class="pl-scard"><div class="l">24h throughput</div><div class="v">${completedToday.toLocaleString()}</div><div class="sub">completed today · DoD —</div></div>
+      <div class="pl-scard"><div class="l">Flow efficiency</div><div class="v">${wip>0?(completedToday/(completedToday+wip)*100).toFixed(1)+"%":"—"}</div><div class="sub">completed ÷ (completed+WIP) proxy</div></div>
+      <div class="pl-scard"><div class="l">Stuck &gt; SLA</div><div class="v" style="color:var(--bad)">${stuck.length}</div><div class="sub">oldest ${oldestStuck!=null?oldestStuck.toFixed(1)+"d":"—"}</div></div>
+    </div>
+
+    <div class="pl-section-head"><h2>Stage volumes &amp; <em>ages</em></h2><span class="meta">snapshot · ${tasks.length} tasks · ${pipelineTot.toLocaleString()} records</span></div>
+    <div class="pl-2col">
+      <div class="panel"><h3>Current volume per stage</h3>
+        ${(()=>{ const mx=Math.max(1,...PL_STAGES.map(st=>stageTot[st.s])); return PL_STAGES.map(st=>`<div class="pl-volrow"><span class="lab"><span class="pl-dot" style="background:${st.color}"></span>${st.label}<div class="age">med ${stageAge[st.s].med!=null?stageAge[st.s].med.toFixed(1)+"d":"—"} · max ${stageAge[st.s].max!=null?stageAge[st.s].max.toFixed(1)+"d":"—"}</div></span><span class="bar"><span style="width:${(stageTot[st.s]/mx*100).toFixed(0)}%;background:${st.color}"></span></span><span class="v">${stageTot[st.s].toLocaleString()}</span></div>`).join(""); })()}
+        <div class="nc-pfoot">Per-stage transit timings are not tracked — bars show current record volume; ages are the task age (today − date_first_seen) of tasks contributing to each stage.</div>
+      </div>
+      <div class="panel"><h3>Current volume · stage × team <span class="meta">primary-team attribution</span></h3>${_plHeatmap(tasks,teamKeys)}</div>
+    </div>
+
+    <div class="pl-section-head"><h2>Stuck records · <em>past SLA</em></h2><span class="meta">${stuck.length} records · oldest ${oldestStuck!=null?(oldestStuck*24).toFixed(0)+"h":"—"}</span></div>
+    <div id="plStuck"></div>
+
+    <div class="pl-section-head"><h2>Trend &amp; <em>classification</em></h2><span class="meta">14-day rolling · A/B/C/D today</span></div>
+    <div class="pl-2col">
+      <div class="panel"><h3>Throughput &amp; lead-time <span class="meta">14d · completions + median TAT · SLA 36h</span></h3><div id="plThru"></div></div>
+      <div class="panel"><h3>Flow Framework v3 <span class="meta">A/B/C/D today</span></h3>
+        <div class="pl-flow">
+          <div class="pl-quad" style="background:var(--good-bg)"><div class="ql" style="color:var(--good)">A · Fast &amp; clean</div><div class="qv">${(t.flow_a_today||0).toLocaleString()}</div><div class="qs">avg — · kept —</div></div>
+          <div class="pl-quad" style="background:rgba(6,145,181,0.12)"><div class="ql" style="color:#0691B5">B · Slow &amp; clean</div><div class="qv">${(t.flow_b_today||0).toLocaleString()}</div><div class="qs">avg — · kept —</div></div>
+          <div class="pl-quad" style="background:var(--warn-bg)"><div class="ql" style="color:var(--warn)">C · Fast &amp; dirty</div><div class="qv">${(t.flow_c_today||0).toLocaleString()}</div><div class="qs">avg — · changed —</div></div>
+          <div class="pl-quad" style="background:var(--bad-bg)"><div class="ql" style="color:var(--bad)">D · Slow &amp; dirty</div><div class="qv">${(t.flow_d_today||0).toLocaleString()}</div><div class="qs">avg — · changed —</div></div>
+        </div>
+        <div class="nc-pfoot">QUALITY → · SPEED ↓ &middot; counts from <code>totals.flow_a/b/c/d_today</code>; per-bucket avg/kept rates not aggregated.</div>
+      </div>
+    </div>`;
+
+  document.querySelectorAll("#plChips .pl-chip").forEach(b=>b.addEventListener("click",()=>{ const id=b.dataset.pl; if(id==="__stuck")f.stuck48=!f.stuck48; else if(id==="__anc")f.anc=!f.anc; else if(id==="__sanc")f.sanctions=!f.sanctions; else f.team=id; STATE.plStuckPage=1; _renderPipelinePage(); }));
+  document.getElementById("plExportBtn").addEventListener("click",_plExport);
+  document.querySelectorAll("[data-plnoop]").forEach(b=>b.addEventListener("click",()=>{}));
+  renderPlStuck();
+  renderPlThroughput();
+}
+
+function _plHeatmap(tasks,teamKeys){
+  const cols=PL_STAGES.slice(0,4);
+  const mat={}; for(const tm of teamKeys) mat[tm]=Object.fromEntries(cols.map(c=>[c.s,0]));
+  for(const x of tasks){ const tm=plPrimaryTeam(x); if(!mat[tm]) continue; const c=plStageCounts(x); for(const col of cols) mat[tm][col.s]+=c[col.s]; }
+  let mx=1; for(const tm of teamKeys) for(const col of cols) mx=Math.max(mx,mat[tm][col.s]);
+  const grid=`grid-template-columns:70px repeat(${cols.length},1fr)`;
+  let html=`<div class="pl-heat" style="${grid}"><span class="hh"></span>${cols.map(c=>`<span class="hh">${c.label}</span>`).join("")}`;
+  for(const tm of teamKeys){ html+=`<span class="rl"><span class="pl-dot" style="background:${plTeamHex(tm)}"></span>${esc(tm)}</span>`+cols.map(c=>`<span class="hc" style="background:${plHeatColor(mat[tm][c.s]/mx)}">${mat[tm][c.s].toLocaleString()}</span>`).join(""); }
+  html+=`</div><div class="nc-pfoot">Cells = current record count (primary-team × stage); colour scales green→red by volume. Volume, not transit time.</div>`;
+  return html;
+}
+
+function _plExport(){
+  const stuck=_plFiltered().filter(x=>{const d=plDominant(x);return d&&d.s!=="S5"&&(ageHours(x.date_first_seen)||0)>48;}).sort((a,b)=>(ageHours(b.date_first_seen)||0)-(ageHours(a.date_first_seen)||0));
+  const cell=(v)=>`"${String(v??"").replace(/"/g,'""')}"`;
+  const lines=["Task,Team,Stage,AgeHours,SLAExceedHours,Sanctions"];
+  for(const x of stuck){ const d=plDominant(x); const age=ageHours(x.date_first_seen)||0; lines.push([cell(x.name),cell(plPrimaryTeam(x)),cell(d?d.label:"—"),Math.round(age),Math.round(age-48),x.is_sanctions?"yes":"no"].join(",")); }
+  const blob=new Blob([lines.join("\n")],{type:"text/csv"}); const a=document.createElement("a"); a.href=URL.createObjectURL(blob); a.download=`pipeline-stuck-${STATE.v2?.date||"export"}.csv`; a.click(); URL.revokeObjectURL(a.href);
+}
+
+function renderPlStuck(){
+  const cont=document.getElementById("plStuck"); if(!cont) return;
+  const base=_plFiltered().filter(x=>{const d=plDominant(x);return d&&d.s!=="S5"&&(ageHours(x.date_first_seen)||0)>48;});
+  const tab=STATE.plStuckTab||"all";
+  const cnt=(s)=>s==="all"?base.length:base.filter(x=>plDominant(x).s===s).length;
+  let rows=(tab==="all"?base:base.filter(x=>plDominant(x).s===tab)).slice().sort((a,b)=>(ageHours(b.date_first_seen)||0)-(ageHours(a.date_first_seen)||0));
+  const total=rows.length; const pages=Math.max(1,Math.ceil(total/PL_PAGE_SIZE)); if(STATE.plStuckPage>pages)STATE.plStuckPage=pages;
+  const start=(STATE.plStuckPage-1)*PL_PAGE_SIZE, end=Math.min(start+PL_PAGE_SIZE,total); const page=rows.slice(start,end);
+  const tabs=[["all","All"],...PL_STAGES.slice(0,4).map(st=>[st.s,st.label])];
+  const rowHtml=(x)=>{ const d=plDominant(x); const age=ageHours(x.date_first_seen)||0; const sd=x.status_distribution||{}; const segTot=Math.max(1,PL_STAGES.reduce((s,st)=>s+(sd[st.key]||0)+st.extra.reduce((q,k)=>q+(sd[k]||0),0),0));
+    const flow=PL_STAGES.map(st=>{const v=(sd[st.key]||0)+st.extra.reduce((q,k)=>q+(sd[k]||0),0); return v>0?`<span style="width:${(v/segTot*100).toFixed(1)}%;background:${st.color}"></span>`:"";}).join("");
+    return `<div class="pl-stuck-row"><span class="tn">${esc(x.name)}</span><span><span class="task-team-chip" style="color:${plTeamHex(plPrimaryTeam(x))}">&bull; ${esc(plPrimaryTeam(x))}</span></span><span><span class="pl-pill" style="background:${d.color}22;color:${d.color}">${d.label}</span></span><span class="ct-num">${(age/24).toFixed(1)}d</span><span class="ct-num" style="color:var(--bad)">+${((age-48)/24).toFixed(1)}d</span><span class="flow">${flow}</span><span><button class="btn" data-plnoop="reassign" style="padding:3px 8px;font-size:11px">Reassign</button></span></div>`; };
+  const pbtn=(p,l,dis,act)=>`<button class="btn" data-plpg="${p}"${dis?" disabled":""} style="padding:3px 9px;font-size:12px${act?';background:var(--ink);color:#fff':''}">${l||p}</button>`;
+  cont.innerHTML=`
+    <div class="pl-tabs" id="plStuckTabs">${tabs.map(([k,l])=>`<button data-pst="${k}" class="${tab===k?'active':''}">${l} <span class="ct">${cnt(k)}</span></button>`).join("")}<span class="spacer"></span><span class="ct-sortlabel" style="font-size:11.5px;color:var(--muted)">↓ Oldest first</span> <button class="btn" data-plnoop="bulk" style="padding:4px 10px;font-size:12px">Bulk reassign</button></div>
+    <div class="panel" style="padding:6px 10px 10px">
+      <div class="pl-stuck-row head"><span>Task</span><span>Team</span><span>Stage</span><span>In stage</span><span>SLA exceed</span><span>Flow</span><span>Action</span></div>
+      ${page.map(rowHtml).join("")||'<div class="empty" style="padding:16px">No records stuck > 48h in this view.</div>'}
+    </div>
+    <div class="pl-pag"><span>Showing ${total?start+1:0}–${end} of ${total}</span><span>${pages>1?pbtn(Math.max(1,STATE.plStuckPage-1),"‹",STATE.plStuckPage===1)+` page ${STATE.plStuckPage}/${pages} `+pbtn(Math.min(pages,STATE.plStuckPage+1),"›",STATE.plStuckPage===pages):""}</span></div>`;
+  cont.querySelectorAll("#plStuckTabs button[data-pst]").forEach(b=>b.addEventListener("click",()=>{STATE.plStuckTab=b.dataset.pst;STATE.plStuckPage=1;renderPlStuck();}));
+  cont.querySelectorAll("[data-plpg]").forEach(b=>b.addEventListener("click",()=>{if(b.disabled)return;STATE.plStuckPage=parseInt(b.dataset.plpg,10);renderPlStuck();}));
+  cont.querySelectorAll("[data-plnoop]").forEach(b=>b.addEventListener("click",()=>{}));
+}
+
+function renderPlThroughput(){
+  const cont=document.getElementById("plThru"); if(!cont) return;
+  const ct=STATE.completedTasks;
+  if(ct==null){ cont.innerHTML='<div class="empty" style="padding:20px">Loading completion history…</div>'; return; }
+  // last 14 days
+  const days=[]; for(let i=13;i>=0;i--){ const d=new Date(); d.setUTCDate(d.getUTCDate()-i); days.push(d.toISOString().slice(0,10)); }
+  const cnt=Object.fromEntries(days.map(d=>[d,0])), tats=Object.fromEntries(days.map(d=>[d,[]]));
+  for(const tk of ct){ if(!tk.isCompleted) continue; const e=tk.latest?.end_time; if(!e) continue; const dd=new Date(e).toISOString().slice(0,10); if(dd in cnt){ cnt[dd]++; if(tk.latest.tat_hours!=null) tats[dd].push(tk.latest.tat_hours); } }
+  const bvals=days.map(d=>cnt[d]), lvals=days.map(d=>{const m=median(tats[d]); return m;});
+  const totalC=bvals.reduce((a,b)=>a+b,0);
+  if(totalC===0){ cont.innerHTML='<div class="empty" style="padding:20px">No completions recorded in the last 14 days.</div>'; return; }
+  const W=340,H=120,bmax=Math.max(1,...bvals); const lmaxArr=lvals.filter(v=>v!=null); const lmax=Math.max(36,...(lmaxArr.length?lmaxArr:[36]));
+  const bw=W/days.length;
+  const bars=bvals.map((v,i)=>`<rect x="${(i*bw+2).toFixed(1)}" y="${(H-(v/bmax)*(H-20)).toFixed(1)}" width="${(bw-4).toFixed(1)}" height="${((v/bmax)*(H-20)).toFixed(1)}" fill="#7B68EE" opacity="0.55" rx="1.5"/>`).join("");
+  const linePts=lvals.map((v,i)=> v==null?null:`${(i*bw+bw/2).toFixed(1)},${(H-(v/lmax)*(H-20)).toFixed(1)}`).filter(Boolean).join(" ");
+  const slaY=(H-(36/lmax)*(H-20)).toFixed(1);
+  const avgThru=(totalC/14).toFixed(1); const allTat=days.flatMap(d=>tats[d]); const avgLead=allTat.length?Math.round(median(allTat)):null;
+  cont.innerHTML=`
+    <svg viewBox="0 0 ${W} ${H+14}" style="width:100%;height:130px" preserveAspectRatio="none">
+      ${bars}
+      <line x1="0" y1="${slaY}" x2="${W}" y2="${slaY}" stroke="var(--bad)" stroke-width="1" stroke-dasharray="4 3"/>
+      ${linePts?`<polyline points="${linePts}" fill="none" stroke="#0691B5" stroke-width="2" stroke-linejoin="round"/>`:""}
+      <line x1="${(W-bw/2).toFixed(1)}" y1="0" x2="${(W-bw/2).toFixed(1)}" y2="${H}" stroke="var(--accent)" stroke-width="1" stroke-dasharray="2 2"/>
+    </svg>
+    <div style="display:flex;justify-content:space-between;font-size:9px;color:var(--muted)"><span>${esc(shortDate(days[0]))}</span><span>SLA 36h ---</span><span>today</span></div>
+    <div class="nc-pfoot">14d avg · throughput <span class="num">${avgThru}</span>/d · lead <span class="num">${avgLead!=null?avgLead+"h":"—"}</span> &middot; <span style="color:#7B68EE">█</span> completions · <span style="color:#0691B5">▬</span> median TAT</div>`;
+}
 // -------- Case Scenarios (stub) --------
 // The 11 fixed comment values (mirrors extract_v2.COMMENT_VALUES, same order).
 // Five of them — indices 1..5 — mean the IMO could not be located.
