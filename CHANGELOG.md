@@ -1,5 +1,9 @@
 # Changelog
 
+## Housekeeping — 2026-05-27
+
+- **Branch cleanup**: deleted 41 merged-via-PR branches from the remote (`gh api -X DELETE refs/heads/...`) and pruned local tracking. All `*-detail-layer`, `changelog-*`, `hotfix-*`, and earlier phase/refactor branches that had landed via squash-merge are gone; only `main` remains on `origin`. No code change — production unchanged (live SHA-256 `6f6530e6…`, main HEAD `fb69666`). Branch list was getting long enough to make `gh pr` / `git branch` output noisy.
+
 ## Vivid detail layers — 2026-05-26
 
 Hourly Output, Overview, and Daily Intake pages brought in line with the Vivid mockup.
