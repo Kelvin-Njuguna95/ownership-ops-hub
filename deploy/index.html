@@ -1216,6 +1216,50 @@
   .ag-dd-tag .s { color: var(--muted); font-size: 10px; }
   .ag-dd-appr { font-size: 12px; font-weight: 600; color: var(--accent); font-variant-numeric: tabular-nums; min-width: 38px; text-align: right; }
 
+  /* ----- Comparison — Vivid 30-day detail layer (PR #143). Non-slide-out styling only. ----- */
+  .cmp-cards { display: grid; grid-template-columns: 1fr auto 1fr; gap: 14px; align-items: stretch; margin-bottom: 18px; }
+  .cmp-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 14px 16px; box-shadow: var(--shadow-sm); }
+  .cmp-card.a { border-top: 3px solid var(--good); }
+  .cmp-card.b { border-top: 3px solid #0691B5; }
+  .cmp-card.pick { cursor: pointer; transition: box-shadow 0.15s ease, transform 0.06s ease; }
+  .cmp-card.pick:hover { box-shadow: 0 6px 18px rgba(16,24,40,0.10); transform: translateY(-1px); }
+  .cmp-card-top { display: flex; align-items: center; gap: 11px; min-width: 0; }
+  .cmp-nm { font-size: 16px; font-weight: 700; color: var(--ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .cmp-sub { font-size: 11.5px; color: var(--muted); margin-top: 2px; }
+  .cmp-card-meta { font-size: 11.5px; color: var(--muted); margin-top: 9px; }
+  .cmp-vs { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; }
+  .cmp-vs-ic { width: 34px; height: 34px; border-radius: 50%; background: var(--soft); display: inline-flex; align-items: center; justify-content: center; font-size: 16px; color: var(--muted); }
+  .cmp-range-pill { font-size: 11px; font-weight: 700; color: var(--accent); background: var(--accent-soft); padding: 2px 9px; border-radius: 999px; }
+  .cmp-leader { font-size: 11px; font-weight: 600; color: var(--ink); text-align: center; }
+  .cmp-leader.tie { color: var(--muted); }
+  .cmp-dod { font-size: 11px; font-weight: 600; color: var(--muted); }
+  .cmp-dod.up { color: var(--good); } .cmp-dod.down { color: var(--bad); }
+  .cmp-scorecard { font-size: 12.5px; }
+  .cmp-srow { display: grid; grid-template-columns: 1.6fr 1fr 1fr 0.9fr; gap: 8px; align-items: center; padding: 6px 0; border-bottom: 1px solid var(--soft); }
+  .cmp-srow.head { font-size: 10px; text-transform: uppercase; letter-spacing: 0.04em; color: var(--muted); font-weight: 700; border-bottom: 1px solid var(--border); }
+  .cmp-srow.head .cmp-sval, .cmp-srow.head .cmp-sdiff { font-weight: 700; }
+  .cmp-slabel { color: var(--muted); }
+  .cmp-sval { text-align: right; font-variant-numeric: tabular-nums; color: var(--ink); font-weight: 600; }
+  .cmp-sdiff { text-align: right; font-variant-numeric: tabular-nums; font-weight: 700; color: var(--muted); }
+  .cmp-sdiff.good { color: var(--good); } .cmp-sdiff.bad { color: var(--bad); }
+  .cmp-ssec { font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--accent); font-weight: 700; padding: 9px 0 3px; }
+  .cmp-mix-head { display: flex; justify-content: space-between; font-size: 11px; font-weight: 700; margin-bottom: 6px; }
+  .cmp-mix-row { display: grid; grid-template-columns: 1fr 150px 1fr; gap: 8px; align-items: center; padding: 3px 0; font-size: 11px; }
+  .cmp-mix-a { display: flex; align-items: center; justify-content: flex-end; gap: 6px; }
+  .cmp-mix-b { display: flex; align-items: center; gap: 6px; }
+  .cmp-mix-bar { height: 9px; border-radius: 3px; display: inline-block; }
+  .cmp-mix-bar.a { background: var(--good); } .cmp-mix-bar.b { background: #0691B5; }
+  .cmp-mix-pct { font-variant-numeric: tabular-nums; color: var(--muted); min-width: 28px; }
+  .cmp-mix-lbl { text-align: center; color: var(--ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 10.5px; }
+  .cmp-verdict { display: flex; align-items: center; justify-content: space-between; gap: 18px; flex-wrap: wrap; }
+  .cmp-verdict-ttl { font-size: 15px; font-weight: 700; color: var(--ink); margin-bottom: 6px; }
+  .cmp-verdict-list { margin: 0; padding-left: 16px; font-size: 12px; color: var(--ink); columns: 2; }
+  .cmp-verdict-list li { margin: 2px 0; }
+  .cmp-verdict-score { display: flex; gap: 16px; flex-shrink: 0; }
+  .cmp-verdict-score > div { text-align: center; }
+  .cmp-verdict-score b { display: block; font-size: 22px; font-weight: 700; color: var(--ink); }
+  .cmp-verdict-score span { font-size: 10px; color: var(--muted); }
+
   /* Charts */
   .chart-wrap { position: relative; height: 280px; }
   .chart-wrap.small { height: 160px; }
@@ -3077,173 +3121,367 @@ async function renderExpertsWeekly() {
   }
 }
 
-// -------- 7-Day Comparison --------
-// 7-day rolling comparison across teams and agents in one view. Count metrics
-// (tagged, properly_completed, qa_inspected, qa_changed) are SUMMED over the
-// window; rate metrics are RECOMPUTED from the summed components — never the
-// average of daily percentages. The viewed date uses STATE.v2; the 6 prior
-// days come from snapshots/<date>.json (same window approach as renderBoqa7Day).
-const COMPARISON_STATE = { sortBy: "tagged", sortDir: "desc", team: "all", data: null };
+// -------- Comparison (30-day rolling) --------
+// Side-by-side compare two agents, two teams, or two periods over real snapshot
+// history (snapshots/<date>.json). Count metrics are summed over the window and
+// rates recomputed from the summed components — never an average of daily %s.
+// Snapshots began 2026-05-17, so a 30-day request may have <30 real days; missing
+// days render as honest gaps (no fabrication). Per-record tag time isn't tracked
+// (start_tagging is batch-level) so the SPEED section / P50 KPI are dropped;
+// strikes & 2-week reviews aren't tracked so those panels are dropped too.
+const COMPARISON_STATE = { mode: "agent", range: 30, a: null, b: null, _pick: null };
+const CMP_FLOOR = () => (STATE.audit?.config?.thresholds?.daily_productivity_minimum || 280);
+const CMP_A_COLOR = "#0EA56C", CMP_B_COLOR = "#0691B5";   // A green, B cyan
+
+// Date list (EAT, oldest→newest) for the last `daysBack` days ending on the anchor.
+function _cmpDates(daysBack){
+  const anchor = STATE.v2?.date || todayEat();
+  const out = [];
+  for (let i = daysBack - 1; i >= 0; i--){ const dt = new Date(anchor + "T00:00:00+03:00"); dt.setDate(dt.getDate() - i); out.push(dt.toLocaleDateString("en-CA", { timeZone: "Africa/Nairobi" })); }
+  return out;
+}
+
+// Fetch snapshots for the last N days into STATE.history (cache: obj | null=missing).
+// Bounded concurrency (≤5). Today's day uses the live snapshot (STATE.todayV2/v2).
+async function loadHistory(daysBack){
+  STATE.history = STATE.history || {};
+  const anchor = STATE.v2?.date || todayEat();
+  const dates = _cmpDates(daysBack);
+  const todo = dates.filter(d => d !== anchor && STATE.history[d] === undefined);
+  const CONC = 5;
+  for (let i = 0; i < todo.length; i += CONC){
+    const batch = todo.slice(i, i + CONC);
+    await Promise.all(batch.map(async d => { STATE.history[d] = await readJson(`snapshots/${d}.json`); }));
+  }
+  STATE.history[anchor] = STATE.todayV2 || STATE.v2 || null;   // today from the live block
+  return dates;
+}
+
+// Per-day series for an agent / team over the window. present=false for days with
+// no snapshot OR no row for that entity.
+function _seriesForAgent(name, daysBack){
+  return _cmpDates(daysBack).map(d => { const m = STATE.history?.[d]?.by_agent?.[name]; return { date: d, present: !!m, m: m || null }; });
+}
+function _seriesForTeam(team, daysBack){
+  return _cmpDates(daysBack).map(d => { const m = STATE.history?.[d]?.by_team?.[team]; return { date: d, present: !!m, m: m || null }; });
+}
+// Period mode: one entity = a set of dates; each day's "m" is the sum across all agents that day.
+function _seriesForDates(dates){
+  return dates.map(d => {
+    const ba = STATE.history?.[d]?.by_agent;
+    if (!ba) return { date: d, present: false, m: null };
+    const agg = { tagged_today: 0, properly_completed_today: 0, qa_inspected_today: 0, qa_changed_today: 0, tagged_today_sanctions: 0, reminder_open: 0, reminder_overdue: 0, comment_distribution: {} };
+    for (const m of Object.values(ba)){
+      agg.tagged_today += m.tagged_today || 0; agg.properly_completed_today += m.properly_completed_today || 0;
+      agg.qa_inspected_today += m.qa_inspected_today || 0; agg.qa_changed_today += m.qa_changed_today || 0;
+      agg.tagged_today_sanctions += m.tagged_today_sanctions || 0; agg.reminder_open += m.reminder_open || 0; agg.reminder_overdue += m.reminder_overdue || 0;
+      for (const [k, v] of Object.entries(m.comment_distribution || {})) agg.comment_distribution[k] = (agg.comment_distribution[k] || 0) + v;
+    }
+    return { date: d, present: true, m: agg };
+  });
+}
+
+// Aggregate a series → real KPI stats (counts summed, rates recomputed from sums).
+function _cmpStats(series, floor){
+  const days = series.filter(s => s.present && s.m);
+  let tagged = 0, completed = 0, reviews = 0, changes = 0, sanc = 0, daysAbove = 0, peak = 0, peakDate = null;
+  const comment = {};
+  for (const s of days){ const m = s.m; const t = m.tagged_today || 0;
+    tagged += t; completed += m.properly_completed_today || 0; reviews += m.qa_inspected_today || 0;
+    changes += m.qa_changed_today || 0; sanc += m.tagged_today_sanctions || 0;
+    if (t >= floor) daysAbove++; if (t > peak){ peak = t; peakDate = s.date; }
+    for (const [k, v] of Object.entries(m.comment_distribution || {})) comment[k] = (comment[k] || 0) + v;
+  }
+  const last = days[days.length - 1]?.m || {};
+  return {
+    presentDays: days.length, totalDays: series.length,
+    tagged, avgPerDay: days.length ? tagged / days.length : 0, completed, reviews, changes, sanc,
+    daysAbove, peak, peakDate,
+    rejectRate: reviews ? changes / reviews * 100 : null,
+    approvalRate: reviews ? (reviews - changes) / reviews * 100 : null,
+    completionPct: tagged ? completed / tagged * 100 : null,
+    reminderOpen: last.reminder_open || 0, reminderOverdue: last.reminder_overdue || 0,
+    comment, dailyTagged: series.map(s => s.present && s.m ? (s.m.tagged_today || 0) : null),
+    dailyReject: series.map(s => { if (!(s.present && s.m)) return null; const r = s.m.qa_inspected_today || 0; return r ? (s.m.qa_changed_today || 0) / r * 100 : 0; }),
+  };
+}
+
+// Union of agents seen across history + today (for the picker).
+function _cmpAgentUniverse(){
+  const set = new Set();
+  for (const snap of Object.values(STATE.history || {})) if (snap?.by_agent) for (const n of Object.keys(snap.by_agent)) set.add(n);
+  for (const n of Object.keys(STATE.v2?.by_agent || {})) set.add(n);
+  return [...set].sort();
+}
 
 PAGE_RENDERERS.comparison = function () {
   const root = document.getElementById("page-comparison");
-  if (!STATE.v2?.by_team && !STATE.v2?.by_agent) {
-    root.innerHTML = noDataHtml("by_team / by_agent not in aggregates_v2 — run aggregate_v2.py");
-    return;
-  }
-  COMPARISON_STATE.data = null;  // reload the window on every visit
+  if (!STATE.v2?.by_agent && !STATE.v2?.by_team){ root.innerHTML = noDataHtml("by_agent / by_team not in aggregates_v2 — run aggregate_v2.py"); return; }
+  const cs = COMPARISON_STATE;
+  if (!["agent", "team", "period"].includes(cs.mode)) cs.mode = "agent";
+  if (![7, 30, 90].includes(cs.range)) cs.range = 30;
+  // default selections
+  const topAgents = Object.entries(STATE.v2.by_agent || {}).sort((a, b) => (b[1].tagged_today || 0) - (a[1].tagged_today || 0)).map(x => x[0]);
   const teams = Object.keys(STATE.roster || {}).sort();
+  if (cs.mode === "agent"){ if (!cs.a || !topAgents.includes(cs.a)) cs.a = topAgents[0] || null; if (!cs.b || cs.b === cs.a) cs.b = topAgents.find(n => n !== cs.a) || null; }
+  else if (cs.mode === "team"){ if (!teams.includes(cs.a)) cs.a = teams[0] || null; if (!teams.includes(cs.b) || cs.b === cs.a) cs.b = teams.find(t => t !== cs.a) || null; }
+
+  const headDate = (() => { const d = STATE.v2.date; if (!d) return ""; const dt = new Date(d + "T00:00:00"); return isNaN(dt) ? d : dt.toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short", year: "numeric" }); })();
+  const nowTime = tlEatTime(STATE.v2.computed_at);
+  const modeTab = (id, label) => `<button class="tl-chip${cs.mode === id ? " active" : ""}" data-cmpmode="${id}"${cs.mode === id ? ' style="background:var(--accent)"' : ""}>${label}</button>`;
+  const rangeTab = (n) => `<button class="tl-chip${cs.range === n ? " active" : ""}" data-cmprange="${n}"${cs.range === n ? ' style="background:var(--ink);color:#fff"' : ""}>${n}d</button>`;
+
   root.innerHTML = `
-    <h2 class="section-head">7-day performance comparison <span class="meta">rolling window · all teams &amp; agents</span></h2>
-    <div class="footer-note" style="margin-top:0;margin-bottom:14px">
-      Counts (Tagged, Completed, QA reviewed) are summed across the last 7 days. Rates are recomputed from the
-      summed components — Completion&nbsp;% = Σcompleted ÷ Σtagged, Reject&nbsp;% = Σchanged ÷ Σreviewed — never an
-      average of daily rates. Sampling&nbsp;% is approximate: the raw sampled count isn't stored, so it's backed out
-      per day as each day's sampling&nbsp;% × tagged, summed, ÷ Σtagged.
-    </div>
-
-    <div class="panel">
-      <h3>By team <span class="meta" id="cmpTeamMeta"></span></h3>
-      <div id="cmpTeamTable"><div class="empty"><span class="spinning-icon">↻</span> Loading 7-day window…</div></div>
-    </div>
-
-    <div class="panel">
-      <h3>By agent <span class="meta">sortable — click a metric header</span></h3>
-      <div class="controls-row">
-        <label class="small-mono">Team:</label>
-        <select id="cmpTeamFilter">
-          <option value="all" ${COMPARISON_STATE.team === "all" ? "selected" : ""}>All teams</option>
-          ${teams.map(t => `<option value="${esc(t)}" ${COMPARISON_STATE.team === t ? "selected" : ""}>${esc(t)}</option>`).join("")}
-        </select>
-        <span class="small-mono" id="cmpAgentCount"></span>
+    <div class="page-head">
+      <div>
+        <div class="page-eyebrow">People${headDate ? " &middot; " + headDate : ""}${nowTime !== "—" ? " &middot; " + nowTime + " EAT" : ""}<span class="tl-live"><span class="dot"></span>Live &middot; 30-day rolling</span></div>
+        <h1 class="page-title">Comparison</h1>
+        <div class="page-subtitle">Side-by-side compare two agents, two teams, or two periods — same KPI set, colour-coded deltas.</div>
       </div>
-      <div class="case-scroll" id="cmpAgentTable"><div class="empty"><span class="spinning-icon">↻</span> Loading…</div></div>
+      <div class="page-head-actions">
+        <button class="btn" id="cmpShareBtn">🔗 Share link</button>
+        <button class="btn" id="cmpExportBtn">Export</button>
+        <button class="btn btn-primary" id="cmpSaveBtn">+ Save view</button>
+      </div>
     </div>
-  `;
-  document.getElementById("cmpTeamFilter").addEventListener("change", (e) => {
-    COMPARISON_STATE.team = e.target.value;
-    renderComparisonAgents();
-  });
-  loadComparison7Day();
+    <div class="tl-chips" id="cmpModeBar">
+      ${modeTab("agent", "👤 Agent vs Agent")}${modeTab("team", "👥 Team vs Team")}${modeTab("period", "📅 Period vs Period")}
+      <span class="spacer"></span>
+      ${rangeTab(7)}${rangeTab(30)}${rangeTab(90)}
+    </div>
+    <div id="cmpBody"><div class="empty" style="padding:30px"><span class="spinning-icon">↻</span> Loading ${cs.range} days of history…</div></div>`;
+
+  document.querySelectorAll("#cmpModeBar [data-cmpmode]").forEach(b => b.addEventListener("click", () => { COMPARISON_STATE.mode = b.dataset.cmpmode; COMPARISON_STATE.a = null; COMPARISON_STATE.b = null; PAGE_RENDERERS.comparison(); }));
+  document.querySelectorAll("#cmpModeBar [data-cmprange]").forEach(b => b.addEventListener("click", () => { COMPARISON_STATE.range = parseInt(b.dataset.cmprange, 10); PAGE_RENDERERS.comparison(); }));
+  document.getElementById("cmpExportBtn").addEventListener("click", _cmpExport);
+  document.getElementById("cmpShareBtn").addEventListener("click", () => {});
+  document.getElementById("cmpSaveBtn").addEventListener("click", () => {});
+
+  loadHistory(cs.range).then(() => { if (STATE.currentPage === "comparison") renderComparisonBody(); });
 };
 
-async function loadComparison7Day() {
-  const anchor = STATE.v2?.date || todayEat();
-  const dates = [];
-  for (let i = 6; i >= 0; i--) {
-    const dt = new Date(anchor + "T00:00:00+03:00");
-    dt.setDate(dt.getDate() - i);
-    dates.push(dt.toLocaleDateString("en-CA", { timeZone: "Africa/Nairobi" }));
-  }
-  const snaps = await Promise.all(dates.map(async d => {
-    if (d === anchor) return { d, agg: STATE.v2 || null };
-    return { d, agg: await readJson(`snapshots/${d}.json`) };  // null if missing
-  }));
-  const present = snaps.filter(s => s.agg);
-
-  // Sum the raw components per team and per agent across the window.
-  const acc = (store, key, m) => {
-    const a = (store[key] = store[key] || { tagged: 0, completed: 0, reviews: 0, changes: 0, sampled: 0 });
-    const tagged = m.tagged_today || 0;
-    a.tagged    += tagged;
-    a.completed += m.properly_completed_today || 0;
-    a.reviews   += m.qa_inspected_today || 0;
-    a.changes   += m.qa_changed_today || 0;
-    // The sampled count isn't stored — back it out from the day's sampling % × tagged.
-    a.sampled   += (m.sampling_actual_pct || 0) / 100 * tagged;
-  };
-  const teamStore = {}, agentStore = {};
-  for (const s of present) {
-    for (const [team, m] of Object.entries(s.agg.by_team || {})) acc(teamStore, team, m);
-    for (const [agent, m] of Object.entries(s.agg.by_agent || {})) acc(agentStore, agent, m);
-  }
-
-  // Recompute rates from the summed components — never average daily %s.
-  const finalize = (name, a, withTeam) => {
-    const row = {
-      name, tagged: a.tagged, completed: a.completed, reviews: a.reviews, changes: a.changes,
-      completionPct: a.tagged > 0 ? a.completed / a.tagged * 100 : null,
-      rejectPct:     a.reviews > 0 ? a.changes / a.reviews * 100 : null,
-      samplingPct:   a.tagged > 0 ? a.sampled / a.tagged * 100 : null,
+function _cmpSides(){
+  const cs = COMPARISON_STATE, R = cs.range, floor = CMP_FLOOR();
+  if (cs.mode === "team"){
+    const tf = (t) => 280 * ((STATE.roster?.[t]?.members || []).length || 1);
+    return {
+      A: { label: cs.a || "—", sub: "Team", color: tlTeamHex(cs.a), avatar: cs.a, floor: tf(cs.a), stats: _cmpStats(_seriesForTeam(cs.a, R), tf(cs.a)) },
+      B: { label: cs.b || "—", sub: "Team", color: tlTeamHex(cs.b), avatar: cs.b, floor: tf(cs.b), stats: _cmpStats(_seriesForTeam(cs.b, R), tf(cs.b)) },
+      floorLabel: "team floor (280×agents)",
     };
-    if (withTeam) row.team = teamForAgent(name) || "—";
-    return row;
+  }
+  if (cs.mode === "period"){
+    const dates = _cmpDates(R), half = Math.max(1, Math.floor(dates.length / 2));
+    const bDates = dates.slice(0, half), aDates = dates.slice(dates.length - half);   // A = recent, B = prior
+    const fl = floor * Object.keys(STATE.v2?.by_agent || {}).length || floor;   // all-agent floor ≈ 280×agents
+    return {
+      A: { label: `${aDates[0]} → ${aDates[aDates.length - 1]}`, sub: `recent ${aDates.length}d`, color: CMP_A_COLOR, avatar: null, floor: fl, stats: _cmpStats(_seriesForDates(aDates), fl), dates: aDates },
+      B: { label: `${bDates[0]} → ${bDates[bDates.length - 1]}`, sub: `prior ${bDates.length}d`, color: CMP_B_COLOR, avatar: null, floor: fl, stats: _cmpStats(_seriesForDates(bDates), fl), dates: bDates },
+      floorLabel: "pool floor (280×agents)", period: true,
+    };
+  }
+  return {
+    A: { label: cs.a || "—", sub: (teamForAgent(cs.a) || "—"), color: CMP_A_COLOR, avatar: cs.a, team: teamForAgent(cs.a), floor, stats: _cmpStats(_seriesForAgent(cs.a, R), floor) },
+    B: { label: cs.b || "—", sub: (teamForAgent(cs.b) || "—"), color: CMP_B_COLOR, avatar: cs.b, team: teamForAgent(cs.b), floor, stats: _cmpStats(_seriesForAgent(cs.b, R), floor) },
+    floorLabel: "floor 280/day",
   };
-  COMPARISON_STATE.data = {
-    days: present.length,
-    threshold: (typeof STATE.v2?.reject_threshold === "number") ? STATE.v2.reject_threshold : 30,
-    teams:  Object.entries(teamStore).map(([k, a]) => finalize(k, a, false)),
-    agents: Object.entries(agentStore).map(([k, a]) => finalize(k, a, true)),
-  };
-  renderComparisonTeams();
-  renderComparisonAgents();
 }
 
-// Rate cell — green/red against the reject threshold only for Reject %; other
-// rates render plain. Null (no denominator in the window) renders as a dash.
-function cmpRateCell(pct, threshold, colourReject) {
-  if (pct == null) return '<span class="small-mono">—</span>';
-  if (!colourReject) return `${pct.toFixed(1)}%`;
-  return `<span class="pill-inline ${pct >= threshold ? "bad" : "good"}">${pct.toFixed(1)}%</span>`;
-}
+function renderComparisonBody(){
+  const body = document.getElementById("cmpBody"); if (!body) return;
+  const cs = COMPARISON_STATE, R = cs.range;
+  const { A, B, floorLabel, period } = _cmpSides();
+  const sA = A.stats, sB = B.stats;
+  const fmt = (v, d = 0) => v == null ? "—" : (typeof v === "number" ? v.toFixed(d) : v);
+  const pickable = cs.mode !== "period";
 
-function renderComparisonTeams() {
-  const data = COMPARISON_STATE.data; if (!data) return;
-  const meta = document.getElementById("cmpTeamMeta");
-  if (meta) meta.textContent = `${data.days} of 7 days with data`;
-  const el = document.getElementById("cmpTeamTable"); if (!el) return;
-  const rows = data.teams.slice().sort((a, b) => b.tagged - a.tagged);  // Tagged desc
-  if (!rows.length) { el.innerHTML = `<div class="empty">No team data in the last 7 days.</div>`; return; }
-  el.innerHTML = `<table><thead><tr>
-      <th>Team</th><th class="right">Tagged</th><th class="right">Completed</th><th class="right">Completion %</th>
-      <th class="right">QA reviewed</th><th class="right">Reject %</th><th class="right">Sampling %</th>
-    </tr></thead><tbody>${rows.map(r => `<tr>
-      <td>${esc(r.name)}</td>
-      <td class="right">${r.tagged.toLocaleString()}</td>
-      <td class="right">${r.completed.toLocaleString()}</td>
-      <td class="right">${cmpRateCell(r.completionPct, data.threshold, false)}</td>
-      <td class="right">${r.reviews.toLocaleString()}</td>
-      <td class="right">${cmpRateCell(r.rejectPct, data.threshold, true)}</td>
-      <td class="right">${cmpRateCell(r.samplingPct, data.threshold, false)}</td>
-    </tr>`).join("")}</tbody></table>`;
-}
-
-function renderComparisonAgents() {
-  const data = COMPARISON_STATE.data; if (!data) return;
-  const el = document.getElementById("cmpAgentTable"); if (!el) return;
-  let rows = data.agents.slice();
-  if (COMPARISON_STATE.team !== "all") rows = rows.filter(r => r.team === COMPARISON_STATE.team);
-  const k = COMPARISON_STATE.sortBy, dir = COMPARISON_STATE.sortDir === "asc" ? 1 : -1;
-  rows.sort((a, b) => ((a[k] ?? -1) - (b[k] ?? -1)) * dir);  // all sort keys are numeric
-  const cnt = document.getElementById("cmpAgentCount");
-  if (cnt) cnt.textContent = `${rows.length} agent${rows.length === 1 ? "" : "s"}`;
-  if (!rows.length) { el.innerHTML = `<div class="empty">No agent data for this filter in the last 7 days.</div>`; return; }
-  const cols = [
-    ["tagged", "Tagged"], ["completed", "Completed"], ["completionPct", "Completion %"],
-    ["reviews", "QA reviewed"], ["rejectPct", "Reject %"], ["samplingPct", "Sampling %"],
+  // KPI win set (name, aVal, bVal, higherBetter) — for LEADER + verdict
+  const kpis = [
+    ["Avg / day", sA.avgPerDay, sB.avgPerDay, true],
+    ["Days above floor", sA.daysAbove, sB.daysAbove, true],
+    ["QA reject %", sA.rejectRate, sB.rejectRate, false],
+    ["QA approval %", sA.approvalRate, sB.approvalRate, true],
+    ["Sanctions tagged", sA.sanc, sB.sanc, true],
   ];
-  const sortInd = (key) => key === COMPARISON_STATE.sortBy ? (COMPARISON_STATE.sortDir === "asc" ? "▲" : "▼") : "";
-  const head = `<thead><tr><th>Agent</th><th>Team</th>${cols.map(([key, lab]) =>
-      `<th data-sort="${key}" class="right">${esc(lab)} <span class="sort-ind">${sortInd(key)}</span></th>`).join("")}</tr></thead>`;
-  const body = rows.map(r => `<tr>
-      <td class="agent-name">${esc(r.name)}</td>
-      <td>${esc(r.team)}</td>
-      <td class="right">${r.tagged.toLocaleString()}</td>
-      <td class="right">${r.completed.toLocaleString()}</td>
-      <td class="right">${cmpRateCell(r.completionPct, data.threshold, false)}</td>
-      <td class="right">${r.reviews.toLocaleString()}</td>
-      <td class="right">${cmpRateCell(r.rejectPct, data.threshold, true)}</td>
-      <td class="right">${cmpRateCell(r.samplingPct, data.threshold, false)}</td>
-    </tr>`).join("");
-  el.innerHTML = `<table class="sortable">${head}<tbody>${body}</tbody></table>`;
-  el.querySelectorAll("th[data-sort]").forEach(th => {
-    th.addEventListener("click", () => {
-      const key = th.dataset.sort;
-      if (COMPARISON_STATE.sortBy === key) COMPARISON_STATE.sortDir = COMPARISON_STATE.sortDir === "asc" ? "desc" : "asc";
-      else { COMPARISON_STATE.sortBy = key; COMPARISON_STATE.sortDir = "desc"; }
-      renderComparisonAgents();
-    });
-  });
+  let aWins = 0, bWins = 0, ties = 0;
+  for (const [, av, bv, hb] of kpis){
+    if (av == null && bv == null){ ties++; continue; }
+    const a = av == null ? -Infinity : av, b = bv == null ? -Infinity : bv;
+    const aBetter = hb ? a > b : a < b, bBetter = hb ? b > a : b < a;
+    if (aBetter) aWins++; else if (bBetter) bWins++; else ties++;
+  }
+  const leader = aWins > bWins ? A : bWins > aWins ? B : null;
+  const leaderWins = Math.max(aWins, bWins);
+
+  const dataNote = (sA.presentDays < R || sB.presentDays < R)
+    ? `<span class="pill-inline warn" title="Snapshots began 2026-05-17; older days have no snapshot and render as gaps.">${Math.max(sA.presentDays, sB.presentDays)} of ${R} days have snapshots</span>` : "";
+
+  // ---- comparison cards ----
+  const card = (S, side) => {
+    const av = S.avatar ? `<span class="task-avatar lg" style="background:${S.color === CMP_A_COLOR || S.color === CMP_B_COLOR ? (tlTeamHex(S.team || S.avatar)) : S.color}">${esc(tlInitials(S.avatar))}</span>` : `<span class="task-avatar lg" style="background:${S.color}">📅</span>`;
+    const mgr = (cs.mode === "agent" && S.team) ? (STATE.roster?.[S.team]?.qa?.name || "—") : (cs.mode === "team" ? (STATE.roster?.[S.label]?.qa?.name || "—") : "—");
+    const streak = (() => { // trailing days above floor (most recent contiguous)
+      const ser = cs.mode === "team" ? _seriesForTeam(S.label, R) : cs.mode === "agent" ? _seriesForAgent(S.label, R) : _seriesForDates(S.dates);
+      let n = 0; for (let i = ser.length - 1; i >= 0; i--){ const d = ser[i]; if (d.present && d.m && (d.m.tagged_today || 0) >= S.floor) n++; else if (d.present) break; } return n;
+    })();
+    return `<div class="cmp-card ${side}${pickable ? " pick" : ""}" ${pickable ? `data-cmppick="${side}"` : ""}>
+      <div class="cmp-card-top">${av}<div style="min-width:0"><div class="cmp-nm">${esc(S.label)}</div><div class="cmp-sub">${esc(S.sub)}${cs.mode !== "period" ? ` &middot; Mgr ${esc(mgr)}` : ""}</div></div></div>
+      <div class="cmp-card-meta">${S.stats.tagged.toLocaleString()} tagged &middot; ${S.stats.presentDays}/${R}d data &middot; streak ${streak}d above floor</div>
+    </div>`;
+  };
+
+  // ---- KPI delta cards ----
+  const deltaChip = (a, b, hb, unit = "") => {
+    if (a == null || b == null) return `<span class="cmp-dod">—</span>`;
+    const diff = a - b, good = hb ? diff >= 0 : diff <= 0;
+    return `<span class="cmp-dod ${good ? "up" : "down"}">${diff >= 0 ? "+" : ""}${diff.toFixed(unit === "%" ? 1 : 0)}${unit} vs ${B === A ? "" : "B"}</span>`;
+  };
+  const kpiCard = (label, icon, aDisp, chip, foot) => `<div class="kpi"><div class="kpi-top"><div class="label">${label}</div><span class="kpi-icon">${icon}</span></div><div class="value-row"><span class="value">${aDisp}</span>${chip}</div><div class="ct-foot">${foot}</div></div>`;
+
+  const kpiCards = `<div class="kpis kpis-overview-hero">
+    ${kpiCard(`Daily output · ${R}d avg`, KPI_ICONS.tag, fmt(sA.avgPerDay, 0), deltaChip(sA.avgPerDay, sB.avgPerDay, true, "/day"), `${esc(A.label)} ${fmt(sA.avgPerDay,0)} &middot; ${esc(B.label)} ${fmt(sB.avgPerDay,0)} per work day`)}
+    ${kpiCard("Days above floor", KPI_ICONS.activity, `${sA.daysAbove}/${sA.presentDays}`, deltaChip(sA.daysAbove, sB.daysAbove, true), `${esc(A.label)} ${sA.daysAbove} &middot; ${esc(B.label)} ${sB.daysAbove} &middot; floor ${A.floor.toLocaleString()}`)}
+    ${kpiCard(`QA reject rate · ${R}d`, KPI_ICONS.octagon, sA.rejectRate == null ? "—" : fmt(sA.rejectRate, 1) + "%", deltaChip(sA.rejectRate, sB.rejectRate, false, "%"), `${esc(A.label)} ${sA.rejectRate==null?"—":fmt(sA.rejectRate,1)+"%"} &middot; ${esc(B.label)} ${sB.rejectRate==null?"—":fmt(sB.rejectRate,1)+"%"} &middot; lower better`)}
+    ${kpiCard(`Sanctions tagged · ${R}d`, KPI_ICONS.check, sA.sanc.toLocaleString(), deltaChip(sA.sanc, sB.sanc, true), `Per-record tag time isn't tracked — using sanctions volume as the 4th KPI`)}
+  </div>`;
+
+  body.innerHTML = `
+    ${dataNote ? `<div style="margin-bottom:10px">${dataNote}</div>` : ""}
+    <div class="cmp-cards">
+      ${card(A, "a")}
+      <div class="cmp-vs"><div class="cmp-vs-ic">⇄</div><div class="cmp-range-pill">${R}d</div>${leader ? `<div class="cmp-leader">🏆 ${esc(leader.label)} &middot; ${leaderWins}/${kpis.length} KPIs</div>` : `<div class="cmp-leader tie">tied</div>`}</div>
+      ${card(B, "b")}
+    </div>
+    ${kpiCards}
+    <div class="tl-drow" style="grid-template-columns:1fr 1fr">
+      <div class="panel"><h3>Productivity overlay <span class="meta">${R}-day rolling &middot; floor ${A.floor.toLocaleString()} dashed</span></h3><div class="chart-wrap"><canvas id="cmpProdChart"></canvas></div>
+        <div class="tl-pfoot">${esc(A.label)} above floor ${sA.daysAbove}/${sA.presentDays}d &middot; ${esc(B.label)} ${sB.daysAbove}/${sB.presentDays}d. Gaps = days with no snapshot (history began 2026-05-17).</div>
+      </div>
+      <div class="panel"><h3>QA reject rate <span class="meta">${R}-day rolling &middot; target 2% dashed</span></h3><div class="chart-wrap"><canvas id="cmpRejectChart"></canvas></div>
+        <div class="tl-pfoot">Per-day change rate per side. Lower is better; days with no QA review show 0.</div>
+      </div>
+    </div>
+    <div class="panel">
+      <div class="tl-list-head"><h2>Full scorecard <span class="meta">${R}-day rolling</span></h2><span class="meta">diff column = ${esc(A.label)} − ${esc(B.label)}</span></div>
+      ${_cmpScorecard(A, B)}
+    </div>
+    <div class="panel"><h3>Comment scenario mix <span class="meta">% of each side's ${R}-day total</span></h3>${_cmpScenarioMix(A, B)}</div>
+    <div class="tl-drow" style="grid-template-columns:1fr 1fr">
+      <div class="panel"><h3>Reminders &middot; ${esc(A.label)} <span class="meta">latest snapshot</span></h3>${_cmpReminders(sA)}</div>
+      <div class="panel"><h3>Reminders &middot; ${esc(B.label)} <span class="meta">latest snapshot</span></h3>${_cmpReminders(sB)}</div>
+    </div>
+    <div class="panel cmp-verdict">
+      <div class="cmp-verdict-main">
+        <div class="cmp-verdict-ttl">🏆 ${leader ? `${esc(leader.label)} leads on ${leaderWins} of ${kpis.length} KPIs` : `Dead heat — ${ties} ties`}</div>
+        <ul class="cmp-verdict-list">${kpis.map(([nm, av, bv, hb]) => { if (av == null && bv == null) return `<li>${nm}: <b>—</b> (no data)</li>`; const a = av == null ? -Infinity : av, b = bv == null ? -Infinity : bv; const w = (hb ? a > b : a < b) ? A.label : (hb ? b > a : b < a) ? B.label : "tie"; return `<li>${nm}: <b>${w === "tie" ? "tie" : esc(w)}</b> (${av==null?"—":fmt(av,nm.includes("%")?1:0)} vs ${bv==null?"—":fmt(bv,nm.includes("%")?1:0)})</li>`; }).join("")}</ul>
+      </div>
+      <div class="cmp-verdict-score"><div class="w"><b>${aWins}</b><span>${esc(A.label)} wins</span></div><div class="t"><b>${ties}</b><span>ties</span></div><div class="w"><b>${bWins}</b><span>${esc(B.label)} wins</span></div></div>
+    </div>`;
+
+  if (pickable) body.querySelectorAll(".cmp-card[data-cmppick]").forEach(c => c.addEventListener("click", () => { COMPARISON_STATE._pick = c.dataset.cmppick; renderComparisonPicker(); }));
+  _cmpDrawCharts(A, B);
+}
+
+function _cmpScorecard(A, B){
+  const sA = A.stats, sB = B.stats;
+  const row = (label, av, bv, hb, unit = "", d = 0) => {
+    const a = av == null ? null : av, b = bv == null ? null : bv;
+    const diff = (a == null || b == null) ? null : a - b;
+    const good = diff == null ? "" : (hb ? diff >= 0 : diff <= 0) ? "good" : "bad";
+    const f = (x) => x == null ? "—" : x.toFixed(unit === "%" ? 1 : d) + unit;
+    return `<div class="cmp-srow"><span class="cmp-slabel">${label}</span><span class="cmp-sval">${f(a)}</span><span class="cmp-sval">${f(b)}</span><span class="cmp-sdiff ${good}">${diff == null ? "—" : (diff >= 0 ? "+" : "") + diff.toFixed(unit === "%" ? 1 : d) + unit}</span></div>`;
+  };
+  const sec = (t) => `<div class="cmp-ssec">${t}</div>`;
+  const head = `<div class="cmp-srow head"><span class="cmp-slabel"></span><span class="cmp-sval">${esc(A.label)}</span><span class="cmp-sval">${esc(B.label)}</span><span class="cmp-sdiff">diff</span></div>`;
+  return `<div class="cmp-scorecard">${head}
+    ${sec("Throughput")}
+    ${row("Records tagged", sA.tagged, sB.tagged, true)}
+    ${row("Avg per work day", sA.avgPerDay, sB.avgPerDay, true)}
+    ${row("Best day (peak)", sA.peak, sB.peak, true)}
+    ${row("Days above floor", sA.daysAbove, sB.daysAbove, true)}
+    ${sec("Quality")}
+    ${row("QA reject rate", sA.rejectRate, sB.rejectRate, false, "%")}
+    ${row("Changes requested", sA.changes, sB.changes, false)}
+    ${row("QA approval rate", sA.approvalRate, sB.approvalRate, true, "%")}
+    ${row("Properly completed %", sA.completionPct, sB.completionPct, true, "%")}
+    ${sec("Reminders & reliability")}
+    ${row("Open reminders", sA.reminderOpen, sB.reminderOpen, false)}
+    ${row("Aged reminders > 14d", sA.reminderOverdue, sB.reminderOverdue, false)}
+    <div class="tl-pfoot">SPEED section (P50/P90 tag time) dropped — per-record tag time isn't tracked (start_tagging is a batch-level field). Active strikes & 2-week reviews aren't tracked either, so those rows are omitted (no fabrication).</div>
+  </div>`;
+}
+
+function _cmpScenarioMix(A, B){
+  const ca = A.stats.comment, cb = B.stats.comment;
+  const totA = Object.values(ca).reduce((s, v) => s + v, 0) || 1, totB = Object.values(cb).reduce((s, v) => s + v, 0) || 1;
+  const codes = [...new Set([...Object.keys(ca), ...Object.keys(cb)])].map(k => [k, (ca[k] || 0) / totA + (cb[k] || 0) / totB]).sort((x, y) => y[1] - x[1]).slice(0, 12).map(x => x[0]);
+  if (!codes.length) return '<div class="small-mono" style="padding:8px 0">No comment-scenario data in the window.</div>';
+  const topA = Object.entries(ca).sort((x, y) => y[1] - x[1])[0]?.[0] || "—", topB = Object.entries(cb).sort((x, y) => y[1] - x[1])[0]?.[0] || "—";
+  const rows = codes.map(k => { const pa = (ca[k] || 0) / totA * 100, pb = (cb[k] || 0) / totB * 100;
+    return `<div class="cmp-mix-row"><span class="cmp-mix-a"><span class="cmp-mix-bar a" style="width:${Math.min(100, pa).toFixed(0)}%"></span><span class="cmp-mix-pct">${pa.toFixed(0)}%</span></span><span class="cmp-mix-lbl" title="${esc(k)}">${esc(k)}</span><span class="cmp-mix-b"><span class="cmp-mix-pct">${pb.toFixed(0)}%</span><span class="cmp-mix-bar b" style="width:${Math.min(100, pb).toFixed(0)}%"></span></span></div>`;
+  }).join("");
+  return `<div class="cmp-mix-head"><span style="color:${CMP_A_COLOR}">◀ ${esc(A.label)}</span><span style="color:${CMP_B_COLOR}">${esc(B.label)} ▶</span></div>${rows}<div class="tl-pfoot">${esc(A.label)} leans <b>${esc(topA)}</b> &middot; ${esc(B.label)} leans <b>${esc(topB)}</b>.</div>`;
+}
+
+function _cmpReminders(s){
+  if (!s.reminderOpen && !s.reminderOverdue) return '<div class="small-mono" style="padding:8px 0">No open reminders.</div>';
+  return `<div style="display:flex;gap:20px;margin:6px 0"><div><div class="tl-bigpct">${s.reminderOpen}</div><div class="small-mono">open reminders</div></div><div><div class="tl-bigpct" style="color:var(--bad)">${s.reminderOverdue}</div><div class="small-mono">aged &gt; 14d (overdue)</div></div></div><div class="tl-pfoot">From the latest snapshot's reminder_open / reminder_overdue. Per-record reminder rows aren't emitted; strikes & 2-week reviews aren't tracked.</div>`;
+}
+
+function _cmpDrawCharts(A, B){
+  if (typeof Chart === "undefined") return;
+  const dates = _cmpDates(COMPARISON_STATE.range);
+  const labels = COMPARISON_STATE.mode === "period"
+    ? Array.from({ length: Math.max(A.stats.totalDays, B.stats.totalDays) }, (_, i) => "d" + (i + 1))
+    : dates.map(d => d.slice(5));
+  const line = (data, color, dash) => ({ data, borderColor: color, backgroundColor: color, borderWidth: 2, borderDash: dash || [], pointRadius: 0, spanGaps: true, tension: 0.25 });
+  const flat = (val, color) => ({ data: labels.map(() => val), borderColor: color, borderWidth: 1, borderDash: [5, 4], pointRadius: 0 });
+  const mkOpts = () => ({ responsive: true, maintainAspectRatio: false, interaction: { mode: "index", intersect: false }, plugins: { legend: { labels: { font: { size: 10 }, boxWidth: 10 } } }, scales: { x: { ticks: { font: { size: 9 }, maxRotation: 0, autoSkip: true } }, y: { beginAtZero: true, ticks: { font: { size: 9 } } } } });
+  for (const id of ["cmpProdChart", "cmpRejectChart"]) if (STATE.charts[id]) { STATE.charts[id].destroy(); delete STATE.charts[id]; }
+  const prod = document.getElementById("cmpProdChart");
+  if (prod) STATE.charts.cmpProdChart = new Chart(prod, { type: "line", data: { labels, datasets: [
+    Object.assign({ label: A.label }, line(A.stats.dailyTagged, CMP_A_COLOR)),
+    Object.assign({ label: B.label }, line(B.stats.dailyTagged, CMP_B_COLOR)),
+    Object.assign({ label: "Floor " + A.floor }, flat(A.floor, "#E5384F")),
+  ] }, options: mkOpts() });
+  const rej = document.getElementById("cmpRejectChart");
+  if (rej) STATE.charts.cmpRejectChart = new Chart(rej, { type: "line", data: { labels, datasets: [
+    Object.assign({ label: A.label }, line(A.stats.dailyReject, CMP_A_COLOR)),
+    Object.assign({ label: B.label }, line(B.stats.dailyReject, CMP_B_COLOR)),
+    Object.assign({ label: "Target 2%" }, flat(2, "#C76512")),
+  ] }, options: mkOpts() });
+}
+
+function renderComparisonPicker(){
+  const cont = document.getElementById("sidePanelBody"); if (!cont) return;
+  const cs = COMPARISON_STATE, side = cs._pick || "a";
+  const isTeam = cs.mode === "team";
+  const items = isTeam ? Object.keys(STATE.roster || {}).sort() : _cmpAgentUniverse();
+  const cur = side === "a" ? cs.a : cs.b;
+  const rows = items.map(name => {
+    const team = isTeam ? name : teamForAgent(name);
+    const todayTagged = (isTeam ? STATE.v2?.by_team?.[name] : STATE.v2?.by_agent?.[name])?.tagged_today || 0;
+    return `<div class="ag-dd-row${name === cur ? " sel" : ""}" data-cmpitem="${esc(name)}"><span class="task-avatar" style="background:${tlTeamHex(team)}">${esc(isTeam ? name.slice(0,2) : tlInitials(name))}</span><span class="ag-dd-nm">${esc(name)}</span><span class="ag-dd-tag">${esc(team || "—")}</span><span class="ag-dd-appr">${todayTagged.toLocaleString()}</span></div>`;
+  }).join("");
+  cont.innerHTML = `<div class="ag-dd-head">Pick side ${side.toUpperCase()} &middot; ${items.length} ${isTeam ? "teams" : "agents"} &middot; today's tagged shown right.</div><div class="ag-dd">${rows}</div>`;
+  cont.querySelectorAll(".ag-dd-row[data-cmpitem]").forEach(r => r.addEventListener("click", () => {
+    const v = r.dataset.cmpitem;
+    if (side === "a"){ if (cs.b === v) cs.b = cs.a; cs.a = v; } else { if (cs.a === v) cs.a = cs.b; cs.b = v; }
+    closeSidePanel(); renderComparisonBody();
+  }));
+  openSidePanel(`Pick ${side === "a" ? "A" : "B"} · ${isTeam ? "team" : "agent"}`, `${items.length} options`);
+}
+
+function _cmpExport(){
+  const { A, B } = _cmpSides(); const sA = A.stats, sB = B.stats;
+  const cell = (v) => `"${String(v ?? "").replace(/"/g, '""')}"`;
+  const rows = [["Metric", A.label, B.label, "diff"]];
+  const push = (n, a, b) => rows.push([n, a ?? "", b ?? "", (a != null && b != null) ? (a - b) : ""]);
+  push("Records tagged", sA.tagged, sB.tagged); push("Avg per day", sA.avgPerDay?.toFixed(1), sB.avgPerDay?.toFixed(1));
+  push("Days above floor", sA.daysAbove, sB.daysAbove); push("QA reject %", sA.rejectRate?.toFixed(1), sB.rejectRate?.toFixed(1));
+  push("QA approval %", sA.approvalRate?.toFixed(1), sB.approvalRate?.toFixed(1)); push("Sanctions tagged", sA.sanc, sB.sanc);
+  const csv = rows.map(r => r.map(cell).join(",")).join("\n");
+  const blob = new Blob([csv], { type: "text/csv" }); const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = `comparison-${COMPARISON_STATE.mode}-${STATE.v2?.date || "today"}.csv`; a.click(); URL.revokeObjectURL(a.href);
 }
 
 // -------- Hourly Output --------
