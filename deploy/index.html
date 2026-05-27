@@ -1138,6 +1138,61 @@
   .qh-cohort-h { font-size: 11px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: 6px; }
   .qh-cfg { color: var(--accent); cursor: pointer; }
 
+  /* ----- QA Performance — Vivid detail layer (PR #134). Non-slide-out styling only. ----- */
+  .qp-pending { font-size: 11px; color: var(--muted); font-style: italic; }
+  .qp-pending-box { background: var(--soft); border: 1px dashed var(--border); border-radius: var(--radius-sm); padding: 10px 12px; font-size: 12.5px; color: var(--ink); margin: 8px 0; }
+  .qp-pending-box .s { color: var(--muted); font-size: 11px; }
+  .qp-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 12px; }
+  .qp-card { background: var(--surface); border: 1px solid var(--border); border-top: 3px solid var(--border); border-radius: var(--radius-md); padding: 12px 14px; cursor: pointer; transition: box-shadow 0.15s ease, transform 0.06s ease; box-shadow: var(--shadow-sm); }
+  .qp-card:hover { box-shadow: 0 6px 18px rgba(16,24,40,0.10); transform: translateY(-1px); }
+  .qp-card.sel { box-shadow: inset 0 0 0 1px var(--accent), 0 6px 18px rgba(123,104,238,0.18); }
+  .qp-card.sig-good { border-top-color: var(--good); }
+  .qp-card.sig-warn { border-top-color: var(--warn); }
+  .qp-card.sig-bad  { border-top-color: var(--bad); }
+  .qp-chead { display: flex; align-items: center; gap: 9px; margin-bottom: 8px; }
+  .qp-nm { font-size: 13px; font-weight: 700; color: var(--ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .qp-sub { margin-top: 2px; }
+  .qp-row { display: flex; align-items: center; justify-content: space-between; font-size: 12px; padding: 3px 0; border-bottom: 1px solid var(--soft); }
+  .qp-lbl { color: var(--muted); }
+  .qp-rv { font-weight: 600; color: var(--ink); font-variant-numeric: tabular-nums; display: flex; align-items: center; gap: 6px; }
+  .qp-rv.bad { color: var(--bad); }
+  .qp-mini { display: inline-block; width: 46px; height: 5px; background: var(--soft); border-radius: 3px; overflow: hidden; vertical-align: middle; }
+  .qp-mini > span { display: block; height: 100%; }
+  .qp-hbars { display: flex; align-items: flex-end; gap: 2px; height: 32px; margin-top: 9px; }
+  .qp-hb { flex: 1 1 0; border-radius: 1.5px 1.5px 0 0; min-height: 2px; }
+  .qp-crow { display: grid; grid-template-columns: 1.5fr 1.5fr 1fr 1.1fr 1.1fr; gap: 10px; align-items: center; padding: 7px 0; border-bottom: 1px solid var(--soft); font-size: 12px; }
+  .qp-cnm { display: flex; align-items: center; gap: 7px; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 600; }
+  .qp-sbar { position: relative; height: 14px; background: var(--soft); border-radius: 4px; overflow: hidden; }
+  .qp-sfill { display: block; height: 100%; background: var(--accent); }
+  .qp-tgt { position: absolute; top: -2px; bottom: -2px; width: 2px; background: var(--ink); }
+  .qp-sval { font-size: 11px; font-weight: 600; font-variant-numeric: tabular-nums; }
+  .qp-sval.pending { color: var(--muted); font-weight: 400; }
+  .qp-cbar { position: relative; height: 14px; background: var(--soft); border-radius: 4px; overflow: hidden; display: flex; align-items: center; }
+  .qp-cfill { position: absolute; left: 0; top: 0; height: 100%; }
+  .qp-cbar b { position: relative; font-size: 10px; margin-left: 6px; color: var(--ink); font-variant-numeric: tabular-nums; }
+  .qp-ctat { font-size: 11.5px; color: var(--ink); font-variant-numeric: tabular-nums; }
+  .qp-ctat .s { color: var(--muted); font-size: 10px; }
+  .qp-i { color: var(--accent); cursor: help; font-size: 11px; }
+  .qp-legend { display: flex; align-items: center; gap: 7px; margin-top: 10px; font-size: 11px; color: var(--muted); flex-wrap: wrap; }
+  .qp-key { width: 11px; height: 11px; border-radius: 3px; margin-left: 8px; }
+  .qp-key.tgt { width: 3px; height: 13px; border-radius: 0; background: var(--ink); }
+  .qp-key.samp { background: var(--accent); }
+  .qp-key.chg { background: var(--warn); }
+  .qp-key.rev { background: #0691B5; }
+  .qp-pool { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 10px; }
+  .qp-pcard { background: var(--soft); border-radius: var(--radius-sm); padding: 8px 10px; }
+  .qp-pcard .l { font-size: 10px; text-transform: uppercase; letter-spacing: 0.04em; color: var(--muted); font-weight: 600; }
+  .qp-pcard .v { font-size: 18px; font-weight: 700; color: var(--ink); font-variant-numeric: tabular-nums; }
+  .qp-pcard .s { font-size: 10.5px; color: var(--muted); }
+  .qp-insights { margin: 6px 0 0; padding-left: 16px; font-size: 12px; color: var(--ink); }
+  .qp-insights li { margin: 3px 0; }
+  .qp-dline { font-size: 12.5px; color: var(--ink); margin: 5px 0; }
+  .qp-dline .s { color: var(--muted); font-size: 11px; }
+  .qp-prog { position: relative; height: 10px; background: var(--soft); border-radius: 5px; overflow: hidden; margin: 6px 0; }
+  .qp-pfill { display: block; height: 100%; background: var(--accent); }
+  .qp-pfill.good { background: var(--good); } .qp-pfill.warn { background: var(--warn); } .qp-pfill.bad { background: var(--bad); }
+  .qp-ptgt { position: absolute; top: -2px; bottom: -2px; width: 2px; background: var(--ink); }
+
   /* Charts */
   .chart-wrap { position: relative; height: 280px; }
   .chart-wrap.small { height: 160px; }
@@ -1881,6 +1936,7 @@ function goto(pageId) {
   STATE.selectedTaskId = null;
   STATE.completedSelectedId = null;
   STATE.qhSelectedReviewer = null;
+  STATE.qpSelectedReviewer = null;
   _hideSidePanel();
   const renderer = PAGE_RENDERERS[pageId];
   if (renderer) renderer();
@@ -3786,90 +3842,294 @@ function renderCompaniesHourlyGrid() {
 }
 
 // -------- QA Performance --------
+// ============================================================================
+//  QA Performance — Vivid detail layer (PR #134). Per-reviewer sampling %
+//  (team-based, yesterday cohort) from qa_reviewers[].sampling_pct_today, with
+//  defensive "—" + "(aggregator pending)" when the cache predates the field.
+//  Reuses the PR #131 side panel for the reviewer deep-dive and the PR #132
+//  per-reviewer colour palette (QH_RGB) + _eatHour. CSS-only viz (no Chart.js).
+// ============================================================================
+function _qpCompute(){
+  const v2 = STATE.v2 || null;
+  const qh = v2?.qa_hourly || {};
+  const hours = Array.from({length:18},(_,i)=>i+6);   // 06..23 EAT
+  const list = (v2?.qa_reviewers || []).map(r => Object.assign({}, r))
+    .sort((a,b)=>(b.reviews||0)-(a.reviews||0));
+  list.forEach((r,i)=>{
+    r.idx = i;
+    const b = qh[r.name] || {};
+    r.hourly = hours.map(h => b[h] ?? b[String(h)] ?? 0);
+    r.todayCount = Object.values(b).reduce((s,v)=>s+v,0);
+    r.changeRate = r.reviews ? (r.changes/r.reviews*100) : 0;
+    r.hasSampling = (typeof r.sampling_pct_today === "number");
+    r.target = (typeof r.sampling_target_pct === "number") ? r.sampling_target_pct : 25;
+    r.isExpert = (r.assigned_team == null) && (r.sampling_target_pct === 100);
+    // Signal: green = meets sampling target AND change<30; red = sampling<half target OR change>30; else orange.
+    if (r.changeRate > 30 || (r.hasSampling && r.sampling_pct_today < r.target*0.5)) r.signal = "bad";
+    else if ((r.hasSampling && r.sampling_pct_today < r.target) || r.changeRate >= 10) r.signal = "warn";
+    else r.signal = "good";
+  });
+  const colSums = hours.map((_,i)=> list.reduce((s,r)=>s+r.hourly[i],0));
+  return { v2, list, hours, colSums };
+}
+
 PAGE_RENDERERS.qa_performance = function () {
   const root = document.getElementById("page-qa_performance");
-  const reviewers = STATE.v2?.qa_reviewers || [];
-  const totalQAs     = reviewers.length;
-  const totalReviews = reviewers.reduce((s, r) => s + r.reviews, 0);
-  const totalApprov  = reviewers.reduce((s, r) => s + r.approvals, 0);
-  const overallApp   = totalReviews ? (totalApprov / totalReviews) * 100 : 0;
-  // Mean of averages weighted by review count
-  const overallAvg = totalReviews ? reviewers.reduce((s, r) => s + r.avg_review_time_hours * r.reviews, 0) / totalReviews : 0;
+  if(!STATE.qpFilters) STATE.qpFilters = { view:"all" };
+  if(STATE.qpSelectedReviewer===undefined) STATE.qpSelectedReviewer = null;
+  const D = _qpCompute();
+  const v2 = D.v2;
+  if(!v2){ root.innerHTML = noDataHtml("aggregates_v2 not in daily_aggregates.json — run aggregate_v2.py"); return; }
+  const list = D.list;
 
-  const timeClass = (h) => h < 12 ? "good" : h < 24 ? "warn" : "bad";
+  const anySampling = list.some(r => r.hasSampling);
+  const reviewedToday = v2.qa_today_all?.reviewed ?? 0;
+  const totalRev = list.length;
+  // pooled sampling % = Σ reviews_today / Σ eligible_pool_today (real pool-weighted rate)
+  let poolNum = 0, poolDen = 0;
+  for (const r of list){ if(r.hasSampling && typeof r.eligible_pool_today==="number"){ poolNum += (r.reviews_today||0); poolDen += r.eligible_pool_today; } }
+  const pooledSampling = poolDen ? (poolNum/poolDen*100) : null;
+  const belowN = list.filter(r => r.hasSampling && r.sampling_pct_today < r.target).length;
+  const aboveN = list.filter(r => r.hasSampling && r.sampling_pct_today >= r.target).length;
+  // pool change rate (all-time)
+  const sumReviews = list.reduce((s,r)=>s+(r.reviews||0),0);
+  const sumChanges = list.reduce((s,r)=>s+(r.changes||0),0);
+  const poolChange = sumReviews ? (sumChanges/sumReviews*100) : 0;
+  // reviews / hour today
+  const activeHours = D.colSums.filter(v=>v>0).length;
+  const reviewsPerHour = activeHours ? Math.round(reviewedToday/activeHours) : 0;
+  // median TAT across reviewers
+  const medTat = median(list.map(r=>r.median_review_time_hours).filter(x=>x!=null));
+  // at-risk: below sampling target OR change>30
+  const atRisk = list.filter(r => (r.hasSampling && r.sampling_pct_today < r.target) || r.changeRate > 30);
+  const worstRisk = atRisk.slice().sort((a,b)=> (b.changeRate - a.changeRate) || ((a.sampling_pct_today??999)-(b.sampling_pct_today??999)))[0];
+
+  const headDate = (()=>{ const d=v2.date; if(!d) return ""; const dt=new Date(d+"T00:00:00"); return isNaN(dt)?d:dt.toLocaleDateString("en-GB",{weekday:"short",day:"numeric",month:"short",year:"numeric"}); })();
+  const refAge = ageHours(v2.computed_at);
+  const refLabel = refAge==null?"freshness unknown": refAge<1?`Refreshed ${Math.max(1,Math.round(refAge*60))} min ago`: refAge<24?`Refreshed ${Math.round(refAge)}h ago`:`Refreshed ${Math.round(refAge/24)}d ago`;
+  const dod = `<span class="dod-muted" title="Day-over-day delta needs a prior-day QA snapshot, not loaded here">DoD —</span>`;
+  const pend = `<span class="qp-pending">(aggregator pending)</span>`;
+
+  const f = STATE.qpFilters;
+  const chipsHtml = `
+    <div class="tl-chips" id="qpChips">
+      <button class="tl-chip${f.view==='all'?' active':''}" data-qp="all"${f.view==='all'?' style="background:var(--accent)"':''}><span>All reviewers</span><span class="ct">${totalRev}</span></button>
+      <span class="spacer"></span>
+      <button class="tl-chip${f.view==='below'?' active':''}" data-qp="below"${f.view==='below'?' style="background:var(--bad)"':''}>% Below 25% sampling <span class="ct">${belowN}</span></button>
+      <button class="tl-chip${f.view==='atrisk'?' active':''}" data-qp="atrisk"${f.view==='atrisk'?' style="background:var(--warn)"':''}>⚠ At risk <span class="ct">${atRisk.length}</span></button>
+    </div>`;
+
+  const banner = (anySampling && belowN>=1) ? `
+    <div class="qh-banner">
+      <span class="qh-banner-ic">⚠</span>
+      <div class="qh-banner-txt"><b>${belowN} reviewer${belowN===1?'':'s'} below the sampling floor</b> —
+        ${list.filter(r=>r.hasSampling && r.sampling_pct_today<r.target).slice(0,3).map(r=>`${esc(r.name)} <span class="qh-idledur">${r.sampling_pct_today.toFixed(0)}%</span>`).join(", ")}${belowN>3?` +${belowN-3} more`:""}. Target ${list[0]?.target||25}% of the day's BO QA cohort.</div>
+      <div class="qh-banner-acts"><button class="btn" data-qpnoop="view">View coverage</button></div>
+    </div>` : "";
+
+  const sampMiniBars = list.map(r => {
+    const v = r.hasSampling ? Math.min(100, r.sampling_pct_today) : 0;
+    const col = !r.hasSampling ? "var(--soft)" : (r.sampling_pct_today >= r.target ? "var(--good)" : r.sampling_pct_today < r.target*0.5 ? "var(--bad)" : "var(--warn)");
+    return `<span class="bar" style="height:${Math.max(8,v)}%;background:${col}" title="${esc(r.name)} · ${r.hasSampling?r.sampling_pct_today.toFixed(1)+'%':'pending'}"></span>`;
+  }).join("");
 
   root.innerHTML = `
-    <h3 style="font-size:18px;font-weight:600;color:var(--ink);margin-bottom:8px">QA Performance</h3>
-    <div class="kpis">
-      <div class="kpi"><div class="label">Active QAs</div><div class="value">${totalQAs}</div></div>
-      <div class="kpi"><div class="label">Total reviews</div><div class="value">${totalReviews}</div></div>
-      <div class="kpi"><div class="label">Overall approval %</div><div class="value">${overallApp.toFixed(1)}%</div></div>
-      <div class="kpi ${timeClass(overallAvg)}"><div class="label">Overall avg response</div><div class="value">${overallAvg.toFixed(1)} h</div><div class="delta">green &lt;12h · amber &lt;24h · red ≥24h</div></div>
+    <div class="page-head">
+      <div>
+        <div class="page-eyebrow">Quality &middot; QA performance${headDate?" &middot; "+headDate:""}<span class="tl-live"><span class="dot"></span>Live &middot; ${esc(refLabel)}</span></div>
+        <h1 class="page-title">QA <em>performance</em></h1>
+        <div class="page-subtitle">
+          Per-reviewer sampling coverage, approval &amp; change rates, turnaround.
+          <span class="dot-sep">&middot;</span><span class="num">${totalRev}</span> reviewers
+          <span class="dot-sep">&middot;</span><span class="num">${reviewedToday.toLocaleString()}</span> reviews today
+          <span class="dot-sep">&middot;</span><span class="num">${belowN}</span> below floor
+        </div>
+      </div>
+      <div class="page-head-actions">
+        <button class="btn" id="qpRangeBtn">📅 Today</button>
+        <button class="btn" id="qpExportBtn">Export</button>
+      </div>
+    </div>
+    ${chipsHtml}
+    ${banner}
+    <div class="kpis kpis-overview-hero">
+      <div class="kpi hero">
+        <div class="kpi-top"><div class="label">Avg sampling vs ${list[0]?.target||25}%</div><span class="kpi-icon">${KPI_ICONS.percent}</span></div>
+        <div class="value-row"><span class="value">${pooledSampling!=null?pooledSampling.toFixed(1)+"%":"—"}</span>${dod}</div>
+        <div class="kpi-trend">${sampMiniBars}</div>
+        <div class="ct-foot">${anySampling?`<span class="num">${belowN}</span> below floor &middot; <span class="num">${aboveN}</span> above`:pend}</div>
+      </div>
+      <div class="kpi k-cyan">
+        <div class="kpi-top"><div class="label">Avg change rate</div><span class="kpi-icon">${KPI_ICONS.activity}</span></div>
+        <div class="value-row"><span class="value">${poolChange.toFixed(1)}<span class="unit">%</span></span><span class="kpi-dod-light ${poolChange<=30?'up':'down'}">ceiling 30%</span></div>
+        <div class="kpi-bar"><span class="fill ${poolChange>30?'red':'green'}" style="width:${Math.min(100,poolChange/30*100).toFixed(0)}%"></span></div>
+        <div class="ct-sub">${sumChanges.toLocaleString()} changed of ${sumReviews.toLocaleString()} reviewed (all-time)</div>
+      </div>
+      <div class="kpi k-green">
+        <div class="kpi-top"><div class="label">Reviews / hour</div><span class="kpi-icon">${KPI_ICONS.clock}</span></div>
+        <div class="value-row"><span class="value">${reviewsPerHour}<span class="unit">/h</span></span></div>
+        ${ctSpark(D.colSums,"#0EA56C",170,28)}
+        <div class="ct-sub">${reviewedToday.toLocaleString()} today across ${activeHours} active hour${activeHours===1?'':'s'}</div>
+      </div>
+      <div class="kpi k-orange">
+        <div class="kpi-top"><div class="label">At-risk reviewers</div><span class="kpi-icon">${KPI_ICONS.alert}</span></div>
+        <div class="value-row"><span class="value">${atRisk.length}</span><span class="kpi-dod-light ${atRisk.length?'down':'up'}">${atRisk.length?'attention':'all clear'}</span></div>
+        <div class="ct-foot">${worstRisk?`worst &middot; <b>${esc(worstRisk.name.split(' ')[0])}</b> &middot; ${worstRisk.hasSampling?worstRisk.sampling_pct_today.toFixed(0)+'% samp':''}${worstRisk.changeRate>30?` &middot; ${worstRisk.changeRate.toFixed(0)}% chg`:''}`:'below 25% sampling OR change > 30%'}</div>
+      </div>
     </div>
     <div class="panel">
-      <h3>Per-QA breakdown <span class="meta">sort by clicking column headers</span></h3>
-      <div id="qaPerfTable"></div>
+      <div class="tl-list-head"><h2>Reviewer scorecards <span class="meta">${totalRev} reviewers</span></h2><span class="meta">border: green on track &middot; orange borderline &middot; red below ½ target / change &gt; 30%</span></div>
+      <div id="qpScorecards"></div>
     </div>
     <div class="panel">
-      <h3>Reviews per QA</h3>
-      <div class="chart-wrap"><canvas id="qa-reviews-chart"></canvas></div>
+      <h3>Reviewer comparison <span class="meta">sampling % (target marker) &middot; change % (lower good) &middot; reviews &middot; TAT</span></h3>
+      <div id="qpComparison"></div>
+      <div class="qp-legend"><span class="qp-key tgt"></span>Target marker<span class="qp-key samp"></span>Sampling<span class="qp-key chg"></span>Change (low good)<span class="qp-key rev"></span>Reviewed</div>
+      <div class="tl-pfoot">Pool avg &middot; sampling ${pooledSampling!=null?pooledSampling.toFixed(1)+"%":"—"} &middot; change ${poolChange.toFixed(1)}% &middot; TAT ${medTat!=null?formatDuration(medTat):"—"}.</div>
     </div>
-    ${reviewers.length === 0 ? `<div class="empty-state"><div class="title">No QA activity in cache</div>No records have <code>qa_assignee + qa_status</code> populated in the current cache window.</div>` : ""}
-  `;
+    <div class="tl-drow">
+      <div class="panel"><h3>Sampling distribution <span class="meta">per reviewer &middot; today</span></h3><div id="qpSampDist"></div>
+        <div class="tl-pfoot">Bar vs each reviewer's target (25% team floor, 100% expert sanctions). ${anySampling?'':'<b>'+pend+'</b> — re-aggregate the cache to populate.'}</div>
+      </div>
+      <div class="panel"><h3>Change % <span class="meta">per reviewer &middot; all-time</span></h3>${list.map(r=>{const mx=Math.max(1,...list.map(x=>x.changeRate));return `<div class="tl-prow"><span class="task-avatar sm" style="background:rgba(${QH_RGB[r.idx%QH_RGB.length]},0.85)">${esc(tlInitials(r.name))}</span><span class="who" style="flex:0 0 120px;overflow:hidden;text-overflow:ellipsis">${esc(r.name)}</span><span class="tl-barwrap"><span style="width:${(r.changeRate/mx*100).toFixed(0)}%;background:${r.changeRate>30?'var(--bad)':'var(--warn)'}"></span></span><span class="ct">${r.changeRate.toFixed(1)}%</span></div>`;}).join("")}
+        <div class="tl-pfoot">Ceiling 30% &middot; ${list.filter(r=>r.changeRate>30).length} over.</div>
+      </div>
+      <div class="panel"><h3>Pool summary <span class="meta">today</span></h3>
+        <div class="qp-pool">
+          <div class="qp-pcard"><div class="l">Avg sampling %</div><div class="v">${pooledSampling!=null?pooledSampling.toFixed(1)+"%":"—"}</div><div class="s">${pooledSampling!=null?`vs ${list[0]?.target||25}% floor &middot; ${(pooledSampling-(list[0]?.target||25))>=0?'+':''}${(pooledSampling-(list[0]?.target||25)).toFixed(1)}pp`:pend}</div></div>
+          <div class="qp-pcard"><div class="l">Change %</div><div class="v">${poolChange.toFixed(1)}%</div><div class="s">vs ceiling 30% &middot; ${(poolChange-30)>=0?'+':''}${(poolChange-30).toFixed(1)}pp</div></div>
+          <div class="qp-pcard"><div class="l">Median TAT</div><div class="v">${medTat!=null?formatDuration(medTat):"—"}</div><div class="s">per-record review turnaround</div></div>
+          <div class="qp-pcard"><div class="l">Reviewed today</div><div class="v">${reviewedToday.toLocaleString()}</div><div class="s">${totalRev} reviewers</div></div>
+        </div>
+        <div class="qp-insights">${(()=>{const b=[];const samp=list.filter(r=>r.hasSampling);if(samp.length){const top=samp.slice().sort((a,b)=>b.sampling_pct_today-a.sampling_pct_today)[0];const low=samp.slice().sort((a,b)=>a.sampling_pct_today-b.sampling_pct_today)[0];b.push(`<li>Top sampling &middot; <b>${esc(top.name)}</b> ${top.sampling_pct_today.toFixed(1)}%</li>`);b.push(`<li>Lowest sampling &middot; <b>${esc(low.name)}</b> ${low.sampling_pct_today.toFixed(1)}%</li>`);}const exp=list.find(r=>r.isExpert && r.hasSampling);if(exp)b.push(`<li>Expert sanctions coverage &middot; <b>${esc(exp.name)}</b> ${exp.sampling_pct_today.toFixed(1)}%</li>`);const hc=list.slice().sort((a,b)=>b.changeRate-a.changeRate)[0];if(hc&&hc.changeRate>0)b.push(`<li>Highest change rate &middot; <b>${esc(hc.name)}</b> ${hc.changeRate.toFixed(1)}%</li>`);return b.join("")||'<li class="small-mono">No reviewer metrics yet.</li>';})()}</div>
+      </div>
+    </div>`;
 
-  // Sort state for this page
-  const ss = STATE._qaPerfSort = STATE._qaPerfSort || { by: "reviews", dir: "desc" };
-  function renderTable() {
-    const sorted = [...reviewers].sort((a, b) => {
-      let av = a[ss.by], bv = b[ss.by];
-      if (typeof av === "string") { av = av.toLowerCase(); bv = bv.toLowerCase(); }
-      const cmp = av < bv ? -1 : av > bv ? 1 : 0;
-      return ss.dir === "asc" ? cmp : -cmp;
-    });
-    const indicator = (k) => k === ss.by ? (ss.dir === "asc" ? "▲" : "▼") : "";
-    const head = `<thead><tr>
-      <th data-k="name">QA <span class="sort-ind">${indicator("name")}</span></th>
-      <th class="right" data-k="reviews">Reviews <span class="sort-ind">${indicator("reviews")}</span></th>
-      <th class="right" data-k="avg_review_time_hours">Avg (h) <span class="sort-ind">${indicator("avg_review_time_hours")}</span></th>
-      <th class="right" data-k="median_review_time_hours">Median (h) <span class="sort-ind">${indicator("median_review_time_hours")}</span></th>
-      <th class="right" data-k="p90_review_time_hours">p90 (h) <span class="sort-ind">${indicator("p90_review_time_hours")}</span></th>
-      <th class="right" data-k="approval_pct">Approval % <span class="sort-ind">${indicator("approval_pct")}</span></th>
-      <th class="right" data-k="changes">Changes <span class="sort-ind">${indicator("changes")}</span></th>
-    </tr></thead>`;
-    const body = sorted.map(r => `<tr>
-      <td><strong>${esc(r.name)}</strong></td>
-      <td class="right">${r.reviews}</td>
-      <td class="right"><span class="pill-inline ${timeClass(r.avg_review_time_hours)}">${r.avg_review_time_hours.toFixed(1)}</span></td>
-      <td class="right">${r.median_review_time_hours.toFixed(1)}</td>
-      <td class="right">${r.p90_review_time_hours.toFixed(1)}</td>
-      <td class="right">${r.approval_pct.toFixed(1)}%</td>
-      <td class="right">${r.changes}</td>
-    </tr>`).join("") || '<tr><td colspan="7" class="empty">no reviewers</td></tr>';
-    document.getElementById("qaPerfTable").innerHTML = `<table class="sortable">${head}<tbody>${body}</tbody></table>`;
-    document.querySelectorAll("#qaPerfTable th[data-k]").forEach(th => {
-      th.addEventListener("click", () => {
-        const k = th.dataset.k;
-        if (ss.by === k) ss.dir = ss.dir === "asc" ? "desc" : "asc";
-        else { ss.by = k; ss.dir = "desc"; }
-        renderTable();
-      });
-    });
-  }
-  renderTable();
+  document.querySelectorAll("#qpChips .tl-chip").forEach(b=>b.addEventListener("click",()=>{ STATE.qpFilters.view = (STATE.qpFilters.view===b.dataset.qp && b.dataset.qp!=="all") ? "all" : b.dataset.qp; PAGE_RENDERERS.qa_performance(); }));
+  document.getElementById("qpExportBtn").addEventListener("click", _qpExport);
+  document.querySelectorAll("[data-qpnoop]").forEach(b=>b.addEventListener("click",()=>{}));
 
-  // Reviews-per-QA bar chart
-  const ctx = document.getElementById("qa-reviews-chart");
-  if (ctx && reviewers.length) {
-    STATE.charts["qa-reviews-chart"] = new Chart(ctx, {
-      type: "bar",
-      data: {
-        labels: reviewers.map(r => r.name),
-        datasets: [{ label: "Reviews", data: reviewers.map(r => r.reviews), backgroundColor: "#3d63dd" }],
-      },
-      options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } },
-    });
-  }
+  renderQaPerfScorecards();
+  renderQaPerfComparison();
+  if (STATE.sidePanelOpen && STATE.qpSelectedReviewer) renderQaPerfDetail();
 };
+
+function _qpExport(){
+  const D=_qpCompute();
+  const cell=(v)=>`"${String(v??"").replace(/"/g,'""')}"`;
+  const lines=["Reviewer,Assigned team,Reviews(all),Reviews today,Eligible pool today,Sampling % today,Sampling target %,Approval %,Change %,Median TAT h,P90 TAT h"];
+  for(const r of D.list){ lines.push([cell(r.name),cell(r.assigned_team??(r.isExpert?"Expert (sanctions)":"")),r.reviews||0,r.reviews_today??"",r.eligible_pool_today??"",r.sampling_pct_today??"",r.sampling_target_pct??"",(r.approval_pct||0).toFixed(1),r.changeRate.toFixed(1),r.median_review_time_hours??"",r.p90_review_time_hours??""].join(",")); }
+  const blob=new Blob([lines.join("\n")],{type:"text/csv"}); const a=document.createElement("a"); a.href=URL.createObjectURL(blob); a.download=`qa-performance-${STATE.v2?.date||"today"}.csv`; a.click(); URL.revokeObjectURL(a.href);
+}
+
+function _qpSampBar(r){
+  // Sampling bar with a per-row target marker. Null → pending placeholder.
+  if(!r.hasSampling) return `<span class="qp-sbar"><span class="qp-sfill" style="width:0"></span><span class="qp-tgt" style="left:${Math.min(100,r.target)}%"></span></span><span class="qp-sval pending">—</span>`;
+  const pct=Math.min(100,r.sampling_pct_today);
+  const col=r.sampling_pct_today>=r.target?"var(--good)":r.sampling_pct_today<r.target*0.5?"var(--bad)":"var(--warn)";
+  return `<span class="qp-sbar"><span class="qp-sfill" style="width:${pct}%;background:${col}"></span><span class="qp-tgt" style="left:${Math.min(100,r.target)}%" title="target ${r.target}%"></span></span><span class="qp-sval">${r.sampling_pct_today.toFixed(1)}%</span>`;
+}
+
+function renderQaPerfScorecards(){
+  const host=document.getElementById("qpScorecards"); if(!host) return;
+  const D=_qpCompute(); let list=D.list;
+  const view=STATE.qpFilters?.view||"all";
+  if(view==="below") list=D.list.filter(r=>r.hasSampling && r.sampling_pct_today<r.target);
+  else if(view==="atrisk") list=D.list.filter(r=>(r.hasSampling && r.sampling_pct_today<r.target)||r.changeRate>30);
+  if(!list.length){ host.innerHTML = D.list.length? `<div class="empty" style="padding:18px">No reviewers match this filter.</div>` : `<div class="empty-state"><div class="title">No QA activity in cache</div>No records have <code>qa_assignee + qa_status</code> in the current window.</div>`; return; }
+  const maxH=Math.max(1,...D.list.flatMap(r=>r.hourly));
+  host.innerHTML = `<div class="qp-cards">${list.map(r=>{
+    const rgb=QH_RGB[r.idx%QH_RGB.length];
+    const teamChip = r.assigned_team ? `<span class="pill-inline" style="background:var(--accent-soft);color:var(--accent)">${esc(r.assigned_team)}</span>` : (r.isExpert? `<span class="pill-inline bad">Expert · sanctions</span>` : `<span class="pill-inline">unmapped</span>`);
+    const bars=r.hourly.map(v=>`<span class="qp-hb" style="height:${v===0?2:Math.max(8,Math.round(v/maxH*100))}%;background:rgba(${rgb},${v===0?0.12:0.85})"></span>`).join("");
+    const row=(label,val,cls)=>`<div class="qp-row"><span class="qp-lbl">${label}</span><span class="qp-rv ${cls||''}">${val}</span></div>`;
+    const sampVal = r.hasSampling? `${r.sampling_pct_today.toFixed(1)}% <span class="qp-mini"><span style="width:${Math.min(100,r.sampling_pct_today/Math.max(1,r.target)*100)}%;background:${r.sampling_pct_today>=r.target?'var(--good)':'var(--warn)'}"></span></span>` : `<span class="qp-pending">— pending</span>`;
+    const sel = STATE.qpSelectedReviewer===r.name?" sel":"";
+    return `<div class="qp-card sig-${r.signal}${sel}" data-qpr="${esc(r.name)}" title="Open ${esc(r.name)} deep-dive">
+      <div class="qp-chead"><span class="task-avatar" style="background:rgba(${rgb},1)">${esc(tlInitials(r.name))}</span><div style="min-width:0"><div class="qp-nm">${esc(r.name)}</div><div class="qp-sub">${teamChip}</div></div></div>
+      ${row("Sampling", sampVal)}
+      ${row("Approval", (r.approval_pct||0).toFixed(1)+"%")}
+      ${row("Change", r.changeRate.toFixed(1)+"%", r.changeRate>30?'bad':'')}
+      ${row("TAT", r.median_review_time_hours!=null?formatDuration(r.median_review_time_hours):"—")}
+      <div class="qp-hbars" title="today by hour">${bars}</div>
+    </div>`;
+  }).join("")}</div>`;
+  host.querySelectorAll(".qp-card[data-qpr]").forEach(c=>c.addEventListener("click",()=>{ STATE.qpSelectedReviewer=c.dataset.qpr; renderQaPerfDetail(); renderQaPerfScorecards(); }));
+}
+
+function renderQaPerfComparison(){
+  const host=document.getElementById("qpComparison"); if(!host) return;
+  const D=_qpCompute();
+  const maxRev=Math.max(1,...D.list.map(r=>r.reviews||0));
+  const maxChg=Math.max(1,...D.list.map(r=>r.changeRate));
+  host.innerHTML = D.list.map(r=>{
+    const rgb=QH_RGB[r.idx%QH_RGB.length];
+    const tgtNote = r.isExpert? ` <span class="qp-i" title="Expert sanctions cohort — target 100%">ⓘ</span>` : "";
+    return `<div class="qp-crow">
+      <span class="qp-cnm"><span class="task-avatar sm" style="background:rgba(${rgb},0.85)">${esc(tlInitials(r.name))}</span>${esc(r.name)}${tgtNote}</span>
+      ${_qpSampBar(r)}
+      <span class="qp-cbar"><span class="qp-cfill" style="width:${(r.changeRate/maxChg*100).toFixed(0)}%;background:${r.changeRate>30?'var(--bad)':'var(--warn)'}"></span></span>
+      <span class="qp-cbar"><span class="qp-cfill" style="width:${((r.reviews||0)/maxRev*100).toFixed(0)}%;background:#0691B5"></span><b>${(r.reviews||0).toLocaleString()}</b></span>
+      <span class="qp-ctat">${r.median_review_time_hours!=null?formatDuration(r.median_review_time_hours):"—"}<span class="s"> · p90 ${r.p90_review_time_hours!=null?formatDuration(r.p90_review_time_hours):"—"}</span></span>
+    </div>`;
+  }).join("") || '<div class="small-mono" style="padding:10px 0">No reviewers.</div>';
+}
+
+function renderQaPerfDetail(){
+  const cont=document.getElementById("sidePanelBody"); if(!cont) return;
+  const D=_qpCompute();
+  const r=D.list.find(x=>x.name===STATE.qpSelectedReviewer);
+  if(!r){ STATE.qpSelectedReviewer=null; _hideSidePanel(); return; }
+  const rgb=QH_RGB[r.idx%QH_RGB.length];
+  // (a) hourly
+  const maxc=Math.max(1,...r.hourly);
+  const hb=D.hours.map((h,i)=>{const v=r.hourly[i];return `<div class="qh-hbar" title="${h}:00 → ${v}"><span class="qh-hbar-fill" style="height:${v===0?2:Math.max(6,Math.round(v/maxc*100))}%;background:rgba(${rgb},${v===0?0.12:0.85})"></span><span class="qh-hbar-h">${String(h).padStart(2,'0')}</span></div>`;}).join("");
+  // (b) decisions donut (all-time approve/change)
+  const app=r.approvals||0, chg=r.changes||0, tot=Math.max(1,r.reviews||0);
+  const appPct=app/tot*100, chgPct=chg/tot*100;
+  const donut=`conic-gradient(var(--good) 0deg ${(appPct*3.6).toFixed(1)}deg, var(--warn) ${(appPct*3.6).toFixed(1)}deg ${((appPct+chgPct)*3.6).toFixed(1)}deg, var(--soft) ${((appPct+chgPct)*3.6).toFixed(1)}deg 360deg)`;
+  // (c) sampling detail
+  const hasS=r.hasSampling;
+  const teamLine = r.assigned_team ? `Assigned team: <b>${esc(r.assigned_team)}</b>` : (r.isExpert? `<b>Cross-team sanctions cohort (Expert)</b>` : `<b>Unmapped reviewer</b>`);
+  const status = !hasS ? null : (r.sampling_pct_today>=r.target?["on track","good"]: r.sampling_pct_today<r.target*0.5?["well below target","bad"]:["below target","warn"]);
+  const progPct = hasS? Math.min(100, r.sampling_pct_today/Math.max(1,r.target)*100) : 0;
+  const samplingPanel = hasS ? `
+      <div class="qp-dline">${teamLine}</div>
+      <div class="qp-dline">Eligible pool today: <b>${(r.eligible_pool_today??0).toLocaleString()}</b> <span class="s">(yesterday's tagged-into-BO-QA cohort)</span></div>
+      <div class="qp-dline">Reviewed today: <b>${(r.reviews_today??0).toLocaleString()}</b> of <b>${(r.eligible_pool_today??0).toLocaleString()}</b></div>
+      <div class="qp-prog"><span class="qp-pfill ${status[1]}" style="width:${progPct.toFixed(0)}%"></span><span class="qp-ptgt" style="left:100%"></span></div>
+      <div class="qp-dline">Sampling target: <b>${r.target}%</b> &middot; current <b>${r.sampling_pct_today.toFixed(1)}%</b></div>
+      <div class="qp-dline"><span class="pill-inline ${status[1]}">${status[0]}</span></div>`
+    : `<div class="qp-dline">${teamLine}</div>
+       <div class="qp-pending-box">Sampling metric pending next aggregator run.<br><span class="s">Snapshot computed ${esc(tlEatTime(D.v2.computed_at))} EAT (${esc(D.v2.date||"—")}). Re-aggregate the cache to populate per-reviewer sampling %.</span></div>`;
+
+  cont.innerHTML = `
+    <div class="tl-drawer-card">
+      <div class="tl-dh">
+        <span class="task-avatar lg" style="background:rgba(${rgb},1)">${esc(tlInitials(r.name))}</span>
+        <div style="min-width:0">
+          <div class="nm">${esc(r.name)} ${r.assigned_team?`<span class="pill-inline" style="background:var(--accent-soft);color:var(--accent);margin-left:4px">${esc(r.assigned_team)}</span>`:(r.isExpert?`<span class="pill-inline bad" style="margin-left:4px">Expert</span>`:"")} <span class="task-pill ${r.signal==='good'?'completed':r.signal==='bad'?'bo-qa':'in-progress'}">${r.signal==='good'?'On track':r.signal==='bad'?'At risk':'Borderline'}</span></div>
+          <div class="meta">BO QA &middot; ${(r.reviews||0).toLocaleString()} reviews all-time &middot; Approval ${(r.approval_pct||0).toFixed(1)}% &middot; Change ${r.changeRate.toFixed(1)}% &middot; P50 ${r.median_review_time_hours!=null?formatDuration(r.median_review_time_hours):"—"}/record</div>
+        </div>
+      </div>
+    </div>
+    <div class="tl-drow">
+      <div class="panel"><h3>Today hourly <span class="meta">${r.todayCount.toLocaleString()} reviews</span></h3><div class="qh-hbars">${hb}</div>
+        <div class="tl-pfoot">Reviews stamped per EAT hour today (<code>qa_hourly</code>).</div>
+      </div>
+      <div class="panel"><h3>Decisions <span class="meta">all-time &middot; ${(r.reviews||0).toLocaleString()}</span></h3>
+        <div class="tl-donut" style="background:${donut}"><div class="hole"><b>${(r.reviews||0).toLocaleString()}</b><span>reviews</span></div></div>
+        <div class="tl-legend"><div class="li"><span class="d" style="background:var(--good)"></span>Approve<span class="ct">${app.toLocaleString()} &middot; ${appPct.toFixed(1)}%</span></div><div class="li"><span class="d" style="background:var(--warn)"></span>Change<span class="ct">${chg.toLocaleString()} &middot; ${chgPct.toFixed(1)}%</span></div></div>
+        <div class="tl-pfoot">Approve / Change from <code>qa_reviewers</code> (all in-cache reviews).</div>
+      </div>
+      <div class="panel"><h3>Sampling detail <span class="meta">team-based &middot; yesterday cohort</span></h3>
+        ${samplingPanel}
+        <div class="tl-pfoot">Denominator = the reviewer's team's <b>yesterday</b> tagged-into-BO-QA cohort (next-day review model). Experts use the cross-team sanctions cohort (target 100%).</div>
+      </div>
+    </div>`;
+
+  openSidePanel(r.name, `${r.assigned_team?esc(r.assigned_team)+' QA':(r.isExpert?'Sanctions expert':'BO QA')} · ${hasS?r.sampling_pct_today.toFixed(1)+'% sampling':'sampling pending'}`);
+}
 
 // -------- BO QA Console --------
 PAGE_RENDERERS.boqa = function () {
@@ -5383,9 +5643,11 @@ function closeSidePanel(){
   STATE.selectedTaskId = null;
   STATE.completedSelectedId = null;
   STATE.qhSelectedReviewer = null;
+  STATE.qpSelectedReviewer = null;
   if(document.getElementById("tlList")) renderTasksList();
   if(document.getElementById("ctArchive")) renderCompletedArchive();
   if(document.getElementById("qhHeatmap")) renderQaHeatmap();
+  if(document.getElementById("qpScorecards")) renderQaPerfScorecards();
 }
 let _sidePanelWired = false;
 function _wireSidePanel(){
