@@ -369,6 +369,20 @@
   .teams-floor-row .status.met   { background: var(--good-bg); color: var(--good); }
   .teams-floor-row .status.under { background: var(--bad-bg);  color: var(--bad); }
 
+  /* Quality flags panel (Overview right column, below Daily Verdict) */
+  .flags-panel h3 em { font-style: italic; font-weight: 600; font-family: Georgia, "Times New Roman", serif; color: var(--accent); }
+  .flags-list { display: flex; flex-direction: column; gap: 6px; }
+  .flags-row { display: grid; grid-template-columns: 8px minmax(0, 1fr) auto auto; gap: 10px; align-items: center; padding: 8px 10px; border-radius: var(--radius-sm); background: var(--soft); }
+  .flags-row .dot { width: 8px; height: 8px; border-radius: 50%; }
+  .flags-row .nm { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .flags-row .nm strong { font-size: 13px; color: var(--ink); }
+  .flags-row .nm .sub { font-size: 11px; color: var(--muted); margin-left: 4px; }
+  .flags-row .count { font-size: 13px; font-weight: 700; color: var(--bad); font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .flags-row .ctx { font-size: 11px; color: var(--muted); font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .flags-empty { padding: 14px; font-size: 12.5px; color: var(--muted); text-align: center; }
+  .flags-foot { margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--border); font-size: 11px; color: var(--muted); line-height: 1.5; }
+  .flags-foot .num { color: var(--ink); font-weight: 600; font-variant-numeric: tabular-nums; }
+
   /* Agent productivity scorecard */
   .scorecard-panel h3 em { font-style: italic; font-weight: 600; font-family: Georgia, "Times New Roman", serif; color: var(--accent); }
   .scorecard-tabs { display: flex; align-items: center; gap: 6px; margin-bottom: 12px; padding-bottom: 10px; border-bottom: 1px solid var(--border); }
@@ -2273,6 +2287,51 @@ PAGE_RENDERERS.overview = function () {
       </div>
     </div>`;
 
+  // Quality flags panel — agents whose work was QA-changed today.
+  // Real data only: STATE.v2.by_agent[name].qa_changed_today (same field the
+  // Agent Scorecard's "Quality flags this week" card reads). Includes the
+  // qa_inspected_today context so the count is interpretable (5 changed of 50
+  // reviewed reads very differently from 5 of 5). Sorted by changed desc,
+  // tie-break inspected asc (more severe ratio first).
+  const flagAgentTeam = {};
+  for (const tm of teams) {
+    for (const m of (STATE.roster?.[tm]?.members || [])) flagAgentTeam[m.name] = tm;
+  }
+  const flagRows = [];
+  for (const [name, m] of Object.entries(STATE.v2?.by_agent || {})) {
+    const changed = m.qa_changed_today || 0;
+    if (changed <= 0) continue;
+    const inspected = m.qa_inspected_today || 0;
+    flagRows.push({
+      name,
+      team: flagAgentTeam[name] || "—",
+      changed,
+      inspected,
+      ratio: inspected > 0 ? (changed / inspected) * 100 : null,
+    });
+  }
+  flagRows.sort((a, b) => b.changed - a.changed || a.inspected - b.inspected);
+  const totalChanged   = flagRows.reduce((s, r) => s + r.changed, 0);
+  const totalInspected = flagRows.reduce((s, r) => s + r.inspected, 0);
+  const flagsHtml = `
+    <div class="panel flags-panel">
+      <h3>Quality <em>flags</em> <span class="meta">agents with QA-changed work today</span></h3>
+      ${flagRows.length === 0 ? `
+        <div class="flags-empty">No quality flags today — every reviewed record was approved.</div>
+      ` : `
+        <div class="flags-list">
+          ${flagRows.map(r => `
+            <div class="flags-row">
+              <span class="dot" style="background:${TEAM_COLORS[r.team]?.hex || "#7B68EE"}"></span>
+              <span class="nm"><strong>${esc(r.name)}</strong><span class="sub">&bull; ${esc(r.team)}</span></span>
+              <span class="count">${r.changed}</span>
+              <span class="ctx">of ${r.inspected} reviewed${r.ratio != null ? ` · ${r.ratio.toFixed(0)}%` : ""}</span>
+            </div>`).join("")}
+        </div>
+      `}
+      <div class="flags-foot"><span class="num">${totalChanged}</span> changed of <span class="num">${totalInspected}</span> reviewed today · per-agent counts from <code>by_agent.qa_changed_today</code> · changed-record list isn't emitted, so only the count is shown.</div>
+    </div>`;
+
   // Teams vs floor
   const teamsFloorHtml = `
     <div class="panel">
@@ -2385,7 +2444,7 @@ PAGE_RENDERERS.overview = function () {
   root.innerHTML = pageHeadHtml + kpiHeroHtml + flowHtml + `
     <div class="overview-layout">
       <div class="overview-main">${scorecardHtml}${teamsFloorHtml}${alertsHtml}${chartHtml}</div>
-      <div class="overview-side">${verdictHtml}</div>
+      <div class="overview-side">${verdictHtml}${flagsHtml}</div>
     </div>` + detailHtml;
 
   // Wiring — page-head buttons
