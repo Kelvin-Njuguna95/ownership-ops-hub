@@ -39,6 +39,7 @@ from completion_detector import (  # noqa: E402
     is_complete,
     needs_tagging_row,
     resolve_completed_by,
+    resolve_completion_ts,
     route_record,
     supabase_insert_completions,
 )
@@ -677,6 +678,107 @@ class TestCaptureGapClosure(unittest.TestCase):
             result = supabase_insert_completions("https://x", "key", [comp_done])
             self.assertEqual(result["flow_upserted"], 1)
             self.assertIn("flow=is.null", mock_req.patch.call_args.args[0])
+
+
+# ============================================================================
+# resolve_completion_ts — real-completion-time resolution (Cause C fix).
+# ============================================================================
+# Date-field IDs, both schemes. relations_support raw_payloads key by the first
+# id, relations_io by the second (the detector's IO remap omits date fields).
+SUPPORT = {"valid_selected_time": "fldu7c6IVtQ7MucWP",
+           "done_selected_time":  "fldbcTW2CD2HjejGN",
+           "start_tagging_date":  "fld7fm1PknPk1UueW",
+           "last_modified":       "fld0hZzdjksTCKJ09"}
+IO = {"valid_selected_time": "fldHZIlbgc82c7tZE",
+      "done_selected_time":  "fldspS5VCZ4Ey1wxC",
+      "start_tagging_date":  "fld2CKyEYjaoJV5Vq",
+      "last_modified":       "fld2M86MfuQaoGot8"}
+FALLBACK = "2026-01-01T00:00:00+00:00"
+
+
+class TestResolveCompletionTs(unittest.TestCase):
+    def test_valid_uses_valid_selected_time_legacy_scheme(self):
+        rp = {SUPPORT["valid_selected_time"]: "2026-05-28T11:30:00.000Z",
+              SUPPORT["last_modified"]: "2026-05-28T12:55:00.000Z"}
+        self.assertEqual(resolve_completion_ts(VALID, rp, FALLBACK),
+                         "2026-05-28T11:30:00.000Z")
+
+    def test_valid_uses_valid_selected_time_rest_scheme(self):
+        rp = {IO["valid_selected_time"]: "2026-05-28T11:45:00.000Z"}
+        self.assertEqual(resolve_completion_ts(VALID, rp, FALLBACK),
+                         "2026-05-28T11:45:00.000Z")
+
+    def test_done_uses_done_selected_time(self):
+        rp = {IO["done_selected_time"]: "2026-05-27T14:20:00.000Z"}
+        self.assertEqual(resolve_completion_ts(DONE, rp, FALLBACK),
+                         "2026-05-27T14:20:00.000Z")
+
+    def test_tagged_uses_start_tagging_date(self):
+        rp = {SUPPORT["start_tagging_date"]: "2026-05-27T14:39:00.000Z",
+              SUPPORT["last_modified"]: "2026-05-27T13:41:00.000Z"}
+        self.assertEqual(resolve_completion_ts(TAGGED, rp, FALLBACK),
+                         "2026-05-27T14:39:00.000Z")
+
+    def test_sbo_and_need_update_use_start_tagging_date(self):
+        rp = {IO["start_tagging_date"]: "2026-05-27T09:00:00.000Z"}
+        self.assertEqual(resolve_completion_ts(SELECTED_FOR_BO_QA, rp, FALLBACK),
+                         "2026-05-27T09:00:00.000Z")
+        self.assertEqual(resolve_completion_ts(NEED_TO_BE_UPDATE, rp, FALLBACK),
+                         "2026-05-27T09:00:00.000Z")
+
+    def test_valid_falls_back_to_done_then_last_modified(self):
+        # valid_selected_time absent (e.g. the Valid formula field is blank) ->
+        # done_selected_time wins before last_modified.
+        rp = {SUPPORT["done_selected_time"]: "2026-05-28T11:10:00.000Z",
+              SUPPORT["last_modified"]: "2026-05-28T12:00:00.000Z"}
+        self.assertEqual(resolve_completion_ts(VALID, rp, FALLBACK),
+                         "2026-05-28T11:10:00.000Z")
+
+    def test_falls_back_to_last_modified_when_state_field_missing(self):
+        rp = {IO["last_modified"]: "2026-05-28T11:05:00.000Z"}
+        self.assertEqual(resolve_completion_ts(VALID, rp, FALLBACK),
+                         "2026-05-28T11:05:00.000Z")
+
+    def test_missing_all_dates_returns_fallback_and_warns(self):
+        warned = []
+        out = resolve_completion_ts(DONE, {}, FALLBACK, warn=lambda s: warned.append(s))
+        self.assertEqual(out, FALLBACK)
+        self.assertEqual(warned, [DONE])
+
+    def test_blank_string_is_ignored(self):
+        rp = {SUPPORT["valid_selected_time"]: "   ",
+              SUPPORT["last_modified"]: "2026-05-28T11:00:00.000Z"}
+        self.assertEqual(resolve_completion_ts(VALID, rp, FALLBACK),
+                         "2026-05-28T11:00:00.000Z")
+
+    def test_unknown_state_uses_last_modified_only(self):
+        rp = {SUPPORT["last_modified"]: "2026-05-28T10:00:00.000Z",
+              SUPPORT["start_tagging_date"]: "2026-05-28T09:00:00.000Z"}
+        self.assertEqual(resolve_completion_ts("waiting", rp, FALLBACK),
+                         "2026-05-28T10:00:00.000Z")
+
+    def test_none_payload_returns_fallback(self):
+        self.assertEqual(resolve_completion_ts(VALID, None, FALLBACK), FALLBACK)
+
+
+class TestBuildCompletionRowUsesRealTime(unittest.TestCase):
+    """build_completion_row now derives completed_at from raw_payload, and keeps
+    detected_at as the observation clock."""
+
+    def test_completed_at_from_valid_selected_time(self):
+        now = datetime(2026, 5, 28, 12, 55, 17, tzinfo=timezone.utc)
+        f = _fields(verification_status=VALID, last_modified_by={"id": "u", "name": "A"})
+        f["fldHZIlbgc82c7tZE"] = "2026-05-28T11:30:00.000Z"  # REST valid_selected_time
+        row, _ = build_completion_row({"id": "rec1", "fields": f}, now, flow="A")
+        self.assertEqual(row["completed_at"], "2026-05-28T11:30:00.000Z")
+        self.assertEqual(row["detected_at"], "2026-05-28T12:55:17+00:00")
+
+    def test_completed_at_falls_back_to_now_when_no_date(self):
+        now = datetime(2026, 5, 18, 12, 0, 0, tzinfo=timezone.utc)
+        f = _fields(verification_status=DONE, last_modified_by={"id": "u", "name": "A"})
+        row, _ = build_completion_row({"id": "rec1", "fields": f}, now, flow="A")
+        self.assertEqual(row["completed_at"], "2026-05-18T12:00:00+00:00")
+        self.assertEqual(row["detected_at"], "2026-05-18T12:00:00+00:00")
 
 
 if __name__ == "__main__":

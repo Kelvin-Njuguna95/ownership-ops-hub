@@ -270,25 +270,112 @@ def resolve_completed_by(fields):
 
 
 # ----------------------------------------------------------------------
+# Real-completion-time resolution (Cause C fix).
+#
+# ``completed_at`` used to be stamped with the detector's clock at first
+# observation. When polls failed and a later run recovered, big batches were
+# bulk-stamped into a single microsecond, emptying the hour the work TRULY
+# happened in on the Hourly Output chart. We instead derive the real time from
+# the Airtable date field that matches the record's state.
+#
+# raw_payload is keyed by field ID. relations_support records use one ID per
+# logical field, relations_io records another — and IO_TO_SUPPORT_FIELD_IDS
+# above deliberately does NOT remap these date fields, so a value can appear
+# under EITHER ID depending on source_table. We try both.
+# Each entry: logical field -> (relations_support id, relations_io id).
+# ----------------------------------------------------------------------
+
+_DATE_FIELD_IDS = {
+    "valid_selected_time": ("fldu7c6IVtQ7MucWP", "fldHZIlbgc82c7tZE"),
+    "done_selected_time":  ("fldbcTW2CD2HjejGN", "fldspS5VCZ4Ey1wxC"),
+    "start_tagging_date":  ("fld7fm1PknPk1UueW", "fld2CKyEYjaoJV5Vq"),
+    "last_modified":       ("fld0hZzdjksTCKJ09", "fld2M86MfuQaoGot8"),
+}
+
+# Per verification-status, the ordered date fields that best represent "when
+# the work actually happened" (most-specific first). last_modified is the
+# generic tail tried before the observation-clock fallback. The Hourly Output
+# is a TAGGING-output chart, so tagged/SBO rows resolve to start_tagging_date.
+_STATE_DATE_PRIORITY = {
+    VALID:              ("valid_selected_time", "done_selected_time", "last_modified"),
+    DONE:               ("done_selected_time", "last_modified"),
+    SELECTED_FOR_BO_QA: ("start_tagging_date", "last_modified"),
+    TAGGED:             ("start_tagging_date", "last_modified"),
+    NEED_TO_BE_UPDATE:  ("start_tagging_date", "last_modified"),
+}
+_DEFAULT_DATE_PRIORITY = ("last_modified",)
+
+
+def _payload_date(raw_payload, logical_field):
+    """First non-empty string value for a logical date field, trying both the
+    relations_support and relations_io field IDs. None if absent/blank."""
+    for fid in _DATE_FIELD_IDS.get(logical_field, ()):
+        v = raw_payload.get(fid)
+        if isinstance(v, str) and v.strip():
+            return v
+    return None
+
+
+def resolve_completion_ts(state, raw_payload, fallback, warn=None):
+    """Resolve a record's REAL completion timestamp (ISO-8601 string).
+
+    state:       verification_status (DONE / VALID / tagged / ...).
+    raw_payload: the Airtable fields dict (field-ID-keyed, either ID scheme).
+    fallback:    returned when no date field resolves — callers pass the
+                 observation clock (now_utc.isoformat()) to preserve prior
+                 behavior on resolution failure.
+    warn:        optional callable(state) invoked on fallthrough, so a broken
+                 mapping for some state is visible in the logs.
+
+    Tries the state-specific date field(s), then last_modified, then fallback.
+    """
+    raw_payload = raw_payload or {}
+    for logical_field in _STATE_DATE_PRIORITY.get(state, _DEFAULT_DATE_PRIORITY):
+        v = _payload_date(raw_payload, logical_field)
+        if v:
+            return v
+    if warn:
+        warn(state)
+    return fallback
+
+
+def _warn_ts_fallback(state):
+    print(f"  WARN: completed_at fell back to observation clock — no date field "
+          f"resolved for verification_status={state!r}", file=sys.stderr)
+
+
+# ----------------------------------------------------------------------
 # Row builders for each target table.
 # ----------------------------------------------------------------------
 
 def build_completion_row(rec, now_utc, flow):
-    """ownership_completions row. ``flow`` is 'A', 'C', or None for pre-Flow."""
+    """ownership_completions row. ``flow`` is 'A', 'C', or None for pre-Flow.
+
+    ``completed_at`` is the record's REAL completion time, derived from the
+    Airtable date field matching its state (resolve_completion_ts); it falls
+    back to the observation clock only when no date field is present.
+    ``detected_at`` is the observation clock (when the detector first saw the
+    record), kept for ordering/idempotency. Both were previously the
+    observation clock — see the Cause C notes above.
+    """
     fields = rec.get("fields") or rec.get("cellValuesByFieldId") or {}
     completed_by, source = resolve_completed_by(fields)
     if not completed_by:
         return None, None
+    vs = _name(fields.get(FLD_VERIFICATION_STATUS))
+    observed_at = now_utc.isoformat()
     row = {
         "airtable_record_id":  rec["id"],
         "imo":                 fields.get(FLD_IMO),
         "role":                _name(fields.get(FLD_ROLE)),
-        "verification_status": _name(fields.get(FLD_VERIFICATION_STATUS)),
+        "verification_status": vs,
         "company_id_and_name": _name(fields.get(FLD_COMPANY_NAME_LOOKUP))
                                or _name(fields.get(FLD_COMPANY_ID_AND_NAME)),
         "add_a_new_company":   fields.get(FLD_ADD_NEW_COMPANY),
         "completed_by":        completed_by,
-        "completed_at":        now_utc.isoformat(),
+        "completed_at":        resolve_completion_ts(vs, fields, observed_at,
+                                                     warn=_warn_ts_fallback),
+        "detected_at":         observed_at,
         "requested_by":        fields.get(FLD_REQUESTED_BY),
         "raw_payload":         fields,
         "flow":                flow,
