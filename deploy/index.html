@@ -936,6 +936,46 @@
   .bq-pfoot { margin-top:10px; padding-top:10px; border-top:1px solid var(--border); font-size:11px; color:var(--muted); line-height:1.5; } .bq-pfoot .num { color:var(--ink); font-weight:600; }
   .bq-hbars { display:flex; align-items:flex-end; gap:3px; height:90px; margin-top:6px; } .bq-hbars .hb { flex:1; display:flex; flex-direction:column; justify-content:flex-end; height:100%; } .bq-hbars .hb .bar { width:100%; background:var(--accent); border-radius:2px 2px 0 0; min-height:2px; } .bq-hbars .hb .lab { font-size:8px; color:var(--muted); text-align:center; margin-top:2px; }
 
+  /* ---- WW QA Console detail layer (Phase 15) ---------------------------- */
+  /* Worklist row: WW-QA shape — IMO / company / tagger / BO QA / WW QA / age */
+  .bq-row.wq { grid-template-columns: 100px 1.6fr 1.1fr 1.1fr 1.1fr 60px; }
+  @media(max-width:1100px){ .bq-row.wq { grid-template-columns: 90px 1.4fr 1fr 60px; } .bq-row.wq .col-tagger, .bq-row.wq .col-boqa { display:none; } }
+  /* Reviewer-load card variation: a kpi-bar inside .bq-rvcard */
+  .wq-loadcard .bar-wrap { margin-top:10px; }
+  .wq-loadcard .bar-wrap .lbl { font-size:10px; color:var(--muted); text-transform:uppercase; letter-spacing:0.04em; margin-bottom:4px; display:flex; justify-content:space-between; }
+  .wq-loadcard .bar-wrap .lbl .pct { color:var(--ink); font-weight:600; font-variant-numeric:tabular-nums; }
+  /* Age-bucket strip (substitute for the SLA bar) */
+  .wq-agestrip { display:grid; grid-template-columns:repeat(4,1fr); gap:10px; margin-bottom:14px; }
+  .wq-agecell { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius-md); padding:10px 12px; box-shadow:var(--shadow-sm); display:flex; align-items:center; gap:10px; }
+  .wq-agecell .dot { width:10px; height:10px; border-radius:50%; flex-shrink:0; }
+  .wq-agecell .num { font-size:18px; font-weight:700; color:var(--ink); font-variant-numeric:tabular-nums; line-height:1; }
+  .wq-agecell .lbl { font-size:10px; text-transform:uppercase; letter-spacing:0.04em; color:var(--muted); font-weight:700; margin-top:3px; }
+  .wq-agecell.b0 .dot { background:var(--good); }
+  .wq-agecell.b1 .dot { background:rgba(6,145,181,0.85); }
+  .wq-agecell.b2 .dot { background:var(--warn); }
+  .wq-agecell.b3 .dot { background:var(--bad); }
+  /* Verdict feed (substitute for Expert activity feed) */
+  .wq-feed { display:flex; flex-direction:column; gap:0; max-height:520px; overflow-y:auto; }
+  .wq-feed .ev { display:grid; grid-template-columns:24px 1fr auto; gap:10px; align-items:center; padding:9px 4px; border-bottom:1px solid var(--border); font-size:12px; }
+  .wq-feed .ev .av { width:24px; height:24px; border-radius:6px; display:inline-flex; align-items:center; justify-content:center; color:#fff; font-size:9px; font-weight:700; }
+  .wq-feed .ev .body .nm { font-weight:600; color:var(--ink); }
+  .wq-feed .ev .body .sub { color:var(--muted); font-size:10.5px; margin-top:2px; }
+  .wq-feed .ev .body .sub .imo { font-family:"Geist Mono",ui-monospace,Menlo,monospace; color:var(--ink); }
+  .wq-feed .ev .when { font-size:11px; color:var(--muted); font-variant-numeric:tabular-nums; white-space:nowrap; }
+  .wq-feed .ev .verdict { font-size:9.5px; font-weight:700; padding:2px 7px; border-radius:999px; text-transform:uppercase; letter-spacing:0.04em; }
+  .wq-feed .ev .verdict.approve { background:var(--good-bg); color:var(--good); }
+  .wq-feed .ev .verdict.change  { background:var(--warn-bg); color:var(--warn); }
+  /* 2-column bottom row (was 3-column in the mockup — silent-change panel omitted) */
+  .wq-2col { display:grid; grid-template-columns:1.5fr 1fr; gap:14px; margin-bottom:14px; }
+  @media(max-width:1100px){ .wq-2col { grid-template-columns:1fr; } }
+  /* Empty-state — Vivid-styled wrapper */
+  .wq-empty { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius-lg); padding:28px 30px; box-shadow:var(--shadow-sm); text-align:left; margin-top:14px; }
+  .wq-empty .ic { width:42px; height:42px; border-radius:11px; background:var(--accent-soft); color:var(--accent); display:inline-flex; align-items:center; justify-content:center; margin-bottom:14px; }
+  .wq-empty .ic svg { width:20px; height:20px; }
+  .wq-empty h3 { margin:0 0 6px; font-size:16px; font-weight:700; color:var(--ink); }
+  .wq-empty p  { margin:0 0 8px; font-size:13px; color:var(--muted); line-height:1.55; max-width:760px; }
+  .wq-empty .codeline { font-family:"Geist Mono",ui-monospace,Menlo,monospace; font-size:11.5px; color:var(--muted); background:var(--soft); padding:8px 10px; border-radius:6px; margin-top:10px; }
+
   /* Tasks page */
   .sortable th { cursor: pointer; user-select: none; }
   .sortable th:hover { background: #e9ebf0; }
@@ -6626,89 +6666,644 @@ function renderNcDrawer(){
   const c=document.getElementById("ncDetailClose"); if(c) c.addEventListener("click",()=>{ STATE.ncSelectedImo=null; renderNcQueue(); cont.innerHTML=""; });
 }
 // -------- WW QA Console --------
-PAGE_RENDERERS.wwqa = function () {
-  const root = document.getElementById("page-wwqa");
-  const t = STATE.v2?.totals;
-  const backlog = t?.ww_qa_backlog || 0;
-  const throughput = t?.ww_qa_throughput || 0;
-  const changeRate = t?.ww_qa_change_rate || 0;
-  const wwqaPeople = Object.keys(STATE.v2?.by_ww_qa || {});
-  const wwReviews = STATE.v2?.ww_qa_review_records || [];
-  const wwReviewsTrunc = !!STATE.v2?.ww_qa_review_records_truncated;
+// Detail-layer renderer (Phase 15). The page reads from STATE.v2.totals,
+// STATE.v2.by_ww_qa, STATE.v2.ww_qa_review_records, STATE.cacheRecords,
+// and a one-time snapshot loader (STATE.wwqaBacklog8d / STATE.wwqaYesterday)
+// for the hero card's mini-bar trend and DoD/WoW pills.
+//
+// Substitution discipline matches the BO QA console (Phase 14):
+//   • cohort routing (sanctions/add-new/escalations) — OMITTED, no data
+//   • silent-change detection — OMITTED, no data
+//   • field-compare 3-versions — OMITTED, no version history
+//   • SLA buckets — substituted with neutral age buckets (no SLA defined)
+//   • per-expert "today done" — substituted with cache-window throughput
+//     (per-WW-QA today split isn't aggregated)
+//   • write-actions (Reassign / Confirm / Auto-assign / Flag) — OMITTED,
+//     Airtable read-only
+//
+// The empty-state branch is preserved (Vivid-styled) for the common case
+// where ops isn't routing through WW QA in the cache window.
 
-  root.innerHTML = `
-    <div class="kpis">
-      <div class="kpi"><div class="label">WW QA backlog</div><div class="value">${backlog}</div><div class="delta">in Selected for WW QA</div></div>
-      <div class="kpi"><div class="label">WW QA throughput</div><div class="value">${throughput}</div><div class="delta">approve+change verdicts</div></div>
-      <div class="kpi"><div class="label">WW change rate</div><div class="value">${changeRate.toFixed(1)}%</div></div>
-      <div class="kpi"><div class="label">Active WW QAs</div><div class="value">${wwqaPeople.length}</div></div>
-    </div>
-    ${wwqaPeople.length === 0 && backlog === 0 ? `
-      <div class="empty-state">
-        <div class="title">No WW QA activity in the last 24h</div>
-        <div>The WW QA stage exists in Airtable (records can move to <code>Selected for WW QA</code>) but appears unused in current operations.</div>
-        <div style="margin-top:8px">When ops starts routing through WW QA — assignees in <code>ww_qa_assignee</code> and verdicts in <code>ww_qa</code> — this page will populate immediately with no rebuild required.</div>
-        <div style="margin-top:8px" class="small-mono">See <code>Ownership Operations Hub/TECH_DEBT.md</code> item 3.</div>
+function wqInitials(n){ return String(n||"").split(/\s+/).filter(Boolean).map(p=>p[0].toUpperCase()).slice(0,2).join("")||"··"; }
+function wqAgePill(ms){
+  if (ms == null || !isFinite(ms)) return `<span class="bq-agepill" style="background:var(--soft);color:var(--muted)">—</span>`;
+  const h = Math.max(0, Math.floor(ms / 3600000));
+  let bg, fg;
+  if (h < 1)        { bg = "var(--good-bg)";              fg = "var(--good)"; }
+  else if (h <= 4)  { bg = "rgba(6,145,181,0.13)";        fg = "#0691B5"; }
+  else if (h <= 12) { bg = "var(--warn-bg)";              fg = "var(--warn)"; }
+  else              { bg = "var(--bad-bg)";               fg = "var(--bad)"; }
+  const lab = h < 1 ? `${Math.max(1, Math.round(ms / 60000))}m` : (h < 24 ? `${h}h` : `${Math.floor(h/24)}d`);
+  return `<span class="bq-agepill" style="background:${bg};color:${fg}">${lab}</span>`;
+}
+function wqEatDate(iso){
+  if (!iso) return null;
+  const dt = new Date(iso);
+  if (isNaN(dt)) return null;
+  return dt.toLocaleDateString("en-CA", { timeZone: "Africa/Nairobi" });
+}
+function wqEatHour(iso){
+  if (!iso) return null;
+  const dt = new Date(iso);
+  if (isNaN(dt)) return null;
+  const hStr = dt.toLocaleString("en-GB", { timeZone: "Africa/Nairobi", hour: "2-digit", hour12: false });
+  const h = parseInt(hStr, 10);
+  return isFinite(h) ? h : null;
+}
+function wqCompanyByImo(){
+  // Build {imo → company_name} from cacheRecords for the worklist + drawer.
+  const map = {};
+  for (const r of (STATE.cacheRecords || [])){
+    const c = r.cellValuesByFieldId || {};
+    const imo = c[F.imo];
+    if (!imo) continue;
+    // Prefer the explicit company_name_lookup-shaped name field; fall back to
+    // the multi-record link's first .name. fldaMBqa6bEANUPpn is the multi-link,
+    // so its value may be an array — handle both shapes.
+    let nm = "";
+    const cv = c[F.company_id_and_name];
+    if (Array.isArray(cv) && cv.length) nm = cv[0]?.name || "";
+    else if (cv && typeof cv === "object" && cv.name) nm = cv.name;
+    if (nm && !map[imo]) map[imo] = nm;
+  }
+  return map;
+}
+function wqBacklogRecords(){
+  // Records currently sitting in a WW QA queue. The aggregator counts these
+  // via Fetch G (ww_qa_assignee filled, ww_qa blank), but cacheRecords may
+  // not be tagged with that source flag client-side — so we approximate by
+  // (a) verification_status === "Selected for WW QA", OR (b) ww_qa_assignee
+  // filled AND ww_qa blank. Either definition is "in the queue".
+  const out = [];
+  for (const r of (STATE.cacheRecords || [])){
+    const c = r.cellValuesByFieldId || {};
+    const vs = c[F.verification_status]?.name;
+    const wwAsg = c[F.ww_qa_assignee]?.name;
+    const wwVerdict = c[F.ww_qa]?.name;
+    const inQueue = (vs === "Selected for WW QA") || (wwAsg && !wwVerdict);
+    if (!inQueue) continue;
+    out.push({
+      imo:           c[F.imo] || "",
+      assignee:      (c[F.assignee] || [])[0]?.name || "",
+      qa_assignee:   c[F.qa_assignee]?.name || "",
+      qa_status:     c[F.qa_status]?.name || "",
+      ww_qa_assignee: wwAsg || "",
+      ww_qa:         wwVerdict || "",
+      verification_status: vs || "",
+      last_modified: c[F.last_modified] || null,
+      start_tagging: c[F.start_tagging_date] || null,
+      done_ts:       c[F.done_selected_time] || null,
+      qa_status_ts:  c[F.qa_status_ts] || null,
+      created:       c[F.created] || null,
+    });
+  }
+  return out;
+}
+function _wqDrawer(rec, byImoCompany){
+  // Render the detail drawer for a worklist row. Uses the same .bq-drawer-card
+  // / .bq-dh / .bq-drow / .bq-field / .bq-trail classes as the BO QA drawer.
+  if (!rec) return "";
+  const co = byImoCompany[rec.imo] || "—";
+  const ageMs = rec.last_modified ? (Date.now() - new Date(rec.last_modified).getTime()) : null;
+  const vsLab = rec.verification_status || "—";
+  const vsBg = vsLab === "Valid" ? "var(--good-bg)" :
+               vsLab === "Selected for WW QA" ? "var(--accent-soft)" :
+               vsLab === "Selected for BO QA " ? "rgba(6,145,181,0.13)" :
+               vsLab === "Done" ? "rgba(139,92,246,0.13)" :
+               vsLab === "need to be update" ? "var(--warn-bg)" : "var(--soft)";
+  const vsFg = vsLab === "Valid" ? "var(--good)" :
+               vsLab === "Selected for WW QA" ? "var(--accent)" :
+               vsLab === "Selected for BO QA " ? "#0691B5" :
+               vsLab === "Done" ? "#8B5CF6" :
+               vsLab === "need to be update" ? "var(--warn)" : "var(--muted)";
+  // Build the trail from real timestamps. Each event: dot colour + text.
+  const trailEvents = [];
+  if (rec.created) trailEvents.push({c:"var(--muted)", t:`Record created`, s: fmtEatDateTime(rec.created)});
+  if (rec.start_tagging) trailEvents.push({c:"var(--accent)", t:`Tagged by ${esc(rec.assignee || "—")}`, s: fmtEatDateTime(rec.start_tagging)});
+  if (rec.qa_status_ts) trailEvents.push({c:"#0691B5", t:`BO QA verdict (${esc(rec.qa_status || "—")}) — ${esc(rec.qa_assignee || "—")}`, s: fmtEatDateTime(rec.qa_status_ts)});
+  if (rec.done_ts) trailEvents.push({c:"#8B5CF6", t:`Moved to Done / Valid`, s: fmtEatDateTime(rec.done_ts)});
+  if (rec.ww_qa_assignee) trailEvents.push({c:"var(--accent)", t:`Assigned to WW QA: ${esc(rec.ww_qa_assignee)}`, s: rec.last_modified ? fmtEatDateTime(rec.last_modified) + " (proxy — assignment time not stamped)" : "—"});
+  if (rec.ww_qa) trailEvents.push({c:rec.ww_qa==="change"?"var(--warn)":"var(--good)", t:`WW QA verdict: ${esc(rec.ww_qa)}`, s: fmtEatDateTime(rec.last_modified)});
+  if (!trailEvents.length) trailEvents.push({c:"var(--muted)", t:"No timestamped events", s:""});
+  return `
+    <div class="bq-drawer-card">
+      <div class="bq-dh">
+        <div class="ic">${KPI_ICONS.activity}</div>
+        <div style="flex:1;min-width:0">
+          <div class="nm">${esc(co)} <span style="color:var(--muted);font-weight:400;font-size:12px;font-family:'Geist Mono',ui-monospace,Menlo,monospace">· IMO ${esc(rec.imo)}</span></div>
+          <div class="meta">
+            <span class="bq-verifchip" style="background:${vsBg};color:${vsFg}">${esc(vsLab)}</span>
+            <span class="dot-sep">&middot;</span> Tagger <b>${esc(rec.assignee || "—")}</b>
+            <span class="dot-sep">&middot;</span> BO QA <b>${esc(rec.qa_assignee || "—")}</b> ${rec.qa_status?`(${esc(rec.qa_status)})`:""}
+            <span class="dot-sep">&middot;</span> WW QA <b>${esc(rec.ww_qa_assignee || "—")}</b>
+            <span class="dot-sep">&middot;</span> Age ${wqAgePill(ageMs)}
+          </div>
+        </div>
       </div>
-    ` : ""}
-    <div class="row equal">
-      <div class="panel">
-        <h3>Per-WW-QA throughput</h3>
-        <table id="wwqaTable"></table>
+      <div class="bq-drow" style="margin-top:14px">
+        <div>
+          <div class="bq-selhead" style="margin-top:0">Record fields <span class="bq-selhint">real data only</span></div>
+          <div class="bq-field"><span class="k">IMO</span><span class="val">${esc(rec.imo || "—")}</span></div>
+          <div class="bq-field"><span class="k">Company</span><span class="val">${esc(co)}</span></div>
+          <div class="bq-field"><span class="k">Verification status</span><span class="val">${esc(vsLab)}</span></div>
+          <div class="bq-field"><span class="k">BO QA verdict</span><span class="val">${esc(rec.qa_status || "—")}</span></div>
+          <div class="bq-field"><span class="k">WW QA verdict</span><span class="val hl">${esc(rec.ww_qa || "pending")}</span></div>
+          <div class="bq-field"><span class="k">Last modified</span><span class="val">${rec.last_modified ? esc(fmtEatDateTime(rec.last_modified)) : "—"}</span></div>
+        </div>
+        <div>
+          <div class="bq-selhead" style="margin-top:0">Record path <span class="bq-selhint">from real timestamps</span></div>
+          <div class="bq-trail">
+            ${trailEvents.map(e=>`<div class="ev"><span class="d" style="background:${e.c}"></span><div class="tx">${e.t}<div class="s">${esc(e.s)}</div></div></div>`).join("")}
+          </div>
+          <div class="bq-pfoot" style="margin-top:8px">
+            WW QA assignment isn't separately timestamped — last_modified is the best proxy. Field-level version diffs (BO QA tagged vs WW edited) aren't recorded in source data.
+          </div>
+        </div>
       </div>
-      <div class="panel">
-        <h3>Selected for WW QA — current backlog</h3>
-        ${STATE.viewIsHistorical ? `<div class="alert-row warn" style="margin-bottom:8px"><span class="icon">!</span><div>Note: cache reflects current state, not ${esc(STATE.viewDate)}.</div></div>` : ""}
-        <div id="wwqaBacklogList"></div>
-        <div class="footer-note">Filter records to verification_status = "Selected for WW QA". Currently ${backlog} in queue.</div>
-      </div>
-    </div>
-    <div class="panel">
-      <h3>WW QA reviews <span class="meta">every record carrying a WW QA verdict</span></h3>
-      ${wwReviewsTrunc ? `<div class="alert-row warn" style="margin-bottom:10px"><span class="icon">!</span><div>Showing the first ${wwReviews.length} records — older entries truncated. Bump the cap in <code>compute_ww_qa_reviews</code> if you need more.</div></div>` : ""}
-      <div class="case-scroll" id="wwqaReviewsTable"></div>
-      <div class="footer-note">WW QA has no review-timestamp field, so "Reviewed (approx)" shows <code>last_modified</code> as a best-available proxy for when the verdict was set.</div>
     </div>
   `;
+}
 
-  // Per-WW-QA table
-  const rows = wwqaPeople.length === 0 ? `<tr><td colspan="3" class="empty">No WW QA assignees in cache window.</td></tr>`
-    : wwqaPeople.map(name => {
-      const m = STATE.v2.by_ww_qa[name];
-      return `<tr><td>${esc(name)}</td><td class="right">${m.ww_qa_throughput}</td><td class="right">${m.ww_qa_change_rate.toFixed(1)}%</td></tr>`;
-    }).join("");
-  document.getElementById("wwqaTable").innerHTML = `
-    <thead><tr><th>WW QA</th><th class="right">Throughput</th><th class="right">Change %</th></tr></thead>
-    <tbody>${rows}</tbody>`;
+PAGE_RENDERERS.wwqa = function () {
+  const root = document.getElementById("page-wwqa");
+  const v2 = STATE.v2 || {};
+  const t = v2.totals || {};
+  if (!t) { root.innerHTML = noDataHtml("aggregates_v2 not in daily_aggregates.json — run aggregate_v2.py"); return; }
 
-  // Backlog list from cacheRecords
-  const backlogRows = [];
-  for (const r of STATE.cacheRecords) {
-    const c = r.cellValuesByFieldId || {};
-    if (c[F.verification_status]?.name !== "Selected for WW QA") continue;
-    backlogRows.push(`<tr>
-      <td class="mono">${esc(c[F.imo] || "")}</td>
-      <td>${esc((c[F.assignee] || [])[0]?.name || "")}</td>
-      <td>${esc(c[F.ww_qa_assignee]?.name || "—")}</td>
-      <td class="mono">${esc(fmtEatDateTime(c[F.last_modified]))}</td>
-    </tr>`);
+  // ----- Real-data inputs ------------------------------------------------
+  const backlog       = t.ww_qa_backlog || 0;
+  const throughputWin = t.ww_qa_throughput || 0;         // cache window
+  const changeRate    = t.ww_qa_change_rate || 0;
+  const byWw          = v2.by_ww_qa || {};
+  const wwReviewers   = Object.keys(byWw);
+  const reviews       = (v2.ww_qa_review_records || []).slice();
+  const reviewsTrunc  = !!v2.ww_qa_review_records_truncated;
+  const todayEat      = v2.date || new Date().toLocaleDateString("en-CA", { timeZone: "Africa/Nairobi" });
+  // reviews-today = reviews whose last_modified EAT-date equals today
+  const reviewsToday = reviews.filter(r => wqEatDate(r.last_modified) === todayEat);
+  const changedToday = reviewsToday.filter(r => r.ww_qa === "change").length;
+  const reviewedToday = reviewsToday.length;
+
+  // ----- One-time loader: 8-day backlog history + yesterday reviews ----
+  // Mirrors the Overview pattern (lines ~2412–2443) and PR #113.
+  if (STATE.wwqaBacklog8d === undefined && v2.date) {
+    STATE.wwqaBacklog8d = null;
+    (async () => {
+      const anchor = new Date(v2.date + "T00:00:00Z");
+      const back = [];
+      for (let i = 7; i >= 1; i--) {
+        const d = new Date(anchor); d.setUTCDate(d.getUTCDate() - i);
+        const ds = d.toISOString().slice(0, 10);
+        try {
+          const snap = await readJson(`snapshots/${ds}.json`);
+          back.push(snap?.totals?.ww_qa_backlog == null ? null : snap.totals.ww_qa_backlog);
+        } catch (_) { back.push(null); }
+      }
+      back.push(backlog);
+      STATE.wwqaBacklog8d = back;
+      // Yesterday for DoD on reviewed-today + change-rate.
+      const yd = new Date(anchor); yd.setUTCDate(yd.getUTCDate() - 1);
+      const yds = yd.toISOString().slice(0, 10);
+      try {
+        const ys = await readJson(`snapshots/${yds}.json`);
+        // Reconstruct yesterday's reviewed-today from yesterday's review_records.
+        const yReviews = ys?.ww_qa_review_records || [];
+        const yToday   = ys?.date;
+        const yReviewedYesterday = yReviews.filter(r => wqEatDate(r.last_modified) === yToday).length;
+        STATE.wwqaYesterday = {
+          backlog:        ys?.totals?.ww_qa_backlog,
+          throughput:     ys?.totals?.ww_qa_throughput,
+          change_rate:    ys?.totals?.ww_qa_change_rate,
+          reviewed_today: yReviewedYesterday,
+        };
+      } catch (_) { STATE.wwqaYesterday = null; }
+      // Week-ago for WoW backlog pill — already in back[0].
+      PAGE_RENDERERS.wwqa();
+    })();
   }
-  document.getElementById("wwqaBacklogList").innerHTML = backlogRows.length
-    ? `<table><thead><tr><th>IMO</th><th>Tagged by</th><th>WW QA</th><th>Last modified</th></tr></thead><tbody>${backlogRows.join("")}</tbody></table>`
-    : `<div class="empty">No Selected for WW QA records in cache window.</div>`;
+  const back8 = STATE.wwqaBacklog8d || [];
+  const yest  = STATE.wwqaYesterday || null;
+  const maxBack = Math.max(1, ...back8.map(v => v == null ? 0 : v));
+  const backWeekAgo = back8.length > 0 ? back8[0] : null;
+  const wow = (backWeekAgo == null || backWeekAgo <= 0) ? null : ((backlog - backWeekAgo) / backWeekAgo) * 100;
+  const dodPct = (cur, prev) => (prev == null || prev <= 0) ? null : ((cur - prev) / prev) * 100;
+  const reviewedDoD = dodPct(reviewedToday, yest?.reviewed_today);
+  const crPpDelta = (yest?.change_rate == null) ? null : (changeRate - yest.change_rate);
+  const trendBarsHtml = back8.length === 0 ? "" :
+    `<div class="kpi-trend">${back8.map(v => v == null ? `<span class="bar miss" title="no snapshot"></span>` : `<span class="bar" style="height:${Math.max(8, Math.round((v / maxBack) * 100))}%" title="${v}"></span>`).join("")}</div>`;
 
-  // WW QA reviews — per-record list from the aggregator (every record with a ww_qa
-  // verdict). Reviewed (approx) = last_modified, since WW QA has no review-timestamp.
-  const revBody = wwReviews.map(r => `<tr>
-    <td>${esc(r.requested_by || "—")}</td>
-    <td class="mono">${esc(r.imo || "—")}</td>
-    <td>${esc(r.assignee || "—")}</td>
-    <td>${esc(r.team || "—")}</td>
-    <td>${esc(r.ww_qa_assignee || "—")}</td>
-    <td>${esc(r.ww_qa || "—")}</td>
-    <td class="mono">${esc(r.last_modified ? fmtEatDateTime(r.last_modified) : "—")}</td>
-  </tr>`).join("");
-  document.getElementById("wwqaReviewsTable").innerHTML = `<table><thead><tr><th>Task</th><th>IMO</th><th>Agent</th><th>Team</th><th>WW QA reviewer</th><th>Verdict</th><th>Reviewed (approx)</th></tr></thead><tbody>${revBody || '<tr><td colspan="7" class="empty">No WW QA reviews in the cache window.</td></tr>'}</tbody></table>`;
+  // ----- Freshness + page-head -----------------------------------------
+  const refAge = ageHours(v2.computed_at);
+  const refLabel = refAge == null ? "freshness unknown" :
+    refAge < 1 ? `Refreshed ${Math.max(1, Math.round(refAge * 60))} min ago` :
+    refAge < 24 ? `Refreshed ${Math.round(refAge)}h ago` :
+    `Refreshed ${Math.round(refAge / 24)}d ago`;
+  const nowEat = (v2.computed_at ? new Date(v2.computed_at) : new Date()).toLocaleString("en-GB", {
+    timeZone: "Africa/Nairobi", weekday: "long", day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit",
+  });
+  const headDate = (() => {
+    const d = v2.date;
+    if (!d) return "";
+    const dt = new Date(d + "T00:00:00");
+    return isNaN(dt) ? d : dt.toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short", year: "numeric" });
+  })();
+
+  // ----- Empty-state path -----------------------------------------------
+  // Trigger when the cache window shows no WW QA activity. Replaces the old
+  // text-only empty state with a Vivid-styled card. Page head still renders
+  // so the date / freshness are visible.
+  const isEmpty = (backlog === 0 && wwReviewers.length === 0 && reviews.length === 0);
+  if (isEmpty) {
+    root.innerHTML = `
+      <div class="page-head">
+        <div>
+          <div class="page-eyebrow">Quality · expert review${headDate ? " &middot; " + headDate : ""}<span class="bq-live"><span class="dot"></span>${esc(refLabel)}</span></div>
+          <h1 class="page-title">WW QA <em>console</em></h1>
+          <div class="page-subtitle">
+            Final review stage for ownership work — currently no records routed.
+          </div>
+        </div>
+      </div>
+      <div class="wq-empty">
+        <div class="ic">${KPI_ICONS.activity}</div>
+        <h3>No WW QA activity in the cache window</h3>
+        <p>The WW QA stage exists in Airtable (records can move to <code>Selected for WW QA</code> and be reviewed in the <code>ww_qa_assignee</code> / <code>ww_qa</code> fields) but appears unused in current operations.</p>
+        <p>When ops starts routing through WW QA — assignees in <code>ww_qa_assignee</code> and verdicts in <code>ww_qa</code> — this page will populate immediately with no rebuild required: hero KPIs, per-reviewer cards, the worklist, the record-detail drawer and the verdict feed all read directly from <code>STATE.v2</code> fields the aggregator is already emitting.</p>
+        <div class="codeline">See <code>Ownership Operations Hub/TECH_DEBT.md</code> item 3 · aggregator: <code>compute_ww_qa_reviews</code></div>
+      </div>
+    `;
+    return;
+  }
+
+  // ----- Worklist filter state ------------------------------------------
+  if (!STATE.wqTab) STATE.wqTab = "all";          // all | backlog | reviewed_today | changed
+  if (STATE.wqSelectedImo === undefined) STATE.wqSelectedImo = null;
+  const byImoCompany = wqCompanyByImo();
+  const queueRecs = wqBacklogRecords();
+  const queueByImo = Object.fromEntries(queueRecs.map(r => [r.imo, r]));
+  // The review records aren't full Airtable records (they're slimmed), so we
+  // synthesize a worklist row from them when needed by joining via IMO. For
+  // reviewed_today / changed tabs we read from reviews; for backlog we use
+  // queueRecs; for "all" we union, preferring the cacheRecords shape.
+  function _wqRows(tab){
+    const seen = new Set();
+    const out = [];
+    if (tab === "backlog" || tab === "all") {
+      for (const r of queueRecs) {
+        if (seen.has(r.imo)) continue; seen.add(r.imo);
+        out.push(r);
+      }
+    }
+    if (tab === "reviewed_today" || tab === "changed" || tab === "all") {
+      const src = tab === "changed" ? reviewsToday.filter(r => r.ww_qa === "change")
+                : tab === "reviewed_today" ? reviewsToday
+                : reviews;
+      for (const r of src) {
+        if (!r.imo || seen.has(r.imo)) continue; seen.add(r.imo);
+        // Synth a worklist row shape from the review record + cacheRecords join.
+        const cr = queueByImo[r.imo] || {};
+        out.push({
+          imo:           r.imo,
+          assignee:      r.assignee || cr.assignee || "",
+          qa_assignee:   cr.qa_assignee || "",
+          qa_status:     cr.qa_status || "",
+          ww_qa_assignee: r.ww_qa_assignee || cr.ww_qa_assignee || "",
+          ww_qa:         r.ww_qa || "",
+          verification_status: cr.verification_status || "",
+          last_modified: r.last_modified || cr.last_modified || null,
+          start_tagging: cr.start_tagging || null,
+          done_ts:       cr.done_ts || null,
+          qa_status_ts:  cr.qa_status_ts || null,
+          created:       cr.created || null,
+        });
+      }
+    }
+    return out;
+  }
+  const allRows         = _wqRows("all");
+  const backlogRows     = _wqRows("backlog");
+  const reviewedRows    = _wqRows("reviewed_today");
+  const changedRows     = _wqRows("changed");
+  const visibleRows     = _wqRows(STATE.wqTab);
+
+  // ----- Age-bucket distribution on backlog -----------------------------
+  const now = Date.now();
+  const ageBuckets = [0, 0, 0, 0]; // <1h, 1-4h, 4-12h, >12h
+  for (const r of backlogRows) {
+    if (!r.last_modified) continue;
+    const h = (now - new Date(r.last_modified).getTime()) / 3600000;
+    if (h < 1) ageBuckets[0]++;
+    else if (h <= 4) ageBuckets[1]++;
+    else if (h <= 12) ageBuckets[2]++;
+    else ageBuckets[3]++;
+  }
+
+  // ----- Reviewer load (substitute for cohort cards) -------------------
+  const reviewersByLoad = wwReviewers
+    .map(name => ({name, ...byWw[name]}))
+    .sort((a, b) => (b.ww_qa_backlog||0) - (a.ww_qa_backlog||0) || (b.ww_qa_throughput||0) - (a.ww_qa_throughput||0));
+  const topThree = reviewersByLoad.slice(0, 3);
+
+  // ----- Queue-by-reviewer donut data ----------------------------------
+  const byReviewerBacklog = {};
+  for (const r of queueRecs) {
+    const k = r.ww_qa_assignee || "Unassigned";
+    byReviewerBacklog[k] = (byReviewerBacklog[k] || 0) + 1;
+  }
+  const donutSlices = Object.entries(byReviewerBacklog)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 6);
+  const donutTotal = donutSlices.reduce((s, [,n]) => s + n, 0);
+  const donutColors = ["#7B68EE", "#0691B5", "#10B981", "#F59E0B", "#EF4444", "#8B5CF6", "#64748B"];
+  const donutGrad = (() => {
+    if (!donutTotal) return "conic-gradient(var(--soft) 0 360deg)";
+    let acc = 0;
+    return "conic-gradient(" + donutSlices.map(([,n], i) => {
+      const start = (acc / donutTotal) * 360;
+      acc += n;
+      const end = (acc / donutTotal) * 360;
+      return `${donutColors[i]} ${start}deg ${end}deg`;
+    }).join(",") + ")";
+  })();
+
+  // ----- Hourly verdict histogram --------------------------------------
+  const hourCounts = new Array(18).fill(0); // EAT 06..23
+  for (const r of reviewsToday) {
+    const h = wqEatHour(r.last_modified);
+    if (h == null) continue;
+    if (h < 6 || h > 23) continue;
+    hourCounts[h - 6]++;
+  }
+  const hourMax = Math.max(1, ...hourCounts);
+  const hourBarsHtml = hourCounts.map((n, i) => {
+    const label = (i + 6).toString().padStart(2, "0");
+    return `<div class="hb"><div class="bar" style="height:${Math.max(2, (n / hourMax) * 100)}%" title="${label}:00 — ${n} reviews"></div><div class="lab">${label}</div></div>`;
+  }).join("");
+
+  // ----- Recent verdict feed (right column substitute) -----------------
+  const feedRows = reviews.slice().sort((a, b) => (b.last_modified || "").localeCompare(a.last_modified || ""))
+    .slice(0, 12);
+  function feedAvatarColor(name) {
+    // Stable colour from name hash so each reviewer has a consistent chip.
+    const palette = ["#7B68EE", "#0691B5", "#10B981", "#F59E0B", "#EF4444", "#8B5CF6", "#64748B", "#0EA5E9"];
+    let h = 0; for (const ch of String(name || "?")) h = (h * 31 + ch.charCodeAt(0)) | 0;
+    return palette[Math.abs(h) % palette.length];
+  }
+  function timeAgo(iso) {
+    if (!iso) return "—";
+    const ms = Date.now() - new Date(iso).getTime();
+    if (!isFinite(ms) || ms < 0) return "—";
+    const m = Math.floor(ms / 60000);
+    if (m < 1) return "just now";
+    if (m < 60) return `${m}m ago`;
+    const h = Math.floor(m / 60);
+    if (h < 24) return `${h}h ago`;
+    return `${Math.floor(h / 24)}d ago`;
+  }
+  const feedHtml = feedRows.length === 0
+    ? `<div class="empty" style="padding:14px;text-align:center;color:var(--muted);font-size:12px">No WW QA verdicts in the cache window.</div>`
+    : feedRows.map(r => `
+      <div class="ev">
+        <span class="av" style="background:${feedAvatarColor(r.ww_qa_assignee)}">${esc(wqInitials(r.ww_qa_assignee))}</span>
+        <div class="body">
+          <div class="nm">${esc(r.ww_qa_assignee || "—")} <span class="verdict ${r.ww_qa === "change" ? "change" : "approve"}">${esc(r.ww_qa || "—")}</span></div>
+          <div class="sub">IMO <span class="imo">${esc(r.imo || "—")}</span> · tagger ${esc(r.assignee || "—")}</div>
+        </div>
+        <span class="when">${esc(timeAgo(r.last_modified))}</span>
+      </div>
+    `).join("");
+
+  // ----- Banner (real-data trigger: backlog > 0 AND no reviews today) --
+  let banner = "";
+  if (backlog > 0 && reviewedToday === 0) {
+    banner = `<div class="bq-banner"><span class="ic">${KPI_ICONS.alert}</span><div class="bd">Backlog standing at <b>${backlog.toLocaleString()}</b> records routed to WW QA, with <b>0</b> reviewed so far today.</div></div>`;
+  }
+
+  // ----- Hero KPI deltas (pills) ---------------------------------------
+  const wowPill = wow == null
+    ? `<span class="kpi-dod">WoW —</span>`
+    : `<span class="kpi-dod">${wow >= 0 ? "↑" : "↓"} ${Math.abs(wow).toFixed(1)}% WoW</span>`;
+  const reviewedDoDPill = reviewedDoD == null
+    ? `<span class="kpi-dod-light">DoD —</span>`
+    : `<span class="kpi-dod-light ${reviewedDoD >= 0 ? "up" : "down"}">${reviewedDoD >= 0 ? "↑" : "↓"} ${Math.abs(reviewedDoD).toFixed(1)}%</span>`;
+  const crPpPill = crPpDelta == null
+    ? `<span class="kpi-dod-light">DoD —</span>`
+    : `<span class="kpi-dod-light ${crPpDelta <= 0 ? "up" : "down"}">${crPpDelta >= 0 ? "↑" : "↓"} ${Math.abs(crPpDelta).toFixed(1)} pp</span>`;
+
+  // ----- Render --------------------------------------------------------
+  root.innerHTML = `
+    <div class="page-head">
+      <div>
+        <div class="page-eyebrow">Quality · expert review${headDate ? " &middot; " + headDate : ""} &middot; ${esc(nowEat)} EAT<span class="bq-live"><span class="dot"></span>Live &middot; ${esc(refLabel)}</span></div>
+        <h1 class="page-title">WW QA <em>console</em></h1>
+        <div class="page-subtitle">
+          Final review stage — every record assigned to a WW QA reviewer
+          <span class="dot-sep">&middot;</span>
+          <span class="num">${backlog.toLocaleString()}</span> awaiting review
+          <span class="dot-sep">&middot;</span>
+          <span class="num">${reviewedToday}</span> reviewed today
+          <span class="dot-sep">&middot;</span>
+          <span class="num">${wwReviewers.length}</span> reviewers
+        </div>
+      </div>
+      <div class="page-head-actions">
+        <button class="btn" id="wqTodayBtn">📅 ${esc(headDate || "Today")}</button>
+        <button class="btn" id="wqExportBtn">Export queue</button>
+      </div>
+    </div>
+
+    ${banner}
+
+    <div class="bq-chips" id="wqChips">
+      <button class="bq-chip${STATE.wqTab==="all"?" active":""}" data-wq="all" ${STATE.wqTab==="all"?'style="background:var(--ink)"':""}>All in scope <span class="ct">${allRows.length}</span></button>
+      <button class="bq-chip${STATE.wqTab==="backlog"?" active":""}" data-wq="backlog" ${STATE.wqTab==="backlog"?'style="background:var(--accent)"':""}>Backlog <span class="ct">${backlogRows.length}</span></button>
+      <button class="bq-chip${STATE.wqTab==="reviewed_today"?" active":""}" data-wq="reviewed_today" ${STATE.wqTab==="reviewed_today"?'style="background:var(--good)"':""}>Reviewed today <span class="ct">${reviewedRows.length}</span></button>
+      <button class="bq-chip${STATE.wqTab==="changed"?" active":""}" data-wq="changed" ${STATE.wqTab==="changed"?'style="background:var(--warn)"':""}>Changed verdict <span class="ct">${changedRows.length}</span></button>
+    </div>
+
+    <div class="kpis kpis-overview-hero">
+      <div class="kpi hero">
+        <div class="kpi-top"><div class="label">Awaiting expert review</div><span class="kpi-icon">${KPI_ICONS.inbox}</span></div>
+        <div class="value-row"><span class="value">${backlog.toLocaleString()}</span>${wowPill}</div>
+        ${trendBarsHtml}
+        <div class="bq-foot">backlog trend · last 8 days</div>
+      </div>
+      <div class="kpi k-green">
+        <div class="kpi-top"><div class="label">Reviewed today</div><span class="kpi-icon">${KPI_ICONS.check}</span></div>
+        <div class="value-row"><span class="value">${reviewedToday.toLocaleString()}</span>${reviewedDoDPill}</div>
+        <div class="bq-foot">${changedToday} changed · cache window ${throughputWin.toLocaleString()} total</div>
+      </div>
+      <div class="kpi k-red">
+        <div class="kpi-top"><div class="label">WW change rate</div><span class="kpi-icon">${KPI_ICONS.percent}</span></div>
+        <div class="value-row"><span class="value">${changeRate.toFixed(1)}%</span>${crPpPill}</div>
+        <div class="kpi-bar"><span class="fill ${changeRate > 30 ? "red" : "green"}" style="width:${Math.min(100, changeRate/30*100).toFixed(0)}%"></span></div>
+        <div class="bq-foot">${changedToday} of ${reviewedToday} reviewed today · cache window ${throughputWin}</div>
+      </div>
+      <div class="kpi k-neutral">
+        <div class="kpi-top"><div class="label">Active reviewers</div><span class="kpi-icon">${KPI_ICONS.activity}</span></div>
+        <div class="value-row"><span class="value">${wwReviewers.length}</span></div>
+        <div class="bq-foot">${reviewersByLoad.filter(r => (r.ww_qa_backlog || 0) > 0).length} with backlog · ${reviewersByLoad.filter(r => (r.ww_qa_backlog || 0) === 0).length} idle</div>
+      </div>
+    </div>
+
+    <div class="bq-section-head">
+      <h2>Queue <em>age</em></h2>
+      <span class="meta">distribution of ${backlogRows.length} backlog records by time since last modified · no formal SLA</span>
+    </div>
+    <div class="wq-agestrip">
+      <div class="wq-agecell b0"><span class="dot"></span><div><div class="num">${ageBuckets[0]}</div><div class="lbl">&lt; 1 hour</div></div></div>
+      <div class="wq-agecell b1"><span class="dot"></span><div><div class="num">${ageBuckets[1]}</div><div class="lbl">1 – 4 hours</div></div></div>
+      <div class="wq-agecell b2"><span class="dot"></span><div><div class="num">${ageBuckets[2]}</div><div class="lbl">4 – 12 hours</div></div></div>
+      <div class="wq-agecell b3"><span class="dot"></span><div><div class="num">${ageBuckets[3]}</div><div class="lbl">&gt; 12 hours</div></div></div>
+    </div>
+
+    <div class="bq-section-head">
+      <h2>WW QA <em>reviewers</em></h2>
+      <span class="meta">${wwReviewers.length} reviewers · per-reviewer backlog / throughput / change-rate</span>
+    </div>
+    <div class="bq-reviewers">
+      ${reviewersByLoad.map(r => {
+        const cr = (r.ww_qa_change_rate || 0);
+        const badge = cr <= 10 ? `<span class="bq-badge" style="background:var(--good-bg);color:var(--good)">${cr.toFixed(0)}% change</span>`
+                    : cr <= 25 ? `<span class="bq-badge" style="background:rgba(6,145,181,0.13);color:#0691B5">${cr.toFixed(0)}% change</span>`
+                    : `<span class="bq-badge" style="background:var(--warn-bg);color:var(--warn)">${cr.toFixed(0)}% change</span>`;
+        const shareDen = Math.max(1, t.ww_qa_backlog || 0);
+        const sharePct = ((r.ww_qa_backlog || 0) / shareDen) * 100;
+        return `<div class="bq-rvcard wq-loadcard">
+          <div class="top"><span class="task-avatar" style="background:${feedAvatarColor(r.name)}">${esc(wqInitials(r.name))}</span><span class="nm">${esc(r.name)}</span>${badge}</div>
+          <div class="v">${(r.ww_qa_backlog || 0).toLocaleString()}</div>
+          <div class="l">In queue</div>
+          <div class="sub">Reviewed (window): <b>${(r.ww_qa_throughput || 0).toLocaleString()}</b></div>
+          <div class="bar-wrap">
+            <div class="lbl"><span>Share of total backlog</span><span class="pct">${sharePct.toFixed(0)}%</span></div>
+            <div class="kpi-bar"><span class="fill green" style="width:${Math.min(100, sharePct).toFixed(0)}%"></span></div>
+          </div>
+        </div>`;
+      }).join("") || `<div class="empty" style="padding:14px">No WW QA reviewers in cache window.</div>`}
+    </div>
+
+    <div class="bq-section-head">
+      <h2>Worklist</h2>
+      <span class="meta">${visibleRows.length} records · click a row for record-path detail</span>
+    </div>
+    <div id="wqWorklist"></div>
+    <div id="wqDrawer"></div>
+
+    <div class="bq-section-head">
+      <h2>Today's <em>activity</em></h2>
+      <span class="meta">hourly verdict histogram · queue split · recent verdicts</span>
+    </div>
+    <div class="wq-2col">
+      <div class="panel">
+        <h3>Hourly verdicts <span class="meta">EAT — ${reviewedToday} reviews completed today</span></h3>
+        <div class="bq-hbars">${hourBarsHtml}</div>
+        <div class="bq-pfoot">Hourly intake into WW QA isn't timestamped — only verdict time is. Histogram shows when reviews completed.</div>
+      </div>
+      <div class="panel">
+        <h3>Queue by reviewer <span class="meta">${donutTotal.toLocaleString()} records</span></h3>
+        <div class="bq-3col" style="grid-template-columns:auto 1fr;gap:14px">
+          <div class="bq-donut" style="background:${donutGrad}"><div class="hole"><b>${donutTotal.toLocaleString()}</b><span>queued</span></div></div>
+          <div class="bq-legend">
+            ${donutSlices.map(([nm, n], i) => `<div class="li"><span class="d" style="background:${donutColors[i]}"></span><span class="nm">${esc(nm)}</span><span class="ct">${n}</span></div>`).join("") || `<div class="li"><span class="nm" style="color:var(--muted)">No backlog</span></div>`}
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="bq-section-head">
+      <h2>Recent <em>verdicts</em></h2>
+      <span class="meta">cache window · newest first${reviewsTrunc ? ` · showing first ${reviews.length} (older truncated — bump cap in <code>compute_ww_qa_reviews</code>)` : ""}</span>
+    </div>
+    <div class="panel"><div class="wq-feed">${feedHtml}</div></div>
+  `;
+
+  // ----- Worklist rendering --------------------------------------------
+  function renderWorklist() {
+    const rows = _wqRows(STATE.wqTab);
+    if (!rows.length) {
+      document.getElementById("wqWorklist").innerHTML = `<div class="empty" style="padding:14px">No records match this filter.</div>`;
+      document.getElementById("wqDrawer").innerHTML = "";
+      return;
+    }
+    const head = `<div class="bq-row wq head">
+      <span>IMO</span>
+      <span>Company</span>
+      <span class="col-tagger">Tagger</span>
+      <span class="col-boqa">BO QA</span>
+      <span>WW QA</span>
+      <span>Age</span>
+    </div>`;
+    const body = rows.map(r => {
+      const co = byImoCompany[r.imo] || "—";
+      const ageMs = r.last_modified ? (Date.now() - new Date(r.last_modified).getTime()) : null;
+      const selected = STATE.wqSelectedImo === r.imo ? " selected" : "";
+      return `<div class="bq-row wq${selected}" data-imo="${esc(r.imo)}">
+        <span class="imo">${esc(r.imo || "—")}</span>
+        <span class="bq-cob"><span class="nm">${esc(co)}</span></span>
+        <span class="col-tagger">${esc(r.assignee || "—")}</span>
+        <span class="col-boqa">${esc(r.qa_assignee || "—")}</span>
+        <span>${esc(r.ww_qa_assignee || "—")}${r.ww_qa ? ` <span class="bq-verifchip" style="background:${r.ww_qa==="change"?"var(--warn-bg)":"var(--good-bg)"};color:${r.ww_qa==="change"?"var(--warn)":"var(--good)"};margin-left:4px">${esc(r.ww_qa)}</span>` : ""}</span>
+        <span>${wqAgePill(ageMs)}</span>
+      </div>`;
+    }).join("");
+    document.getElementById("wqWorklist").innerHTML = head + body;
+    // Wire row clicks
+    document.getElementById("wqWorklist").querySelectorAll(".bq-row.wq:not(.head)").forEach(el => {
+      el.addEventListener("click", () => {
+        STATE.wqSelectedImo = el.getAttribute("data-imo");
+        renderWorklist();
+        const rec = _wqRows(STATE.wqTab).find(x => x.imo === STATE.wqSelectedImo) || queueByImo[STATE.wqSelectedImo] || null;
+        document.getElementById("wqDrawer").innerHTML = _wqDrawer(rec, byImoCompany);
+      });
+    });
+    // Re-render drawer if there was already a selection
+    if (STATE.wqSelectedImo) {
+      const rec = rows.find(x => x.imo === STATE.wqSelectedImo) || queueByImo[STATE.wqSelectedImo] || null;
+      document.getElementById("wqDrawer").innerHTML = _wqDrawer(rec, byImoCompany);
+    }
+  }
+  renderWorklist();
+
+  // ----- Chip + button wiring -------------------------------------------
+  document.getElementById("wqChips").querySelectorAll("[data-wq]").forEach(btn => {
+    btn.addEventListener("click", () => {
+      STATE.wqTab = btn.getAttribute("data-wq");
+      STATE.wqSelectedImo = null; // reset drawer when filter changes
+      PAGE_RENDERERS.wwqa();
+    });
+  });
+  // 📅 Today — opens the global view-date picker if it exists, otherwise no-op
+  document.getElementById("wqTodayBtn").addEventListener("click", () => {
+    const dp = document.querySelector("#viewDatePicker, #datePicker, [data-role='date-picker']");
+    if (dp) { dp.focus(); dp.click && dp.click(); }
+  });
+  // Export queue — CSV of the currently visible worklist
+  document.getElementById("wqExportBtn").addEventListener("click", () => {
+    const rows = _wqRows(STATE.wqTab);
+    const header = ["IMO", "Company", "Tagger", "BO QA", "BO QA verdict", "WW QA", "WW QA verdict", "Verification status", "Last modified"];
+    const lines = [header.join(",")];
+    for (const r of rows) {
+      const co = (byImoCompany[r.imo] || "").replace(/,/g, " ");
+      lines.push([
+        r.imo || "",
+        co,
+        (r.assignee || "").replace(/,/g, " "),
+        (r.qa_assignee || "").replace(/,/g, " "),
+        (r.qa_status || "").replace(/,/g, " "),
+        (r.ww_qa_assignee || "").replace(/,/g, " "),
+        (r.ww_qa || "").replace(/,/g, " "),
+        (r.verification_status || "").replace(/,/g, " "),
+        r.last_modified || "",
+      ].join(","));
+    }
+    const blob = new Blob([lines.join("\n")], { type: "text/csv;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `wwqa_worklist_${STATE.wqTab}_${(v2.date || "today")}.csv`;
+    document.body.appendChild(a); a.click();
+    setTimeout(() => { document.body.removeChild(a); URL.revokeObjectURL(url); }, 100);
+  });
 };
 
 // -------- Weekly Report --------
