@@ -52,7 +52,7 @@ AND(
     FIND("Merline Akinyi",       ARRAYJOIN({assignee}, ", ")),
     FIND("Bet Merline Akinyi",   ARRAYJOIN({assignee}, ", ")),
     FIND("Caroline Murugi",      ARRAYJOIN({assignee}, ", ")),
-    FIND("Stephen Muindi",       ARRAYJOIN({assignee}, ", ")),
+    FIND("Victor Odero",         ARRAYJOIN({assignee}, ", ")),
     FIND("Teresa Mbuthia",       ARRAYJOIN({assignee}, ", ")),
     FIND("Stephen Kimari",       ARRAYJOIN({assignee}, ", ")),
     FIND("Lewis Nganga",         ARRAYJOIN({assignee}, ", ")),
