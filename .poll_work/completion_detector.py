@@ -294,14 +294,19 @@ _DATE_FIELD_IDS = {
 
 # Per verification-status, the ordered date fields that best represent "when
 # the work actually happened" (most-specific first). last_modified is the
-# generic tail tried before the observation-clock fallback. The Hourly Output
-# is a TAGGING-output chart, so tagged/SBO rows resolve to start_tagging_date.
+# generic tail tried before the observation-clock fallback.
+#
+# Tagging states (tagged / need-to-be-update / Selected for BO QA) resolve to
+# last_modified, NOT start_tagging_date: "start tagging date" is a coarse
+# batch-assignment field — a 2026-05-27 dry-run collapsed the whole day's
+# tagged records into ~4 hours with hundreds sharing one exact minute (e.g.
+# 378 rows at 14:44), whereas last_modified gives a realistic per-record spread.
 _STATE_DATE_PRIORITY = {
     VALID:              ("valid_selected_time", "done_selected_time", "last_modified"),
     DONE:               ("done_selected_time", "last_modified"),
-    SELECTED_FOR_BO_QA: ("start_tagging_date", "last_modified"),
-    TAGGED:             ("start_tagging_date", "last_modified"),
-    NEED_TO_BE_UPDATE:  ("start_tagging_date", "last_modified"),
+    SELECTED_FOR_BO_QA: ("last_modified",),
+    TAGGED:             ("last_modified",),
+    NEED_TO_BE_UPDATE:  ("last_modified",),
 }
 _DEFAULT_DATE_PRIORITY = ("last_modified",)
 

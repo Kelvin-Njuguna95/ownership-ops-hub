@@ -713,18 +713,21 @@ class TestResolveCompletionTs(unittest.TestCase):
         self.assertEqual(resolve_completion_ts(DONE, rp, FALLBACK),
                          "2026-05-27T14:20:00.000Z")
 
-    def test_tagged_uses_start_tagging_date(self):
+    def test_tagged_uses_last_modified(self):
+        # start_tagging_date is a coarse batch field, so tagged rows resolve to
+        # last_modified (the per-record work time) and ignore start_tagging_date.
         rp = {SUPPORT["start_tagging_date"]: "2026-05-27T14:39:00.000Z",
               SUPPORT["last_modified"]: "2026-05-27T13:41:00.000Z"}
         self.assertEqual(resolve_completion_ts(TAGGED, rp, FALLBACK),
-                         "2026-05-27T14:39:00.000Z")
+                         "2026-05-27T13:41:00.000Z")
 
-    def test_sbo_and_need_update_use_start_tagging_date(self):
-        rp = {IO["start_tagging_date"]: "2026-05-27T09:00:00.000Z"}
+    def test_sbo_and_need_update_use_last_modified(self):
+        rp = {IO["start_tagging_date"]: "2026-05-27T09:00:00.000Z",
+              IO["last_modified"]: "2026-05-27T11:05:00.000Z"}
         self.assertEqual(resolve_completion_ts(SELECTED_FOR_BO_QA, rp, FALLBACK),
-                         "2026-05-27T09:00:00.000Z")
+                         "2026-05-27T11:05:00.000Z")
         self.assertEqual(resolve_completion_ts(NEED_TO_BE_UPDATE, rp, FALLBACK),
-                         "2026-05-27T09:00:00.000Z")
+                         "2026-05-27T11:05:00.000Z")
 
     def test_valid_falls_back_to_done_then_last_modified(self):
         # valid_selected_time absent (e.g. the Valid formula field is blank) ->
