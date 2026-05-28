@@ -120,25 +120,55 @@ def _minutes_between(a, b):
         return 0.0
 
 
-def find_affected(rows, min_cluster, drift_minutes):
-    """Return [(row, new_ts)] for rows whose completed_at is detector-bucketed.
+def _same_instant(a, b, tol_seconds=1.0):
+    """True if ISO timestamps a and b denote the same instant within tol.
 
-    Affected = (completed_at shared by >= min_cluster rows) OR
-    (|resolved_real - stored| > drift_minutes), and recomputation gives a
-    different, real timestamp. Rows with no resolvable date field, or already
-    at their real time, are skipped (idempotent)."""
-    cluster_counts = Counter(r["completed_at"] for r in rows)
+    Postgres stores timestamptz in a normalized form ('2026-05-28T17:52:55.000Z'
+    becomes '2026-05-28T17:52:55+00:00'), so raw STRING equality reports false
+    differences for identical instants. Compare parsed datetimes instead."""
+    try:
+        return abs((_parse(a) - _parse(b)).total_seconds()) < tol_seconds
+    except Exception:
+        return False
+
+
+def _needs_update(old, new, tol_seconds=1.0):
+    """Should a row's stored completed_at be rewritten to `new`?
+
+    True when there is no stored value yet, or the stored value denotes a
+    DIFFERENT instant than `new` (beyond tol_seconds). The same instant in a
+    different string format is NOT a change — this is what makes the sweep
+    idempotent instead of churning on Postgres-normalized timestamps."""
+    if not old:
+        return True
+    return not _same_instant(old, new, tol_seconds)
+
+
+def find_affected(rows, min_cluster, drift_minutes):
+    """Return [(row, new_ts)] for rows whose stored completed_at is not the real
+    completion instant and should be rewritten.
+
+    The patch gate is INSTANT-equality (``_needs_update``): a row is flagged
+    only when its stored completed_at is missing, or denotes a different instant
+    than the resolved real time. This makes the sweep idempotent — rows already
+    at the right instant are skipped even when Postgres normalized the stored
+    string ('...000Z' -> '...+00:00'), instead of re-flagging forever.
+
+    ``min_cluster`` / ``drift_minutes`` are retained for CLI compatibility and
+    the dry-run's bulk-stamp diagnostics; they no longer gate the decision. The
+    instant check identifies every genuinely-wrong row directly (a bulk-stamp is
+    just a large set of rows whose stored instant is wrong), so gating on the
+    cluster/drift heuristics would only risk leaving real drift uncorrected."""
     affected = []
     for r in rows:
         old = r["completed_at"]
         new = resolve_completion_ts(r.get("verification_status"),
                                     r.get("raw_payload") or {}, _NO_DATE)
-        if new == _NO_DATE or new == old:
-            continue
-        in_cluster = cluster_counts[old] >= min_cluster
-        big_drift = _minutes_between(old, new) > drift_minutes
-        if in_cluster or big_drift:
-            affected.append((r, new))
+        if new == _NO_DATE:
+            continue                       # no real date field -> leave as-is
+        if not _needs_update(old, new):
+            continue                       # already the right instant (idempotent)
+        affected.append((r, new))
     return affected
 
 
