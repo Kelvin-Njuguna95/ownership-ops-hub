@@ -316,7 +316,7 @@ class TestRawRestShapes(unittest.TestCase):
 
     def test_single_collaborator_qa_assignee_raw_rest_dict(self):
         rec = _rec({"qa_assignee": {"id": "q1", "name": "Zuleikha Musa",
-                                    "email": "zuleikha.musa@impactoutsourcing.co.ke"}})
+                                    "email": "zuleikha.musa@example.com"}})
         self.assertEqual(extract(rec)["qa_assignee"], "Zuleikha Musa")
 
     def test_single_collaborator_last_modified_by_raw_rest_dict(self):
@@ -413,9 +413,9 @@ class TestRawRestShapes(unittest.TestCase):
             "fields": {
                 FIELD_IDS["imo"]:                  "9999999",
                 FIELD_IDS["assignee"]:             [{"id": "u1", "name": "Elvis Mwanzia",
-                                                    "email": "elvis@impactoutsourcing.co.ke"}],
+                                                    "email": "elvis@example.com"}],
                 FIELD_IDS["qa_assignee"]:          {"id": "q1", "name": "Zuleikha Musa",
-                                                    "email": "z@impactoutsourcing.co.ke"},
+                                                    "email": "z@example.com"},
                 FIELD_IDS["verification_status"]:  "tagged",
                 FIELD_IDS["qa_status"]:            "approve",
                 FIELD_IDS["ww_qa"]:                "change",

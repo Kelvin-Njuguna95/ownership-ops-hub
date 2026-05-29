@@ -35,5 +35,6 @@ jobs:
       - name: Post stale-uploads digest to Slack
         env:
           AIRTABLE_PAT:      ${{ secrets.AIRTABLE_PAT }}
+          AIRTABLE_BASE_ID:  ${{ secrets.AIRTABLE_BASE_ID }}
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
         run: python3 alerts/stale_uploads_alert.py

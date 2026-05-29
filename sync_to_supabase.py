@@ -102,7 +102,12 @@ def main():
         p = HERE / top_level
         if p.exists():
             plan.append((p, top_level))
-    roster = HERE / "config" / "roster.json"
+    # Roster chain: ROSTER_PATH env → private-notes/roster.json → committed example.
+    # Remote path stays "config/roster.json" so the deployed dashboard keeps
+    # fetching it from Supabase Storage unchanged (real roster in CI via the secret).
+    roster = Path(os.environ.get("ROSTER_PATH") or (HERE / "private-notes" / "roster.json"))
+    if not roster.exists():
+        roster = HERE / "config" / "roster.example.json"
     if roster.exists():
         plan.append((roster, "config/roster.json"))
 

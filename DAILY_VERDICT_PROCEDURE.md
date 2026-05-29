@@ -1,4 +1,4 @@
-# Daily verdict procedure — Windward ownership QA
+# Daily verdict procedure — CLIENT_A ownership QA
 
 Runs once a day at **23:00 EAT** (Africa/Nairobi). Locks the day's productivity and sampling compliance numbers.
 

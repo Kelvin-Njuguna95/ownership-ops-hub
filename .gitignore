@@ -26,3 +26,6 @@ __pycache__/
 # Secret-scanner baseline reports — contain raw leaked values, never commit
 gitleaks-*.json
 trufflehog-*.json
+
+# Private identifier mapping + source-of-truth roster (employee emails)
+private-notes/

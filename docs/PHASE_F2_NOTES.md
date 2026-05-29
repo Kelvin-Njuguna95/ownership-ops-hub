@@ -17,7 +17,7 @@ Go to **Settings → Secrets and variables → Actions → New repository secret
 
 | Name | Value | Source |
 |---|---|---|
-| `AIRTABLE_PAT` | Personal access token with read access to base `appHZdfC2sn9MLGFZ` (table `relations_support`) | Airtable → Account → Developer hub → Personal access tokens. Scopes: `data.records:read`. Workspaces: the Windward base. |
+| `AIRTABLE_PAT` | Personal access token with read access to base `appHZdfC2sn9MLGFZ` (table `relations_support`) | Airtable → Account → Developer hub → Personal access tokens. Scopes: `data.records:read`. Workspaces: the CLIENT_A base. |
 | `SUPABASE_URL` | `https://isccbmgjgtdosiccstcp.supabase.co` | Already in `.env.local` |
 | `SUPABASE_SERVICE_ROLE_KEY` | Legacy JWT-format service_role key (starts with `eyJ...`) | Supabase Dashboard → Settings → API → `service_role` (legacy JWT, not the new `sb_secret_*` format — Storage REST rejects those) |
 

@@ -1,4 +1,4 @@
-# Claude Code Build Playbook — Windward QA Intelligence
+# Claude Code Build Playbook — CLIENT_A QA Intelligence
 
 This is your step-by-step guide for building the system using Claude Code in your terminal. Every prompt below is copy-pasteable. Each one produces a verifiable result before you move to the next.
 
@@ -312,7 +312,7 @@ Verify: `npm test` shows all tests pass. `cat lib/normalization/normalized_field
 >    - 6 KPI cards: Pending QA, Tagged today, QA actions today, Silent changes, Agents under 280, Last poll
 >    - Hourly heatmap (agents × hours grid, color-coded)
 >    - Team-totals line chart (Recharts)
->    - Team selector dropdown (All / Simba / Tembo / Pweza / Kobe / Nyati)
+>    - Team selector dropdown (All / TEAM_1 / TEAM_5 / TEAM_4 / TEAM_3 / TEAM_2)
 >    - Date selector (defaults today, allow yesterday)
 > 7. Server Components for data fetching; Client Components only for interactivity.
 >

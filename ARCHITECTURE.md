@@ -4,7 +4,7 @@ The current source of truth for the data model and dashboard scope is **`Ownersh
 
 ## What this is
 
-A JSON-file polling app that watches Impact Outsourcing's Vessel Ownership QA operation in Airtable base `appHZdfC2sn9MLGFZ`, table `relations_support`. Five teams: Simba, Tembo, Pweza, Kobe, Nyati. Polls every 15 min between 06:00 and 22:59 EAT.
+A JSON-file polling app that watches Impact Outsourcing's Vessel Ownership QA operation in Airtable base `appHZdfC2sn9MLGFZ`, table `relations_support`. Five teams: TEAM_1, TEAM_5, TEAM_4, TEAM_3, TEAM_2. Polls every 15 min between 06:00 and 22:59 EAT.
 
 ## File map
 

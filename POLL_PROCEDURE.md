@@ -21,7 +21,7 @@ If `daily_records_<today_eat>.json` doesn't exist (new day), create it as `{}`. 
 
 - Read `ww_audit_log.json` → get config, roster, thresholds, pending_baselines, polling_state
 - Read `daily_records_<today_eat>.json` → today's record state cache (dict keyed by record_id)
-- Build `roster_lookup`: name (lowercase, including aliases) → `{team, role, canonical}`. Only ownership teams (Simba/Tembo/Pweza/Kobe/Nyati).
+- Build `roster_lookup`: name (lowercase, including aliases) → `{team, role, canonical}`. Only ownership teams (TEAM_1/TEAM_5/TEAM_4/TEAM_3/TEAM_2).
 
 ### 3. Fetch from Airtable — THREE targeted fetches
 
@@ -148,7 +148,7 @@ After all records processed, iterate `daily_records` and build:
   "thresholds": {"productivity_min": 280, "sampling_min_pct": 15},
   "by_agent": {
     "<canonical_agent_name>": {
-      "team": "Kobe",
+      "team": "TEAM_3",
       "tagged_today": 314,
       "in_bo_qa": 11,
       "qa_inspected": 47,       // QA_status set (approve OR changed)
@@ -161,7 +161,7 @@ After all records processed, iterate `daily_records` and build:
     }
   },
   "by_team": {
-    "Kobe": {"tagged_today": 1200, "in_bo_qa": 50, "qa_inspected": 200, "qa_approved": 180, "qa_changed": 20, "skipped": 950, "sampling_rate_pct": 21}
+    "TEAM_3": {"tagged_today": 1200, "in_bo_qa": 50, "qa_inspected": 200, "qa_approved": 180, "qa_changed": 20, "skipped": 950, "sampling_rate_pct": 21}
   },
   "totals": {
     "tagged_today": 6741,
@@ -183,7 +183,7 @@ Run a SEPARATE small query: records where `verification_status = "Selected for B
   "captured_at": "...",
   "count": 339,
   "by_team_qa_agent": [
-    {"team": "Kobe", "qa": "Zuleikha Musa", "agent": "Lillian Gichamba", "count": 11, "oldest_h": 8}
+    {"team": "TEAM_3", "qa": "Zuleikha Musa", "agent": "Lillian Gichamba", "count": 11, "oldest_h": 8}
   ]
 }
 ```

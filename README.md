@@ -1,6 +1,6 @@
-# Windward Ownership QA Audit Log
+# CLIENT_A Ownership QA Audit Log
 
-This folder holds the data feeding the Windward ownership-team QA monitoring dashboard.
+This folder holds the data feeding the CLIENT_A ownership-team QA monitoring dashboard.
 
 ## Files
 
@@ -20,7 +20,7 @@ This folder holds the data feeding the Windward ownership-team QA monitoring das
 
 ## Scope
 
-Only the 5 ownership teams: Simba, Tembo, Pweza, Kobe, Nyati. Other teams (Papa, Mamba, Pombo, Ownership-Experts) are ignored.
+Only the 5 ownership teams: TEAM_1, TEAM_5, TEAM_4, TEAM_3, TEAM_2. Other teams (TEAM_7, Mamba, TEAM_6, Ownership-Experts) are ignored.
 
 ## Source
 
