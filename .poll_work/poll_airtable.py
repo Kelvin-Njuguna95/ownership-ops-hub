@@ -31,7 +31,7 @@ except ImportError:
 
 HERE     = Path(__file__).resolve().parent
 ROOT     = HERE.parent
-BASE_ID  = "REDACTED_BASE_ID"
+BASE_ID  = os.environ["AIRTABLE_BASE_ID"]
 TABLE_ID = "tblpj9aJP4ExhYCZF"
 API_URL  = f"https://api.airtable.com/v0/{BASE_ID}/{TABLE_ID}"
 COMPANIES_TABLE_ID = "tbl7U8RQM71Yil652"
@@ -83,7 +83,15 @@ def _build_roster_or_clause():
     Includes every members[].name, every alias, every qa.name, and every
     non-null ww_qa.name across all 5 teams.
     """
-    roster_path = ROOT / "config" / "roster.json"
+    # Real roster only — ROSTER_PATH env or private-notes/roster.json (gitignored;
+    # CI materialises it from the ROSTER_JSON secret). NO placeholder fallback here:
+    # polling with example names would build a formula that matches nobody and
+    # silently return an empty poll, so fail loudly instead.
+    roster_path = Path(os.environ.get("ROSTER_PATH") or (ROOT / "private-notes" / "roster.json"))
+    if not roster_path.exists():
+        print("ROSTER missing — set ROSTER_PATH or place private-notes/roster.json",
+              file=sys.stderr)
+        sys.exit(1)
     roster = json.loads(roster_path.read_text())["teams"]
     names = set()
     for info in roster.values():
@@ -164,7 +172,7 @@ def main():
     pat = os.environ.get("AIRTABLE_PAT")
     if not pat:
         print("AIRTABLE_PAT env var required (Airtable personal access token "
-              "with read access to base REDACTED_BASE_ID)", file=sys.stderr)
+              f"with read access to base {BASE_ID})", file=sys.stderr)
         sys.exit(1)
     headers = {"Authorization": f"Bearer {pat}"}
     common = {

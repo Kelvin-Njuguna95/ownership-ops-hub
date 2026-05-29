@@ -81,7 +81,7 @@ COMPLETIONS_STATES  = {TAGGED, NEED_TO_BE_UPDATE, SELECTED_FOR_BO_QA, DONE, VALI
 STUCK_HOURS = 24
 
 # Airtable base / table — same as poll_airtable.py
-BASE_ID  = "REDACTED_BASE_ID"
+BASE_ID  = os.environ["AIRTABLE_BASE_ID"]
 TABLE_ID = "tblpj9aJP4ExhYCZF"
 AIRTABLE_URL = f"https://api.airtable.com/v0/{BASE_ID}/{TABLE_ID}"
 # relations_io — the second ownership table, same base. All 5 teams work both.

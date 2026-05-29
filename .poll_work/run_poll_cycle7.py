@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """Run polling cycle 7 for the brave-confident-mendel session."""
-import json, sys
+import json, os, sys
 from datetime import datetime, timezone, timedelta
 from pathlib import Path
 from collections import defaultdict, Counter
@@ -27,9 +27,11 @@ audit_path = HERE / "ww_audit_log.json"
 audit = json.loads(audit_path.read_text())
 config = audit["config"]
 
-# Roster lives in config/roster.json. Falls back to the deprecation shim in
-# ww_audit_log.json.roster if the file isn't there yet.
-roster_path = HERE / "config" / "roster.json"
+# Roster chain: ROSTER_PATH env → private-notes/roster.json → config/roster.example.json
+# (placeholder). Final fallback is the ww_audit_log.json deprecation shim.
+roster_path = Path(os.environ.get("ROSTER_PATH") or (HERE / "private-notes" / "roster.json"))
+if not roster_path.exists():
+    roster_path = HERE / "config" / "roster.example.json"
 if roster_path.exists():
     roster = json.loads(roster_path.read_text())["teams"]
 else:

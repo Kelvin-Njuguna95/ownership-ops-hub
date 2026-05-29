@@ -1,8 +1,33 @@
-.env.local
-.env.*.local
-last_sync.json
+# Secrets and env
+.env
+.env.*
+!.env.example
+!.env.local.example
 
-# Generated dashboard data — refreshed by polling + aggregate runs
+# Operational data — never commit
+*.csv
+*.xlsx
+*.xls
+seed*.json
+/data/
+/uploads/
+
+# Working notes (mapping files, drafts) + source-of-truth roster (employee emails)
+private-notes/
+Ownership Operations Hub/
+
+# IDE / OS / build noise
+.vercel
+.DS_Store
+.idea/
+.vscode/
+
+# Scan reports (contain whatever leaked)
+gitleaks-*.json
+trufflehog-*.json
+
+# Project-specific: generated dashboard data — refreshed by polling + aggregate runs
+last_sync.json
 daily_aggregates.json
 ww_audit_log.json
 .poll_work/recent_p*.json

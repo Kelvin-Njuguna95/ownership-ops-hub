@@ -12,6 +12,7 @@ the sister table ``relations_io`` (fldu7T8eOHaDe3uup), so a cross-table
 join is required.
 """
 import json
+import os
 import re
 import sys
 from collections import Counter, defaultdict
@@ -1527,10 +1528,23 @@ def _build_qa_team_map(roster):
     return out
 
 
+def _resolve_roster_path(here):
+    """Resolve the roster file. Order: ROSTER_PATH env → private-notes/roster.json
+    (gitignored real roster; CI materialises it from the ROSTER_JSON secret) →
+    config/roster.example.json (committed placeholder schema). See SECURITY phase 2."""
+    env = os.environ.get("ROSTER_PATH")
+    if env:
+        return Path(env)
+    private = here / "private-notes" / "roster.json"
+    if private.exists():
+        return private
+    return here / "config" / "roster.example.json"
+
+
 def _load_roster(here):
-    """Roster lives in config/roster.json. Falls back to the deprecation shim
-    in ww_audit_log.json.roster if the file isn't there yet."""
-    roster_path = here / "config" / "roster.json"
+    """Team roster (.teams) via the roster-path chain. Final fallback is the
+    ww_audit_log.json deprecation shim if no roster file resolves."""
+    roster_path = _resolve_roster_path(here)
     if roster_path.exists():
         return json.loads(roster_path.read_text())["teams"]
     return json.loads((here / "ww_audit_log.json").read_text())["roster"]
@@ -1542,7 +1556,7 @@ def _load_team_leaders(here):
     QA reviewers — their qa_assignee verdicts are excluded from every QA
     aggregation (qa_reviewers, qa_hourly, by_qa, qa_today_all, totals.qa_*).
     Returns an empty set if the key/file is absent (back-compatible)."""
-    roster_path = here / "config" / "roster.json"
+    roster_path = _resolve_roster_path(here)
     if not roster_path.exists():
         return set()
     try:

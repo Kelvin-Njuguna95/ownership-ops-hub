@@ -66,9 +66,21 @@ jobs:
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
         run: python3 .poll_work/download_state.py
 
+      - name: Materialize roster
+        # The real roster (employee names/emails) is gitignored — not in the
+        # checkout. Write it from the ROSTER_JSON secret so poll/aggregate use
+        # real names; without it, code falls back to config/roster.example.json
+        # placeholders (and poll_airtable.py exits 1 rather than poll wrong names).
+        env:
+          ROSTER_JSON: ${{ secrets.ROSTER_JSON }}
+        run: |
+          mkdir -p private-notes
+          echo "$ROSTER_JSON" > private-notes/roster.json
+
       - name: Poll Airtable (read-only)
         env:
-          AIRTABLE_PAT: ${{ secrets.AIRTABLE_PAT }}
+          AIRTABLE_PAT:     ${{ secrets.AIRTABLE_PAT }}
+          AIRTABLE_BASE_ID: ${{ secrets.AIRTABLE_BASE_ID }}
         run: python3 .poll_work/poll_airtable.py
 
       - name: Detect completions
@@ -90,8 +102,9 @@ jobs:
         # performance issue so timeouts stop happening in the first place.
         continue-on-error: true
         env:
-          AIRTABLE_PAT: ${{ secrets.AIRTABLE_PAT }}
-          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          AIRTABLE_PAT:              ${{ secrets.AIRTABLE_PAT }}
+          AIRTABLE_BASE_ID:          ${{ secrets.AIRTABLE_BASE_ID }}
+          SUPABASE_URL:              ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
         run: python3 .poll_work/completion_detector.py
 

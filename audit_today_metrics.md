@@ -9,11 +9,11 @@ Direct Airtable query (no cap, 55 pages) vs current dashboard for 2026-05-18:
 
 | Team | Airtable ground truth | Dashboard | Delta | Truncated? |
 |---|---:|---:|---:|---|
-| Simba | 996 | 996 | 0 | no — most-recently-modified slice, fully captured |
-| Tembo | 993 | 162 | +831 | **YES** |
-| Pweza | 753 | 181 | +572 | **YES** |
-| Kobe | 1,348 | 252 | +1,096 | **YES** |
-| Nyati | 1,387 | 762 | +625 | **YES** |
+| TEAM_1 | 996 | 996 | 0 | no — most-recently-modified slice, fully captured |
+| TEAM_5 | 993 | 162 | +831 | **YES** |
+| TEAM_4 | 753 | 181 | +572 | **YES** |
+| TEAM_3 | 1,348 | 252 | +1,096 | **YES** |
+| TEAM_2 | 1,387 | 762 | +625 | **YES** |
 | **TOTAL** | **5,477** | **2,353** | **+3,124** | **57% under-report on the headline KPI** |
 
 Root cause: `poll_airtable.py` Fetch A caps at `RECENT_PAGE_CAP = 20` pages × `pageSize=100` = 2,000 records, sorted by `last_modified` desc. On a 5,477-record day, the 3,477 oldest-modified records are dropped from cache → every today-scoped metric computed off the cache under-reports.

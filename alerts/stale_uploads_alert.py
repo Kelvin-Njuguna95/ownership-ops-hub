@@ -40,7 +40,7 @@ DEFAULT_CHANNEL = "windward-team-leaders"
 MAX_TASK_LINES = 15  # cap the per-task lines; remainder summarised as "+X more"
 
 # Airtable base / table — same as poll_airtable.py / completion_detector.py.
-BASE_ID  = "REDACTED_BASE_ID"
+BASE_ID  = os.environ["AIRTABLE_BASE_ID"]
 TABLE_ID = "tblpj9aJP4ExhYCZF"
 AIRTABLE_URL = f"https://api.airtable.com/v0/{BASE_ID}/{TABLE_ID}"
 
