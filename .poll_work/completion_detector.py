@@ -128,7 +128,13 @@ IO_TO_SUPPORT_FIELD_IDS = {
 # Cap pages so a runaway day can't loop forever. The expanded v2 filter
 # pulls 4 more states than v1 (was tagged + need-to-be-update; now adds
 # SBO + Done + Valid). Done/Valid bulk easily hits 5k+ on a busy day.
-PAGE_CAP = 100
+# TODO: Re-reading every DONE/VALID record every 5 min is wasted work and
+# will eventually tip us into the 30-min workflow ceiling. Proper fix:
+# server-side filter to skip rows where ownership_completions already has
+# flow set. Don't ship without test coverage for the capture-gap fill path.
+# FIX 2026-05-29: a — bump cap; live filter count is 11,779, the 100-page
+# (10k) cap was tripping. 295 = 29.5k ceiling (~2.5x) for 6mo+ growth headroom.
+PAGE_CAP = 295
 
 
 # ----------------------------------------------------------------------
@@ -590,7 +596,15 @@ def supabase_insert_completions(supabase_url, service_key, rows):
     headers = _sb_headers(service_key, {
         "Prefer": "resolution=ignore-duplicates,return=representation",
     })
-    inserted = _sb_post(insert_url, headers, rows)
+    # FIX 2026-05-29: a — chunk the INSERT; one big upsert over all rows hit
+    # Postgres statement_timeout (57014) as completion volume grew. 500-row
+    # chunks (~250KB body) finish under the 8s default timeout; first-write-wins
+    # on the UNIQUE constraint means a mid-batch miss is retried next cycle.
+    inserted = []
+    INSERT_CHUNK = 500
+    for i in range(0, len(rows), INSERT_CHUNK):
+        chunk = rows[i:i + INSERT_CHUNK]
+        inserted.extend(_sb_post(insert_url, headers, chunk))
     inserted_ids = {r["airtable_record_id"] for r in inserted}
 
     # Group duplicates by intended flow value. Rows without a flow value
