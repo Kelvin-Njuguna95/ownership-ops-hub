@@ -1,19 +1,43 @@
 name: Poll Airtable → Supabase
 
 # Triggered EXCLUSIVELY by external scheduler (cron-job.org) hitting the
-# workflow_dispatch API every 5 min during the EAT business window.
+# workflow_dispatch API every 10 min during the EAT business window.
 # See docs/EXTERNAL_CRON_SETUP.md for the external configuration.
+#
+# Why 10-minute cadence (changed from 5 min on 2026-05-29):
+# The expanded poll scope (broader Airtable fetch, more records, heavier
+# aggregation) means each run now takes 5-8 min to complete. At 5-min
+# cadence, runs were stacking -- a new run was being fired before the
+# previous one finished, creating unnecessary load on Airtable's API,
+# burning GitHub Actions minutes, and increasing the chance of rate-limit
+# errors. 10 min gives each run room to breathe with a comfortable buffer.
+#
+# Data accuracy trade-off analysis:
+# - Ownership-team agents tag at ~280-400 records/day across a 06:00-22:59
+#   EAT window (~17 hrs). That is ~16-24 records/hr per agent, or roughly
+#   1 new tagged record every 2.5-3.7 min per agent.
+# - At 5-min cadence the dashboard lagged up to 5 min behind reality.
+# - At 10-min cadence the dashboard lags up to 10 min behind reality.
+# - A 5-minute increase in lag is imperceptible for hourly productivity
+#   tracking and QA sampling rate decisions, which are evaluated at the
+#   30-min / 1-hr grain. The BO QA Console and flow-alert paths are
+#   similarly unaffected -- the pending_queue reflects a snapshot that is
+#   at most 10 min stale, well within human reaction time for queue
+#   management decisions.
+# - Verdict: 10-min cadence preserves full operational accuracy for all
+#   current dashboard use-cases while halving the API pressure and
+#   eliminating run overlap entirely.
 #
 # Why no `schedule:` block: GitHub Actions silently drops scheduled events
 # on free-tier public repos. Audit on 2026-05-19 showed only ~4 of ~60
 # expected `*/15 3-20 * * 1-6` firings actually executed over a 22-hour
-# window — schedule events get deprioritized, especially when the same
+# window -- schedule events get deprioritized, especially when the same
 # workflow has recent workflow_dispatch activity (which this one does).
 # Moving the trigger out of GitHub's queue eliminates the deprioritization.
 #
-# Why no `concurrency:` group: at 5-min cadence with 3-5 min runtime,
-# overlaps will occasionally happen. That's fine — the pipeline is
-# idempotent (first-write-wins via UNIQUE constraint on the Supabase
+# Why no `concurrency:` group: at 10-min cadence with 5-8 min runtime,
+# overlaps are very unlikely but still possible on slow runs. The pipeline
+# is idempotent (first-write-wins via UNIQUE constraint on the Supabase
 # inserts). A concurrency group would cancel the successor when a slow
 # run blocks it, which is worse than letting both finish.
 
@@ -38,7 +62,7 @@ jobs:
 
       - name: Hydrate state from Supabase Storage
         env:
-          SUPABASE_URL:              ${{ secrets.SUPABASE_URL }}
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
         run: python3 .poll_work/download_state.py
 
@@ -48,7 +72,7 @@ jobs:
         run: python3 .poll_work/poll_airtable.py
 
       - name: Detect completions
-        # Flow Framework v2 — reads the 5 flow-relevant verification_status
+        # Flow Framework v2 -- reads the 5 flow-relevant verification_status
         # states from Airtable, classifies records (A/B/C/alert/pre_flow),
         # and writes to ownership_completions / ownership_qa_sampling /
         # flow_alerts.
@@ -58,27 +82,27 @@ jobs:
         # The Flow Framework v3 cards now read from cache, not Supabase
         # tables, so Aggregate can produce correct totals even if Detect
         # fails. The Hourly Output heatmap stays stale (heatmap reads
-        # Supabase tables directly) until the next successful Detect — an
+        # Supabase tables directly) until the next successful Detect -- an
         # acceptable degradation vs the whole dashboard going stale.
         #
         # Follow-up: PR (b) fixes the underlying detector PATCH-per-row
         # performance issue so timeouts stop happening in the first place.
         continue-on-error: true
         env:
-          AIRTABLE_PAT:              ${{ secrets.AIRTABLE_PAT }}
-          SUPABASE_URL:              ${{ secrets.SUPABASE_URL }}
+          AIRTABLE_PAT: ${{ secrets.AIRTABLE_PAT }}
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
         run: python3 .poll_work/completion_detector.py
 
       - name: Aggregate
         # Reads cache files + queries Supabase for Flow v2 counts.
         env:
-          SUPABASE_URL:              ${{ secrets.SUPABASE_URL }}
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
         run: python3 .poll_work/aggregate_v2.py
 
       - name: Sync to Supabase Storage
         env:
-          SUPABASE_URL:              ${{ secrets.SUPABASE_URL }}
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
         run: python3 sync_to_supabase.py
