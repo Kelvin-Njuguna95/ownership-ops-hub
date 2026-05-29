@@ -5,6 +5,7 @@ Network calls (Airtable GET, Supabase INSERT/PATCH) are stubbed via
 unittest.mock — the detector is exercised against fake HTTP responses,
 no real services hit.
 """
+import json
 import os
 import sys
 import unittest
@@ -434,6 +435,28 @@ class TestSupabaseInsertCompletions(unittest.TestCase):
             for call in mock_req.patch.call_args_list:
                 self.assertLess(len(call.args[0]), 3000,
                                 "URL should stay well under proxy limit")
+
+    def test_insert_chunks_at_500_to_stay_under_statement_timeout(self):
+        """Performance regression guard: 1100 rows should be INSERTed in 3
+        POST chunks (500+500+100), not one big upsert. The single-POST version
+        hit Postgres statement_timeout (57014) once completion volume grew."""
+        rows = [{"airtable_record_id": f"rec{i:04d}", "flow": "A"} for i in range(1100)]
+        with patch.object(det, "requests") as mock_req:
+            # Each chunk echoes its posted rows back as newly inserted, so the
+            # union of inserted_ids across chunks must cover all rows (→ no PATCH).
+            def _post(url, headers=None, data=None, timeout=None):
+                body = json.loads(data)
+                return MagicMock(status_code=201, json=lambda: body, text="[...]")
+            mock_req.post.side_effect = _post
+            mock_req.patch.return_value = MagicMock(status_code=200, json=lambda: [], text="[]")
+            result = det.supabase_insert_completions("https://x", "key", rows)
+            self.assertEqual(mock_req.post.call_count, 3,
+                             f"Expected 3 chunked INSERT POSTs, got {mock_req.post.call_count}")
+            sizes = [len(json.loads(c.kwargs.get("data") or c.args[2])) for c in mock_req.post.call_args_list]
+            self.assertEqual(sorted(sizes), [100, 500, 500])
+            # All 1100 came back as inserted → none treated as duplicates → no PATCH.
+            self.assertEqual(result["inserted"], 1100)
+            mock_req.patch.assert_not_called()
 
 
 class TestStuckInSamplingDetection(unittest.TestCase):

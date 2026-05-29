@@ -72,6 +72,7 @@ jobs:
         run: python3 .poll_work/poll_airtable.py
 
       - name: Detect completions
+        id: detect
         # Flow Framework v2 -- reads the 5 flow-relevant verification_status
         # states from Airtable, classifies records (A/B/C/alert/pre_flow),
         # and writes to ownership_completions / ownership_qa_sampling /
@@ -93,6 +94,14 @@ jobs:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
         run: python3 .poll_work/completion_detector.py
+
+      - name: Surface detector status
+        # Detect completions has continue-on-error, so a failure shows as a
+        # green run at the top level. Surface its real outcome to the run
+        # summary so a silent failure is obvious without dropping the safety.
+        if: always()
+        run: |
+          echo "Detect completions outcome: ${{ steps.detect.outcome }}" >> $GITHUB_STEP_SUMMARY
 
       - name: Aggregate
         # Reads cache files + queries Supabase for Flow v2 counts.
