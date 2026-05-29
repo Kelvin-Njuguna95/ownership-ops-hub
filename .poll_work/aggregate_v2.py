@@ -266,7 +266,7 @@ def compute_metrics(records, today_eat, qa_exclude=None):
     # operational alternative when no company exists to link.
     properly_completed_today = 0
     dead_vessels_today = 0
-    # Flow A/B/C — Windward parity. A record can be in Flow B AND Flow C
+    # Flow A/B/C — CLIENT_A parity. A record can be in Flow B AND Flow C
     # simultaneously (reviewed AND completed-after-QA), so track independently.
     flow_a_in_cache = 0   # Done/Valid AND qa_assignee blank   (completed without QA)
     flow_b_in_cache = 0   # qa_assignee+qa_status both filled  (QA reviewed)
@@ -482,7 +482,7 @@ def compute_metrics(records, today_eat, qa_exclude=None):
         "ww_qa_change_rate":             _pct(ww_qa_changed, ww_qa_throughput),
         "bo_qa_backlog":                 bo_qa_backlog,
         "ww_qa_backlog":                 ww_qa_backlog,
-        # Flow framework (Windward parity)
+        # Flow framework (CLIENT_A parity)
         "flow_a_in_cache":               flow_a_in_cache,
         "flow_b_in_cache":               flow_b_in_cache,
         "flow_c_in_cache":               flow_c_in_cache,

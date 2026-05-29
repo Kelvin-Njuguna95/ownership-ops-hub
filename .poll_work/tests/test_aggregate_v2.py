@@ -983,7 +983,7 @@ class TestLoadRecordsDedup(unittest.TestCase):
 
 
 class TestFlowABC(unittest.TestCase):
-    """Flow framework (Windward parity).
+    """Flow framework (CLIENT_A parity).
        A = Done/Valid + no qa_assignee   (completed without QA)
        B = qa_assignee + qa_status both filled
        C = Done/Valid + has_qa

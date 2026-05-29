@@ -29,15 +29,15 @@ claude --version
 
 ### 0.2 Accounts you need open in browser tabs
 
-1. **Supabase** — https://supabase.com — sign in, create new project `windward-qa-staging`. Note the project URL, anon key, service role key from Settings → API.
-2. **GitHub** — create empty repo `windward-qa-dashboard` under your org or personal account. Don't initialize with README; we'll push from local.
+1. **Supabase** — https://supabase.com — sign in, create new project `client-a-qa-staging`. Note the project URL, anon key, service role key from Settings → API.
+2. **GitHub** — create empty repo `client-a-qa-dashboard` under your org or personal account. Don't initialize with README; we'll push from local.
 3. **Vercel** — https://vercel.com — sign in, but don't import yet (we'll do it from the CLI after first push).
 4. **Airtable** — https://airtable.com/create/tokens — create Personal Access Token scoped to `appHZdfC2sn9MLGFZ`, permissions `data.records:read` and `schema.bases:read`. Copy the token.
 5. **Slack** — https://api.slack.com/apps — create webhook for a new channel `#ww-qa-alerts`. Copy the webhook URL.
 
 ### 0.3 Environment file
 
-Create `~/.env.windward-qa` on your machine (kept out of any repo):
+Create `~/.env.client-a-qa` on your machine (kept out of any repo):
 
 ```bash
 # Database
@@ -64,10 +64,10 @@ CRON_SECRET=<generate with: openssl rand -hex 32>
 ### 0.4 Create the local project directory
 
 ```bash
-mkdir -p ~/code/windward-qa-dashboard
-cd ~/code/windward-qa-dashboard
+mkdir -p ~/code/client-a-qa-dashboard
+cd ~/code/client-a-qa-dashboard
 git init
-gh repo create windward-qa-dashboard --private --source=. --remote=origin
+gh repo create client-a-qa-dashboard --private --source=. --remote=origin
 ```
 
 ### 0.5 Copy the architecture docs into the repo
@@ -88,7 +88,7 @@ These docs travel with the code so Claude Code can read them on every prompt.
 The first file in any Claude-Code project. Claude reads it on every conversation start.
 
 ```bash
-cd ~/code/windward-qa-dashboard
+cd ~/code/client-a-qa-dashboard
 claude
 ```
 
@@ -137,7 +137,7 @@ Verify: `cat CLAUDE.md` shows the five layers and the 10 warnings. `git log` sho
 >    - polling_runs, polling_watermarks
 >    - All enums for event_kind (6 values per V4 §2), transition_kind (10 values per V4 §3), source_system (4 values per V6 §1.3)
 > 5. Create `drizzle/migrations/0001_initial.sql` by running `npx drizzle-kit generate`. Verify the SQL is sane.
-> 6. Create `drizzle/seed/roster.ts` that reads `docs/fixtures/cowork_audit_log.json`, extracts the roster (5 teams + 25 agents from V6's source), and writes a TypeScript seed script that INSERTs projects (1 row: windward), project_areas (1: ownership_tagging), teams (5), agents (25), agent_assignments (effective from 2026-01-01).
+> 6. Create `drizzle/seed/roster.ts` that reads `docs/fixtures/cowork_audit_log.json`, extracts the roster (5 teams + 25 agents from V6's source), and writes a TypeScript seed script that INSERTs projects (1 row: client-a), project_areas (1: ownership_tagging), teams (5), agents (25), agent_assignments (effective from 2026-01-01).
 > 7. Create `drizzle/seed/targets.ts` seeding: productivity_min_daily=280 (global), sampling_min_pct=15 (global), stuck_in_qa_hours=72 (global).
 > 8. Create `drizzle/seed/metric_definitions.ts` with the 5 metric definitions per V4 §1.3.
 > 9. Create `drizzle/seed/watermarks.ts` initializing one row in polling_watermarks (kind='airtable_last_modified', last_successful_modified_time=now()-interval '24 hours', overlap_seconds=120).
@@ -360,7 +360,7 @@ Verify: `npm test` shows all tests pass. `cat lib/normalization/normalized_field
 > Tasks:
 > 1. Create `vercel.json` with crons: `{"path": "/api/cron/poll-manual", "schedule": "*/15 3-20 * * *"}` — note: Vercel Cron requires Pro plan. For Phase 1 we ship with the cron config but trigger manually until upgrade.
 > 2. Install Vercel CLI: `npm i -g vercel`. Run `vercel login` then `vercel link` to associate this repo with a new Vercel project.
-> 3. `vercel env add` for each environment variable from `~/.env.windward-qa` to BOTH Preview and Production.
+> 3. `vercel env add` for each environment variable from `~/.env.client-a-qa` to BOTH Preview and Production.
 > 4. Push to GitHub: `git push -u origin main`.
 > 5. `vercel --prod` to deploy.
 > 6. Verify the deployed URL loads, Google SSO works (after adding the Vercel URL to Supabase Auth redirect URLs).
@@ -436,7 +436,7 @@ After Phase 1 is tagged, this playbook gets extended with Days 8-21 prompts. Rea
 
 In order:
 
-1. **Manual setup (§0)** — 45 minutes. Open the 5 browser tabs, create the accounts, populate `~/.env.windward-qa`, install Claude Code locally.
+1. **Manual setup (§0)** — 45 minutes. Open the 5 browser tabs, create the accounts, populate `~/.env.client-a-qa`, install Claude Code locally.
 2. **Initialize the repo** — `mkdir`, `git init`, copy docs, `gh repo create`. ~10 minutes.
 3. **Launch Claude Code** in the repo directory: `claude`.
 4. **Run Prompt 1** to create `CLAUDE.md`. Verify the result.
