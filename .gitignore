@@ -22,3 +22,7 @@ ww_audit_log.json
 .poll_work/tests/__pycache__/
 *.pyc
 __pycache__/
+
+# Secret-scanner baseline reports — contain raw leaked values, never commit
+gitleaks-*.json
+trufflehog-*.json
