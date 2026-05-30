@@ -760,6 +760,9 @@
   .sup-kpi .k { font-size:11px; text-transform:uppercase; letter-spacing:0.05em; color:var(--muted); font-weight:600; }
   .sup-kpi .v { font-size:24px; font-weight:800; letter-spacing:-0.01em; margin-top:3px; }
   .btn.btn-sm { padding:4px 10px; font-size:12px; }
+  .sup-dodrow { margin-top:6px; }
+  .sup-dodcap { font-size:12px; color:var(--muted); margin:-6px 0 16px; }
+  .sup-dodcap b { color:var(--ink); font-weight:700; }
   @media (max-width:860px){ .sup-hero{grid-template-columns:1fr;} .sup-kpis{grid-template-columns:repeat(2,1fr);} }
 
   /* ---- New Companies tagging analytics (Phase 12) ----------------------- */
@@ -4741,6 +4744,61 @@ function _supStatusColor(vs) {
   if (vs === "need to be update") return "#E5384F";
   return "#C9CED8";
 }
+// Day-over-day on the unassigned pool. Reads snapshots/<date>.json — the supply
+// block only began shipping with Phase 1, so older snapshots have none and the
+// pill degrades to "—" until tomorrow. Cached in STATE.supplyDod so rate-edit
+// re-renders don't refetch. STATE.supplyDod: undefined=not loaded, null=looked
+// up but no prior supply found, {priorDate, priorTotal}=found.
+function _supShortDate(iso) { return new Date(iso + "T12:00:00Z").toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short" }); }
+function _supDodPillHtml(total) {
+  const c = STATE.supplyDod;
+  if (c === undefined) return `<span class="kpi-dod-light" id="supDodPill" title="Loading prior day…">…</span>`;
+  if (c === null)      return `<span class="kpi-dod-light" id="supDodPill" title="No prior snapshot carries supply yet">— vs prior</span>`;
+  const delta = total - c.priorTotal;
+  const arrow = delta > 0 ? "▲" : delta < 0 ? "▼" : "▬";
+  const lbl = _supShortDate(c.priorDate);
+  return `<span class="kpi-dod-light" id="supDodPill" title="Prior (${_supShortDate(c.priorDate)}): ${c.priorTotal.toLocaleString()} unassigned">${arrow} ${delta >= 0 ? "+" : "−"}${Math.abs(delta).toLocaleString()} vs ${esc(lbl)}</span>`;
+}
+function _supDodCaptionHtml(total) {
+  const c = STATE.supplyDod;
+  if (c === undefined) return `<div class="sup-dodcap" id="supDodCaption"></div>`;
+  if (c === null)      return `<div class="sup-dodcap" id="supDodCaption">— &middot; day-over-day available from tomorrow</div>`;
+  const delta = total - c.priorTotal;
+  const lbl = _supShortDate(c.priorDate);
+  const pct = c.priorTotal > 0 ? (delta / c.priorTotal * 100) : null;
+  const pctTxt = pct == null ? "" : ` (${delta >= 0 ? "+" : ""}${pct.toFixed(1)}%)`;
+  const word = delta > 0 ? `grew by <b>${Math.abs(delta).toLocaleString()}</b>${pctTxt}`
+             : delta < 0 ? `was drawn down by <b>${Math.abs(delta).toLocaleString()}</b>${pctTxt}`
+             : `was unchanged`;
+  return `<div class="sup-dodcap" id="supDodCaption">Unassigned pool ${word} since ${esc(lbl)}.</div>`;
+}
+function _patchSupDod() {
+  const total = (STATE.v2 && STATE.v2.supply && STATE.v2.supply.unassigned_total) || 0;
+  const pill = document.getElementById("supDodPill");
+  if (pill) pill.outerHTML = _supDodPillHtml(total);
+  const cap = document.getElementById("supDodCaption");
+  if (cap) cap.outerHTML = _supDodCaptionHtml(total);
+}
+function _supplyLoadDod() {
+  if (STATE.supplyDod !== undefined || STATE.supplyDodLoading) return;  // cache hit / already loading
+  STATE.supplyDodLoading = true;
+  (async () => {
+    const anchor = (STATE.v2 && STATE.v2.date) || todayEat();
+    let found = null;
+    for (let i = 1; i <= 5; i++) {
+      const ds = _isoAddDays(anchor, -i);
+      try {
+        const snap = await readJson(`snapshots/${ds}.json`);
+        const pt = snap && snap.supply && snap.supply.unassigned_total;
+        if (typeof pt === "number") { found = { priorDate: ds, priorTotal: pt }; break; }
+      } catch (_) { /* missing snapshot (weekend / pre-Phase-1) — keep stepping back */ }
+    }
+    STATE.supplyDod = found;          // {priorDate, priorTotal} or null
+    STATE.supplyDodLoading = false;
+    _patchSupDod();                   // patch in place if the page is still mounted
+  })();
+}
+
 PAGE_RENDERERS.supply = function () {
   const root = document.getElementById("page-supply");
   const supply = STATE.v2 && STATE.v2.supply;
@@ -4806,11 +4864,12 @@ PAGE_RENDERERS.supply = function () {
     </div>
 
     <div class="sup-kpis">
-      <div class="sup-kpi"><div class="k">Total unassigned</div><div class="v">${rw.total.toLocaleString()}</div></div>
+      <div class="sup-kpi"><div class="k">Total unassigned</div><div class="v">${rw.total.toLocaleString()}</div><div class="sup-dodrow">${_supDodPillHtml(rw.total)}</div></div>
       <div class="sup-kpi"><div class="k">Runway</div><div class="v" style="color:var(--${status === "red" ? "bad" : status === "amber" ? "warn" : "good"})">${runwayTxt}d</div></div>
       <div class="sup-kpi"><div class="k">Daily rate</div><div class="v">${rw.dailyRate.toLocaleString()}</div></div>
       <div class="sup-kpi"><div class="k">Agents</div><div class="v">${rw.agentCount}</div></div>
     </div>
+    ${_supDodCaptionHtml(rw.total)}
 
     <div class="sup-hero">
       <div class="sup-runwaycard ${status}">
@@ -4877,6 +4936,10 @@ PAGE_RENDERERS.supply = function () {
     STATE.supplySort = b.dataset.supsort;
     PAGE_RENDERERS.supply();
   }));
+
+  // Kick off the day-over-day lookup once per mount (guarded against refetch on
+  // rate-edit / sort re-renders); patches the pill + caption when it resolves.
+  _supplyLoadDod();
 };
 
 // -------- BO QA Console --------
