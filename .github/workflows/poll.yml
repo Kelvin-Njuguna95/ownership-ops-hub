@@ -60,6 +60,24 @@ jobs:
       - name: Install dependencies
         run: pip install requests
 
+      - name: Verify required env vars
+        env:
+          AIRTABLE_PAT:              ${{ secrets.AIRTABLE_PAT }}
+          AIRTABLE_BASE_ID:          ${{ secrets.AIRTABLE_BASE_ID }}
+          SUPABASE_URL:              ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          ROSTER_JSON:               ${{ secrets.ROSTER_JSON }}
+        run: |
+          missing=()
+          for v in AIRTABLE_PAT AIRTABLE_BASE_ID SUPABASE_URL SUPABASE_SERVICE_ROLE_KEY ROSTER_JSON; do
+            if [ -z "${!v}" ]; then missing+=("$v"); fi
+          done
+          if [ ${#missing[@]} -gt 0 ]; then
+            echo "::error::Missing required secrets: ${missing[*]}"
+            exit 1
+          fi
+          echo "All required env vars present."
+
       - name: Hydrate state from Supabase Storage
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
@@ -129,3 +147,14 @@ jobs:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
         run: python3 sync_to_supabase.py
+
+      - name: Slack alert on failure
+        if: failure()
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+        run: |
+          if [ -z "$SLACK_WEBHOOK_URL" ]; then
+            echo "SLACK_WEBHOOK_URL not set — skipping alert"; exit 0
+          fi
+          payload=$(printf '{"text":"⚠️ Poll workflow failed — run %s on commit %s. See: https://github.com/%s/actions/runs/%s"}' "$GITHUB_RUN_NUMBER" "${GITHUB_SHA:0:7}" "$GITHUB_REPOSITORY" "$GITHUB_RUN_ID")
+          curl -sS -X POST -H 'Content-Type: application/json' --data "$payload" "$SLACK_WEBHOOK_URL"
