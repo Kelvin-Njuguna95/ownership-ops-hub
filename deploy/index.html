@@ -2639,16 +2639,19 @@ function renderFlowAlerts(t) {
 }
 
 function computeTeamAlerts() {
-  // Two rules per the design: tagged_today == 0, OR drop > 50% from 7-day avg.
-  // 7-day avg requires history — for now we can only fire the "zero" rule.
+  // "No tags" rule for tagging teams. Agents are off on weekends (unless a
+  // special working weekend with tagging activity), so on an agent off-day a
+  // zero is expected — suppress the alert rather than imply absence.
+  // (Kelvin 2026-05-30.) QA Saturday work is unaffected (this panel is tagging-only).
   const alerts = [];
+  const agentOffDay = !_isAgentWorkdayEat(todayEat(), { totals: STATE.v2?.totals || {} });
   for (const team of Object.keys(STATE.roster || {}).sort()) {
     const m = STATE.v2?.by_team?.[team];
     if (!m) {
-      alerts.push({ team, level: "warn", icon: "○", message: "no records in this cache window — team may be inactive today" });
+      if (!agentOffDay) alerts.push({ team, level: "warn", icon: "○", message: "no records in this cache window — team may be inactive today" });
       continue;
     }
-    if (m.tagged_today === 0) {
+    if (m.tagged_today === 0 && !agentOffDay) {
       alerts.push({ team, level: "warn", icon: "○", message: "no new tags today" });
     }
   }
@@ -7882,6 +7885,13 @@ function _quarterStart(iso) {
 }
 function _prevQuarterStart(iso) { return _quarterStart(_isoAddDays(_quarterStart(iso), -1)); }
 function _isSundayEat(iso) { return new Date(iso + "T12:00:00Z").getUTCDay() === 0; }
+function _isWeekendEat(iso) { const d = new Date(iso + "T12:00:00Z").getUTCDay(); return d === 0 || d === 6; }
+// Agents work Mon–Fri; a weekend counts only on a special working weekend,
+// detected from that day's operation-wide tagged_today > 0. (Kelvin 2026-05-30.)
+function _isAgentWorkdayEat(iso, aggs) {
+  if (!_isWeekendEat(iso)) return true;
+  return ((aggs && aggs.totals && aggs.totals.tagged_today) || 0) > 0;
+}
 function _round(x, n) { const f = Math.pow(10, n); return Math.round((Number(x) || 0) * f) / f; }
 function _pct(num, den) { return den ? _round((num / den) * 100, 1) : 0; }
 
@@ -8091,7 +8101,9 @@ function _buildAgentsWorkbook(data) {
     return [n, a.team, ...hours.map(h => a.hourly[h] || 0), a.outside, a.total];
   });
 
-  const monSat = dates.filter(d => !_isSundayEat(d)).length;   // operation runs Mon–Sat
+  // Agent working days = weekdays + any weekend day the operation tagged
+  // (special working weekend). dayTot[d] is that day's total tagging.
+  const agentWorkDays = dates.filter(d => !_isWeekendEat(d) || (dayTot[d] || 0) > 0).length;
   const scHeader = ["Agent", "Team", "Total tagged", "Days worked", "Days absent", "Avg/day",
     "Peak day", "Peak hour", "Flow A", "Flow C", "QA-checked", "QA-changed", "Reject rate %"];
   const scRows = names.map(n => {
@@ -8101,7 +8113,7 @@ function _buildAgentsWorkbook(data) {
     let peakHour = "—", best = 0;
     for (const h of hours) if ((a.hourly[h] || 0) > best) { best = a.hourly[h]; peakHour = String(h).padStart(2, "0") + ":00"; }
     const qc = qaChecked[n] || 0, qch = qaChanged[n] || 0;
-    return [n, a.team, a.total, dw, Math.max(0, monSat - dw), dw ? _round(a.total / dw, 2) : 0,
+    return [n, a.team, a.total, dw, Math.max(0, agentWorkDays - dw), dw ? _round(a.total / dw, 2) : 0,
       (a.daily[peakDay] ? peakDay : "—"), peakHour, a.flowA, a.flowC, qc, qch, _pct(qch, qc)];
   });
 
@@ -8558,12 +8570,15 @@ function _rollupClientSide(dayList) {
     const top = ranked.length && ranked[0][1] > 0 ? { name: ranked[0][0], records: ranked[0][1] } : null;
     perTeam[team] = { records, unique_imos_sum: uniqueSum, top_performer: top };
   }
-  // Agents not working
+  // Agents not working — weekend off-days are not expected working days for
+  // taggers (unless a special working weekend with tagging activity), so they
+  // never count as "missed". (Kelvin 2026-05-30.)
   const anw = [];
   for (const team of Object.keys(STATE.roster || {})) {
     for (const member of (STATE.roster[team].members || [])) {
       const missing = [];
       for (const [day, aggs] of snaps) {
+        if (!_isAgentWorkdayEat(day, aggs)) continue;
         const rec = (aggs.by_agent || {})[member.name];
         if (!rec || ((rec.tagged_today || 0) + ((rec.total_completions_today ?? rec.total_completions) || 0)) === 0) {
           missing.push(day);
