@@ -43,6 +43,14 @@ REJECT_THRESHOLD = 30.0                     # applies to both cohorts
 # Used to decide whether an `add_new_company` row still counts as "open".
 DONE_LIKE = {"Done", "Valid"}
 
+# verification_status values that mean a new-company record still needs the
+# company created. Per Kelvin (2026-05-30): a new company is "pending" only
+# while it sits in one of these two states. Once it moves to Done/Valid the
+# company has been created, so the row drops off the New Companies page and
+# the Quality (BO QA) lists. SELECTED_FOR_BO_QA carries a trailing space —
+# always use the imported constant, never a string literal.
+PENDING_NEW_COMPANY = {"need to be update", SELECTED_FOR_BO_QA}
+
 # Per-dimension metric whitelists. by_qa and by_ww_qa drop metrics that
 # don't make sense at that dimension (e.g. a QA's daily_intake is always 0).
 QA_KEYS = {
@@ -316,15 +324,14 @@ def compute_metrics(records, today_eat, qa_exclude=None):
         if role:
             role_counts[role] += 1
 
-        # add_new_company_open (broader definition per fix-add-new-company-
-        # metric-broader-definition): any record tagged today with the
-        # add_new_company column filled. Mirrors the Airtable view "filter
-        # by start_tagging today AND add_new_company non-empty". Replaces
-        # the legacy 3-condition rule (need-to-be-update + no company_id)
-        # which under-counted (11 vs the live Airtable count of 96).
-        # Same metric key for backward dashboard compatibility; the
-        # user-facing label is updated in deploy/index.html.
+        # add_new_company_open: a new-company record tagged today whose
+        # add_new_company column is filled AND that is still pending creation
+        # (verification_status in PENDING_NEW_COMPANY). Records already created
+        # — i.e. moved to Done/Valid — are excluded, matching the New Companies
+        # page. (Kelvin 2026-05-30: created companies must drop off.) Same
+        # metric key for backward dashboard compatibility.
         if (info.get("add_new_company")
+                and info.get("verification_status") in PENDING_NEW_COMPANY
                 and _parse_eat_date(info.get("start_tagging")) == today_eat):
             add_new_company_open += 1
 
@@ -1036,9 +1043,10 @@ def compute_add_new_company_records(records, today_eat, ownership_assignees, cap
     the page exposes a "needing QA" filter (qa_assignee or qa_status empty).
 
     Returns (list, truncated_bool). Sorted by days_open desc, capped at `cap`.
-    Includes records in any verification_status — the page surfaces the full
-    new-company pipeline, not just open ones (closed-but-missing-QA is also a
-    failure mode worth seeing).
+    Pending only: includes a record only while its verification_status is in
+    PENDING_NEW_COMPANY (need-to-be-update or Selected for BO QA). Once the
+    company is created and the row moves to Done/Valid it drops off the page
+    and the Quality (BO QA) lists. (Kelvin 2026-05-30.)
     """
     norm = _normalize_ownership(ownership_assignees)
 
@@ -1046,6 +1054,9 @@ def compute_add_new_company_records(records, today_eat, ownership_assignees, cap
     for info in records:
         company = (info.get("add_new_company") or "").strip()
         if not company:
+            continue
+        # Pending only — drop records already created (Done/Valid etc.).
+        if info.get("verification_status") not in PENDING_NEW_COMPANY:
             continue
         base = info.get("start_tagging") or info.get("created")
         base_date = _parse_eat_date(base)
