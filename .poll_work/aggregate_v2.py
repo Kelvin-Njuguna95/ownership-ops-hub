@@ -1396,6 +1396,105 @@ def aggregate(records, today_eat, ownership_assignees, qa_team_map=None, qa_excl
     }
 
 
+def compute_supply(work_dir, ownership_assignees=None, today_eat=None, cap=500):
+    """Task Supply / Runway (Phase 1) — aggregate the standing UNASSIGNED backlog.
+
+    Reads the Fetch S caches (``unassigned_p*.json`` support, ``unassigned_io_p*.json``
+    io) directly — deliberately SEPARATE from ``_load_records`` so this ~10k-record
+    pool never leaks into the main metric set. Deduped by record id.
+
+    Emits the pool size (total + per table), its verification_status composition,
+    and a per-``requested_by`` task list (sanctions first, then oldest-created
+    first) so the Phase-2 page can show what to ask the client to re-upload. The
+    runway math (per_agent_rate × agent_count, run-out date) lives on the page;
+    here we emit the editable defaults + the roster-derived agent_count.
+    """
+    if today_eat is None:
+        today_eat = datetime.now(EAT).date()
+
+    # Read both caches; dedupe by record id, remember which table each came from.
+    pool = {}        # rid -> info
+    table_of = {}    # rid -> "relations_support" | "relations_io"
+    for p in sorted(work_dir.glob("unassigned_p*.json")):
+        for r in json.loads(p.read_text()).get("records", []):
+            rid = r["id"]
+            if rid not in pool:
+                pool[rid] = extract(r)
+                table_of[rid] = "relations_support"
+    for p in sorted(work_dir.glob("unassigned_io_p*.json")):
+        for r in json.loads(p.read_text()).get("records", []):
+            rid = r["id"]
+            if rid not in pool:
+                pool[rid] = extract(r, FIELD_IDS_IO)
+                table_of[rid] = "relations_io"
+
+    unassigned_support = sum(1 for t in table_of.values() if t == "relations_support")
+    unassigned_io      = sum(1 for t in table_of.values() if t == "relations_io")
+
+    # Status composition over the whole pool.
+    by_status = {}
+    for info in pool.values():
+        vs = info.get("verification_status") or "(none)"
+        by_status[vs] = by_status.get(vs, 0) + 1
+
+    # Group by requested_by (task). Track count, sanctions flag, oldest created.
+    groups = {}
+    for info in pool.values():
+        task = (info.get("requested_by") or "").strip() or "(no task name)"
+        created = info.get("created")
+        g = groups.get(task)
+        if g is None:
+            g = groups[task] = {"requested_by": task,
+                                "is_sanctions": is_sanctions(task),
+                                "count": 0,
+                                "oldest_created": created}
+        g["count"] += 1
+        # ISO timestamps sort lexically == chronologically; keep the min.
+        if created and (g["oldest_created"] is None or created < g["oldest_created"]):
+            g["oldest_created"] = created
+
+    by_task = []
+    for g in groups.values():
+        oc = g["oldest_created"]
+        oc_date = _parse_eat_date(oc)
+        by_task.append({
+            "requested_by":   g["requested_by"],
+            "count":          g["count"],
+            "is_sanctions":   g["is_sanctions"],
+            "oldest_created": oc,
+            "age_days":       (today_eat - oc_date).days if oc_date else None,
+        })
+    # Sanctions first (is_sanctions desc), then oldest_created ascending.
+    by_task.sort(key=lambda t: (not t["is_sanctions"], t["oldest_created"] or "9999"))
+    by_task_truncated = len(by_task) > cap
+    by_task = by_task[:cap]
+
+    # agent_count = distinct tagging-agent members across the 5 teams, derived
+    # from the roster (ownership_assignees canonicals — QAs are not in members).
+    if ownership_assignees:
+        canon = set()
+        for v in ownership_assignees.values():
+            canon.add(v["canonical"] if isinstance(v, dict) else v)
+        agent_count = len(canon)
+    else:
+        agent_count = 0
+    per_agent_rate = 400
+
+    return {
+        "unassigned_total":      len(pool),
+        "unassigned_support":    unassigned_support,
+        "unassigned_io":         unassigned_io,
+        "by_status":             by_status,
+        "by_task":               by_task,
+        "by_task_truncated":     by_task_truncated,
+        "default_per_agent_rate": per_agent_rate,
+        "notice_alert_days":     3,
+        "agent_count":           agent_count,
+        "default_daily_rate":    per_agent_rate * agent_count,
+        "computed_at":           datetime.now(EAT).isoformat(),
+    }
+
+
 def _load_records(work_dir):
     """Load raw page files, dedup by record id, extract.
 
@@ -2038,6 +2137,12 @@ def main():
     records = _load_records(work)
     aggs = aggregate(records, today_eat, ownership_assignees, qa_team_map, qa_exclude)
     aggs["companies_hourly"] = compute_companies_hourly(work, today_eat)
+
+    # Task Supply / Runway (Phase 1) — the standing unassigned backlog, computed
+    # SEPARATELY from the main record pool (compute_supply reads its own caches)
+    # so the ~10k backlog never distorts the today-scoped metrics above.
+    aggs["supply"] = compute_supply(work, ownership_assignees, today_eat)
+    aggs["totals"]["unassigned_total"] = aggs["supply"]["unassigned_total"]
 
     # Per-table "set to Valid today" counts — records whose Valid Selected Time
     # is today (EAT), split by source table. Feeds the dashboard's two-table

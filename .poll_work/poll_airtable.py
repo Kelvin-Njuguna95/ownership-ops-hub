@@ -63,6 +63,27 @@ DONE_PAGE_CAP          = 100  # Fetch E: done OR valid today
 QA_REVIEWED_PAGE_CAP   = 100  # Fetch F: qa_status_ts today
 WW_QA_BACKLOG_PAGE_CAP = 30   # Fetch G: assigned-to-WW-QA-but-not-reviewed
 COMPANIES_PAGE_CAP     = 30   # Fetch H: companies created today (small — today's new companies only)
+UNASSIGNED_PAGE_CAP    = 200  # Fetch S: unassigned supply backlog (~10k support + io; 20k ceiling)
+
+# Reduced field projections for the Fetch S supply backlog. The pool is ~10k+
+# records, so we pull only the fields compute_supply needs (imo, requested_by,
+# verification_status, created, assignee, role) to keep each page small.
+SUPPLY_FIELDS_SUPPORT = [
+    "fldqWGr2XDH9BRmtE",  # imo
+    "fldlPkvV6BiE7glLZ",  # requested_by
+    "fldYSXHGwZvxXK7s6",  # verification_status
+    "fldZL6JmYMlFIhCLl",  # created
+    "fldT4xElSgcdnqTmy",  # assignee
+    "fldnBNNkH7w4rS3fG",  # role
+]
+SUPPLY_FIELDS_IO = [
+    "fldsrPYBTN5qnN1WD",  # imo
+    "fldnkt2u2LGVTc0eY",  # requested_by
+    "fld0n6efs9TOJGMV5",  # verification_status
+    "fld9cWZGNsRGIw8iQ",  # created
+    "fldVzGbUOqAu9myPx",  # assignee
+    "fldp6WkTDhUldOIIF",  # role
+]
 
 
 def _wipe(glob):
@@ -354,6 +375,26 @@ def main():
                                       COMPANIES_PAGE_CAP, "Fetch H", url=COMPANIES_URL)
     print(f"  → {n_pages_h} pages, {n_rec_h} records")
 
+    # ---- Fetch S: unassigned supply backlog (unassigned_p*.json) ----
+    # The standing pool of records with NO assignee — the "task supply" the PM
+    # tracks to know when to ask the client for more uploads (Task Supply /
+    # Runway page). Modeled on Fetch G's BLANK() pattern. {assignee} = BLANK()
+    # matches isEmpty(assignee) (verified ~10,262 for support, incl. the 1,800
+    # 'waiting' rows). Large pool (~10k+), so we project only the fields
+    # compute_supply needs and warn (not fail) on truncation — the supply
+    # numbers degrade gracefully rather than blocking the whole poll.
+    print("\n=== Fetch S: unassigned supply (unassigned_p*.json) ===")
+    filter_s = "{assignee} = BLANK()"
+    params_s = {
+        **common,
+        "filterByFormula": filter_s,
+        "fields[]":        SUPPLY_FIELDS_SUPPORT,
+    }
+    n_pages_s, n_rec_s, _ = _paginate(headers, params_s, "unassigned",
+                                      UNASSIGNED_PAGE_CAP, "Fetch S",
+                                      on_truncate="warn")
+    print(f"  → {n_pages_s} pages, {n_rec_s} records")
+
     # ---- relations_io: poll the second ownership table (all 5 teams) ----
     # relations_io (tblrOiHiLe2O3UhsE) lives in the same base and has the same
     # field NAMES as relations_support, so every filterByFormula clause built
@@ -372,6 +413,7 @@ def main():
         (filter_e2, "valid_today_io",       DONE_PAGE_CAP,          "error"),
         (filter_f,  "qa_reviewed_today_io", QA_REVIEWED_PAGE_CAP,   "error"),
         (filter_g,  "ww_qa_backlog_io",     WW_QA_BACKLOG_PAGE_CAP, "error"),
+        (filter_s,  "unassigned_io",         UNASSIGNED_PAGE_CAP,    "warn"),
     ]
     io_total_pages = 0
     io_total_recs  = 0

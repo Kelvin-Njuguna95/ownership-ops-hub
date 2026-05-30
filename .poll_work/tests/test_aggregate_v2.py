@@ -26,6 +26,7 @@ from aggregate_v2 import (  # noqa: E402
     compute_not_yet_finalized,
     compute_qa_done_not_finalized,
     compute_qa_reviewers,
+    compute_supply,
     compute_task_breakdowns,
     compute_weekly_rollup,
     compute_ww_qa_reviews,
@@ -2034,6 +2035,105 @@ class TestComputeWeeklyRollup(unittest.TestCase):
         self.assertEqual(r["totals"], {})
         self.assertEqual(r["per_day"], [])
         self.assertEqual(r["agents_not_working"], [])
+
+
+class TestComputeSupply(unittest.TestCase):
+    """compute_supply aggregates the standing UNASSIGNED backlog from the
+    Fetch S caches (unassigned_p*.json support, unassigned_io_p*.json io),
+    deduped by id, emitting pool size, status composition, and a per-task
+    list ordered sanctions-first then oldest-created-first."""
+
+    from extract_v2 import FIELD_IDS as _F, FIELD_IDS_IO as _FIO
+
+    def _rec(self, rec_id, field_ids, requested_by=None, created=None,
+             verification_status=None):
+        f = {}
+        if requested_by is not None:       f[field_ids["requested_by"]] = requested_by
+        if created is not None:            f[field_ids["created"]] = created
+        if verification_status is not None: f[field_ids["verification_status"]] = verification_status
+        return {"id": rec_id, "fields": f}
+
+    def _setup(self, work):
+        import json as _json
+        F, FIO = self._F, self._FIO
+        support = [
+            # Sanctions task — 2 records
+            self._rec("s1", F, "SanctionCheckMay", "2026-05-10T08:00:00.000Z", "waiting"),
+            self._rec("s2", F, "SanctionCheckMay", "2026-05-12T08:00:00.000Z", "tagged"),
+            # Non-sanctions task — 3 records (oldest support = 2026-04-01)
+            self._rec("c1", F, "CargoIntelApr", "2026-04-01T08:00:00.000Z", "waiting"),
+            self._rec("c2", F, "CargoIntelApr", "2026-05-01T08:00:00.000Z", "tagged"),
+            self._rec("c3", F, "CargoIntelApr", "2026-05-05T08:00:00.000Z", "need to be update"),
+            # Blank requested_by → "(no task name)"
+            self._rec("n1", F, "", "2026-05-08T08:00:00.000Z", "waiting"),
+        ]
+        io = [
+            # io record for CargoIntelApr — older than any support record (tests
+            # cross-table oldest + io counting via the io field map)
+            self._rec("i1", FIO, "CargoIntelApr", "2026-03-01T08:00:00.000Z", "waiting"),
+        ]
+        (work / "unassigned_p1.json").write_text(_json.dumps({"records": support}))
+        (work / "unassigned_io_p1.json").write_text(_json.dumps({"records": io}))
+
+    # Production-shape roster ({lowercased_name|alias: {team, canonical}}); the
+    # alias "ally" resolves to Alice so agent_count must dedupe to 3 canonicals.
+    ROSTER_ASSIGNEES = {
+        "alice": {"team": "Simba", "canonical": "Alice"},
+        "ally":  {"team": "Simba", "canonical": "Alice"},
+        "bob":   {"team": "Tembo", "canonical": "Bob"},
+        "carol": {"team": "Nyati", "canonical": "Carol"},
+    }
+
+    def test_supply_pool_status_and_ordering(self):
+        import tempfile
+        from pathlib import Path
+        with tempfile.TemporaryDirectory() as td:
+            work = Path(td)
+            self._setup(work)
+            s = compute_supply(work, self.ROSTER_ASSIGNEES, TODAY)
+
+            # Pool sizes
+            self.assertEqual(s["unassigned_total"], 7)
+            self.assertEqual(s["unassigned_support"], 6)
+            self.assertEqual(s["unassigned_io"], 1)
+
+            # Status composition over the whole pool
+            self.assertEqual(s["by_status"]["waiting"], 4)
+            self.assertEqual(s["by_status"]["tagged"], 2)
+            self.assertEqual(s["by_status"]["need to be update"], 1)
+
+            # Per-task counts (CargoIntelApr spans both tables: 3 + 1)
+            by_task = {t["requested_by"]: t for t in s["by_task"]}
+            self.assertEqual(by_task["SanctionCheckMay"]["count"], 2)
+            self.assertEqual(by_task["CargoIntelApr"]["count"], 4)
+            self.assertEqual(by_task["(no task name)"]["count"], 1)
+            self.assertTrue(by_task["SanctionCheckMay"]["is_sanctions"])
+            self.assertFalse(by_task["CargoIntelApr"]["is_sanctions"])
+            # Oldest created for CargoIntelApr is the io record (2026-03-01)
+            self.assertEqual(by_task["CargoIntelApr"]["oldest_created"], "2026-03-01T08:00:00.000Z")
+
+            # Ordering: sanctions first, then non-sanctions oldest-first
+            order = [t["requested_by"] for t in s["by_task"]]
+            self.assertEqual(order, ["SanctionCheckMay", "CargoIntelApr", "(no task name)"])
+
+            # age_days derived from oldest_created (CargoIntelApr older than the blank task)
+            self.assertGreater(by_task["CargoIntelApr"]["age_days"], by_task["(no task name)"]["age_days"])
+
+            # Roster-derived defaults (agent_count dedupes the "ally" alias → 3)
+            self.assertEqual(s["default_per_agent_rate"], 400)
+            self.assertEqual(s["notice_alert_days"], 3)
+            self.assertEqual(s["agent_count"], 3)
+            self.assertEqual(s["default_daily_rate"], 400 * 3)
+
+    def test_supply_empty_when_no_caches(self):
+        import tempfile
+        from pathlib import Path
+        with tempfile.TemporaryDirectory() as td:
+            s = compute_supply(Path(td), self.ROSTER_ASSIGNEES, TODAY)
+            self.assertEqual(s["unassigned_total"], 0)
+            self.assertEqual(s["by_status"], {})
+            self.assertEqual(s["by_task"], [])
+            self.assertFalse(s["by_task_truncated"])
 
 
 class TestFlowFrameworkV3Counts(unittest.TestCase):
