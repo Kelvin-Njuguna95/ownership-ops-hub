@@ -1622,6 +1622,19 @@ def load_snapshots(work_dir, start_date, end_date):
     return out
 
 
+def _is_agent_workday(day, aggs):
+    """True if `day` (a date) is an expected tagging-agent working day.
+
+    Agents work Mon–Fri. A weekend counts only when the operation actually
+    tagged that day — a special client working weekend — detected from the
+    snapshot's totals.tagged_today. (Kelvin 2026-05-30: agents off weekends
+    unless special request; QAs work Mon–Sat and are handled elsewhere.)
+    """
+    if day.weekday() < 5:            # Mon(0)–Fri(4)
+        return True
+    return ((aggs.get("totals", {}) or {}).get("tagged_today", 0) or 0) > 0
+
+
 def compute_weekly_rollup(snapshots, roster=None):
     """Roll a list of per-day aggregates_v2 snapshots into a weekly summary.
 
@@ -1743,6 +1756,11 @@ def compute_weekly_rollup(snapshots, roster=None):
             for member in info.get("members", []):
                 missing_dates = []
                 for day, aggs in snapshots_sorted:
+                    # Weekend off-days are NOT expected working days for taggers
+                    # (unless a special working weekend with tagging activity) —
+                    # never count them as "missed". (Kelvin 2026-05-30.)
+                    if not _is_agent_workday(day, aggs):
+                        continue
                     by_agent = aggs.get("by_agent", {}) or {}
                     rec = by_agent.get(member["name"])
                     if not rec or (rec.get("tagged_today", 0) or 0) + (rec.get("total_completions_today", rec.get("total_completions", 0)) or 0) == 0:

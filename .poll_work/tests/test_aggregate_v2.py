@@ -1988,6 +1988,46 @@ class TestComputeWeeklyRollup(unittest.TestCase):
         # Boyd worked NO days
         self.assertEqual(anw_by_name["Boyd"]["days_missed"], 3)
 
+    def test_agents_not_working_skips_weekend_offday(self):
+        # 2026-05-09 is a Saturday with NO tagging (agents off, QAs may work).
+        # 2026-05-11 is a Monday worked only by Alice.
+        snaps = [
+            (date(2026, 5, 9), {
+                "totals": {"tagged_today": 0},
+                "by_team": {}, "by_agent": {}, "qa_reviewers": [],
+            }),
+            (date(2026, 5, 11), {
+                "totals": {"tagged_today": 50},
+                "by_team": {"Simba": {"tagged_today": 50}},
+                "by_agent": {"Alice": {"tagged_today": 50}},
+                "qa_reviewers": [],
+            }),
+        ]
+        r = compute_weekly_rollup(snaps, roster=self.ROSTER)
+        anw = {a["name"]: a for a in r["agents_not_working"]}
+        # The Saturday off-day must not count as missed for anyone.
+        self.assertNotIn("Alice", anw)                       # worked Monday
+        self.assertEqual(anw["Allison"]["days_missed"], 1)   # only Monday counts
+        self.assertEqual(anw["Allison"]["missing_dates"], ["2026-05-11"])
+        self.assertEqual(anw["Bob"]["days_missed"], 1)
+        self.assertEqual(anw["Boyd"]["days_missed"], 1)
+
+    def test_agents_not_working_counts_special_weekend(self):
+        # 2026-05-09 Saturday WITH tagging (special working weekend): agents who
+        # didn't tag that day ARE counted absent.
+        snaps = [
+            (date(2026, 5, 9), {
+                "totals": {"tagged_today": 80},
+                "by_team": {"Simba": {"tagged_today": 80}},
+                "by_agent": {"Alice": {"tagged_today": 80}},
+                "qa_reviewers": [],
+            }),
+        ]
+        r = compute_weekly_rollup(snaps, roster=self.ROSTER)
+        anw = {a["name"]: a for a in r["agents_not_working"]}
+        self.assertNotIn("Alice", anw)                       # worked the special Saturday
+        self.assertEqual(anw["Allison"]["days_missed"], 1)   # special workday, absent
+
     def test_empty_snapshots_returns_safe_empty(self):
         r = compute_weekly_rollup([], roster=self.ROSTER)
         self.assertEqual(r["days_with_data"], 0)
