@@ -65,6 +65,7 @@
   nav.side .nav-count.cyan   { background: #E0F5FB; color: #0691B5; }
   nav.side .nav-count.orange { background: var(--warn-bg); color: var(--warn); }
   nav.side .nav-count.purple { background: var(--accent-soft); color: var(--accent); }
+  nav.side .nav-count.red    { background: var(--bad-bg); color: var(--bad); }
   nav.side li button .tag { margin-left: auto; font-size: 9px; letter-spacing: 0.04em; text-transform: uppercase; font-weight: 700; background: var(--soft); padding: 2px 6px; border-radius: 999px; color: var(--muted); }
   nav.side li button .tag.stub { background: #FFF5D6; color: #C76512; }
   nav.side li button .tag.live { background: #DBF6FE; color: #0691B5; }
@@ -715,6 +716,51 @@
   .ct-lb .who .s { font-size:10.5px; color:var(--muted); }
   .ct-heat { display:flex; flex-wrap:wrap; gap:3px; }
   .ct-heat span { width:9px; height:9px; border-radius:2px; }
+
+  /* ---- Task Supply / Runway (Phase 2) ----------------------------------- */
+  .sup-hero { display:grid; grid-template-columns: minmax(260px,1.1fr) 1fr; gap:20px; align-items:stretch; margin-bottom:16px; }
+  .sup-runwaycard { border-radius:var(--radius-md); padding:22px 24px; color:#fff; display:flex; flex-direction:column; justify-content:center; box-shadow:var(--shadow-sm); }
+  .sup-runwaycard.red   { background:linear-gradient(135deg,#E5384F,#B3142B); }
+  .sup-runwaycard.amber { background:linear-gradient(135deg,#C76512,#9A4D08); }
+  .sup-runwaycard.green { background:linear-gradient(135deg,#0EA56C,#077A4E); }
+  .sup-runwaycard .lbl { font-size:12px; text-transform:uppercase; letter-spacing:0.06em; opacity:0.85; font-weight:600; }
+  .sup-runwaycard .big { font-size:52px; line-height:1.02; font-weight:800; letter-spacing:-0.02em; margin:4px 0; }
+  .sup-runwaycard .big small { font-size:18px; font-weight:600; opacity:0.9; }
+  .sup-runwaycard .meta { font-size:12.5px; opacity:0.95; margin-top:6px; line-height:1.55; }
+  .sup-runwaycard .meta b { font-weight:700; }
+  .sup-ratebox { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius-md); padding:18px 20px; box-shadow:var(--shadow-sm); }
+  .sup-ratebox .lbl { font-size:12px; text-transform:uppercase; letter-spacing:0.05em; color:var(--muted); font-weight:600; margin-bottom:10px; }
+  .sup-ratebox .row { display:flex; align-items:center; gap:10px; flex-wrap:wrap; font-size:14px; }
+  .sup-ratebox input[type=number] { width:90px; font-family:inherit; font-size:15px; padding:8px 10px; border:1px solid var(--border); border-radius:var(--radius-sm); }
+  .sup-ratebox input[type=number]:focus { outline:none; border-color:var(--accent); box-shadow:0 0 0 3px rgba(123,104,238,0.18); }
+  .sup-ratebox .calc { font-size:13px; color:var(--ink); margin-top:12px; } .sup-ratebox .calc b { font-weight:700; }
+  .sup-ratebox .pooltot { font-size:12.5px; color:var(--muted); margin-top:10px; }
+  .sup-ratebox .pooltot .num { font-weight:700; color:var(--ink); }
+  .sup-alert { display:flex; align-items:center; gap:12px; padding:13px 18px; border-radius:var(--radius-md); margin-bottom:16px; font-size:13px; }
+  .sup-alert .ic { width:30px; height:30px; border-radius:8px; flex-shrink:0; display:inline-flex; align-items:center; justify-content:center; }
+  .sup-alert.red   { background:var(--bad-bg);  color:var(--bad);  } .sup-alert.red .ic   { background:rgba(229,56,79,0.18); }
+  .sup-alert.amber { background:var(--warn-bg); color:var(--warn); } .sup-alert.amber .ic { background:rgba(199,101,18,0.18); }
+  .sup-alert.green { background:var(--good-bg); color:var(--good); } .sup-alert.green .ic { background:rgba(14,165,108,0.18); }
+  .sup-alert .bd { flex:1; min-width:0; line-height:1.5; } .sup-alert .bd b { font-weight:700; }
+  .sup-comp { display:flex; height:22px; border-radius:6px; overflow:hidden; border:1px solid var(--border); margin:6px 0 12px; }
+  .sup-comp span { display:block; height:100%; }
+  .sup-complegend { display:flex; flex-wrap:wrap; gap:14px; font-size:12px; color:var(--muted); }
+  .sup-complegend .it { display:inline-flex; align-items:center; gap:6px; } .sup-complegend .sw { width:10px; height:10px; border-radius:3px; }
+  .sup-complegend .it b { color:var(--ink); font-weight:700; }
+  .sup-table { width:100%; border-collapse:collapse; font-size:13px; }
+  .sup-table th { text-align:left; font-size:11px; text-transform:uppercase; letter-spacing:0.04em; color:var(--muted); font-weight:600; padding:8px 10px; border-bottom:1px solid var(--border); cursor:pointer; user-select:none; }
+  .sup-table th.num, .sup-table td.num { text-align:right; }
+  .sup-table td { padding:9px 10px; border-bottom:1px solid var(--border-soft,#EEE); }
+  .sup-table tr.sanc { background:rgba(229,56,79,0.05); }
+  .sup-table tr.sanc td:first-child { box-shadow:inset 3px 0 0 var(--bad); }
+  .sup-badge { display:inline-block; font-size:10.5px; font-weight:700; padding:2px 8px; border-radius:999px; }
+  .sup-badge.sanc { background:var(--bad-bg); color:var(--bad); } .sup-badge.std { background:var(--accent-soft); color:var(--accent); }
+  .sup-kpis { display:grid; grid-template-columns:repeat(4,1fr); gap:12px; margin-bottom:16px; }
+  .sup-kpi { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius-md); padding:14px 16px; box-shadow:var(--shadow-sm); }
+  .sup-kpi .k { font-size:11px; text-transform:uppercase; letter-spacing:0.05em; color:var(--muted); font-weight:600; }
+  .sup-kpi .v { font-size:24px; font-weight:800; letter-spacing:-0.01em; margin-top:3px; }
+  .btn.btn-sm { padding:4px 10px; font-size:12px; }
+  @media (max-width:860px){ .sup-hero{grid-template-columns:1fr;} .sup-kpis{grid-template-columns:repeat(2,1fr);} }
 
   /* ---- New Companies tagging analytics (Phase 12) ----------------------- */
   .nc-live { display:inline-flex; align-items:center; gap:5px; margin-left:8px; font-size:11px; color:var(--good); font-weight:600; }
@@ -1476,6 +1522,7 @@
       <div id="page-tasks"          class="page" style="display:none"></div>
       <div id="page-completed"      class="page" style="display:none"></div>
       <div id="page-new_companies"  class="page" style="display:none"></div>
+      <div id="page-supply"         class="page" style="display:none"></div>
       <div id="page-wwqa"           class="page" style="display:none"></div>
       <div id="page-pipeline"       class="page" style="display:none"></div>
       <div id="page-scenarios"      class="page" style="display:none"></div>
@@ -1600,6 +1647,7 @@ const PAGES = [
   { id: "tasks",          label: "Tasks",                   tag: null,   group: "Operations" },
   { id: "completed",      label: "Completed Tasks",         tag: null,   group: "Operations" },
   { id: "new_companies",  label: "New Companies",           tag: null,   group: "Operations" },
+  { id: "supply",         label: "Task Supply",             tag: null,   group: "Operations" },
   { id: "pipeline",       label: "Pipeline & Lead Time",    tag: null,   group: "Operations" },
   { id: "scenarios",      label: "Case Scenarios",          tag: null,   group: "Operations" },
   { id: "qa_hourly",      label: "QA Hourly Output",        tag: null,   group: "Quality"    },
@@ -2001,6 +2049,7 @@ const NAV_ICONS = {
   completed:      '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>',
   new_companies:  '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="2" width="16" height="20" rx="2"/><path d="M9 22v-4h6v4"/><line x1="8" y1="6" x2="8" y2="6.01"/><line x1="16" y1="6" x2="16" y2="6.01"/><line x1="8" y1="11" x2="8" y2="11.01"/><line x1="16" y1="11" x2="16" y2="11.01"/></svg>',
   pipeline:       '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="6" cy="6" r="3"/><circle cx="18" cy="6" r="3"/><circle cx="12" cy="18" r="3"/><path d="M18 9v1a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2V9"/><line x1="12" y1="12" x2="12" y2="15"/></svg>',
+  supply:         '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="M7 16l4-5 3 3 5-7"/><circle cx="19" cy="7" r="1.4" fill="currentColor"/></svg>',
   scenarios:      '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/></svg>',
   qa_hourly:      '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>',
   qa_performance: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3.34 19a10 10 0 1 1 17.32 0"/><line x1="12" y1="12" x2="16" y2="9"/></svg>',
@@ -2025,7 +2074,61 @@ function navCountFor(pageId) {
   if (pageId === "intake")        return { n: t.relations_support_intake_today, tint: "cyan" };
   if (pageId === "new_companies") return { n: (v2.add_new_company_records || []).length, tint: "orange" };
   if (pageId === "boqa")          return { n: t.bo_qa_backlog, tint: "purple" };
+  if (pageId === "supply") {
+    const rw = _supplyRunway();
+    if (!rw) return null;
+    const days = Number.isFinite(rw.runwayDays) ? Math.floor(rw.runwayDays) : null;
+    if (days == null) return null;
+    return { n: days, tint: rw.status === "red" ? "red" : (rw.status === "amber" ? "orange" : "cyan") };
+  }
   return null;
+}
+
+// ---- Task Supply / Runway math (Phase 2) ----
+// Single source of truth shared by the nav badge and the page renderer.
+// Returns null when STATE.v2.supply is absent (older snapshot) so callers can
+// render a graceful empty state. Runway is in WORKING days; the run-out and
+// request-by dates step the calendar skipping weekends (agents work Mon–Fri,
+// reusing _isWeekendEat from PR #160).
+function _supplyRate(supply) {
+  const stored = parseInt(localStorage.getItem("wqa.supplyRate"), 10);
+  if (Number.isFinite(stored) && stored > 0) return stored;
+  return (supply && supply.default_per_agent_rate) || 400;
+}
+function _supplyRunway() {
+  const supply = STATE.v2 && STATE.v2.supply;
+  if (!supply) return null;
+  const agentCount = supply.agent_count || 0;
+  const perAgentRate = _supplyRate(supply);
+  const dailyRate = perAgentRate * agentCount;
+  const total = supply.unassigned_total || 0;
+  const alertDays = supply.notice_alert_days != null ? supply.notice_alert_days : 3;
+  const runwayDays = dailyRate > 0 ? total / dailyRate : Infinity;
+
+  // Working-day stepped run-out: subtract dailyRate only on Mon–Fri.
+  let runOutDate = null;
+  if (dailyRate > 0 && total > 0) {
+    let d = todayEat(), rem = total;
+    for (let i = 0; i < 400; i++) {
+      if (!_isWeekendEat(d)) rem -= dailyRate;
+      if (rem <= 0) { runOutDate = d; break; }
+      d = _isoAddDays(d, 1);
+    }
+  }
+  // Recommended request-by date = run-out minus 2 WORKING days (client notice).
+  let requestByDate = null;
+  if (runOutDate) {
+    let rb = runOutDate, count = 0;
+    for (let i = 0; i < 400 && count < 2; i++) {
+      rb = _isoAddDays(rb, -1);
+      if (!_isWeekendEat(rb)) count++;
+    }
+    requestByDate = rb;
+  }
+  const status = runwayDays <= alertDays ? "red"
+               : runwayDays <= alertDays + 2 ? "amber" : "green";
+  return { supply, agentCount, perAgentRate, dailyRate, total, alertDays,
+           runwayDays, runOutDate, requestByDate, status };
 }
 
 function renderNav() {
@@ -4618,6 +4721,163 @@ function renderQaPerfDetail(){
 
   openSidePanel(r.name, `${r.assigned_team?esc(r.assigned_team)+' QA':(r.isExpert?'Sanctions expert':'BO QA')} · ${hasS?r.sampling_pct_today.toFixed(1)+'% sampling':'sampling pending'}`);
 }
+
+// -------- Task Supply / Runway (Phase 2) --------
+// Reads STATE.v2.supply (Phase 1 / PR #162). "How much assignable work is left,
+// and when do I ask the client for more?" Runway in WORKING days; run-out and
+// request-by dates skip weekends. Per-agent rate is editable + persisted.
+function _supFmtDate(iso) {
+  if (!iso) return "—";
+  return new Date(iso + "T12:00:00Z").toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short", year: "numeric" });
+}
+function _supStatusColor(vs) {
+  // Stable colors for the pool-composition bar by verification_status.
+  if (vs === "waiting") return "#C76512";
+  if (vs === "(none)")  return "#9AA3B2";          // fresh uploads, no status yet
+  if (vs === "tagged")  return "#0691B5";
+  if (vs === "Done" || vs === "Valid") return "#0EA56C";
+  if (vs && vs.indexOf("BO QA") >= 0) return "#7B68EE";
+  if (vs && vs.indexOf("WW QA") >= 0) return "#5C49D4";
+  if (vs === "need to be update") return "#E5384F";
+  return "#C9CED8";
+}
+PAGE_RENDERERS.supply = function () {
+  const root = document.getElementById("page-supply");
+  const supply = STATE.v2 && STATE.v2.supply;
+
+  // Defensive empty state — older snapshots predate the supply block.
+  if (!supply) {
+    root.innerHTML = `
+      <div class="page-head"><div>
+        <div class="page-eyebrow">Operations</div>
+        <h1 class="page-title">Task <em>supply</em></h1>
+      </div></div>
+      <div class="empty-state"><div class="title">Supply data not yet available</div>
+        The unassigned-backlog metrics will populate on the next poll (aggregates_v2.supply).</div>`;
+    return;
+  }
+
+  const rw = _supplyRunway();
+  const computedAt = STATE.v2.computed_at;
+  const refAge = ageHours(computedAt);
+  const refLabel = refAge == null ? "freshness unknown" : refAge < 1 ? `Refreshed ${Math.max(1, Math.round(refAge * 60))} min ago` : refAge < 24 ? `Refreshed ${Math.round(refAge)}h ago` : `Refreshed ${Math.round(refAge / 24)}d ago`;
+  const nowEat = (computedAt ? new Date(computedAt) : new Date()).toLocaleString("en-GB", { timeZone: "Africa/Nairobi", weekday: "long", day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" });
+
+  const runwayTxt = Number.isFinite(rw.runwayDays) ? rw.runwayDays.toFixed(1) : "∞";
+  const status = rw.status;
+
+  // ---- Pool composition (by_status) ----
+  const byStatus = supply.by_status || {};
+  const compEntries = Object.entries(byStatus).sort((a, b) => b[1] - a[1]);
+  const compSum = compEntries.reduce((s, [, n]) => s + n, 0) || 1;
+  const compBar = compEntries.map(([vs, n]) =>
+    `<span style="width:${(n / compSum * 100).toFixed(2)}%;background:${_supStatusColor(vs)}" title="${esc(vs)}: ${n.toLocaleString()}"></span>`).join("");
+  const compLegend = compEntries.map(([vs, n]) =>
+    `<span class="it"><span class="sw" style="background:${_supStatusColor(vs)}"></span>${esc(vs === "(none)" ? "no status (fresh upload)" : vs)} <b>${n.toLocaleString()}</b></span>`).join("");
+
+  // ---- Priority task table (default order from API = sanctions-then-oldest) ----
+  const sort = STATE.supplySort || "priority";
+  let tasks = (supply.by_task || []).slice();
+  if (sort === "count") tasks.sort((a, b) => b.count - a.count);
+  else if (sort === "age") tasks.sort((a, b) => (b.age_days || 0) - (a.age_days || 0));
+  // "priority" keeps the API order (sanctions-first, then oldest-first).
+  const rows = tasks.map(t => `
+    <tr class="${t.is_sanctions ? "sanc" : ""}">
+      <td>${esc(t.requested_by)}</td>
+      <td class="num">${Number(t.count).toLocaleString()}</td>
+      <td><span class="sup-badge ${t.is_sanctions ? "sanc" : "std"}">${t.is_sanctions ? "Sanctions" : "Standard"}</span></td>
+      <td class="num">${t.age_days == null ? "—" : t.age_days + "d"} <span style="color:var(--muted);font-size:11px">· ${_supFmtDate(t.oldest_created).replace(/ \d{4}$/, "")}</span></td>
+    </tr>`).join("");
+  const truncNote = supply.by_task_truncated ? `<div class="sup-pooltot" style="color:var(--muted);font-size:12px;margin-top:8px">Showing first ${tasks.length} tasks (list truncated).</div>` : "";
+
+  const alertHtml = status === "red"
+    ? `<div class="sup-alert red"><span class="ic">${KPI_ICONS.alert}</span><div class="bd"><b>Request more tasks from the client now</b> — at ~${rw.dailyRate.toLocaleString()}/day the unassigned pool (${rw.total.toLocaleString()}) runs out around <b>${_supFmtDate(rw.runOutDate)}</b>. They need 2 days' notice, so request by <b>${_supFmtDate(rw.requestByDate)}</b>.</div></div>`
+    : status === "amber"
+    ? `<div class="sup-alert amber"><span class="ic">${KPI_ICONS.clock}</span><div class="bd"><b>Supply getting low</b> — ~${runwayTxt} working days left. Plan to request more tasks before <b>${_supFmtDate(rw.requestByDate)}</b>.</div></div>`
+    : `<div class="sup-alert green"><span class="ic">${KPI_ICONS.check}</span><div class="bd"><b>Supply healthy</b> — ~${runwayTxt} working days of assignable work left${rw.runOutDate ? ` (projected run-out ${_supFmtDate(rw.runOutDate)})` : ""}.</div></div>`;
+
+  root.innerHTML = `
+    <div class="page-head">
+      <div>
+        <div class="page-eyebrow">Operations &middot; ${esc(nowEat)} EAT<span class="nc-live"><span class="dot"></span>Live &middot; ${esc(refLabel)}</span></div>
+        <h1 class="page-title">Task <em>supply</em></h1>
+        <div class="page-subtitle">Unassigned backlog vs daily throughput — when to ask the client for more tasks (they need 2 days' notice).</div>
+      </div>
+    </div>
+
+    <div class="sup-kpis">
+      <div class="sup-kpi"><div class="k">Total unassigned</div><div class="v">${rw.total.toLocaleString()}</div></div>
+      <div class="sup-kpi"><div class="k">Runway</div><div class="v" style="color:var(--${status === "red" ? "bad" : status === "amber" ? "warn" : "good"})">${runwayTxt}d</div></div>
+      <div class="sup-kpi"><div class="k">Daily rate</div><div class="v">${rw.dailyRate.toLocaleString()}</div></div>
+      <div class="sup-kpi"><div class="k">Agents</div><div class="v">${rw.agentCount}</div></div>
+    </div>
+
+    <div class="sup-hero">
+      <div class="sup-runwaycard ${status}">
+        <div class="lbl">Runway</div>
+        <div class="big">${runwayTxt}<small> working days</small></div>
+        <div class="meta">
+          Projected run-out <b>${_supFmtDate(rw.runOutDate)}</b><br>
+          Recommended request-by <b>${_supFmtDate(rw.requestByDate)}</b> (run-out − 2 working days)
+        </div>
+      </div>
+      <div class="sup-ratebox">
+        <div class="lbl">Throughput assumption</div>
+        <div class="row">
+          <input type="number" id="supRate" min="1" step="10" value="${rw.perAgentRate}">
+          <span>/ agent &times; <b>${rw.agentCount}</b> agents</span>
+        </div>
+        <div class="calc">= <b>${rw.dailyRate.toLocaleString()}</b> records assignable per working day</div>
+        <div class="pooltot">Headline pool <span class="num">${rw.total.toLocaleString()}</span> unassigned
+          &middot; support <span class="num">${(supply.unassigned_support || 0).toLocaleString()}</span>
+          &middot; io <span class="num">${(supply.unassigned_io || 0).toLocaleString()}</span></div>
+        <div class="pooltot" style="margin-top:4px">Rate is editable and remembered on this device. Alert fires at &le; ${rw.alertDays} working days.</div>
+      </div>
+    </div>
+
+    ${alertHtml}
+
+    <div class="panel">
+      <div style="font-weight:700;font-size:14px;margin-bottom:4px">Pool composition</div>
+      <div style="font-size:12px;color:var(--muted);margin-bottom:6px">By verification status across the ${rw.total.toLocaleString()} unassigned records.</div>
+      <div class="sup-comp">${compBar}</div>
+      <div class="sup-complegend">${compLegend}</div>
+    </div>
+
+    <div class="panel">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+        <div style="font-weight:700;font-size:14px">Priority tasks <span style="color:var(--muted);font-weight:500;font-size:12px">— sanctions first, then oldest waiting</span></div>
+        <div style="font-size:12px;color:var(--muted)">Sort:
+          <button class="btn btn-sm sup-sort${sort === "priority" ? " btn-primary" : ""}" data-supsort="priority">Priority</button>
+          <button class="btn btn-sm sup-sort${sort === "count" ? " btn-primary" : ""}" data-supsort="count">Count</button>
+          <button class="btn btn-sm sup-sort${sort === "age" ? " btn-primary" : ""}" data-supsort="age">Age</button>
+        </div>
+      </div>
+      <table class="sup-table">
+        <thead><tr><th>Task (requested by)</th><th class="num">Unassigned</th><th>Cohort</th><th class="num">Oldest waiting</th></tr></thead>
+        <tbody>${rows || `<tr><td colspan="4" style="color:var(--muted);padding:14px">No unassigned tasks in the pool.</td></tr>`}</tbody>
+      </table>
+      ${truncNote}
+    </div>`;
+
+  // ---- events ----
+  const rate = document.getElementById("supRate");
+  if (rate) {
+    const apply = () => {
+      let v = parseInt(rate.value, 10);
+      if (!Number.isFinite(v) || v < 1) v = 1;
+      localStorage.setItem("wqa.supplyRate", String(v));
+      PAGE_RENDERERS.supply();   // re-render hero/alert/dates live
+      renderNav();               // refresh the nav runway badge
+    };
+    rate.addEventListener("change", apply);
+    rate.addEventListener("keydown", e => { if (e.key === "Enter") { e.preventDefault(); apply(); } });
+  }
+  root.querySelectorAll("[data-supsort]").forEach(b => b.addEventListener("click", () => {
+    STATE.supplySort = b.dataset.supsort;
+    PAGE_RENDERERS.supply();
+  }));
+};
 
 // -------- BO QA Console --------
 PAGE_RENDERERS.boqa = function () {
