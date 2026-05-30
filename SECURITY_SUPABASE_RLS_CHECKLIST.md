@@ -3,6 +3,14 @@
 Project ref: `isccbmgjgtdosiccstcp`
 Generated: 2026-05-30
 
+> **💡 To apply in version control:** Run this file in the Supabase SQL editor once to
+> enable RLS — the file lives in the repo so any new environment gets the same
+> enforcement. See [`db/migrations/007_enable_rls.sql`](db/migrations/007_enable_rls.sql),
+> which enables RLS and creates the anon-read policies for all four tables in a single
+> idempotent transaction. The verification blocks below confirm it took effect; the
+> Storage-bucket SQL still needs to be run separately (storage.objects has its own
+> policy model).
+
 **How to use:** open the Supabase SQL editor for the project, paste each verification
 block, and check the result against the noted expectation. If any check fails, run the
 remediation block directly below it.
