@@ -232,14 +232,14 @@ class TestComputeMetrics(unittest.TestCase):
         })
 
     def test_add_new_company_open(self):
-        # Broader definition (fix-add-new-company-metric-broader-definition):
-        # any record tagged today with add_new_company filled. The main
-        # fixture has 2 such records (Alice 2 = BO QA today, Alice 5 = tagged
-        # today, both with add_new_company filled). Detailed scenarios live
-        # in TestAddNewCompanyBroaderDefinition.
-        self.assertEqual(self.m["add_new_company_open"], 2)
+        # Pending-only rule (Kelvin 2026-05-30): a record counts only if it is
+        # tagged today, has add_new_company filled, AND its verification_status
+        # is need-to-be-update or Selected for BO QA. In the fixture only Alice's
+        # "Selected for BO QA" record qualifies (Alice's "tagged" record and
+        # Bob's "Valid" record are excluded).
+        self.assertEqual(self.m["add_new_company_open"], 1)
         # Same value exposed under the new alias key.
-        self.assertEqual(self.m["add_new_company_today"], 2)
+        self.assertEqual(self.m["add_new_company_today"], 1)
 
     def test_reminder_metrics(self):
         self.assertEqual(self.m["reminder_open"], 3)     # Alice 2 + Alice 3 + Carol 2
@@ -1528,22 +1528,19 @@ class TestFetchSourceReconciliation(unittest.TestCase):
 
 
 class TestAddNewCompanyBroaderDefinition(unittest.TestCase):
-    """Broader operational definition (fix-add-new-company-metric-
-    broader-definition): count any record TAGGED TODAY where the
-    add_new_company column has any input. The verification_status and
-    company_id_and_name checks from the old 3-condition rule are dropped
-    — under-counted ops reality (11 vs 96 Airtable truth).
+    """Pending-only definition (Kelvin 2026-05-30): count a record only when it
+    is TAGGED TODAY, has add_new_company filled, AND its verification_status is
+    need-to-be-update or Selected for BO QA. Records already created (Done/Valid)
+    or in transient states (waiting/tagged) are excluded — they have left the
+    pending New Companies queue. Metric key add_new_company_open is preserved so
+    existing dashboard tiles read the new value automatically; add_new_company_today
+    is the same value."""
 
-    Backward-compat: the metric key add_new_company_open is preserved
-    so existing dashboard tiles read the new value automatically. The
-    new alias add_new_company_today is published with the same value
-    for future per-team rendering."""
-
-    def test_add_new_company_today_counts_any_filled(self):
-        """A record tagged today with add_new_company filled counts —
-        REGARDLESS of verification_status or company_id_and_name."""
+    def test_add_new_company_today_counts_pending(self):
+        """A record tagged today with add_new_company filled counts only when
+        its verification_status is pending (need-to-be-update or Selected for
+        BO QA). Records in tagged/Done are excluded."""
         recs = [
-            # All have add_new_company filled + tagged today; all should count.
             _info(assignee="Alice", add_new_company="Proposed Co A",
                   verification_status="need to be update", company_id=None,
                   start_tagging=f"{TODAY.isoformat()}T09:00:00.000+03:00"),
@@ -1551,20 +1548,19 @@ class TestAddNewCompanyBroaderDefinition(unittest.TestCase):
                   verification_status="need to be update", company_id="recCo123",
                   start_tagging=f"{TODAY.isoformat()}T09:30:00.000+03:00"),
             _info(assignee="Alice", add_new_company="Proposed Co C",
-                  verification_status="tagged", company_id=None,
+                  verification_status="tagged", company_id=None,  # NOT pending
                   start_tagging=f"{TODAY.isoformat()}T10:00:00.000+03:00"),
             _info(assignee="Alice", add_new_company="Proposed Co D",
                   verification_status=SELECTED_FOR_BO_QA, company_id=None,
                   start_tagging=f"{TODAY.isoformat()}T10:30:00.000+03:00"),
             _info(assignee="Alice", add_new_company="Proposed Co E",
-                  verification_status="Done", company_id="recCo456",
+                  verification_status="Done", company_id="recCo456",  # NOT pending
                   start_tagging=f"{TODAY.isoformat()}T11:00:00.000+03:00"),
         ]
         aggs = aggregate(recs, TODAY, OWNERSHIP_ASSIGNEES)
-        self.assertEqual(aggs["totals"]["add_new_company_open"], 5,
-                         "every record with add_new_company filled + tagged today counts")
-        # The new alias key publishes the same value.
-        self.assertEqual(aggs["totals"]["add_new_company_today"], 5)
+        self.assertEqual(aggs["totals"]["add_new_company_open"], 3,
+                         "only the two need-to-be-update + one Selected-for-BO-QA records count")
+        self.assertEqual(aggs["totals"]["add_new_company_today"], 3)
 
     def test_add_new_company_today_excludes_blank(self):
         """Records without add_new_company filled don't count, even if
@@ -1587,9 +1583,9 @@ class TestAddNewCompanyBroaderDefinition(unittest.TestCase):
             _info(assignee="Alice", add_new_company="Proposed Co Yesterday",
                   verification_status="need to be update",
                   start_tagging="2026-04-01T09:00:00.000+03:00"),
-            # Sanity: one tagged today that DOES count
+            # Sanity: one tagged today, in a pending status, that DOES count
             _info(assignee="Alice", add_new_company="Proposed Co Today",
-                  verification_status="tagged",
+                  verification_status="need to be update",
                   start_tagging=f"{TODAY.isoformat()}T09:00:00.000+03:00"),
         ]
         aggs = aggregate(recs, TODAY, OWNERSHIP_ASSIGNEES)
@@ -1600,10 +1596,10 @@ class TestAddNewCompanyBroaderDefinition(unittest.TestCase):
         """Per-team breakdown reconciles with the totals figure."""
         recs = [
             _info(assignee="Alice", add_new_company="Co Alice 1",
-                  verification_status="tagged",
+                  verification_status="need to be update",
                   start_tagging=f"{TODAY.isoformat()}T09:00:00.000+03:00"),
             _info(assignee="Alice", add_new_company="Co Alice 2",
-                  verification_status="Done",
+                  verification_status=SELECTED_FOR_BO_QA,
                   start_tagging=f"{TODAY.isoformat()}T10:00:00.000+03:00"),
             _info(assignee="Bob", add_new_company="Co Bob 1",
                   verification_status="need to be update",
