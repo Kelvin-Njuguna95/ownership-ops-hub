@@ -846,6 +846,15 @@
   .sup-sort { padding:4px 10px; font-size:12px; }
   .btn.btn-sm { padding:4px 10px; font-size:12px; }
 
+  /* Draft-request dialog (rendered into the shared side panel). */
+  .sup-draftbox { display:flex; flex-direction:column; gap:12px; }
+  .sup-draftbox textarea { width:100%; min-height:300px; resize:vertical; font-family:inherit; font-size:13px; line-height:1.55; color:var(--ink); padding:13px 14px; border:1px solid var(--border); border-radius:var(--radius-sm); background:var(--soft); }
+  .sup-draftbox textarea:focus { outline:none; border-color:var(--accent); box-shadow:0 0 0 3px rgba(123,104,238,0.18); background:var(--surface); }
+  .sup-draft-acts { display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
+  .sup-draft-acts .btn { text-decoration:none; }
+  .sup-draft-copied { font-size:12.5px; font-weight:700; color:var(--good); }
+  .sup-draft-note { font-size:11.5px; color:var(--muted); line-height:1.5; }
+
   @media (max-width:980px){ .sup-hero{grid-template-columns:1fr;} .sup-2col{grid-template-columns:1fr;} }
   @media (max-width:860px){ .sup-kpis{grid-template-columns:repeat(2,1fr);} }
 
@@ -5065,9 +5074,14 @@ PAGE_RENDERERS.supply = function () {
     </tr>`;
   }).join("");
 
-  // Alert banner — red when critical, amber variant when low. Dismiss / Draft request
-  // buttons are rendered now but inert; wiring lands in prompt 2/2.
-  const alertHtml = status === "red"
+  // Alert banner — red when critical, amber variant when low. Dismissable per-snapshot:
+  // the dismissal is keyed to computed_at, so Dismiss silences *today's* alert only —
+  // a new snapshot (or a changed run-out, which moves computed_at) brings it back.
+  const alertKey = computedAt || rw.runOutDate || "";
+  const alertDismissed = localStorage.getItem("wqa.supplyAlertDismissed") === alertKey;
+  const alertHtml = (alertDismissed && (status === "red" || status === "amber"))
+    ? ""
+    : status === "red"
     ? `<div class="sup-alert red"><span class="ic">${KPI_ICONS.alert}</span><div class="bd"><b>Request more tasks from the client now</b> — at ~${rw.dailyRate.toLocaleString()}/day the unassigned pool (${rw.total.toLocaleString()}) runs out around <b>${_supFmtDate(rw.runOutDate)}</b>. They need 2 days' notice, so request by <b>${_supFmtDate(rw.requestByDate)}</b>.</div><div class="acts"><button class="btn btn-sm" id="supDismiss">Dismiss</button><button class="btn btn-sm sup-draft" id="supDraft">Draft request</button></div></div>`
     : status === "amber"
     ? `<div class="sup-alert amber"><span class="ic">${KPI_ICONS.clock}</span><div class="bd"><b>Supply getting low</b> — ~${runwayTxt} working days left at ~${rw.dailyRate.toLocaleString()}/day. Plan to request more tasks before <b>${_supFmtDate(rw.requestByDate)}</b>.</div><div class="acts"><button class="btn btn-sm" id="supDismiss">Dismiss</button><button class="btn btn-sm sup-draft" id="supDraft">Draft request</button></div></div>`
@@ -5081,7 +5095,7 @@ PAGE_RENDERERS.supply = function () {
         <div class="page-subtitle">Unassigned backlog vs daily throughput — when to ask the client for more tasks (they need 2 days' notice).</div>
       </div>
       <div class="page-head-actions">
-        <!-- Export / Refresh rendered now; wiring lands in prompt 2/2 (inert). -->
+        <!-- Export → CSV of priority tasks; Refresh → re-pull live snapshot (wired below). -->
         <button class="btn" id="supExport">Export</button>
         <button class="btn btn-primary" id="supRefresh">Refresh</button>
       </div>
@@ -5201,6 +5215,59 @@ PAGE_RENDERERS.supply = function () {
     PAGE_RENDERERS.supply();
   }));
 
+  // ---- Export: CSV of the priority tasks in the CURRENT sort order ----
+  document.getElementById("supExport")?.addEventListener("click", () => {
+    const cell = (v) => `"${String(v ?? "").replace(/"/g, '""')}"`;
+    const lines = ["Rank,Task (requested_by),Unassigned,Cohort,Oldest created,Age (days)"];
+    tasks.forEach((t, i) => {
+      lines.push([i + 1, cell(t.requested_by), t.count || 0, cell(t.is_sanctions ? "Sanctions" : "Standard"),
+                  cell(t.oldest_created || ""), t.age_days == null ? "" : t.age_days].join(","));
+    });
+    const blob = new Blob([lines.join("\n")], { type: "text/csv" });
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = `task-supply-priority_${STATE.v2?.date || "today"}.csv`;
+    a.click();
+    URL.revokeObjectURL(a.href);
+  });
+
+  // ---- Refresh: re-pull the live snapshot (reuses runRefresh for button/feedback) ----
+  // Re-fetches daily_aggregates.json the same way loadAll() does, but with a guarded
+  // failure path: on error we throw (runRefresh restores the button) and leave the
+  // existing STATE.v2 untouched — never blank the page.
+  document.getElementById("supRefresh")?.addEventListener("click", () => {
+    const btn = document.getElementById("supRefresh");
+    runRefresh({
+      btn, pillEl: null, pillTextEl: null, idleLabel: "Refresh",
+      action: async () => {
+        const fresh = await readJson("daily_aggregates.json");
+        const v2 = fresh && fresh.aggregates_v2;
+        if (!v2) throw new Error("could not re-read daily_aggregates.json");
+        STATE.agg = fresh;
+        STATE.v2 = v2;
+        STATE.todayV2 = v2;                       // keep the "back to today" anchor in sync
+        STATE.viewDate = v2.date || STATE.viewDate;
+        STATE.viewIsHistorical = false;
+        const ts = v2.computed_at || v2.date || "unknown";
+        STATE.freshness = { label: tsLabel(ts), level: tsLevel(ts) };
+        STATE.supplyDod = undefined;              // force the day-over-day to re-resolve
+        STATE.supplyDodLoading = false;
+        renderFreshness();
+        renderNav();
+        PAGE_RENDERERS.supply();                  // re-render hero/chart/KPIs/alert
+      },
+    });
+  });
+
+  // ---- Dismiss: silence today's alert (persist keyed to computed_at) ----
+  document.getElementById("supDismiss")?.addEventListener("click", () => {
+    localStorage.setItem("wqa.supplyAlertDismissed", alertKey);
+    PAGE_RENDERERS.supply();                       // re-render — banner is now suppressed
+  });
+
+  // ---- Draft request: pre-filled, copyable client request in the side panel ----
+  document.getElementById("supDraft")?.addEventListener("click", () => _supplyDraftRequest(rw, supply));
+
   // Burn-down chart — drawn after innerHTML so the canvas exists; destroys any prior
   // instance first so rate-edit / sort re-renders don't leak or duplicate it.
   _supplyRenderBurndown(rw);
@@ -5209,6 +5276,50 @@ PAGE_RENDERERS.supply = function () {
   // rate-edit / sort re-renders); patches the pill + caption when it resolves.
   _supplyLoadDod();
 };
+
+// Draft-request dialog — a copy/draft aid only (no send/integration; Airtable
+// untouched). Opens the shared side panel with an editable, data-backed request
+// + a Copy button (writes the textarea to the clipboard) and a mailto: link.
+function _supplyDraftRequest(rw, supply) {
+  const top3 = (supply.by_task || []).slice(0, 3)
+    .map(t => `${t.requested_by} (${Number(t.count).toLocaleString()})`).join(", ");
+  const subject = "Ownership QA — request for additional tasks";
+  const body =
+`Hi [Client],
+
+Our unassigned task pool is currently ${rw.total.toLocaleString()} records. At our current pace (~${rw.dailyRate.toLocaleString()}/day across ${rw.agentCount} agents) we expect to run out of assignable work around ${_supFmtDate(rw.runOutDate)}. To avoid a gap, could you please upload the next batch by ${_supFmtDate(rw.requestByDate)} (your usual 2-day lead time)?
+
+Largest pending batches: ${top3 || "—"}.
+
+Thank you,
+Impact Outsourcing — Ownership QA`;
+  const full = `Subject: ${subject}\n\n${body}`;
+  const mailto = `mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+
+  openSidePanel("Draft request", "Copy/paste aid — no message is sent");
+  const cont = document.getElementById("sidePanelBody");
+  if (!cont) return;
+  cont.innerHTML = `
+    <div class="sup-draftbox">
+      <textarea id="supDraftText" spellcheck="false">${esc(full)}</textarea>
+      <div class="sup-draft-acts">
+        <button class="btn btn-primary" id="supDraftCopy">Copy</button>
+        <a class="btn" id="supDraftMail" href="${esc(mailto)}">Open in email…</a>
+        <span class="sup-draft-copied" id="supDraftCopied" hidden>✓ Copied</span>
+      </div>
+      <div class="sup-draft-note">Edit freely before copying. Figures are from the current snapshot (${rw.total.toLocaleString()} unassigned · run-out ${_supFmtDate(rw.runOutDate)}).</div>
+    </div>`;
+  document.getElementById("supDraftCopy")?.addEventListener("click", async () => {
+    const ta = document.getElementById("supDraftText");
+    const txt = ta ? ta.value : full;
+    try {
+      if (navigator.clipboard && navigator.clipboard.writeText) await navigator.clipboard.writeText(txt);
+      else { ta.select(); document.execCommand("copy"); }
+    } catch (_) { try { ta.select(); document.execCommand("copy"); } catch (__) {} }
+    const ok = document.getElementById("supDraftCopied");
+    if (ok) { ok.hidden = false; setTimeout(() => { ok.hidden = true; }, 1800); }
+  });
+}
 
 // -------- BO QA Console --------
 PAGE_RENDERERS.boqa = function () {
