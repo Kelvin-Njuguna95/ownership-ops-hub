@@ -717,53 +717,137 @@
   .ct-heat { display:flex; flex-wrap:wrap; gap:3px; }
   .ct-heat span { width:9px; height:9px; border-radius:2px; }
 
-  /* ---- Task Supply / Runway (Phase 2) ----------------------------------- */
-  .sup-hero { display:grid; grid-template-columns: minmax(260px,1.1fr) 1fr; gap:20px; align-items:stretch; margin-bottom:16px; }
-  .sup-runwaycard { border-radius:var(--radius-md); padding:22px 24px; color:#fff; display:flex; flex-direction:column; justify-content:center; box-shadow:var(--shadow-sm); }
+  /* ---- Task Supply / Runway (redesign — visual layout) ------------------ */
+  /* Header chrome row 2: static VIEW/MONTH chips (left) + freshness chips (right). */
+  .sup-chiprow { display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap; margin:16px 0 22px; }
+  .sup-chips { display:flex; gap:8px; flex-wrap:wrap; }
+  .sup-chip { display:inline-flex; align-items:center; gap:8px; font-size:12.5px; font-weight:700; color:var(--ink); background:var(--surface); border:1px solid var(--border); border-radius:999px; padding:6px 13px; box-shadow:var(--shadow-sm); font-variant-numeric:tabular-nums; }
+  .sup-chip .lbl { color:var(--muted); font-size:10px; text-transform:uppercase; letter-spacing:0.06em; font-weight:700; }
+  .sup-fchip { display:inline-flex; align-items:center; gap:7px; font-size:11.5px; font-weight:600; color:var(--muted); background:var(--soft); border:1px solid var(--border); border-radius:999px; padding:5px 12px; font-variant-numeric:tabular-nums; }
+  .sup-fchip .dot { width:7px; height:7px; border-radius:50%; }
+  .sup-fchip.green .dot { background:var(--good); } .sup-fchip.amber .dot { background:var(--warn); }
+
+  /* KPI cards: uppercase label + tinted icon top-right, big value + status pill, muted subtitle. */
+  .sup-kpis { display:grid; grid-template-columns:repeat(4,1fr); gap:14px; margin-bottom:18px; }
+  .sup-kpi { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius-md); padding:16px 18px; box-shadow:var(--shadow-sm); transition:box-shadow 0.18s ease; }
+  .sup-kpi:hover { box-shadow:var(--shadow-md); }
+  .sup-kpi-top { display:flex; align-items:flex-start; justify-content:space-between; gap:8px; }
+  .sup-kpi .k { font-size:11px; text-transform:uppercase; letter-spacing:0.05em; color:var(--muted); font-weight:700; }
+  .sup-kpi-ico { width:30px; height:30px; border-radius:9px; flex:0 0 auto; display:inline-flex; align-items:center; justify-content:center; }
+  .sup-kpi-ico svg { width:16px; height:16px; }
+  .sup-kpi-ico.k-cyan    { background:#E0F5FB; color:#0691B5; }
+  .sup-kpi-ico.k-red     { background:var(--bad-bg);  color:var(--bad); }
+  .sup-kpi-ico.k-amber   { background:var(--warn-bg); color:var(--warn); }
+  .sup-kpi-ico.k-purple  { background:var(--accent-soft); color:var(--accent); }
+  .sup-kpi-ico.k-neutral { background:var(--soft); color:var(--muted); }
+  .sup-kpi-valrow { display:flex; align-items:center; gap:10px; margin-top:12px; flex-wrap:wrap; }
+  .sup-kpi .v { font-size:28px; font-weight:800; letter-spacing:-0.01em; line-height:1; font-variant-numeric:tabular-nums; }
+
+  /* Shared status pill. */
+  .sup-pill { display:inline-flex; align-items:center; gap:4px; font-size:11px; font-weight:700; padding:3px 9px; border-radius:999px; white-space:nowrap; }
+  .sup-pill.red    { background:var(--bad-bg);  color:var(--bad); }
+  .sup-pill.amber  { background:var(--warn-bg); color:var(--warn); }
+  .sup-pill.green  { background:var(--good-bg); color:var(--good); }
+  .sup-pill.cyan   { background:#E0F5FB; color:#0691B5; }
+  .sup-pill.purple { background:var(--accent-soft); color:var(--accent); }
+
+  /* DoD pill + caption (caption doubles as the TOTAL UNASSIGNED card subtitle). */
+  .sup-dodrow { margin-top:6px; }
+  .sup-dodcap { font-size:11.5px; color:var(--muted); margin:8px 0 0; line-height:1.45; }
+  .sup-dodcap b { color:var(--ink); font-weight:700; }
+  .sup-sub { font-size:11.5px; color:var(--muted); margin-top:8px; line-height:1.45; }
+  .sup-sub b { color:var(--ink); font-weight:700; }
+
+  /* Hero row: ~0.9fr runway card + ~1.6fr burn-down chart card. */
+  .sup-hero { display:grid; grid-template-columns:0.9fr 1.6fr; gap:18px; align-items:stretch; margin-bottom:18px; }
+  .sup-runwaycard { border-radius:var(--radius-md); padding:22px 24px; color:#fff; display:flex; flex-direction:column; justify-content:center; box-shadow:var(--shadow-md); }
   .sup-runwaycard.red   { background:linear-gradient(135deg,#E5384F,#B3142B); }
   .sup-runwaycard.amber { background:linear-gradient(135deg,#C76512,#9A4D08); }
   .sup-runwaycard.green { background:linear-gradient(135deg,#0EA56C,#077A4E); }
-  .sup-runwaycard .lbl { font-size:12px; text-transform:uppercase; letter-spacing:0.06em; opacity:0.85; font-weight:600; }
-  .sup-runwaycard .big { font-size:52px; line-height:1.02; font-weight:800; letter-spacing:-0.02em; margin:4px 0; }
-  .sup-runwaycard .big small { font-size:18px; font-weight:600; opacity:0.9; }
-  .sup-runwaycard .meta { font-size:12.5px; opacity:0.95; margin-top:6px; line-height:1.55; }
-  .sup-runwaycard .meta b { font-weight:700; }
-  .sup-ratebox { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius-md); padding:18px 20px; box-shadow:var(--shadow-sm); }
-  .sup-ratebox .lbl { font-size:12px; text-transform:uppercase; letter-spacing:0.05em; color:var(--muted); font-weight:600; margin-bottom:10px; }
+  .sup-runwaycard .lbl { font-size:12px; text-transform:uppercase; letter-spacing:0.06em; opacity:0.9; font-weight:700; }
+  .sup-runwaycard .big { font-size:54px; line-height:1.02; font-weight:800; letter-spacing:-0.02em; margin:6px 0 2px; }
+  .sup-runwaycard .big small { font-size:17px; font-weight:600; opacity:0.92; }
+  .sup-runwaycard .rwlines { margin-top:16px; display:flex; flex-direction:column; gap:9px; }
+  .sup-runwaycard .rwline { display:flex; gap:8px; align-items:flex-start; font-size:12.5px; line-height:1.45; opacity:0.97; }
+  .sup-runwaycard .rwline b { font-weight:700; }
+  .sup-runwaycard .rwline .ev { font-size:10px; letter-spacing:0.05em; text-transform:uppercase; opacity:0.82; font-weight:700; display:block; margin-bottom:1px; }
+  .sup-runwaycard .overdue { font-weight:800; text-decoration:underline; text-underline-offset:2px; }
+
+  /* Burn-down chart card. */
+  .sup-chartcard { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius-md); padding:16px 18px 12px; box-shadow:var(--shadow-sm); display:flex; flex-direction:column; min-width:0; }
+  .sup-chartcard .ch-head { font-size:11px; text-transform:uppercase; letter-spacing:0.05em; color:var(--muted); font-weight:700; }
+  .sup-chartcard .ch-legend { display:flex; gap:16px; font-size:11px; color:var(--muted); margin:8px 0 2px; }
+  .sup-chartcard .ch-legend .it { display:inline-flex; align-items:center; gap:6px; }
+  .sup-chartcard .ch-legend .ln { width:16px; border-top:2px solid var(--bad); }
+  .sup-chartcard .ch-legend .ln.floor { border-top:2px dashed #9AA3B2; }
+  .sup-chartwrap { position:relative; flex:1 1 auto; min-height:240px; margin-top:6px; }
+
+  /* Generic two-column row (throughput + composition). */
+  .sup-2col { display:grid; grid-template-columns:1fr 1fr; gap:18px; margin-bottom:18px; }
+  .sup-panel-head { font-weight:700; font-size:14px; margin-bottom:4px; }
+  .sup-panel-sub { font-size:12px; color:var(--muted); margin-bottom:10px; }
+
+  /* Throughput assumption (editable rate box). */
+  .sup-ratebox { } /* inherits .panel; nested helpers below */
   .sup-ratebox .row { display:flex; align-items:center; gap:10px; flex-wrap:wrap; font-size:14px; }
-  .sup-ratebox input[type=number] { width:90px; font-family:inherit; font-size:15px; padding:8px 10px; border:1px solid var(--border); border-radius:var(--radius-sm); }
+  .sup-ratebox input[type=number] { width:92px; font-family:inherit; font-size:15px; padding:8px 10px; border:1px solid var(--border); border-radius:var(--radius-sm); }
   .sup-ratebox input[type=number]:focus { outline:none; border-color:var(--accent); box-shadow:0 0 0 3px rgba(123,104,238,0.18); }
-  .sup-ratebox .calc { font-size:13px; color:var(--ink); margin-top:12px; } .sup-ratebox .calc b { font-weight:700; }
-  .sup-ratebox .pooltot { font-size:12.5px; color:var(--muted); margin-top:10px; }
+  .sup-ratebox .calc { font-size:13.5px; color:var(--ink); margin-top:14px; } .sup-ratebox .calc b { font-weight:700; }
+  .sup-ratebox .pooltot { font-size:12.5px; color:var(--muted); margin-top:10px; line-height:1.5; }
   .sup-ratebox .pooltot .num { font-weight:700; color:var(--ink); }
-  .sup-alert { display:flex; align-items:center; gap:12px; padding:13px 18px; border-radius:var(--radius-md); margin-bottom:16px; font-size:13px; }
-  .sup-alert .ic { width:30px; height:30px; border-radius:8px; flex-shrink:0; display:inline-flex; align-items:center; justify-content:center; }
+  .sup-ratebox .hint { font-size:11.5px; color:var(--muted); margin-top:12px; padding-top:10px; border-top:1px solid var(--border); line-height:1.5; }
+
+  /* Pool composition. */
+  .sup-comp { display:flex; height:26px; border-radius:7px; overflow:hidden; border:1px solid var(--border); margin:4px 0 14px; }
+  .sup-comp span { display:block; height:100%; }
+  .sup-complegend { display:flex; flex-direction:column; gap:9px; font-size:12.5px; }
+  .sup-complegend .it { display:flex; align-items:center; gap:9px; color:var(--ink); }
+  .sup-complegend .sw { width:11px; height:11px; border-radius:3px; flex:0 0 auto; }
+  .sup-complegend .nm { flex:1; color:var(--muted); min-width:0; }
+  .sup-complegend .n { font-weight:700; font-variant-numeric:tabular-nums; }
+  .sup-complegend .pc { color:var(--muted); font-variant-numeric:tabular-nums; min-width:44px; text-align:right; }
+
+  /* Alert banner with action buttons. */
+  .sup-alert { display:flex; align-items:center; gap:12px; padding:14px 18px; border-radius:var(--radius-md); margin-bottom:18px; font-size:13px; }
+  .sup-alert .ic { width:32px; height:32px; border-radius:9px; flex-shrink:0; display:inline-flex; align-items:center; justify-content:center; }
   .sup-alert.red   { background:var(--bad-bg);  color:var(--bad);  } .sup-alert.red .ic   { background:rgba(229,56,79,0.18); }
   .sup-alert.amber { background:var(--warn-bg); color:var(--warn); } .sup-alert.amber .ic { background:rgba(199,101,18,0.18); }
   .sup-alert.green { background:var(--good-bg); color:var(--good); } .sup-alert.green .ic { background:rgba(14,165,108,0.18); }
   .sup-alert .bd { flex:1; min-width:0; line-height:1.5; } .sup-alert .bd b { font-weight:700; }
-  .sup-comp { display:flex; height:22px; border-radius:6px; overflow:hidden; border:1px solid var(--border); margin:6px 0 12px; }
-  .sup-comp span { display:block; height:100%; }
-  .sup-complegend { display:flex; flex-wrap:wrap; gap:14px; font-size:12px; color:var(--muted); }
-  .sup-complegend .it { display:inline-flex; align-items:center; gap:6px; } .sup-complegend .sw { width:10px; height:10px; border-radius:3px; }
-  .sup-complegend .it b { color:var(--ink); font-weight:700; }
+  .sup-alert .acts { display:flex; gap:8px; flex-shrink:0; }
+  .btn.sup-draft { background:var(--bad); color:#fff; border:0; font-weight:600; }
+  .btn.sup-draft:hover { background:#cf2238; box-shadow:var(--shadow-md); }
+  .sup-alert.amber .btn.sup-draft { background:var(--warn); } .sup-alert.amber .btn.sup-draft:hover { background:#a8540f; }
+
+  /* Priority tasks table. */
   .sup-table { width:100%; border-collapse:collapse; font-size:13px; }
-  .sup-table th { text-align:left; font-size:11px; text-transform:uppercase; letter-spacing:0.04em; color:var(--muted); font-weight:600; padding:8px 10px; border-bottom:1px solid var(--border); cursor:pointer; user-select:none; }
+  .sup-table th { text-align:left; font-size:10.5px; text-transform:uppercase; letter-spacing:0.04em; color:var(--muted); font-weight:700; padding:8px 10px; border-bottom:1px solid var(--border); }
   .sup-table th.num, .sup-table td.num { text-align:right; }
-  .sup-table td { padding:9px 10px; border-bottom:1px solid var(--border-soft,#EEE); }
-  .sup-table tr.sanc { background:rgba(229,56,79,0.05); }
-  .sup-table tr.sanc td:first-child { box-shadow:inset 3px 0 0 var(--bad); }
-  .sup-badge { display:inline-block; font-size:10.5px; font-weight:700; padding:2px 8px; border-radius:999px; }
-  .sup-badge.sanc { background:var(--bad-bg); color:var(--bad); } .sup-badge.std { background:var(--accent-soft); color:var(--accent); }
-  .sup-kpis { display:grid; grid-template-columns:repeat(4,1fr); gap:12px; margin-bottom:16px; }
-  .sup-kpi { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius-md); padding:14px 16px; box-shadow:var(--shadow-sm); }
-  .sup-kpi .k { font-size:11px; text-transform:uppercase; letter-spacing:0.05em; color:var(--muted); font-weight:600; }
-  .sup-kpi .v { font-size:24px; font-weight:800; letter-spacing:-0.01em; margin-top:3px; }
+  .sup-table th.rankc, .sup-table td.rankc { width:42px; text-align:center; }
+  .sup-table td { padding:11px 10px; border-bottom:1px solid var(--soft); vertical-align:middle; }
+  .sup-table tbody tr:hover { background:var(--soft); }
+  .sup-rank { display:inline-flex; align-items:center; justify-content:center; width:24px; height:24px; border-radius:7px; background:var(--soft); color:var(--muted); font-size:12px; font-weight:700; }
+  .sup-table tr.top3 .sup-rank { background:var(--bad-bg); color:var(--bad); }
+  .sup-taskname { font-weight:600; color:var(--ink); word-break:break-word; }
+  .sup-cntval { font-weight:700; font-variant-numeric:tabular-nums; }
+  .sup-cntbar { height:6px; border-radius:999px; background:var(--soft); margin-top:6px; overflow:hidden; min-width:60px; margin-left:auto; }
+  .sup-cntbar > span { display:block; height:100%; border-radius:999px; background:#0691B5; }
+  .sup-cntbar.hot > span { background:var(--bad); }
+  .sup-cohort { display:inline-flex; align-items:center; gap:7px; font-size:12px; font-weight:600; }
+  .sup-cohort .dot { width:8px; height:8px; border-radius:50%; flex:0 0 auto; }
+  .sup-cohort.sanc .dot { background:var(--bad); } .sup-cohort.sanc { color:var(--bad); }
+  .sup-cohort.std  .dot { background:#0691B5; } .sup-cohort.std { color:var(--ink); }
+  .sup-age .dt { color:var(--muted); font-size:11px; font-weight:500; }
+  .sup-age.hot  { color:var(--bad); font-weight:700; }
+  .sup-age.mid  { color:var(--warn); font-weight:600; }
+  .sup-age.cool { color:var(--muted); }
+  .sup-foot { font-size:12px; color:var(--muted); margin-top:14px; padding-top:11px; border-top:1px solid var(--border); }
+  .sup-foot b { color:var(--ink); font-weight:700; }
+  .sup-sort { padding:4px 10px; font-size:12px; }
   .btn.btn-sm { padding:4px 10px; font-size:12px; }
-  .sup-dodrow { margin-top:6px; }
-  .sup-dodcap { font-size:12px; color:var(--muted); margin:-6px 0 16px; }
-  .sup-dodcap b { color:var(--ink); font-weight:700; }
-  @media (max-width:860px){ .sup-hero{grid-template-columns:1fr;} .sup-kpis{grid-template-columns:repeat(2,1fr);} }
+
+  @media (max-width:980px){ .sup-hero{grid-template-columns:1fr;} .sup-2col{grid-template-columns:1fr;} }
+  @media (max-width:860px){ .sup-kpis{grid-template-columns:repeat(2,1fr);} }
 
   /* ---- New Companies tagging analytics (Phase 12) ----------------------- */
   .nc-live { display:inline-flex; align-items:center; gap:5px; margin-left:8px; font-size:11px; color:var(--good); font-weight:600; }
@@ -2201,6 +2285,8 @@ const KPI_ICONS = {
   percent:  '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="5" x2="5" y2="19"/><circle cx="6.5" cy="6.5" r="2.5"/><circle cx="17.5" cy="17.5" r="2.5"/></svg>',
   octagon:  '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="7.86 2 16.14 2 22 7.86 22 16.14 16.14 22 7.86 22 2 16.14 2 7.86"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>',
   activity: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>',
+  layers:   '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/></svg>',
+  users:    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>',
 };
 
 // -------- Overview --------
@@ -4799,6 +4885,111 @@ function _supplyLoadDod() {
   })();
 }
 
+// "Sun 31" — weekday + day-of-month, EAT. Used for chart x-labels / run-out marker.
+function _supWdDom(iso) { return new Date(iso + "T12:00:00Z").toLocaleDateString("en-GB", { weekday: "short", day: "numeric", timeZone: "UTC" }); }
+// "15 May" — day + short month, EAT. Used for the priority table's oldest-waiting date.
+function _supDayMon(iso) { if (!iso) return ""; return new Date(iso).toLocaleDateString("en-GB", { day: "numeric", month: "short", timeZone: "Africa/Nairobi" }); }
+
+// Burn-down series for the chart: start at today = total, then step forward day by
+// day subtracting dailyRate ONLY on working days (weekends contribute nothing —
+// agents are Mon–Fri, reusing _isWeekendEat), clamped at 0. We render a couple of
+// points past the run-out so the zero-tail and the floor line stay visible. For the
+// live data: Today(Sun 31)=13,034 → Mon 1=4,634 → Tue 2=0 → Wed 3=0 → Thu 4=0.
+function _supplyBurndown(rw) {
+  const total = rw.total, dailyRate = rw.dailyRate;
+  const pts = [];
+  let d = todayEat(), rem = total, runOutIndex = -1;
+  for (let i = 0; i < 30; i++) {
+    if (i > 0 && dailyRate > 0 && !_isWeekendEat(d)) rem = Math.max(0, rem - dailyRate);
+    pts.push({ date: d, value: rem });
+    if (rem <= 0 && runOutIndex < 0) runOutIndex = i;
+    if (runOutIndex >= 0 && i >= runOutIndex + 2 && pts.length >= 5) break;  // ~1–2 points past empty
+    d = _isoAddDays(d, 1);
+  }
+  return { pts, runOutIndex, total, dailyRate };
+}
+
+// Render the burn-down line/area chart into #supBurndown. Destroys any prior instance
+// first (the renderer re-runs on rate edits / sorts, so this guards against leaks /
+// duplicate canvases). The chartjs annotation plugin may not be loaded, so the
+// run-out vertical drop + point data labels are drawn by a small inline plugin.
+function _supplyRenderBurndown(rw) {
+  if (typeof Chart === "undefined") return;
+  const canvas = document.getElementById("supBurndown");
+  if (!canvas) return;
+  destroyChart("supBurndown");
+  const bd = _supplyBurndown(rw);
+  const labels = bd.pts.map((p, i) => i === 0 ? ["Today", _supWdDom(p.date)] : _supWdDom(p.date));
+  const values = bd.pts.map(p => p.value);
+  const color = rw.status === "red" ? "#E5384F" : rw.status === "amber" ? "#C76512" : "#0EA56C";
+  const ctx = canvas.getContext("2d");
+  const grad = ctx.createLinearGradient(0, 0, 0, 240);
+  grad.addColorStop(0, color + "3D");
+  grad.addColorStop(1, color + "05");
+  const ptRadius = values.map((_, i) => i === bd.runOutIndex ? 6 : 3);
+  const ptBg     = values.map((_, i) => i === bd.runOutIndex ? color : "#fff");
+  // Label points up to & including the run-out (13,034 / 4,634 / 0); skip the flat zero-tail.
+  const lastLbl  = bd.runOutIndex >= 0 ? bd.runOutIndex : values.length - 1;
+  const runOutTxt = bd.runOutIndex >= 0 ? _supShortDate(bd.pts[bd.runOutIndex].date).replace(/,/, "") : "";
+
+  const markerPlugin = {
+    id: "supBurndownMarker",
+    afterDatasetsDraw(chart) {
+      const meta = chart.getDatasetMeta(0);
+      const area = chart.chartArea;
+      if (!meta || !area) return;
+      ctx.save();
+      // Point data labels above the pool line.
+      ctx.font = "700 11px -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif";
+      ctx.fillStyle = "#1B2240";
+      ctx.textAlign = "center";
+      for (let i = 0; i <= lastLbl; i++) {
+        const el = meta.data[i]; if (!el) continue;
+        ctx.fillText(values[i].toLocaleString(), el.x, el.y - 11);
+      }
+      // Run-out: dashed vertical drop to the x-axis + a "RUN-OUT {date}" caption.
+      if (bd.runOutIndex >= 0 && meta.data[bd.runOutIndex]) {
+        const x = meta.data[bd.runOutIndex].x;
+        ctx.strokeStyle = color; ctx.lineWidth = 1.5; ctx.setLineDash([4, 4]);
+        ctx.beginPath(); ctx.moveTo(x, area.top); ctx.lineTo(x, area.bottom); ctx.stroke();
+        ctx.setLineDash([]);
+        const right = x > (area.left + area.right) / 2;
+        ctx.textAlign = right ? "right" : "left";
+        ctx.fillStyle = color;
+        ctx.font = "700 10px -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif";
+        ctx.fillText("RUN-OUT " + runOutTxt, right ? x - 7 : x + 7, area.top + 11);
+      }
+      ctx.restore();
+    },
+  };
+
+  STATE.charts["supBurndown"] = new Chart(ctx, {
+    type: "line",
+    data: { labels, datasets: [
+      { label: "Pool remaining", data: values, borderColor: color, backgroundColor: grad, borderWidth: 2.5, fill: true, tension: 0.25, pointRadius: ptRadius, pointHoverRadius: ptRadius.map(r => r + 1), pointBackgroundColor: ptBg, pointBorderColor: color, pointBorderWidth: 2, order: 1 },
+      { label: "1-day floor", data: values.map(() => rw.dailyRate), borderColor: "#9AA3B2", borderWidth: 1.5, borderDash: [5, 4], pointRadius: 0, fill: false, tension: 0, order: 2 },
+    ] },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      layout: { padding: { top: 26, right: 14, left: 2 } },
+      interaction: { mode: "index", intersect: false },
+      plugins: {
+        legend: { display: false },
+        tooltip: { callbacks: { label: c => c.datasetIndex === 0
+          ? `Pool remaining: ${Number(c.parsed.y).toLocaleString()}`
+          : `1-day floor: ${rw.dailyRate.toLocaleString()}` } },
+      },
+      scales: {
+        x: { grid: { display: false }, ticks: { font: { size: 10 }, maxRotation: 0, autoSkip: false } },
+        // Gridlines pinned at 0, the 1-day floor (dailyRate) and the full pool (total).
+        y: { beginAtZero: true, max: rw.total, ticks: { font: { size: 10 }, callback: v => v >= 1000 ? (v / 1000) + "k" : v },
+             afterBuildTicks: axis => { axis.ticks = [{ value: 0 }, { value: rw.dailyRate }, { value: rw.total }]; } },
+      },
+    },
+    plugins: [markerPlugin],
+  });
+}
+
 PAGE_RENDERERS.supply = function () {
   const root = document.getElementById("page-supply");
   const supply = STATE.v2 && STATE.v2.supply;
@@ -4823,6 +5014,21 @@ PAGE_RENDERERS.supply = function () {
 
   const runwayTxt = Number.isFinite(rw.runwayDays) ? rw.runwayDays.toFixed(1) : "∞";
   const status = rw.status;
+  const dt = computedAt ? new Date(computedAt) : new Date();
+  const EAT = { timeZone: "Africa/Nairobi" };
+  // Header chrome dates, all derived from computed_at (in EAT).
+  const eyebrowDate = dt.toLocaleDateString("en-GB", { ...EAT, weekday: "long", day: "numeric", month: "long", year: "numeric" });
+  const eyebrowTime = dt.toLocaleTimeString("en-GB", { ...EAT, hour: "2-digit", minute: "2-digit" });
+  const viewDate    = dt.toLocaleDateString("en-GB", { ...EAT, day: "2-digit", month: "2-digit", year: "numeric" });
+  const monthLabel  = dt.toLocaleDateString("en-GB", { ...EAT, month: "short", year: "numeric" });
+  const cacheStamp  = dt.toLocaleDateString("en-GB", { ...EAT, day: "2-digit", month: "2-digit" }) + " · " + dt.toLocaleTimeString("en-GB", { ...EAT, hour: "2-digit", minute: "2-digit", second: "2-digit" });
+  const ageHrTxt    = refAge == null ? "—" : refAge < 1 ? "<1h" : `${Math.round(refAge)}h`;
+
+  // Runway KPI status pill (text + tint follow rw.status).
+  const runwayPill = status === "red" ? `<span class="sup-pill red">⚠ critical</span>`
+                   : status === "amber" ? `<span class="sup-pill amber">⚠ low</span>`
+                   : `<span class="sup-pill green">healthy</span>`;
+  const overdue = rw.requestByDate && rw.requestByDate < todayEat();
 
   // ---- Pool composition (by_status) ----
   const byStatus = supply.by_status || {};
@@ -4830,8 +5036,11 @@ PAGE_RENDERERS.supply = function () {
   const compSum = compEntries.reduce((s, [, n]) => s + n, 0) || 1;
   const compBar = compEntries.map(([vs, n]) =>
     `<span style="width:${(n / compSum * 100).toFixed(2)}%;background:${_supStatusColor(vs)}" title="${esc(vs)}: ${n.toLocaleString()}"></span>`).join("");
-  const compLegend = compEntries.map(([vs, n]) =>
-    `<span class="it"><span class="sw" style="background:${_supStatusColor(vs)}"></span>${esc(vs === "(none)" ? "no status (fresh upload)" : vs)} <b>${n.toLocaleString()}</b></span>`).join("");
+  const compLegend = compEntries.map(([vs, n]) => {
+    const nm = vs === "(none)" ? "No status (fresh upload)" : vs.charAt(0).toUpperCase() + vs.slice(1);
+    const pc = (n / compSum * 100).toFixed(0);
+    return `<div class="it"><span class="sw" style="background:${_supStatusColor(vs)}"></span><span class="nm">${esc(nm)}</span><span class="n">${n.toLocaleString()}</span><span class="pc">${pc}%</span></div>`;
+  }).join("");
 
   // ---- Priority task table (default order from API = sanctions-then-oldest) ----
   const sort = STATE.supplySort || "priority";
@@ -4839,49 +5048,105 @@ PAGE_RENDERERS.supply = function () {
   if (sort === "count") tasks.sort((a, b) => b.count - a.count);
   else if (sort === "age") tasks.sort((a, b) => (b.age_days || 0) - (a.age_days || 0));
   // "priority" keeps the API order (sanctions-first, then oldest-first).
-  const rows = tasks.map(t => `
-    <tr class="${t.is_sanctions ? "sanc" : ""}">
-      <td>${esc(t.requested_by)}</td>
-      <td class="num">${Number(t.count).toLocaleString()}</td>
-      <td><span class="sup-badge ${t.is_sanctions ? "sanc" : "std"}">${t.is_sanctions ? "Sanctions" : "Standard"}</span></td>
-      <td class="num">${t.age_days == null ? "—" : t.age_days + "d"} <span style="color:var(--muted);font-size:11px">· ${_supFmtDate(t.oldest_created).replace(/ \d{4}$/, "")}</span></td>
-    </tr>`).join("");
-  const truncNote = supply.by_task_truncated ? `<div class="sup-pooltot" style="color:var(--muted);font-size:12px;margin-top:8px">Showing first ${tasks.length} tasks (list truncated).</div>` : "";
+  const maxCount = Math.max(1, ...tasks.map(t => t.count || 0));
+  const maxAge = tasks.reduce((m, t) => Math.max(m, t.age_days || 0), 0);
+  const rows = tasks.map((t, i) => {
+    const top3 = i < 3;                                   // red bar accent for the top 3 in the CURRENT order
+    const barPct = Math.max(3, (t.count || 0) / maxCount * 100);
+    const ageCls = t.age_days == null ? "cool" : t.age_days >= 7 ? "hot" : t.age_days >= 3 ? "mid" : "cool";
+    const ageTxt = t.age_days == null ? "—" : `${t.age_days}d <span class="dt">${esc(_supDayMon(t.oldest_created))}</span>`;
+    return `
+    <tr class="${top3 ? "top3" : ""}${t.is_sanctions ? " sanc" : ""}">
+      <td class="rankc"><span class="sup-rank">${i + 1}</span></td>
+      <td><div class="sup-taskname">${esc(t.requested_by)}</div></td>
+      <td class="num"><div class="sup-cntval">${Number(t.count).toLocaleString()}</div><div class="sup-cntbar${top3 ? " hot" : ""}"><span style="width:${barPct.toFixed(1)}%"></span></div></td>
+      <td><span class="sup-cohort ${t.is_sanctions ? "sanc" : "std"}"><span class="dot"></span>${t.is_sanctions ? "Sanctions" : "Standard"}</span></td>
+      <td class="num sup-age ${ageCls}">${ageTxt}</td>
+    </tr>`;
+  }).join("");
 
+  // Alert banner — red when critical, amber variant when low. Dismiss / Draft request
+  // buttons are rendered now but inert; wiring lands in prompt 2/2.
   const alertHtml = status === "red"
-    ? `<div class="sup-alert red"><span class="ic">${KPI_ICONS.alert}</span><div class="bd"><b>Request more tasks from the client now</b> — at ~${rw.dailyRate.toLocaleString()}/day the unassigned pool (${rw.total.toLocaleString()}) runs out around <b>${_supFmtDate(rw.runOutDate)}</b>. They need 2 days' notice, so request by <b>${_supFmtDate(rw.requestByDate)}</b>.</div></div>`
+    ? `<div class="sup-alert red"><span class="ic">${KPI_ICONS.alert}</span><div class="bd"><b>Request more tasks from the client now</b> — at ~${rw.dailyRate.toLocaleString()}/day the unassigned pool (${rw.total.toLocaleString()}) runs out around <b>${_supFmtDate(rw.runOutDate)}</b>. They need 2 days' notice, so request by <b>${_supFmtDate(rw.requestByDate)}</b>.</div><div class="acts"><button class="btn btn-sm" id="supDismiss">Dismiss</button><button class="btn btn-sm sup-draft" id="supDraft">Draft request</button></div></div>`
     : status === "amber"
-    ? `<div class="sup-alert amber"><span class="ic">${KPI_ICONS.clock}</span><div class="bd"><b>Supply getting low</b> — ~${runwayTxt} working days left. Plan to request more tasks before <b>${_supFmtDate(rw.requestByDate)}</b>.</div></div>`
+    ? `<div class="sup-alert amber"><span class="ic">${KPI_ICONS.clock}</span><div class="bd"><b>Supply getting low</b> — ~${runwayTxt} working days left at ~${rw.dailyRate.toLocaleString()}/day. Plan to request more tasks before <b>${_supFmtDate(rw.requestByDate)}</b>.</div><div class="acts"><button class="btn btn-sm" id="supDismiss">Dismiss</button><button class="btn btn-sm sup-draft" id="supDraft">Draft request</button></div></div>`
     : `<div class="sup-alert green"><span class="ic">${KPI_ICONS.check}</span><div class="bd"><b>Supply healthy</b> — ~${runwayTxt} working days of assignable work left${rw.runOutDate ? ` (projected run-out ${_supFmtDate(rw.runOutDate)})` : ""}.</div></div>`;
 
   root.innerHTML = `
     <div class="page-head">
       <div>
-        <div class="page-eyebrow">Operations &middot; ${esc(nowEat)} EAT<span class="nc-live"><span class="dot"></span>Live &middot; ${esc(refLabel)}</span></div>
-        <h1 class="page-title">Task <em>supply</em></h1>
+        <div class="page-eyebrow">Operations &middot; supply planning &middot; ${esc(eyebrowDate)} &middot; ${esc(eyebrowTime)} EAT<span class="nc-live"><span class="dot"></span>Live</span> &middot; ${esc(refLabel)}</div>
+        <h1 class="page-title">Task supply</h1>
         <div class="page-subtitle">Unassigned backlog vs daily throughput — when to ask the client for more tasks (they need 2 days' notice).</div>
+      </div>
+      <div class="page-head-actions">
+        <!-- Export / Refresh rendered now; wiring lands in prompt 2/2 (inert). -->
+        <button class="btn" id="supExport">Export</button>
+        <button class="btn btn-primary" id="supRefresh">Refresh</button>
+      </div>
+    </div>
+
+    <div class="sup-chiprow">
+      <div class="sup-chips">
+        <!-- VIEW / MONTH are static display-only chips: supply history doesn't exist before
+             today, so there's nothing to navigate to. They become interactive date pickers
+             once ≥2 days of supply snapshots exist (then wire to STATE.viewDate like Overview). -->
+        <span class="sup-chip"><span class="lbl">View</span>📅 ${esc(viewDate)}</span>
+        <span class="sup-chip"><span class="lbl">Month</span>📅 ${esc(monthLabel)}</span>
+      </div>
+      <div class="sup-chips">
+        <span class="sup-fchip green"><span class="dot"></span>Synced ${esc(ageHrTxt)} ago</span>
+        <span class="sup-fchip amber"><span class="dot"></span>Cache from ${esc(cacheStamp)}</span>
       </div>
     </div>
 
     <div class="sup-kpis">
-      <div class="sup-kpi"><div class="k">Total unassigned</div><div class="v">${rw.total.toLocaleString()}</div><div class="sup-dodrow">${_supDodPillHtml(rw.total)}</div></div>
-      <div class="sup-kpi"><div class="k">Runway</div><div class="v" style="color:var(--${status === "red" ? "bad" : status === "amber" ? "warn" : "good"})">${runwayTxt}d</div></div>
-      <div class="sup-kpi"><div class="k">Daily rate</div><div class="v">${rw.dailyRate.toLocaleString()}</div></div>
-      <div class="sup-kpi"><div class="k">Agents</div><div class="v">${rw.agentCount}</div></div>
+      <div class="sup-kpi">
+        <div class="sup-kpi-top"><div class="k">Total unassigned</div><span class="sup-kpi-ico k-cyan">${KPI_ICONS.layers}</span></div>
+        <div class="sup-kpi-valrow"><div class="v">${rw.total.toLocaleString()}</div><span class="sup-dodrow">${_supDodPillHtml(rw.total)}</span></div>
+        ${_supDodCaptionHtml(rw.total)}
+      </div>
+      <div class="sup-kpi">
+        <div class="sup-kpi-top"><div class="k">Runway</div><span class="sup-kpi-ico k-${status === "red" ? "red" : status === "amber" ? "amber" : "neutral"}">${KPI_ICONS.clock}</span></div>
+        <div class="sup-kpi-valrow"><div class="v" style="color:var(--${status === "red" ? "bad" : status === "amber" ? "warn" : "good"})">${runwayTxt} d</div>${runwayPill}</div>
+        <div class="sup-sub">run-out <b>${_supShortDate(rw.runOutDate || todayEat()).replace(/,/, "")}</b> &middot; &le; ${rw.alertDays}d alert</div>
+      </div>
+      <div class="sup-kpi">
+        <div class="sup-kpi-top"><div class="k">Daily rate</div><span class="sup-kpi-ico k-cyan">${KPI_ICONS.activity}</span></div>
+        <div class="sup-kpi-valrow"><div class="v">${rw.dailyRate.toLocaleString()}</div><span class="sup-pill cyan">assignable / day</span></div>
+        <div class="sup-sub"><b>${rw.perAgentRate}</b> / agent &times; <b>${rw.agentCount}</b> agents</div>
+      </div>
+      <div class="sup-kpi">
+        <div class="sup-kpi-top"><div class="k">Agents</div><span class="sup-kpi-ico k-purple">${KPI_ICONS.users}</span></div>
+        <div class="sup-kpi-valrow"><div class="v">${rw.agentCount}</div><span class="sup-pill purple">on shift</span></div>
+        <div class="sup-sub">capacity basis for runway</div>
+      </div>
     </div>
-    ${_supDodCaptionHtml(rw.total)}
 
     <div class="sup-hero">
       <div class="sup-runwaycard ${status}">
-        <div class="lbl">Runway</div>
+        <div class="lbl">⚠ Runway to empty</div>
         <div class="big">${runwayTxt}<small> working days</small></div>
-        <div class="meta">
-          Projected run-out <b>${_supFmtDate(rw.runOutDate)}</b><br>
-          Recommended request-by <b>${_supFmtDate(rw.requestByDate)}</b> (run-out − 2 working days)
+        <div class="rwlines">
+          <div class="rwline">📅 <span><span class="ev">Projected run-out</span><b>${_supFmtDate(rw.runOutDate)}</b></span></div>
+          <div class="rwline">🔔 <span><span class="ev">Request the client by</span><b>${_supFmtDate(rw.requestByDate)}</b>${overdue ? ` <span class="overdue">· now overdue</span>` : ""}</span></div>
         </div>
       </div>
-      <div class="sup-ratebox">
-        <div class="lbl">Throughput assumption</div>
+      <div class="sup-chartcard">
+        <div class="ch-head">Unassigned pool &middot; burning down at ${rw.dailyRate.toLocaleString()} / working day</div>
+        <div class="ch-legend">
+          <span class="it"><span class="ln" style="border-color:var(--${status === "red" ? "bad" : status === "amber" ? "warn" : "good"})"></span>Pool remaining</span>
+          <span class="it"><span class="ln floor"></span>1-day floor</span>
+        </div>
+        <div class="sup-chartwrap"><canvas id="supBurndown"></canvas></div>
+      </div>
+    </div>
+
+    <div class="sup-2col">
+      <div class="panel sup-ratebox">
+        <div class="sup-panel-head">Throughput assumption</div>
+        <div class="sup-panel-sub">Records one agent can assign per working day.</div>
         <div class="row">
           <input type="number" id="supRate" min="1" step="10" value="${rw.perAgentRate}">
           <span>/ agent &times; <b>${rw.agentCount}</b> agents</span>
@@ -4890,33 +5155,32 @@ PAGE_RENDERERS.supply = function () {
         <div class="pooltot">Headline pool <span class="num">${rw.total.toLocaleString()}</span> unassigned
           &middot; support <span class="num">${(supply.unassigned_support || 0).toLocaleString()}</span>
           &middot; io <span class="num">${(supply.unassigned_io || 0).toLocaleString()}</span></div>
-        <div class="pooltot" style="margin-top:4px">Rate is editable and remembered on this device. Alert fires at &le; ${rw.alertDays} working days.</div>
+        <div class="hint">ⓘ Rate is editable and remembered on this device. Alert fires at &le; ${rw.alertDays} working days of runway.</div>
+      </div>
+      <div class="panel">
+        <div class="sup-panel-head">Pool composition</div>
+        <div class="sup-panel-sub">By verification status &middot; ${rw.total.toLocaleString()} records</div>
+        <div class="sup-comp">${compBar}</div>
+        <div class="sup-complegend">${compLegend}</div>
       </div>
     </div>
 
     ${alertHtml}
 
     <div class="panel">
-      <div style="font-weight:700;font-size:14px;margin-bottom:4px">Pool composition</div>
-      <div style="font-size:12px;color:var(--muted);margin-bottom:6px">By verification status across the ${rw.total.toLocaleString()} unassigned records.</div>
-      <div class="sup-comp">${compBar}</div>
-      <div class="sup-complegend">${compLegend}</div>
-    </div>
-
-    <div class="panel">
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
-        <div style="font-weight:700;font-size:14px">Priority tasks <span style="color:var(--muted);font-weight:500;font-size:12px">— sanctions first, then oldest waiting</span></div>
-        <div style="font-size:12px;color:var(--muted)">Sort:
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:10px;flex-wrap:wrap">
+        <div><div class="sup-panel-head" style="margin-bottom:2px">Priority tasks</div><div class="sup-panel-sub" style="margin-bottom:0">Sanctions first, then oldest waiting</div></div>
+        <div style="font-size:12px;color:var(--muted);display:flex;align-items:center;gap:6px">Sort
           <button class="btn btn-sm sup-sort${sort === "priority" ? " btn-primary" : ""}" data-supsort="priority">Priority</button>
           <button class="btn btn-sm sup-sort${sort === "count" ? " btn-primary" : ""}" data-supsort="count">Count</button>
           <button class="btn btn-sm sup-sort${sort === "age" ? " btn-primary" : ""}" data-supsort="age">Age</button>
         </div>
       </div>
       <table class="sup-table">
-        <thead><tr><th>Task (requested by)</th><th class="num">Unassigned</th><th>Cohort</th><th class="num">Oldest waiting</th></tr></thead>
-        <tbody>${rows || `<tr><td colspan="4" style="color:var(--muted);padding:14px">No unassigned tasks in the pool.</td></tr>`}</tbody>
+        <thead><tr><th class="rankc">#</th><th>Task (requested by)</th><th class="num">Unassigned</th><th>Cohort</th><th class="num">Oldest waiting</th></tr></thead>
+        <tbody>${rows || `<tr><td colspan="5" style="color:var(--muted);padding:14px">No unassigned tasks in the pool.</td></tr>`}</tbody>
       </table>
-      ${truncNote}
+      <div class="sup-foot"><b>${(supply.by_task || []).length}</b> task batches &middot; <b>${rw.total.toLocaleString()}</b> unassigned records total &middot; oldest <b>${maxAge}d</b> waiting${supply.by_task_truncated ? ` &middot; <span style="color:var(--warn)">(list truncated)</span>` : ""}</div>
     </div>`;
 
   // ---- events ----
@@ -4936,6 +5200,10 @@ PAGE_RENDERERS.supply = function () {
     STATE.supplySort = b.dataset.supsort;
     PAGE_RENDERERS.supply();
   }));
+
+  // Burn-down chart — drawn after innerHTML so the canvas exists; destroys any prior
+  // instance first so rate-edit / sort re-renders don't leak or duplicate it.
+  _supplyRenderBurndown(rw);
 
   // Kick off the day-over-day lookup once per mount (guarded against refetch on
   // rate-edit / sort re-renders); patches the pill + caption when it resolves.
