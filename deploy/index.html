@@ -4455,6 +4455,11 @@ PAGE_RENDERERS.qa_hourly = function () {
       <div id="qhHeatmap"></div>
       <div class="footer-note">Cells = reviews each QA stamped that EAT hour (source <code>qa_hourly</code>). Tinted per reviewer (shaded by volume) — QA reviewers aren't team-mapped in <code>aggregates_v2</code>. Bordered = peak hour; dashed = idle this hour; striped = future. Window 06:00–23:00 EAT (* = reviews outside it).</div>
     </div>
+    <div class="panel">
+      <h3>QA hourly tagging <span class="meta">team QAs &middot; today</span></h3>
+      <div id="qaTaggingGrid"></div>
+      <div class="footer-note">Tagging by team QAs (from <code>ownership_completions</code>, same source as Agent Hourly Output) — shown here because QAs aren't in the per-agent tagging views. Observation time, EAT hours.</div>
+    </div>
     <div class="tl-drow" style="grid-template-columns:1fr 1fr">
       <div class="panel"><h3>Idle reviewers <span class="meta">${idleN} idle &middot; threshold 60m</span></h3>
         ${idleList.length? idleList.map(r=>`<div class="tl-prow"><span class="task-avatar" style="background:rgba(${QH_RGB[r.idx%QH_RGB.length]},0.5)">${esc(tlInitials(r.name))}</span><span class="who">${esc(r.name)}<span class="s"> &middot; BO QA &middot; ${r.today.toLocaleString()} today &middot; last active ${r.lastHour!=null?String(r.lastHour).padStart(2,'0')+":00":"—"} EAT</span></span><span class="pill-inline ${r.idleHrs>=2?'bad':'warn'}" style="margin-left:auto">idle ~${r.idleHrs}h</span></div>`).join("") : '<div class="small-mono" style="padding:10px 0">No reviewers idle right now — all active within the last hour.</div>'}
@@ -4480,10 +4485,110 @@ PAGE_RENDERERS.qa_hourly = function () {
   document.querySelectorAll("[data-qhnoop]").forEach(b=>b.addEventListener("click",()=>{}));
 
   renderQaHeatmap();
+  renderQaTaggingHeatmap();
   renderCompaniesHourlyGrid();
   // Restore the detail panel in place if a reviewer was selected before this re-render.
   if (STATE.sidePanelOpen && STATE.qhSelectedReviewer) renderQaReviewerDetail();
+
+  // Lazy-load completions for the QA tagging table (loadAll usually fetches it,
+  // but not on direct navigation here). Guarded so a persistent failure doesn't
+  // loop; on success re-render just the tagging grid (keeps chip/side-panel state).
+  const _qhComplReady  = STATE.completions != null;
+  const _qhComplFailed = !_qhComplReady && STATE.completionsDate === (STATE.v2?.date || null);
+  if (!_qhComplReady && !_qhComplFailed && !STATE._qhCompletionsLoading) {
+    STATE._qhCompletionsLoading = true;
+    loadCompletions(STATE.v2?.date || null).finally(() => {
+      STATE._qhCompletionsLoading = false;
+      renderQaTaggingHeatmap();
+    });
+  }
 };
+
+// QA hourly tagging heatmap — team QAs' TAGGING output (not reviews) by EAT hour.
+// QAs aren't roster agents, so their tagging is invisible in the per-agent views;
+// but the completion detector credits completed_by = the tagger (any assignee,
+// incl. QAs) and canonicalAgent() passes unknown names through, so
+// STATE.completions already holds QA-keyed hourly counts. Same source + bucketing
+// as the Agent Hourly Output heatmap. Reuses the .hourly-heatmap grid CSS.
+function renderQaTaggingHeatmap() {
+  const host = document.getElementById("qaTaggingGrid"); if (!host) return;
+
+  // STATE.completions: null = not loaded / load failed.
+  const ready  = STATE.completions != null;
+  const failed = !ready && STATE.completionsDate === (STATE.v2?.date || null);
+  if (!ready) {
+    host.innerHTML = failed
+      ? `<div class="empty-state"><div class="title">Couldn't load tagging data</div>The <code>ownership_completions</code> table could not be read this session.</div>`
+      : `<div class="empty"><span class="spinning-icon">↻</span> Loading tagging data…</div>`;
+    return;
+  }
+
+  // Team QAs from the roster (qa per team; cross-team experts live on the Experts page).
+  const roster = STATE.roster || {};
+  const qaList = [];
+  for (const team in roster) {
+    const qa = roster[team] && roster[team].qa;
+    const nm = qa && (qa.name || (typeof qa === "string" ? qa : null));
+    if (nm) qaList.push({ name: nm, team });
+  }
+
+  const hours = Array.from({ length: 18 }, (_, i) => i + 6);  // 06..23 EAT
+  const rows = [];
+  let gridMax = 0;
+  for (const { name, team } of qaList) {
+    const buckets = STATE.completions[name] || {};
+    const counts = hours.map(h => buckets[h] ?? buckets[String(h)] ?? 0);
+    const total = Object.values(buckets).reduce((a, b) => a + b, 0);  // all 24h
+    if (total === 0) continue;                                        // lead with QAs who tagged
+    const outside = total - counts.reduce((a, b) => a + b, 0);
+    gridMax = Math.max(gridMax, ...counts);
+    rows.push({ name, team, counts, total, outside });
+  }
+  rows.sort((a, b) => b.total - a.total);
+
+  // Empty-state (the common case — QAs usually only review).
+  if (rows.length === 0) {
+    host.innerHTML = `<div class="empty-state"><div class="title">No QA tagging today</div>The QAs only did reviews. When a QA is assigned tagging work, their hourly tagging shows here.</div>`;
+    return;
+  }
+
+  const colSums = hours.map((_, i) => rows.reduce((s, r) => s + r.counts[i], 0));
+  const grand = rows.reduce((s, r) => s + r.total, 0);
+  const grandOutside = rows.reduce((s, r) => s + r.outside, 0);
+  const colMax = Math.max(1, ...colSums);
+  const peakIdx = colSums.indexOf(Math.max(...colSums));
+
+  const cellHtml = (v, h, scale, isPeak) => {
+    if (v === 0) return `<div class="cell z${isPeak ? " peak" : ""}" title="${h}:00 EAT">0</div>`;
+    const alpha = scale === 0 ? 0 : (0.2 + 0.8 * (v / scale)).toFixed(2);
+    return `<div class="cell${isPeak ? " peak" : ""}" style="background:rgba(123,104,238,${alpha});" title="${h}:00 EAT → ${v}">${v}</div>`;
+  };
+  const headers = hours.map((h, i) => `<div class="header${i === peakIdx ? " peak" : ""}">${h}</div>`).join("");
+
+  let html = "";
+  for (const r of rows) {
+    html += `<div class="label">${esc(r.name)}<span style="color:${tlTeamHex(r.team)};font-size:10px;font-weight:700;margin-left:6px">&bull; ${esc(r.team)}</span></div>`;
+    html += r.counts.map((v, i) => cellHtml(v, hours[i], gridMax, i === peakIdx)).join("");
+    const outTip = r.outside > 0 ? ` title="includes ${r.outside} tagged outside 06:00–23:00 EAT"` : "";
+    html += `<div class="cell" style="background:var(--soft);color:var(--ink);font-weight:600;"${outTip}>${r.total}${r.outside > 0 ? "*" : ""}</div>`;
+  }
+  // "All QAs" sum row.
+  html += `<div class="hourly-spacer"></div>`;
+  html += `<div class="label" style="font-weight:600;">All QAs</div>`;
+  html += colSums.map((v, i) => {
+    if (v === 0) return `<div class="cell z${i === peakIdx ? " peak" : ""}" title="${hours[i]}:00 EAT total">0</div>`;
+    const alpha = (0.2 + 0.8 * (v / colMax)).toFixed(2);
+    return `<div class="cell${i === peakIdx ? " peak" : ""}" style="background:rgba(14,165,108,${alpha});" title="${hours[i]}:00 EAT total → ${v}">${v}</div>`;
+  }).join("");
+  const grandTip = grandOutside > 0 ? ` title="includes ${grandOutside} tagged outside 06:00–23:00 EAT"` : "";
+  html += `<div class="cell" style="background:var(--accent);color:#fff;font-weight:600;"${grandTip}>${grand}${grandOutside > 0 ? "*" : ""}</div>`;
+
+  host.innerHTML = `
+    <div class="hourly-heatmap" style="grid-template-columns: 180px repeat(${hours.length}, 1fr) 70px;">
+      <div class="header"></div>${headers}<div class="header">Total</div>
+      ${html}
+    </div>`;
+}
 
 function _qhExport(){
   const D=_qhCompute();
