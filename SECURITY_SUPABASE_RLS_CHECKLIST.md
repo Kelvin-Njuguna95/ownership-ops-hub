@@ -206,14 +206,17 @@ CREATE POLICY "read ownership_task_history" ON ownership_task_history
 The single most important check: every browser-read table must allow SELECT to BOTH
 `anon` and `authenticated`. The committed audit
 [`db/audit_rls_browser_reads.sql`](db/audit_rls_browser_reads.sql) checks all four at
-once. Run it in the SQL editor (or via the service key):
+once. Run it in the SQL editor (or via the service key). Note: a `TO public` policy
+stores `polroles = {0}` (the PUBLIC pseudo-role, OID 0), which covers both `anon` and
+`authenticated` — so the audit detects it **by OID 0**, not the string `'public'`
+(`'0'::regrole` renders as `'-'`, so string-matching `'public'` would false-negative):
 
 ```sql
 WITH browser_tables(t) AS (VALUES
   ('ownership_completions'),('ownership_qa_sampling'),('flow_alerts'),('ownership_task_history'))
 SELECT bt.t AS table_name,
-       bool_or(p.polcmd IN ('r','*') AND ('anon'         = ANY (p.polroles::regrole[]::text[]) OR 'public' = ANY (p.polroles::regrole[]::text[]))) AS anon_can_read,
-       bool_or(p.polcmd IN ('r','*') AND ('authenticated'= ANY (p.polroles::regrole[]::text[]) OR 'public' = ANY (p.polroles::regrole[]::text[]))) AS auth_can_read
+  bool_or(p.polcmd IN ('r','*') AND (0::oid = ANY(p.polroles) OR 'anon'::regrole::oid          = ANY(p.polroles))) AS anon_can_read,
+  bool_or(p.polcmd IN ('r','*') AND (0::oid = ANY(p.polroles) OR 'authenticated'::regrole::oid = ANY(p.polroles))) AS auth_can_read
 FROM browser_tables bt
 LEFT JOIN pg_class c ON c.relname = bt.t
 LEFT JOIN pg_policy p ON p.polrelid = c.oid
