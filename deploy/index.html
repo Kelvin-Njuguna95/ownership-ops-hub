@@ -2402,6 +2402,9 @@ PAGE_RENDERERS.overview = function () {
   const intake = t.relations_support_intake_today || 0;
   const inQA = flowB;
   const completed = t.total_completions_today || 0;
+  // "Completed" node shows records currently set to verification_status = Done
+  // (excludes Valid; per Kelvin 2026-06-01). Key is absent when zero → default 0.
+  const doneNow = (t.counts_by_verification_status || {})["Done"] || 0;
   const flowPct = (n) => taggedTotal > 0 ? (n / taggedTotal * 100) : 0;
   const sanctionsCohort = t.tagged_today_sanctions || 0;
   const flowHtml = `
@@ -2427,9 +2430,9 @@ PAGE_RENDERERS.overview = function () {
         </div>
         <div class="flow-connector">&rarr;</div>
         <div class="flow-node">
-          <div class="flow-count">${completed.toLocaleString()}</div>
+          <div class="flow-count">${doneNow.toLocaleString()}</div>
           <div class="flow-name">Completed</div>
-          <div class="flow-sub">Flow A + C today</div>
+          <div class="flow-sub">set to Done &middot; verification status</div>
         </div>
       </div>
       ${taggedTotal > 0 ? `
