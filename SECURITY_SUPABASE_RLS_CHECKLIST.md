@@ -38,7 +38,7 @@ Four tables were found in the codebase (`db/migrations/001`–`006`, browser rea
 
 | Table | Browser reads | Server writes | Anon access should be |
 |-------|:---:|:---:|---|
-| `ownership_completions` | — | ✓ | none (server-only) |
+| `ownership_completions` | ✓ | ✓ | read-only |
 | `ownership_qa_sampling` | ✓ | ✓ | read-only |
 | `flow_alerts` | ✓ | ✓ | read-only |
 | `ownership_task_history` | ✓ | ✓ | read-only |
@@ -47,7 +47,7 @@ Four tables were found in the codebase (`db/migrations/001`–`006`, browser rea
 
 ### `ownership_completions`
 
-Used by: **server only** — written by `completion_detector.py` via `/rest/v1/ownership_completions`. Not read by the browser (`deploy/index.html` reads it from the cached snapshots in Storage, not from this table).
+Used by: **both** — written by `completion_detector.py` via `/rest/v1/ownership_completions`, AND read directly by the browser. `deploy/index.html`'s `loadCompletions()` calls `fetchAll("ownership_completions", "completed_by", "completed_at")` (paginated `sb.from("ownership_completions")`) to build the Overview "Agent productivity today" scorecard and the Hourly Output heatmap. **Correction (2026-06-01):** an earlier revision of this checklist classified the table as server-only; that was wrong, and migration `007_enable_rls.sql` enabled RLS with no anon policy on that basis, blanking both panels. Fixed in `db/migrations/008_anon_read_ownership_completions.sql`.
 
 Verify RLS is ON:
 ```sql
@@ -55,7 +55,7 @@ SELECT relrowsecurity FROM pg_class WHERE relname = 'ownership_completions';
 -- expect: t
 ```
 
-Verify policies (server-only table: ideally NO anon policy — service_role bypasses RLS):
+Verify policies (browser-readable table: anon should be read-only — a single SELECT policy, no INSERT/UPDATE/DELETE for anon):
 ```sql
 SELECT polname, polcmd, polroles::regrole[], pg_get_expr(polqual, polrelid) AS using_expr
 FROM pg_policy WHERE polrelid = 'ownership_completions'::regclass;
@@ -66,10 +66,14 @@ If RLS is OFF — remediation:
 ALTER TABLE ownership_completions ENABLE ROW LEVEL SECURITY;
 ```
 
-For a server-only table, RLS ON with **NO policies** is the correct, locked-down end
-state — the `service_role` key the pipeline uses bypasses RLS entirely, while `anon`
-gets nothing. Do **not** add an anon SELECT policy here unless the browser starts
-reading this table directly.
+If the table is browser-readable and missing an anon SELECT policy (the 2026-06-01 regression):
+```sql
+CREATE POLICY "anon read ownership_completions" ON ownership_completions
+  FOR SELECT TO anon USING (true);
+```
+
+RLS ON with **only** an anon SELECT policy is the correct end state: the `service_role`
+key the pipeline uses bypasses RLS for writes, while `anon` can read but not write.
 
 ---
 
