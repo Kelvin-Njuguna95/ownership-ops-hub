@@ -31,23 +31,47 @@ never needed for `anon`.
 
 ---
 
+## ⚠️ Rule: browser-read tables must allow SELECT to BOTH `anon` and `authenticated`
+
+**Every table the dashboard reads from the browser must allow SELECT to BOTH the
+`anon` (signed-out) AND `authenticated` (signed-in) roles — simplest is `TO public`,
+which covers both.** The dashboard is used both signed-in and signed-out. A signed-in
+Supabase session runs as the `authenticated` role, which a `TO anon`-only policy does
+**not** cover (and `authenticated` is not a member of `anon`), so a `TO anon`-only
+policy blanks every browser panel for signed-in users. **Verify reads as BOTH roles,
+not just anon.** Writes stay browser-blocked (no write policy; `service_role` bypasses
+RLS), so the read-only intent is preserved.
+
+> **2026-06-01 role-scope correction:** `007_enable_rls.sql` created all SELECT
+> policies `TO anon` only (and `ownership_completions` got none — partially fixed by
+> `008`). Signed-out users worked, but **signed-in users saw blank panels** on every
+> browser-read table. Fixed durably by
+> [`db/migrations/009_public_read_browser_tables.sql`](db/migrations/009_public_read_browser_tables.sql)
+> (`TO public`). Run [`db/audit_rls_browser_reads.sql`](db/audit_rls_browser_reads.sql)
+> after any RLS change to catch a regression — see the Verification section.
+
+---
+
 ## Tables
 
 Four tables were found in the codebase (`db/migrations/001`–`006`, browser reads in
 `deploy/index.html`, server writes via `/rest/v1/...` in the Python pipeline).
 
-| Table | Browser reads | Server writes | Anon access should be |
+All four tables are read by the browser, so each must be **read (public)** — SELECT
+to both `anon` and `authenticated` (see the rule above).
+
+| Table | Browser reads | Server writes | Browser access should be |
 |-------|:---:|:---:|---|
-| `ownership_completions` | — | ✓ | none (server-only) |
-| `ownership_qa_sampling` | ✓ | ✓ | read-only |
-| `flow_alerts` | ✓ | ✓ | read-only |
-| `ownership_task_history` | ✓ | ✓ | read-only |
+| `ownership_completions` | ✓ | ✓ | read (public — anon + authenticated) |
+| `ownership_qa_sampling` | ✓ | ✓ | read (public — anon + authenticated) |
+| `flow_alerts` | ✓ | ✓ | read (public — anon + authenticated) |
+| `ownership_task_history` | ✓ | ✓ | read (public — anon + authenticated) |
 
 ---
 
 ### `ownership_completions`
 
-Used by: **server only** — written by `completion_detector.py` via `/rest/v1/ownership_completions`. Not read by the browser (`deploy/index.html` reads it from the cached snapshots in Storage, not from this table).
+Used by: **both** — written by `completion_detector.py` via `/rest/v1/ownership_completions`, AND read directly by the browser. `deploy/index.html`'s `loadCompletions()` calls `fetchAll("ownership_completions", "completed_by", "completed_at")` (paginated `sb.from("ownership_completions")`) to build the Overview "Agent productivity today" scorecard and the Hourly Output heatmap. **Correction (2026-06-01):** an earlier revision of this checklist classified the table as server-only; that was wrong, and migration `007_enable_rls.sql` enabled RLS with no anon policy on that basis, blanking both panels. Fixed in `db/migrations/008_anon_read_ownership_completions.sql`.
 
 Verify RLS is ON:
 ```sql
@@ -55,10 +79,12 @@ SELECT relrowsecurity FROM pg_class WHERE relname = 'ownership_completions';
 -- expect: t
 ```
 
-Verify policies (server-only table: ideally NO anon policy — service_role bypasses RLS):
+Verify policies (browser-readable table: a single SELECT policy covering BOTH `anon` and
+`authenticated` — i.e. `TO public` — and no INSERT/UPDATE/DELETE for either browser role):
 ```sql
 SELECT polname, polcmd, polroles::regrole[], pg_get_expr(polqual, polrelid) AS using_expr
 FROM pg_policy WHERE polrelid = 'ownership_completions'::regclass;
+-- expect a SELECT (polcmd='r') policy whose polroles includes {public} (or both anon + authenticated)
 ```
 
 If RLS is OFF — remediation:
@@ -66,10 +92,15 @@ If RLS is OFF — remediation:
 ALTER TABLE ownership_completions ENABLE ROW LEVEL SECURITY;
 ```
 
-For a server-only table, RLS ON with **NO policies** is the correct, locked-down end
-state — the `service_role` key the pipeline uses bypasses RLS entirely, while `anon`
-gets nothing. Do **not** add an anon SELECT policy here unless the browser starts
-reading this table directly.
+If the SELECT policy is missing or `TO anon`-only (the 2026-06-01 role-scope regression):
+```sql
+DROP POLICY IF EXISTS "anon read ownership_completions" ON ownership_completions;
+CREATE POLICY "read ownership_completions" ON ownership_completions
+  FOR SELECT TO public USING (true);
+```
+
+RLS ON with **only** a public SELECT policy is the correct end state: the `service_role`
+key the pipeline uses bypasses RLS for writes, while both browser roles can read but not write.
 
 ---
 
@@ -85,10 +116,11 @@ SELECT relrowsecurity FROM pg_class WHERE relname = 'ownership_qa_sampling';
 -- expect: t
 ```
 
-Verify policies (anon should be read-only — a single SELECT policy, no INSERT/UPDATE/DELETE for anon):
+Verify policies (a single SELECT policy covering BOTH `anon` and `authenticated` — `TO public`):
 ```sql
 SELECT polname, polcmd, polroles::regrole[], pg_get_expr(polqual, polrelid) AS using_expr
 FROM pg_policy WHERE polrelid = 'ownership_qa_sampling'::regclass;
+-- expect a SELECT (polcmd='r') policy whose polroles includes {public} (or both anon + authenticated)
 ```
 
 If RLS is OFF — remediation:
@@ -96,10 +128,11 @@ If RLS is OFF — remediation:
 ALTER TABLE ownership_qa_sampling ENABLE ROW LEVEL SECURITY;
 ```
 
-If the table is browser-readable and missing an anon SELECT policy:
+If the SELECT policy is missing or `TO anon`-only:
 ```sql
-CREATE POLICY "anon read" ON ownership_qa_sampling
-  FOR SELECT TO anon USING (true);
+DROP POLICY IF EXISTS "anon read ownership_qa_sampling" ON ownership_qa_sampling;
+CREATE POLICY "read ownership_qa_sampling" ON ownership_qa_sampling
+  FOR SELECT TO public USING (true);
 ```
 
 ---
@@ -115,10 +148,11 @@ SELECT relrowsecurity FROM pg_class WHERE relname = 'flow_alerts';
 -- expect: t
 ```
 
-Verify policies (anon should be read-only — a single SELECT policy, no INSERT/UPDATE/DELETE for anon):
+Verify policies (a single SELECT policy covering BOTH `anon` and `authenticated` — `TO public`):
 ```sql
 SELECT polname, polcmd, polroles::regrole[], pg_get_expr(polqual, polrelid) AS using_expr
 FROM pg_policy WHERE polrelid = 'flow_alerts'::regclass;
+-- expect a SELECT (polcmd='r') policy whose polroles includes {public} (or both anon + authenticated)
 ```
 
 If RLS is OFF — remediation:
@@ -126,10 +160,11 @@ If RLS is OFF — remediation:
 ALTER TABLE flow_alerts ENABLE ROW LEVEL SECURITY;
 ```
 
-If the table is browser-readable and missing an anon SELECT policy:
+If the SELECT policy is missing or `TO anon`-only:
 ```sql
-CREATE POLICY "anon read" ON flow_alerts
-  FOR SELECT TO anon USING (true);
+DROP POLICY IF EXISTS "anon read flow_alerts" ON flow_alerts;
+CREATE POLICY "read flow_alerts" ON flow_alerts
+  FOR SELECT TO public USING (true);
 ```
 
 ---
@@ -145,10 +180,11 @@ SELECT relrowsecurity FROM pg_class WHERE relname = 'ownership_task_history';
 -- expect: t
 ```
 
-Verify policies (anon should be read-only — a single SELECT policy, no INSERT/UPDATE/DELETE for anon):
+Verify policies (a single SELECT policy covering BOTH `anon` and `authenticated` — `TO public`):
 ```sql
 SELECT polname, polcmd, polroles::regrole[], pg_get_expr(polqual, polrelid) AS using_expr
 FROM pg_policy WHERE polrelid = 'ownership_task_history'::regclass;
+-- expect a SELECT (polcmd='r') policy whose polroles includes {public} (or both anon + authenticated)
 ```
 
 If RLS is OFF — remediation:
@@ -156,11 +192,43 @@ If RLS is OFF — remediation:
 ALTER TABLE ownership_task_history ENABLE ROW LEVEL SECURITY;
 ```
 
-If the table is browser-readable and missing an anon SELECT policy:
+If the SELECT policy is missing or `TO anon`-only:
 ```sql
-CREATE POLICY "anon read" ON ownership_task_history
-  FOR SELECT TO anon USING (true);
+DROP POLICY IF EXISTS "anon read ownership_task_history" ON ownership_task_history;
+CREATE POLICY "read ownership_task_history" ON ownership_task_history
+  FOR SELECT TO public USING (true);
 ```
+
+---
+
+## Verification — browser-read role coverage (run after ANY RLS change)
+
+The single most important check: every browser-read table must allow SELECT to BOTH
+`anon` and `authenticated`. The committed audit
+[`db/audit_rls_browser_reads.sql`](db/audit_rls_browser_reads.sql) checks all four at
+once. Run it in the SQL editor (or via the service key):
+
+```sql
+WITH browser_tables(t) AS (VALUES
+  ('ownership_completions'),('ownership_qa_sampling'),('flow_alerts'),('ownership_task_history'))
+SELECT bt.t AS table_name,
+       bool_or(p.polcmd IN ('r','*') AND ('anon'         = ANY (p.polroles::regrole[]::text[]) OR 'public' = ANY (p.polroles::regrole[]::text[]))) AS anon_can_read,
+       bool_or(p.polcmd IN ('r','*') AND ('authenticated'= ANY (p.polroles::regrole[]::text[]) OR 'public' = ANY (p.polroles::regrole[]::text[]))) AS auth_can_read
+FROM browser_tables bt
+LEFT JOIN pg_class c ON c.relname = bt.t
+LEFT JOIN pg_policy p ON p.polrelid = c.oid
+GROUP BY bt.t
+ORDER BY bt.t;
+-- Expect anon_can_read = true AND auth_can_read = true for ALL FOUR rows.
+```
+
+Any row with `false` is a latent "blank panel" bug — for signed-out users if
+`anon_can_read = false`, or signed-in users if `auth_can_read = false` (the 2026-06-01
+regression). **Also reproduce real usage**: read each table via REST as `authenticated`
+(reuse a signed-in access token), or load the production dashboard **while signed in**
+and confirm Overview agent productivity, Hourly Output, the QA pages, Completed Tasks,
+and team alerts all render — testing only the anon path is what let the regression
+through.
 
 ---
 
