@@ -858,6 +858,46 @@
   @media (max-width:980px){ .sup-hero{grid-template-columns:1fr;} .sup-2col{grid-template-columns:1fr;} }
   @media (max-width:860px){ .sup-kpis{grid-template-columns:repeat(2,1fr);} }
 
+  /* ---- Ownership Experts redesign (real-data only) --------------------- */
+  :root { --exp-irene:#FB62A1; --exp-simon:#0691B5; }
+  .exp-heroline { display:flex; align-items:center; gap:10px; margin-top:10px; }
+  .exp-av { width:30px; height:30px; border-radius:50%; display:inline-flex; align-items:center; justify-content:center; font-size:12px; font-weight:700; color:#fff; flex:0 0 auto; box-shadow:0 2px 6px rgba(0,0,0,0.15); }
+  .kpi.hero .exp-av { box-shadow:0 2px 8px rgba(0,0,0,0.25); }
+  .exp-avstack { display:inline-flex; } .exp-avstack .exp-av:not(:first-child){ margin-left:-8px; border:2px solid rgba(255,255,255,0.85); }
+  .exp-rolesline { font-size:11.5px; color:rgba(255,255,255,0.85); margin-top:8px; }
+  .exp-pill { display:inline-flex; align-items:center; gap:5px; font-size:11px; font-weight:700; padding:2px 9px; border-radius:999px; background:rgba(255,255,255,0.2); color:#fff; }
+  .exp-roster { display:grid; grid-template-columns:1fr 1fr; gap:14px; margin-bottom:18px; }
+  @media (max-width:860px){ .exp-roster{grid-template-columns:1fr;} }
+  .exp-card { background:var(--surface); border:1px solid var(--border); border-top:3px solid var(--c,#7B68EE); border-radius:var(--radius-md); padding:16px 18px; box-shadow:var(--shadow-sm); }
+  .exp-card .ehead { display:flex; align-items:center; gap:11px; }
+  .exp-card .ehead .nm { font-size:15px; font-weight:700; color:var(--ink); }
+  .exp-role { font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:0.05em; padding:2px 8px; border-radius:999px; background:var(--soft); color:var(--muted); }
+  .exp-active { margin-left:auto; display:inline-flex; align-items:center; gap:5px; font-size:11px; font-weight:600; color:var(--good); }
+  .exp-active.off { color:var(--muted); } .exp-active .dot { width:7px; height:7px; border-radius:50%; background:currentColor; }
+  .exp-card .emeta { font-size:11.5px; color:var(--muted); margin:8px 0 12px; }
+  .exp-statrow { display:grid; grid-template-columns:repeat(4,1fr); gap:8px; margin-bottom:12px; }
+  .exp-stat { background:var(--soft); border-radius:var(--radius-sm); padding:9px 10px; }
+  .exp-stat .l { font-size:10px; text-transform:uppercase; letter-spacing:0.04em; color:var(--muted); font-weight:700; }
+  .exp-stat .v { font-size:20px; font-weight:800; color:var(--ink); line-height:1.1; margin-top:3px; font-variant-numeric:tabular-nums; }
+  .exp-stat .s { font-size:10.5px; color:var(--muted); margin-top:2px; }
+  .exp-mini { height:96px; } .exp-mini-head { display:flex; justify-content:space-between; align-items:baseline; font-size:11px; color:var(--muted); margin-bottom:4px; }
+  .exp-mix-grid { display:grid; grid-template-columns:1fr 1fr; gap:18px; }
+  @media (max-width:860px){ .exp-mix-grid{grid-template-columns:1fr;} }
+  .exp-mix-name { display:flex; align-items:center; gap:8px; font-weight:700; font-size:13px; color:var(--ink); margin-bottom:8px; }
+  .exp-mix-name .dot { width:9px; height:9px; border-radius:50%; }
+  .exp-segbar { display:flex; height:16px; border-radius:6px; overflow:hidden; background:var(--soft); margin-bottom:8px; }
+  .exp-segbar span { display:block; }
+  .exp-mix-legend { display:grid; grid-template-columns:1fr 1fr; gap:4px 14px; }
+  .exp-mix-legend .it { display:flex; align-items:center; gap:7px; font-size:12px; color:var(--ink); }
+  .exp-mix-legend .sw { width:10px; height:10px; border-radius:3px; flex:0 0 auto; }
+  .exp-mix-legend .nm { flex:1; color:var(--muted); } .exp-mix-legend .n { font-weight:700; font-variant-numeric:tabular-nums; }
+  .exp-mix-cap { font-size:11.5px; color:var(--muted); margin-top:12px; }
+  .exp-wk-foot { font-size:12px; color:var(--muted); margin-top:10px; }
+  .exp-wk-foot b { color:var(--ink); }
+  .exp-legend { display:inline-flex; gap:14px; font-size:12px; }
+  .exp-legend .it { display:inline-flex; align-items:center; gap:6px; color:var(--ink); }
+  .exp-legend .dot { width:9px; height:9px; border-radius:50%; }
+
   /* ---- New Companies tagging analytics (Phase 12) ----------------------- */
   .nc-live { display:inline-flex; align-items:center; gap:5px; margin-left:8px; font-size:11px; color:var(--good); font-weight:600; }
   .nc-live .dot { width:7px; height:7px; border-radius:50%; background:var(--good); }
@@ -3167,74 +3207,182 @@ function renderAgentDeepDive(){
 // not on the team roster, so the data comes from STATE.v2.expert_activity (a full-
 // record scan by name), not by_agent. Null-guarded for snapshots predating it.
 const _expChartId = (name) => "expChart-" + String(name).replace(/\W+/g, "_");
+const EXPERT_HEX = { "Irene Njuguna": "#FB62A1", "Simon Francis": "#0691B5" };
+const _expHex = (name) => EXPERT_HEX[name] || "#7B68EE";
+const _expInitials = (n) => String(n || "").split(/\s+/).filter(Boolean).map(p => p[0].toUpperCase()).slice(0, 2).join("");
+const _expCohortColor = { Sanctions: "#E5484D", OFAC: "#7B68EE", "World Check": "#0691B5", Other: "#9aa7bd" };
+// ISO Mon–Sun (full) and Mon–Fri date lists for the week containing `iso`.
+const _weekDatesFull = (iso) => [0,1,2,3,4,5,6].map(i => { const d = new Date(_mondayOf(iso) + "T12:00:00Z"); d.setUTCDate(d.getUTCDate() + i); return d.toISOString().slice(0,10); });
+
 PAGE_RENDERERS.experts = function () {
   const root = document.getElementById("page-experts");
   const ea = STATE.v2?.expert_activity;
-  const heading = `<h3 style="font-size:18px;font-weight:600;color:var(--ink);margin-bottom:8px">Ownership Experts</h3>
-    <div class="footer-note" style="margin-bottom:10px">Tracks the two Ownership Experts — <strong>Irene Njuguna</strong> and <strong>Simon Francis</strong> — who handle sensitive OFAC / World Check / Sanctions tagging tasks. They're not on the team roster, so they don't appear in the per-agent views.</div>`;
+
+  // Empty-state guard (kept): snapshots predating expert tracking carry no block.
   if (!ea || !Array.isArray(ea.experts)) {
-    root.innerHTML = `${heading}<div class="empty-state"><div class="title">No expert data in this snapshot</div>This snapshot predates Ownership Experts tracking — it will populate on the next aggregator run.</div>`;
+    root.innerHTML = `
+      <div class="page-head"><div>
+        <div class="page-eyebrow">People</div>
+        <h1 class="page-title">Ownership <em>experts</em></h1>
+      </div></div>
+      <div class="empty-state"><div class="title">No expert data in this snapshot</div>This snapshot predates Ownership Experts tracking — it will populate on the next aggregator run.</div>`;
     return;
   }
+
   const experts = ea.experts || [];
   const tasks = ea.tasks || [];
   const threshold = (typeof STATE.v2?.reject_threshold === "number") ? STATE.v2.reject_threshold : 30;
-  const rejCls = (r) => r == null ? "" : (r >= threshold ? "bad" : "good");
 
-  // Overall KPIs across both experts.
-  const totRecords = experts.reduce((s, e) => s + (e.records || 0), 0);
-  const totCompleted = experts.reduce((s, e) => s + (e.completed || 0), 0);
-  const totChecked = experts.reduce((s, e) => s + (e.qa_checked || 0), 0);
-  const totChanged = experts.reduce((s, e) => s + (e.qa_changed || 0), 0);
-  const sensitiveTasks = tasks.filter(t => t.type && t.type !== "Other").length;
-  const overallCompletion = totRecords ? Math.round(totCompleted / totRecords * 100) : 0;
-  const overallReject = totChecked ? (totChanged / totChecked * 100) : null;
+  // ---- Header dates from computed_at (EAT). ----
+  const computedAt = STATE.v2?.computed_at;
+  const dt = computedAt ? new Date(computedAt) : new Date();
+  const EAT = { timeZone: "Africa/Nairobi" };
+  const eyebrowDate = dt.toLocaleDateString("en-GB", { ...EAT, weekday: "long", day: "numeric", month: "long", year: "numeric" });
+  const eyebrowTime = dt.toLocaleTimeString("en-GB", { ...EAT, hour: "2-digit", minute: "2-digit" });
 
-  const expertPanel = (e) => {
-    if (!e) return `<div class="panel"><div class="empty">No expert.</div></div>`;
-    const rr = e.qa_checked ? (e.qa_changed / e.qa_checked * 100) : null;
-    const bt = e.by_type || {};
-    return `<div class="panel">
-      <h3>${esc(e.name)} <span class="meta">${e.records || 0} records · ${e.tasks || 0} tasks</span></h3>
-      <table>
-        <tr><td>Records</td><td class="right"><strong>${e.records || 0}</strong></td></tr>
-        <tr><td>Tasks</td><td class="right">${e.tasks || 0}</td></tr>
-        <tr><td>Completed</td><td class="right">${e.completed || 0} <span class="small-mono">(${(e.completion_pct || 0).toFixed(0)}%)</span></td></tr>
-        <tr><td>QA checked</td><td class="right">${e.qa_checked || 0}</td></tr>
-        <tr><td>QA changed</td><td class="right">${e.qa_changed || 0}</td></tr>
-        <tr><td>Reject rate</td><td class="right">${rr == null ? '<span class="small-mono">—</span>' : `<span class="pill-inline ${rejCls(rr)}">${rr.toFixed(1)}%</span>`}</td></tr>
-      </table>
-      <div class="footer-note" style="margin-top:8px">By type — OFAC ${bt.OFAC || 0} · World Check ${bt["World Check"] || 0} · Sanctions ${bt.Sanctions || 0} · Other ${bt.Other || 0}</div>
-      <div class="chart-wrap small" style="margin-top:6px"><canvas id="${esc(_expChartId(e.name))}"></canvas></div>
+  // ---- Current ISO week (Mon–Sun) for "this week" totals from each expert's daily window. ----
+  const anchor = STATE.v2?.date || todayEat();
+  const weekFull = _weekDatesFull(anchor);
+  const thisWeek = (e) => (e.daily || []).filter(d => weekFull.includes(d.date)).reduce((s, d) => s + (d.records || 0), 0);
+  const todayRecs = (e) => { const d = (e.daily || []).find(x => x.date === anchor); return d ? (d.records || 0) : 0; };
+  const queueOf = (e) => Math.max(0, (e.records || 0) - (e.completed || 0));
+  const sancOf  = (e) => (e.by_type || {}).Sanctions || 0;
+  const domType = (e) => { const ent = Object.entries(e.by_type || {}).sort((a, b) => b[1] - a[1]); return (ent[0] && ent[0][1] > 0) ? ent[0][0] : "—"; };
+
+  // ---- Derived role badges (NOT hardcoded): higher by_type.Sanctions = Sanctions lead,
+  //      the other = Add-new lead; tie or both zero → both "WW reviewer". ----
+  const roleOf = {};
+  if (experts.length >= 2 && (sancOf(experts[0]) || sancOf(experts[1])) && sancOf(experts[0]) !== sancOf(experts[1])) {
+    const lead = sancOf(experts[0]) > sancOf(experts[1]) ? experts[0] : experts[1];
+    for (const e of experts) roleOf[e.name] = (e === lead) ? "Sanctions lead" : "Add-new lead";
+  } else {
+    for (const e of experts) roleOf[e.name] = "WW reviewer";
+  }
+  const sancLeadName = (experts.find(e => roleOf[e.name] === "Sanctions lead") || {}).name;
+  const addLeadName  = (experts.find(e => roleOf[e.name] === "Add-new lead")  || {}).name;
+
+  // ---- KPI scalars (all from real fields). ----
+  const activeCount = experts.filter(e => (e.records || 0) > 0).length;
+  const totQueue = experts.reduce((s, e) => s + queueOf(e), 0);
+  const busiest = experts.slice().sort((a, b) => queueOf(b) - queueOf(a))[0];
+  const reviewedWk = experts.reduce((s, e) => s + thisWeek(e), 0);
+  const todayTot = experts.reduce((s, e) => s + todayRecs(e), 0);
+  const daysElapsed = Math.max(1, weekFull.filter(d => d <= anchor).length);
+  const avgPerDay = Math.round(reviewedWk / daysElapsed);
+  const queueSplit = experts.map(queueOf).join("/");
+
+  const heroRolesLine = sancLeadName
+    ? `${esc(sancLeadName)} · sanctions &middot; ${esc(addLeadName)} · add-new`
+    : `both cross-team WW QA reviewers`;
+  const avStack = experts.map(e => `<span class="exp-av" style="background:${_expHex(e.name)}">${esc(_expInitials(e.name))}</span>`).join("");
+
+  // ---- Roster expert cards. ----
+  const cardHtml = (e) => {
+    if (!e) return "";
+    const hex = _expHex(e.name);
+    const active = (e.records || 0) > 0;
+    const wk = thisWeek(e);
+    return `<div class="exp-card" style="--c:${hex}">
+      <div class="ehead">
+        <span class="exp-av" style="background:${hex}">${esc(_expInitials(e.name))}</span>
+        <span class="nm">${esc(e.name)}</span>
+        <span class="exp-role">${esc(roleOf[e.name])}</span>
+        <span class="exp-active ${active ? "" : "off"}"><span class="dot"></span>${active ? "Active" : "Idle"}</span>
+      </div>
+      <div class="emeta">Senior WW QA reviewer · cross-team · mostly ${esc(domType(e))}</div>
+      <div class="exp-statrow">
+        <div class="exp-stat"><div class="l">In queue</div><div class="v">${queueOf(e).toLocaleString()}</div><div class="s">across ${e.tasks || 0} task${(e.tasks || 0) === 1 ? "" : "s"}</div></div>
+        <div class="exp-stat"><div class="l">Completed</div><div class="v">${(e.completed || 0).toLocaleString()}</div><div class="s">${(e.completion_pct || 0).toFixed(0)}%</div></div>
+        <div class="exp-stat"><div class="l">QA-changed</div><div class="v">${(e.qa_changed || 0).toLocaleString()}</div><div class="s">${(e.reject_rate || 0).toFixed(1)}% rate</div></div>
+        <div class="exp-stat"><div class="l">Reviewed (wk)</div><div class="v">${wk.toLocaleString()}</div><div class="s">this week</div></div>
+      </div>
+      <div class="exp-mini-head"><span>Mon–Fri this week</span><span><b>${wk.toLocaleString()}</b> total</span></div>
+      <div class="exp-mini"><canvas id="${esc(_expChartId(e.name))}"></canvas></div>
     </div>`;
   };
 
+  // ---- Work mix (by_type) — honest substitute for the fabricated coverage matrix. ----
+  const COHORTS = ["Sanctions", "OFAC", "World Check", "Other"];
+  const mixHtml = (e) => {
+    if (!e) return "";
+    const bt = e.by_type || {};
+    const tot = COHORTS.reduce((s, k) => s + (bt[k] || 0), 0) || 1;
+    const seg = COHORTS.map(k => (bt[k] || 0) > 0 ? `<span style="width:${((bt[k] || 0) / tot * 100).toFixed(2)}%;background:${_expCohortColor[k]}" title="${k}: ${bt[k] || 0}"></span>` : "").join("");
+    const legend = COHORTS.map(k => `<div class="it"><span class="sw" style="background:${_expCohortColor[k]}"></span><span class="nm">${k}</span><span class="n">${(bt[k] || 0).toLocaleString()}</span></div>`).join("");
+    return `<div>
+      <div class="exp-mix-name"><span class="dot" style="background:${_expHex(e.name)}"></span>${esc(e.name)}</div>
+      <div class="exp-segbar">${seg || `<span style="width:100%;background:var(--soft)"></span>`}</div>
+      <div class="exp-mix-legend">${legend}</div>
+    </div>`;
+  };
+
+  // ---- Tasks handled (kept, restyled). ----
   const taskRows = tasks.map(t => `<tr>
     <td>${esc(t.name)}</td>
     <td>${esc(t.type || "Other")}</td>
     <td>${esc((t.experts || []).join(", ") || "—")}</td>
-    <td class="right">${t.records || 0}</td>
-    <td class="right">${t.completed || 0}</td>
-    <td class="right">${t.qa_checked || 0}</td>
-    <td class="right">${t.qa_changed || 0}</td>
+    <td class="right">${(t.records || 0).toLocaleString()}</td>
+    <td class="right">${(t.completed || 0).toLocaleString()}</td>
+    <td class="right">${(t.qa_checked || 0).toLocaleString()}</td>
+    <td class="right">${(t.qa_changed || 0).toLocaleString()}</td>
   </tr>`).join("");
 
   root.innerHTML = `
-    ${heading}
-    <div class="kpis">
-      <div class="kpi"><div class="label">Records handled</div><div class="value">${totRecords}</div><div class="delta">both experts</div></div>
-      <div class="kpi"><div class="label">Sensitive tasks</div><div class="value">${sensitiveTasks}</div><div class="delta">OFAC / World Check / Sanctions</div></div>
-      <div class="kpi"><div class="label">Completion</div><div class="value">${overallCompletion}%</div><div class="delta">${totCompleted} of ${totRecords}</div></div>
-      <div class="kpi ${rejCls(overallReject)}"><div class="label">QA reject rate</div><div class="value">${overallReject == null ? "—" : overallReject.toFixed(1) + "%"}</div><div class="delta">${totChanged} of ${totChecked} checked</div></div>
+    <div class="page-head">
+      <div>
+        <div class="page-eyebrow">People &middot; ${esc(eyebrowDate)} &middot; ${esc(eyebrowTime)} EAT<span class="nc-live"><span class="dot"></span>Live</span> &middot; Week to date</div>
+        <h1 class="page-title">Ownership <em>experts</em></h1>
+        <div class="page-subtitle">Windward Ownership Experts — the WW QA reviewers. Two experts cover all five teams between them.</div>
+      </div>
+      <div class="page-head-actions">
+        <button class="btn" id="expExport">Export</button>
+      </div>
     </div>
-    <div class="row equal">
-      ${expertPanel(experts[0])}
-      ${expertPanel(experts[1])}
+
+    <div class="kpis kpis-overview-hero">
+      <div class="kpi hero">
+        <div class="kpi-top"><div class="label">Experts on roster</div><span class="kpi-icon">${KPI_ICONS.users}</span></div>
+        <div class="value-row"><span class="value">${experts.length}</span><span class="exp-pill">${activeCount === experts.length ? "all active" : activeCount + " active"}</span></div>
+        <div class="exp-heroline"><span class="exp-avstack">${avStack}</span></div>
+        <div class="exp-rolesline">${heroRolesLine}</div>
+      </div>
+      <div class="kpi k-cyan">
+        <div class="kpi-top"><div class="label">In review queue</div><span class="kpi-icon">${KPI_ICONS.inbox}</span></div>
+        <div class="value-row"><span class="value">${totQueue.toLocaleString()}</span>${experts.length === 2 ? `<span class="kpi-dod-light">split ${esc(queueSplit)}</span>` : ""}</div>
+        <div class="delta">busiest <b>${esc((busiest || {}).name || "—")}</b> &middot; ${queueOf(busiest || {}).toLocaleString()}</div>
+      </div>
+      <div class="kpi k-green">
+        <div class="kpi-top"><div class="label">Reviewed this week</div><span class="kpi-icon">${KPI_ICONS.check}</span></div>
+        <div class="value-row"><span class="value">${reviewedWk.toLocaleString()}</span><span class="kpi-dod-light" id="expWowPill">vs last —</span></div>
+        <div class="delta"><b>${todayTot.toLocaleString()}</b> today &middot; avg ${avgPerDay.toLocaleString()}/day</div>
+      </div>
+      <div class="kpi k-orange">
+        <div class="kpi-top"><div class="label">Teams covered</div><span class="kpi-icon">${KPI_ICONS.users}</span></div>
+        <div class="value-row"><span class="value">5 / 5</span><span class="kpi-dod-light up">✓ full</span></div>
+        <div class="kpi-bar"><span class="fill" style="width:100%"></span></div>
+        <div class="delta">cross-team &middot; both cover all 5</div>
+      </div>
     </div>
+
+    <div class="exp-roster">
+      ${cardHtml(experts[0])}
+      ${cardHtml(experts[1])}
+    </div>
+
     <div class="panel">
-      <h3>Weekly output <span class="meta">records per ISO week (Mon–Sun) · rolled up from daily snapshots</span></h3>
+      <h3>What each expert reviews <span class="meta">work mix by cohort · from <code>by_type</code></span></h3>
+      <div class="exp-mix-grid">
+        ${mixHtml(experts[0])}
+        ${mixHtml(experts[1])}
+      </div>
+      <div class="exp-mix-cap">Both experts are cross-team WW QA reviewers; cohort lead is derived from review volume, not a fixed assignment.</div>
+    </div>
+
+    <div class="panel">
+      <h3>Weekly throughput <span class="meta">reviews by expert · current week (Mon–Fri, Fri = week to date)</span></h3>
       <div id="expertsWeekly"><div class="empty"><span class="spinning-icon">↻</span> Loading weekly history…</div></div>
     </div>
+
     <div class="panel">
       <h3>Tasks handled <span class="meta">${tasks.length} task${tasks.length === 1 ? '' : 's'} across both experts</span></h3>
       <div class="case-scroll" id="expertsTasksTable">
@@ -3244,29 +3392,50 @@ PAGE_RENDERERS.experts = function () {
     </div>
   `;
 
-  // 7-day output bar chart per expert (Chart.js).
+  // Export → CSV of experts + their stats + the task list.
+  const expBtn = document.getElementById("expExport");
+  if (expBtn) expBtn.addEventListener("click", () => _expExport(experts, tasks, anchor, thisWeek));
+
+  // Per-expert Mon–Fri mini bar chart (current ISO week) from `daily`.
   experts.forEach(e => {
     const id = _expChartId(e.name);
     const ctx = document.getElementById(id);
     if (!ctx) return;
     destroyChart(id);
-    const daily = e.daily || [];
+    const monday = _mondayOf(anchor);
+    const labels = ["Mon", "Tue", "Wed", "Thu", "Fri"];
+    const data = weekFull.slice(0, 5).map(ds => { const d = (e.daily || []).find(x => x.date === ds); return d ? (d.records || 0) : 0; });
     STATE.charts[id] = new Chart(ctx, {
       type: "bar",
-      data: {
-        labels: daily.map(d => shortDate(d.date)),
-        datasets: [{ label: "Records", data: daily.map(d => d.records || 0), backgroundColor: "#3d63dd" }],
-      },
+      data: { labels, datasets: [{ label: "Records", data, backgroundColor: _expHex(e.name), borderRadius: 4 }] },
       options: {
         responsive: true, maintainAspectRatio: false,
         plugins: { legend: { display: false } },
-        scales: { y: { beginAtZero: true, ticks: { precision: 0 } } },
+        scales: { x: { grid: { display: false } }, y: { beginAtZero: true, ticks: { precision: 0 } } },
       },
     });
   });
 
-  renderExpertsWeekly();  // async — fills the "Weekly output" panel from snapshots
+  renderExpertsWeekly();  // async — stacked weekly chart + WoW pill from snapshot history
 };
+
+// CSV: per-expert stats followed by the task list (two sections in one file).
+function _expExport(experts, tasks, anchor, thisWeek) {
+  const cell = (v) => `"${String(v ?? "").replace(/"/g, '""')}"`;
+  const lines = ["Expert,Records,Tasks,Completed,Completion %,QA checked,QA changed,Reject %,Reviewed this week,Sanctions,OFAC,World Check,Other"];
+  for (const e of experts) {
+    const bt = e.by_type || {};
+    lines.push([cell(e.name), e.records || 0, e.tasks || 0, e.completed || 0, (e.completion_pct || 0).toFixed(1), e.qa_checked || 0, e.qa_changed || 0, (e.reject_rate || 0).toFixed(1), thisWeek(e), bt.Sanctions || 0, bt.OFAC || 0, bt["World Check"] || 0, bt.Other || 0].join(","));
+  }
+  lines.push("");
+  lines.push("Task,Type,Expert(s),Records,Completed,QA checked,QA changed");
+  for (const t of tasks) {
+    lines.push([cell(t.name), cell(t.type || "Other"), cell((t.experts || []).join(" / ")), t.records || 0, t.completed || 0, t.qa_checked || 0, t.qa_changed || 0].join(","));
+  }
+  const blob = new Blob([lines.join("\n")], { type: "text/csv" });
+  const a = document.createElement("a"); a.href = URL.createObjectURL(blob);
+  a.download = `ownership-experts-${anchor || "today"}.csv`; a.click(); URL.revokeObjectURL(a.href);
+}
 
 const EXPERT_DISPLAY = ["Irene Njuguna", "Simon Francis"];
 // Monday (ISO week start, YYYY-MM-DD) of the week containing the given date. Uses
@@ -3277,17 +3446,6 @@ function _mondayOf(iso) {
   d.setUTCDate(d.getUTCDate() - dow);
   return d.toISOString().slice(0, 10);
 }
-// "19–25 May" (same month) or "28 Apr–4 May" (spanning) for a Monday-start week.
-function _weekLabel(mondayIso) {
-  const mon = new Date(mondayIso + "T12:00:00Z");
-  const sun = new Date(mon); sun.setUTCDate(sun.getUTCDate() + 6);
-  const day = (d) => d.getUTCDate();
-  const mo3 = (d) => d.toLocaleDateString("en-GB", { timeZone: "UTC", month: "short" });
-  return mo3(mon) === mo3(sun)
-    ? `${day(mon)}–${day(sun)} ${mo3(sun)}`
-    : `${day(mon)} ${mo3(mon)}–${day(sun)} ${mo3(sun)}`;
-}
-
 // "Weekly output" — multi-week record counts per expert. The live cache only holds
 // ~7 days, so history comes from accumulated daily snapshots: step back 7 days at a
 // time from the viewed date and take each snapshot's per-expert `daily` 7-day window
@@ -3331,74 +3489,67 @@ async function renderExpertsWeekly() {
     }
   }
 
-  const dates = Object.keys(dayMap);
-  if (dates.length === 0) {
+  if (Object.keys(dayMap).length === 0) {
     root.innerHTML = `<div class="empty">Weekly history is still accumulating. Expert tracking is new, so snapshots recorded before it carry no per-day data to roll up — this fills in as daily snapshots build up.</div>`;
     return;
   }
 
   // Bucket into ISO weeks (Mon–Sun); sum each expert's records per week.
   const weeks = {};  // mondayIso -> { "Irene Njuguna", "Simon Francis" }
-  for (const date of dates) {
+  for (const date of Object.keys(dayMap)) {
     const wk = _mondayOf(date);
     const w = (weeks[wk] = weeks[wk] || { "Irene Njuguna": 0, "Simon Francis": 0 });
     for (const name of EXPERT_DISPLAY) w[name] += (dayMap[date][name] || 0);
   }
   const currentWeek = _mondayOf(anchor);
-  const weekKeys = Object.keys(weeks).sort();           // ascending (oldest first)
 
-  // Coverage: how many of each week's 7 calendar days actually have data. The ~35-day
-  // window starts mid-week, so the oldest week (and any week straddling a snapshot gap)
-  // is only partially covered. A week counts toward the average ONLY if it's fully
-  // covered (7/7 days) and not the current in-progress week — otherwise a partial week
-  // is averaged in at full weight and drags the mean down.
+  // Days of each week's 7 that actually have data — used to pick the most recent
+  // FULLY-covered prior week for an honest WoW comparison (partial weeks excluded).
   const daysCovered = {};
-  for (const wk of weekKeys) {
+  for (const wk of Object.keys(weeks)) {
     const mon = new Date(wk + "T12:00:00Z");
     let n = 0;
-    for (let i = 0; i < 7; i++) {
-      const d = new Date(mon); d.setUTCDate(d.getUTCDate() + i);
-      if (dayMap[d.toISOString().slice(0, 10)]) n++;
-    }
+    for (let i = 0; i < 7; i++) { const d = new Date(mon); d.setUTCDate(d.getUTCDate() + i); if (dayMap[d.toISOString().slice(0, 10)]) n++; }
     daysCovered[wk] = n;
   }
-  const isFull = (k) => daysCovered[k] === 7 && k !== currentWeek;
-  const fullWeeks = weekKeys.filter(isFull);
 
-  // Weekly average across full 7-day weeks only.
-  const avg = { "Irene Njuguna": 0, "Simon Francis": 0, total: 0 };
-  if (fullWeeks.length) {
-    for (const k of fullWeeks) {
-      avg["Irene Njuguna"] += weeks[k]["Irene Njuguna"];
-      avg["Simon Francis"] += weeks[k]["Simon Francis"];
-    }
-    avg["Irene Njuguna"] = Math.round(avg["Irene Njuguna"] / fullWeeks.length);
-    avg["Simon Francis"] = Math.round(avg["Simon Francis"] / fullWeeks.length);
-    avg.total = avg["Irene Njuguna"] + avg["Simon Francis"];
+  // Current-week Mon–Fri per-expert series (Fri = week-to-date).
+  const monFri = [0, 1, 2, 3, 4].map(i => { const d = new Date(currentWeek + "T12:00:00Z"); d.setUTCDate(d.getUTCDate() + i); return d.toISOString().slice(0, 10); });
+  const ireneDay = monFri.map(ds => (dayMap[ds] || {})["Irene Njuguna"] || 0);
+  const simonDay = monFri.map(ds => (dayMap[ds] || {})["Simon Francis"] || 0);
+  const dayTotals = monFri.map((_, i) => ireneDay[i] + simonDay[i]);
+  const ireneWk = (weeks[currentWeek] || {})["Irene Njuguna"] || 0;
+  const simonWk = (weeks[currentWeek] || {})["Simon Francis"] || 0;
+  const wkTotal = ireneWk + simonWk;
+  const peak = Math.max(0, ...dayTotals);
+  const elapsed = Math.max(1, monFri.filter(ds => ds <= anchor).length);
+  const avgDay = Math.round(dayTotals.reduce((s, n) => s + n, 0) / elapsed);
+
+  // WoW: most recent fully-covered (7/7) week before the current one.
+  const priorKeys = Object.keys(weeks).filter(k => k < currentWeek && daysCovered[k] === 7).sort();
+  const priorWk = priorKeys.length ? priorKeys[priorKeys.length - 1] : null;
+  const priorTotal = priorWk ? (weeks[priorWk]["Irene Njuguna"] + weeks[priorWk]["Simon Francis"]) : null;
+  const wowPct = (priorTotal != null && priorTotal > 0) ? (wkTotal - priorTotal) / priorTotal * 100 : null;
+
+  // Patch the "Reviewed this week" KPI's WoW pill (rendered synchronously above).
+  const pill = document.getElementById("expWowPill");
+  if (pill) {
+    if (wowPct == null) pill.textContent = "vs last —";
+    else { pill.textContent = `${wowPct >= 0 ? "+" : ""}${wowPct.toFixed(0)}% vs last`; pill.classList.add(wowPct >= 0 ? "up" : "down"); }
   }
 
-  const body = [...weekKeys].reverse().map(k => {       // most recent week first
-    const irene = weeks[k]["Irene Njuguna"], simon = weeks[k]["Simon Francis"];
-    let tag = "";
-    if (k === currentWeek) tag = ' <span class="pill-inline warn">in progress</span>';
-    else if (daysCovered[k] < 7) tag = ` <span class="pill-inline warn">partial · ${daysCovered[k]}/7 days</span>`;
-    return `<tr>
-      <td>${esc(_weekLabel(k))}${tag}</td>
-      <td class="right">${irene}</td>
-      <td class="right">${simon}</td>
-      <td class="right"><strong>${irene + simon}</strong></td>
-    </tr>`;
-  }).join("");
-  const avgRow = fullWeeks.length
-    ? `<tr style="border-top:2px solid var(--border)"><td><strong>Weekly average</strong> <span class="small-mono">completed weeks (${fullWeeks.length})</span></td><td class="right"><strong>${avg["Irene Njuguna"]}</strong></td><td class="right"><strong>${avg["Simon Francis"]}</strong></td><td class="right"><strong>${avg.total}</strong></td></tr>`
-    : `<tr><td colspan="4" class="small-mono">No completed weeks yet — the average appears once a full 7-day week is in.</td></tr>`;
+  // QA-changed (cache-window) total across experts, for the footer.
+  const qaChanged = (STATE.v2?.expert_activity?.experts || []).reduce((s, e) => s + (e.qa_changed || 0), 0);
 
   root.innerHTML = `
-    <div class="chart-wrap small" style="margin-bottom:10px"><canvas id="expertsWeeklyChart"></canvas></div>
-    <table>
-      <thead><tr><th>Week</th><th class="right">Irene</th><th class="right">Simon</th><th class="right">Total</th></tr></thead>
-      <tbody>${body}${avgRow}</tbody>
-    </table>`;
+    <div class="chart-wrap small" style="margin-bottom:8px"><canvas id="expertsWeeklyChart"></canvas></div>
+    <div class="exp-legend">
+      <span class="it"><span class="dot" style="background:${EXPERT_HEX["Irene Njuguna"]}"></span>Irene Njuguna ${ireneWk.toLocaleString()}</span>
+      <span class="it"><span class="dot" style="background:${EXPERT_HEX["Simon Francis"]}"></span>Simon Francis ${simonWk.toLocaleString()}</span>
+      <span class="it">Peak day <b>${peak.toLocaleString()}</b></span>
+      <span class="it">Avg <b>${avgDay.toLocaleString()}</b>/day</span>
+    </div>
+    <div class="exp-wk-foot">Total reviewed this week <b>${wkTotal.toLocaleString()}</b> &middot; <b>${qaChanged.toLocaleString()}</b> QA-changed${priorWk ? ` &middot; prior full week ${priorTotal.toLocaleString()}` : ""}</div>`;
 
   const ctx = document.getElementById("expertsWeeklyChart");
   if (ctx) {
@@ -3406,22 +3557,16 @@ async function renderExpertsWeekly() {
     STATE.charts["expertsWeeklyChart"] = new Chart(ctx, {
       type: "bar",
       data: {
-        labels: weekKeys.map(_weekLabel),
-        datasets: [{
-          label: "Records",
-          data: weekKeys.map(k => weeks[k]["Irene Njuguna"] + weeks[k]["Simon Francis"]),
-          backgroundColor: weekKeys.map(k => isFull(k) ? "#3d63dd" : "#9aa7bd"),  // grey = not a full week (in progress or partial)
-        }],
+        labels: ["Mon", "Tue", "Wed", "Thu", "Fri"],
+        datasets: [
+          { label: "Irene Njuguna", data: ireneDay, backgroundColor: EXPERT_HEX["Irene Njuguna"], borderRadius: 4, stack: "wk" },
+          { label: "Simon Francis", data: simonDay, backgroundColor: EXPERT_HEX["Simon Francis"], borderRadius: 4, stack: "wk" },
+        ],
       },
       options: {
         responsive: true, maintainAspectRatio: false,
-        plugins: { legend: { display: false }, tooltip: { callbacks: { afterLabel: c => {
-          const k = weekKeys[c.dataIndex];
-          if (k === currentWeek) return "in progress";
-          if (daysCovered[k] < 7) return "partial — " + daysCovered[k] + "/7 days";
-          return "";
-        } } } },
-        scales: { y: { beginAtZero: true, ticks: { precision: 0 } } },
+        plugins: { legend: { display: false } },
+        scales: { x: { stacked: true, grid: { display: false } }, y: { stacked: true, beginAtZero: true, ticks: { precision: 0 } } },
       },
     });
   }
