@@ -1825,6 +1825,14 @@ const STATE = {
   // Source: Supabase REST → ownership_completions table (NOT hourly_buckets).
   completions: null,
   completionsDate: null,  // the EAT date STATE.completions was loaded for
+  // QA Reviewer × hour heatmap buckets, sourced from OBSERVATION time
+  // (ownership_qa_sampling.reviewed_at — append-only, first-write-wins) rather
+  // than the re-stampable Airtable qa_status_ts that aggregates_v2.qa_hourly
+  // buckets by. Shape: {qa_name: {hour: count}}; null = not loaded / load failed;
+  // {} = loaded but zero reviews. Mirrors STATE.completions' contract.
+  qaReviewHours: null,
+  qaReviewHoursDate: null,  // the EAT date STATE.qaReviewHours was loaded for
+  teamLeaders: null,        // Set of lowercased team-leader names (config/roster.json.team_leaders) — excluded from QA aggregations
 };
 
 // ============================================================================
@@ -1943,6 +1951,75 @@ async function loadCompletions(dateStr) {
   }
 }
 
+// Per-QA hourly REVIEW counts for the given EAT day, by OBSERVATION time —
+// ownership_qa_sampling.reviewed_at (the first poll cycle the detector saw a
+// verdict, written first-write-wins and never overwritten). This replaces the
+// re-stampable Airtable qa_status_ts that aggregates_v2.compute_qa_hourly buckets
+// by (qa_status_ts gets bumped to the Done/Valid finalization moment, which
+// bunches the heatmap at midday/evening and drops the morning). Same observation-
+// time switch PRs #138/#140 made for Agent Hourly Output → ownership_completions.
+//
+// Stores STATE.qaReviewHours = {qa_name: {hour: count}}; {} when zero rows;
+// leaves it null on query failure (renderer distinguishes loading from failed).
+// A review = qa_status in ('approve','changed'); team leaders are excluded to
+// match aggregate_v2's qa_exclude. reviewed_at is timestamptz UTC; the day bounds
+// are the EAT calendar day expressed in UTC, identical to loadCompletions.
+async function loadQaReviewHours(dateStr) {
+  STATE.qaReviewHoursDate = dateStr;
+  STATE.qaReviewHours = null;
+  if (!dateStr) return;
+  const start = new Date(`${dateStr}T00:00:00+03:00`);
+  const end   = new Date(start);
+  end.setUTCDate(end.getUTCDate() + 1);
+
+  // Team-leader exclude set (lowercased names). Captured at boot in loadAll;
+  // re-read here defensively in case this runs before loadAll populated it.
+  let exclude = STATE.teamLeaders;
+  if (!exclude) {
+    const rj = await readJson("config/roster.json");
+    exclude = new Set(((rj?.team_leaders) || [])
+      .map(e => String((e && e.name) || e || "").trim().toLowerCase())
+      .filter(Boolean));
+    STATE.teamLeaders = exclude;
+  }
+
+  // Paginate via .range() (CLAUDE.md: a bare .limit() silently caps at 1000).
+  // Order by the unique airtable_record_id — a whole poll cycle shares one
+  // reviewed_at, so ordering by reviewed_at would tie across a 1000-row page
+  // edge (same reasoning as loadQaSampling). Dedupe by record id into a Map.
+  const byId = new Map();
+  try {
+    for (let page = 0; page < 50; page++) {
+      const { data, error } = await sb.from("ownership_qa_sampling")
+        .select("airtable_record_id,qa_assignee,reviewed_at,qa_status")
+        .gte("reviewed_at", start.toISOString())
+        .lt("reviewed_at",  end.toISOString())
+        .order("airtable_record_id", { ascending: true })
+        .range(page * 1000, page * 1000 + 999);
+      if (error) { console.error("loadQaReviewHours:", error); STATE.qaReviewHours = null; return; }
+      if (!data || !data.length) break;
+      for (const r of data) byId.set(r.airtable_record_id, r);
+      if (data.length < 1000) break;
+    }
+  } catch (e) {
+    console.error("loadQaReviewHours:", e);
+    STATE.qaReviewHours = null;
+    return;
+  }
+
+  const out = {};
+  for (const r of byId.values()) {
+    if (r.qa_status !== "approve" && r.qa_status !== "changed") continue;  // a review = a verdict
+    const qa = (r.qa_assignee || "").trim();
+    if (!qa || exclude.has(qa.toLowerCase())) continue;
+    // QA names here already match qa_reviewers/by_qa keys — do NOT run them
+    // through canonicalAgent (that maps tagging agents, not QA reviewers).
+    const eatHour = (new Date(r.reviewed_at).getUTCHours() + 3) % 24;
+    (out[qa] = out[qa] || {})[eatHour] = (out[qa][eatHour] || 0) + 1;
+  }
+  STATE.qaReviewHours = out;
+}
+
 // Load the full ownership_task_history ledger (PR #70 + #71). Paginated via
 // .range() — a single .limit() would silently cap at 1,000 rows. Cached on
 // STATE so re-renders and drawer opens don't refetch.
@@ -2048,7 +2125,18 @@ async function listFiles(pattern) {
 async function loadAll() {
   STATE.audit  = await readJson("ww_audit_log.json");
   STATE.agg    = await readJson("daily_aggregates.json");
-  STATE.roster = (await readJson("config/roster.json"))?.teams || STATE.audit?.roster || {};
+  const _rosterJson = await readJson("config/roster.json");
+  STATE.roster = _rosterJson?.teams || STATE.audit?.roster || {};
+  // Team leaders aren't QA reviewers — their verdicts are excluded from every QA
+  // aggregation server-side (aggregate_v2._load_team_leaders → qa_exclude). The
+  // client QA-review heatmap must apply the SAME exclusion to match. Left null
+  // when the roster read failed (transient fetch error), so loadQaReviewHours
+  // re-reads it rather than silently excluding nobody for the whole session.
+  STATE.teamLeaders = _rosterJson
+    ? new Set((_rosterJson.team_leaders || [])
+        .map(e => String((e && e.name) || e || "").trim().toLowerCase())
+        .filter(Boolean))
+    : null;
   STATE.v2     = STATE.agg?.aggregates_v2 || null;
   STATE.legacy = STATE.agg ? { by_agent: STATE.agg.by_agent || {}, by_team: STATE.agg.by_team || {}, totals: STATE.agg.totals || {}, date: STATE.agg.date } : null;
 
@@ -2062,6 +2150,11 @@ async function loadAll() {
   // the ownership_completions Supabase table — true per-record completion
   // timestamps, not the batch-clustered start_tagging field.
   await loadCompletions(STATE.v2?.date || null);
+
+  // QA Reviewer × hour heatmap buckets, by observation time (reviewed_at).
+  // Preloaded here (like completions) so direct navigation to QA Hourly Output
+  // renders with data; the page also lazy-loads as a fallback.
+  await loadQaReviewHours(STATE.v2?.date || null);
 
   // Load cache (for 7-day intake trend on Daily Intake page).
   // Union of cache/recent_p* (ownership work) and cache/intake_p* (today's intake), deduped by id.
@@ -4313,12 +4406,26 @@ const QH_RGB = ["123,104,238","6,145,181","14,165,108","249,148,59","229,56,79",
 // from STATE.v2 on each call so every surface stays in sync (no cached drift).
 function _qhCompute(){
   const v2 = STATE.v2 || null;
-  const qh = v2?.qa_hourly || {};
+  // Hourly buckets now come from OBSERVATION time (STATE.qaReviewHours, built from
+  // ownership_qa_sampling.reviewed_at) instead of the re-stampable v2.qa_hourly
+  // (Airtable qa_status_ts). See loadQaReviewHours + PRs #138/#140. by_qa /
+  // qa_reviewers (approval %, turnaround, backlog) stay sourced from aggregates_v2.
+  const qh = STATE.qaReviewHours || {};
+  const reviewReady   = STATE.qaReviewHours != null;
+  const reviewDateOk  = STATE.qaReviewHoursDate === (v2?.date || null);
+  const reviewFailed  = !reviewReady && reviewDateOk && !STATE._qhReviewHoursLoading;
+  const reviewLoading = !reviewReady && !reviewFailed;   // not yet attempted, or in-flight
   const byqa = v2?.by_qa || {};
   const meta = {}; (v2?.qa_reviewers || []).forEach(r=>{ meta[r.name]=r; });
   const hours = Array.from({length:18},(_,i)=>i+6);            // 06..23 EAT business window
   const currentHour = _eatHour(v2?.computed_at);
-  const reviewers = Object.keys(qh).map((name,_i)=>{
+  // Reviewer rows = union of observed-review names and aggregates_v2 QA reviewers,
+  // so a reviewer observed today still appears even if absent from qa_reviewers,
+  // and a qa_reviewers entry with no observed review today renders an all-zero row.
+  // by_qa is used for per-row stats via lookup, not as a row source (avoids pulling
+  // in backlog-only QAs who didn't review).
+  const names = Array.from(new Set([...Object.keys(qh), ...Object.keys(meta)]));
+  const reviewers = names.map((name)=>{
     const buckets = qh[name] || {};
     const counts = hours.map(h => buckets[h] ?? buckets[String(h)] ?? 0);
     const today = Object.values(buckets).reduce((a,b)=>a+b,0);  // all 24h
@@ -4341,7 +4448,9 @@ function _qhCompute(){
     r.idle   = !r.active && r.lastHour!=null && workHours;
     r.idleHrs= (r.idle && currentHour!=null && r.lastHour!=null) ? (currentHour - r.lastHour) : 0;
   });
-  return { v2, hours, currentHour, workHours, reviewers, colSums, peakIdx };
+  const reviewedToday = reviewers.reduce((s,r)=>s+r.today,0);   // observed reviews (all 24h), team leaders excluded
+  return { v2, hours, currentHour, workHours, reviewers, colSums, peakIdx,
+           reviewReady, reviewFailed, reviewLoading, reviewedToday };
 }
 
 PAGE_RENDERERS.qa_hourly = function () {
@@ -4353,7 +4462,12 @@ PAGE_RENDERERS.qa_hourly = function () {
   if(!v2){ root.innerHTML = noDataHtml("aggregates_v2 not in daily_aggregates.json — run aggregate_v2.py"); return; }
 
   const hasHourly = D.reviewers.length>0;
-  const reviewed  = v2.qa_today_all?.reviewed ?? 0;
+  // "Reviews today" is now the observation-time grand total (sum of observed
+  // reviews across reviewers), NOT v2.qa_today_all.reviewed (which buckets by the
+  // re-stamped qa_status_ts and under-counts / mis-times). reviewedStr shows "…"
+  // while the reviewed_at buckets are still loading.
+  const reviewed    = D.reviewedToday;
+  const reviewedStr = D.reviewLoading ? "…" : reviewed.toLocaleString();
   const totalRev  = D.reviewers.length;
   const activeN   = D.reviewers.filter(r=>r.active).length;
   const idleN     = D.reviewers.filter(r=>r.idle).length;
@@ -4413,7 +4527,7 @@ PAGE_RENDERERS.qa_hourly = function () {
         <div class="page-subtitle">
           Per-QA &times; per-hour heatmap — who's reviewing right now, who's idle.
           <span class="dot-sep">&middot;</span><span class="num">${totalRev}</span> reviewers
-          <span class="dot-sep">&middot;</span><span class="num">${reviewed.toLocaleString()}</span> reviews today${peakHour!=null?`<span class="dot-sep">&middot;</span>Peak ${String(peakHour).padStart(2,'0')}:00`:""}
+          <span class="dot-sep">&middot;</span><span class="num">${reviewedStr}</span> reviews today${peakHour!=null?`<span class="dot-sep">&middot;</span>Peak ${String(peakHour).padStart(2,'0')}:00`:""}
         </div>
       </div>
       <div class="page-head-actions">
@@ -4427,7 +4541,7 @@ PAGE_RENDERERS.qa_hourly = function () {
     <div class="kpis kpis-overview-hero">
       <div class="kpi hero">
         <div class="kpi-top"><div class="label">Reviews today</div><span class="kpi-icon">${KPI_ICONS.check}</span></div>
-        <div class="value-row"><span class="value">${reviewed.toLocaleString()}</span>${dod}</div>
+        <div class="value-row"><span class="value">${reviewedStr}</span>${dod}</div>
         <div class="kpi-trend">${miniBars}</div>
         <div class="ct-foot">${totalRev} reviewers &middot; <span class="num">${activeN}</span> active &middot; <span class="num">${idleN}</span> idle</div>
       </div>
@@ -4451,9 +4565,9 @@ PAGE_RENDERERS.qa_hourly = function () {
       </div>
     </div>
     <div class="panel">
-      <div class="tl-list-head"><h2>Reviewer &times; hour heatmap <span class="meta">today</span></h2><span class="meta"><b>${reviewed.toLocaleString()}</b> reviews &middot; ${totalRev} reviewers${peakHour!=null?` &middot; peak ${String(peakHour).padStart(2,'0')}:00 (${peakRate})`:""} &middot; now ${curRate}/h</span></div>
+      <div class="tl-list-head"><h2>Reviewer &times; hour heatmap <span class="meta">today</span></h2><span class="meta"><b>${reviewedStr}</b> reviews &middot; ${totalRev} reviewers${peakHour!=null?` &middot; peak ${String(peakHour).padStart(2,'0')}:00 (${peakRate})`:""} &middot; now ${curRate}/h</span></div>
       <div id="qhHeatmap"></div>
-      <div class="footer-note">Cells = reviews each QA stamped that EAT hour (source <code>qa_hourly</code>). Tinted per reviewer (shaded by volume) — QA reviewers aren't team-mapped in <code>aggregates_v2</code>. Bordered = peak hour; dashed = idle this hour; striped = future. Window 06:00–23:00 EAT (* = reviews outside it).</div>
+      <div class="footer-note">Cells = reviews each QA was first observed completing that EAT hour — observation time from <code>ownership_qa_sampling.reviewed_at</code> (append-only, first-seen), NOT the re-stampable Airtable <code>qa_status_ts</code>. Counts are floored to the first successful poll cycle after a gap (≈5-min cadence), so a burst during a failed-poll stretch lands at the next cycle. Tinted per reviewer (shaded by volume) — QA reviewers aren't team-mapped in <code>aggregates_v2</code>. Bordered = peak hour; dashed = idle this hour; striped = future. Window 06:00–23:00 EAT (* = reviews outside it).</div>
     </div>
     <div class="panel">
       <h3>QA hourly tagging <span class="meta">team QAs &middot; today</span></h3>
@@ -4500,6 +4614,20 @@ PAGE_RENDERERS.qa_hourly = function () {
     loadCompletions(STATE.v2?.date || null).finally(() => {
       STATE._qhCompletionsLoading = false;
       renderQaTaggingHeatmap();
+    });
+  }
+
+  // Lazy-load the observation-time review buckets that drive the heatmap +
+  // headline + KPIs. loadAll preloads these, but direct navigation / a date
+  // change can land here before they're ready. Guarded so a failure doesn't
+  // loop; on completion re-render the whole page (headline/KPIs depend on it).
+  const _qhRevReady  = STATE.qaReviewHours != null;
+  const _qhRevFailed = !_qhRevReady && STATE.qaReviewHoursDate === (STATE.v2?.date || null);
+  if (!_qhRevReady && !_qhRevFailed && !STATE._qhReviewHoursLoading) {
+    STATE._qhReviewHoursLoading = true;
+    loadQaReviewHours(STATE.v2?.date || null).finally(() => {
+      STATE._qhReviewHoursLoading = false;
+      PAGE_RENDERERS.qa_hourly();
     });
   }
 };
@@ -4602,8 +4730,18 @@ function _qhExport(){
 function renderQaHeatmap(){
   const host=document.getElementById("qhHeatmap"); if(!host) return;
   const D=_qhCompute();
-  if(!D.reviewers.length){
-    host.innerHTML = `<div class="empty-state"><div class="title">No QA reviews recorded yet</div>No QA set a record to approve/changed for <strong>${esc(D.v2?.date||"—")}</strong> yet.</div>`;
+  // Observation-time buckets (ownership_qa_sampling.reviewed_at) load async.
+  if(D.reviewLoading){
+    host.innerHTML = `<div class="empty"><span class="spinning-icon">↻</span> Loading reviewer activity…</div>`;
+    return;
+  }
+  if(D.reviewFailed){
+    host.innerHTML = `<div class="empty-state"><div class="title">Couldn't load reviewer activity</div>The <code>ownership_qa_sampling</code> table could not be read this session.</div>`;
+    return;
+  }
+  // Loaded but no observed reviews today (or no reviewers at all).
+  if(!D.reviewers.length || D.reviewers.every(r=>r.today===0)){
+    host.innerHTML = `<div class="empty-state"><div class="title">No QA reviews recorded yet</div>No QA review was observed for <strong>${esc(D.v2?.date||"—")}</strong> yet.</div>`;
     return;
   }
   const view = STATE.qhFilters?.view || "all";
