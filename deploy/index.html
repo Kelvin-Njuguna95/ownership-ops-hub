@@ -1832,10 +1832,12 @@ const STATE = {
   // {} = loaded but zero reviews. Mirrors STATE.completions' contract.
   qaReviewHours: null,
   qaReviewHoursDate: null,  // the EAT date STATE.qaReviewHours was loaded for
-  // Observation-time today totals {reviewed,changed} (same rows as qaReviewHours
-  // buckets). null = not loaded / failed; {reviewed:0,changed:0} on loaded-zero.
-  // Used by BO QA Console + QA Performance so their "reviewed today" matches the
-  // QA Hourly Output heatmap instead of the re-stamped qa_status_ts snapshot.
+  // Observation-time today totals (same rows as qaReviewHours buckets):
+  // {reviewed, changed, reviewedSanctions, changedSanctions, reviewedNonSanctions,
+  // changedNonSanctions} — the sanctions parts sum back to reviewed/changed. null =
+  // not loaded / failed; zeros on loaded-zero. Used by BO QA Console + QA Performance
+  // so their "reviewed today" (and the sanctions-cohort totals) match the QA Hourly
+  // Output heatmap instead of the re-stamped qa_status_ts snapshot.
   qaReviewToday: null,
   teamLeaders: null,        // Set of lowercased team-leader names (config/roster.json.team_leaders) — excluded from QA aggregations
 };
@@ -1997,7 +1999,12 @@ async function loadQaReviewHours(dateStr) {
   try {
     for (let page = 0; page < 50; page++) {
       const { data, error } = await sb.from("ownership_qa_sampling")
-        .select("airtable_record_id,qa_assignee,reviewed_at,qa_status")
+        // reqby_s/reqby_io pull requested_by out of raw_payload via JSON arrows
+        // (light — avoids fetching the whole payload). Sanctions = a name rule on
+        // requested_by (extract_v2.is_sanctions: 'sanction' substring). raw_payload
+        // is support-keyed even for io rows (detector remaps io→support field ids),
+        // so reqby_s is populated for both; reqby_io is a belt-and-braces coalesce.
+        .select("airtable_record_id,qa_assignee,reviewed_at,qa_status,reqby_s:raw_payload->>fldlPkvV6BiE7glLZ,reqby_io:raw_payload->>fldnkt2u2LGVTc0eY")
         .gte("reviewed_at", start.toISOString())
         .lt("reviewed_at",  end.toISOString())
         .order("airtable_record_id", { ascending: true })
@@ -2016,6 +2023,8 @@ async function loadQaReviewHours(dateStr) {
 
   const out = {};
   let reviewed = 0, changed = 0;   // observation-time today totals (same rows as the buckets)
+  let reviewedSanctions = 0, changedSanctions = 0;          // sub-split by sanctions name rule
+  let reviewedNonSanctions = 0, changedNonSanctions = 0;    // (sums back to reviewed/changed)
   for (const r of byId.values()) {
     if (r.qa_status !== "approve" && r.qa_status !== "changed") continue;  // a review = a verdict
     const qa = (r.qa_assignee || "").trim();
@@ -2025,10 +2034,16 @@ async function loadQaReviewHours(dateStr) {
     const eatHour = (new Date(r.reviewed_at).getUTCHours() + 3) % 24;
     (out[qa] = out[qa] || {})[eatHour] = (out[qa][eatHour] || 0) + 1;
     reviewed++;
-    if (r.qa_status === "changed") changed++;
+    const isChanged = r.qa_status === "changed";
+    if (isChanged) changed++;
+    // Sanctions = the same dashboard-wide rule as extract_v2.is_sanctions:
+    // 'sanction' (case-insensitive substring) in requested_by.
+    const isSanc = /sanction/i.test(r.reqby_s || r.reqby_io || "");
+    if (isSanc) { reviewedSanctions++; if (isChanged) changedSanctions++; }
+    else        { reviewedNonSanctions++; if (isChanged) changedNonSanctions++; }
   }
   STATE.qaReviewHours = out;
-  STATE.qaReviewToday = { reviewed, changed };
+  STATE.qaReviewToday = { reviewed, changed, reviewedSanctions, changedSanctions, reviewedNonSanctions, changedNonSanctions };
 }
 
 // Load the full ownership_task_history ledger (PR #70 + #71). Paginated via
@@ -5848,6 +5863,12 @@ function _renderBoqaPage(){
   const changedToday =_obsTot?_obsTot.changed :(qaToday.changed||0);
   const obsLoading=_obsTot==null;                  // for "…" display + banner false-fire guard
   const reviewedStr=obsLoading?"…":reviewedToday.toLocaleString();
+  // Sanctions-cohort today totals from observation time (requested_by name rule via
+  // STATE.qaReviewToday), falling back to the qa_status_ts snapshot only while loading.
+  const sancInsp=_obsTot?_obsTot.reviewedSanctions:(t.qa_inspected_today_sanctions||0);
+  const sancChg =_obsTot?_obsTot.changedSanctions :(t.qa_changed_today_sanctions||0);
+  const sancInspStr=obsLoading?"…":(sancInsp||0).toLocaleString();
+  const sancChgStr =obsLoading?"…":(sancChg||0).toLocaleString();
   const backlog=t.bo_qa_backlog||0;
   const validToday=(t.valid_today_support||0)+(t.valid_today_io||0);
   // all-time reviewer aggregates
@@ -5957,10 +5978,10 @@ function _renderBoqaPage(){
     <div class="bq-3col">
       <div class="panel"><h3>Hourly intake &amp; review <span class="meta">from reviewed_at (observed)</span></h3><div id="bqHourly"></div></div>
       <div class="panel"><h3>Comment distribution <span class="meta">flagged records</span></h3>${_bqDonut()}</div>
-      <div class="panel"><h3>Sanctions cohort <span class="meta">today sanctions inspected: ${t.qa_inspected_today_sanctions||0}</span></h3>
+      <div class="panel"><h3>Sanctions cohort <span class="meta">today sanctions inspected: ${sancInspStr}</span></h3>
         <div class="bq-sanc-row head"><span>Reviewer</span><span>Reviews</span><span>Approval</span><span>Median TAT</span></div>
         ${reviewers.slice(0,6).map(r=>`<div class="bq-sanc-row"><span>${esc(r.name)}</span><span class="num">${(r.reviews||0).toLocaleString()}</span><span>${(r.approval_pct||0).toFixed(0)}%</span><span>${r.median_review_time_hours!=null?r.median_review_time_hours.toFixed(1)+"h":"—"}</span></div>`).join("")}
-        <div class="bq-pfoot">Per-reviewer sanctions split isn't tracked — showing review leaders (all-time). Sanctions inspected today (aggregate): <span class="num">${t.qa_inspected_today_sanctions||0}</span> · changed <span class="num">${t.qa_changed_today_sanctions||0}</span>.</div>
+        <div class="bq-pfoot">Per-reviewer sanctions split isn't tracked — showing review leaders (all-time). Sanctions inspected today (observed · <code>reviewed_at</code>, first-seen; ≈5-min poll cadence so a burst after a failed poll lands at the next cycle): <span class="num">${sancInspStr}</span> · changed <span class="num">${sancChgStr}</span>.</div>
       </div>
     </div>`;
 
