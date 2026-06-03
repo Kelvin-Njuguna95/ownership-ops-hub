@@ -1832,6 +1832,11 @@ const STATE = {
   // {} = loaded but zero reviews. Mirrors STATE.completions' contract.
   qaReviewHours: null,
   qaReviewHoursDate: null,  // the EAT date STATE.qaReviewHours was loaded for
+  // Observation-time today totals {reviewed,changed} (same rows as qaReviewHours
+  // buckets). null = not loaded / failed; {reviewed:0,changed:0} on loaded-zero.
+  // Used by BO QA Console + QA Performance so their "reviewed today" matches the
+  // QA Hourly Output heatmap instead of the re-stamped qa_status_ts snapshot.
+  qaReviewToday: null,
   teamLeaders: null,        // Set of lowercased team-leader names (config/roster.json.team_leaders) — excluded from QA aggregations
 };
 
@@ -1967,6 +1972,7 @@ async function loadCompletions(dateStr) {
 async function loadQaReviewHours(dateStr) {
   STATE.qaReviewHoursDate = dateStr;
   STATE.qaReviewHours = null;
+  STATE.qaReviewToday = null;   // {reviewed,changed} today totals — kept in lockstep with qaReviewHours
   if (!dateStr) return;
   const start = new Date(`${dateStr}T00:00:00+03:00`);
   const end   = new Date(start);
@@ -1996,7 +2002,7 @@ async function loadQaReviewHours(dateStr) {
         .lt("reviewed_at",  end.toISOString())
         .order("airtable_record_id", { ascending: true })
         .range(page * 1000, page * 1000 + 999);
-      if (error) { console.error("loadQaReviewHours:", error); STATE.qaReviewHours = null; return; }
+      if (error) { console.error("loadQaReviewHours:", error); STATE.qaReviewHours = null; STATE.qaReviewToday = null; return; }
       if (!data || !data.length) break;
       for (const r of data) byId.set(r.airtable_record_id, r);
       if (data.length < 1000) break;
@@ -2004,10 +2010,12 @@ async function loadQaReviewHours(dateStr) {
   } catch (e) {
     console.error("loadQaReviewHours:", e);
     STATE.qaReviewHours = null;
+    STATE.qaReviewToday = null;
     return;
   }
 
   const out = {};
+  let reviewed = 0, changed = 0;   // observation-time today totals (same rows as the buckets)
   for (const r of byId.values()) {
     if (r.qa_status !== "approve" && r.qa_status !== "changed") continue;  // a review = a verdict
     const qa = (r.qa_assignee || "").trim();
@@ -2016,8 +2024,11 @@ async function loadQaReviewHours(dateStr) {
     // through canonicalAgent (that maps tagging agents, not QA reviewers).
     const eatHour = (new Date(r.reviewed_at).getUTCHours() + 3) % 24;
     (out[qa] = out[qa] || {})[eatHour] = (out[qa][eatHour] || 0) + 1;
+    reviewed++;
+    if (r.qa_status === "changed") changed++;
   }
   STATE.qaReviewHours = out;
+  STATE.qaReviewToday = { reviewed, changed };
 }
 
 // Load the full ownership_task_history ledger (PR #70 + #71). Paginated via
@@ -4397,6 +4408,18 @@ function _eatHour(iso){
   try{ const p=new Intl.DateTimeFormat("en-GB",{timeZone:"Africa/Nairobi",hour:"2-digit",hour12:false}).formatToParts(new Date(iso)).find(x=>x.type==="hour"); return p? (parseInt(p.value,10)%24) : null; }
   catch(e){ return null; }
 }
+// Observation-time review totals for today (ownership_qa_sampling.reviewed_at),
+// or null while not yet loaded. Pages fall back to the qa_status_ts snapshot
+// (v2.qa_today_all) only until this resolves, so a number is never a hard 0 mid-load.
+function _qaReviewTotals(){ return STATE.qaReviewToday; }
+// Flatten STATE.qaReviewHours ({qa:{hour:count}}) to a tolerant {hour:count} map
+// across all reviewers — the observation-time replacement for v2.qa_hourly's flatten.
+function _qaReviewHoursByHour(){
+  const out = {};
+  const qh = STATE.qaReviewHours || {};
+  for (const qa in qh) for (const h in qh[qa]) out[h] = (out[h]||0) + qh[qa][h];
+  return out;
+}
 // Stable per-reviewer colours (QA reviewers are NOT team-mapped in aggregates_v2 —
 // no team field on qa_reviewers/by_qa and they're absent from the tagging roster —
 // so cells are tinted per reviewer, shaded by volume, NOT by team).
@@ -4931,7 +4954,10 @@ function renderCompaniesHourlyGrid() {
 // ============================================================================
 function _qpCompute(){
   const v2 = STATE.v2 || null;
-  const qh = v2?.qa_hourly || {};
+  // Per-reviewer hourly + today counts from OBSERVATION time (STATE.qaReviewHours,
+  // ownership_qa_sampling.reviewed_at), not the re-stamped qa_status_ts in
+  // v2.qa_hourly — so reviewsPerHour and the hourly visual match QA Hourly Output.
+  const qh = STATE.qaReviewHours || {};
   const hours = Array.from({length:18},(_,i)=>i+6);   // 06..23 EAT
   const list = (v2?.qa_reviewers || []).map(r => Object.assign({}, r))
     .sort((a,b)=>(b.reviews||0)-(a.reviews||0));
@@ -4963,7 +4989,12 @@ PAGE_RENDERERS.qa_performance = function () {
   const list = D.list;
 
   const anySampling = list.some(r => r.hasSampling);
-  const reviewedToday = v2.qa_today_all?.reviewed ?? 0;
+  // "Reviews today" from observation time (matches QA Hourly Output + BO QA Console),
+  // falling back to the qa_status_ts snapshot only until the observation data loads.
+  const _qpObs = _qaReviewTotals();                // {reviewed,changed} | null
+  const reviewedToday = _qpObs ? _qpObs.reviewed : (v2.qa_today_all?.reviewed ?? 0);
+  const qpObsLoading = _qpObs == null;
+  const reviewedStr = qpObsLoading ? "…" : reviewedToday.toLocaleString();
   const totalRev = list.length;
   // pooled sampling % = Σ reviews_today / Σ eligible_pool_today (real pool-weighted rate)
   let poolNum = 0, poolDen = 0;
@@ -5021,7 +5052,7 @@ PAGE_RENDERERS.qa_performance = function () {
         <div class="page-subtitle">
           Per-reviewer sampling coverage, approval &amp; change rates, turnaround.
           <span class="dot-sep">&middot;</span><span class="num">${totalRev}</span> reviewers
-          <span class="dot-sep">&middot;</span><span class="num">${reviewedToday.toLocaleString()}</span> reviews today
+          <span class="dot-sep">&middot;</span><span class="num">${reviewedStr}</span> reviews today
           <span class="dot-sep">&middot;</span><span class="num">${belowN}</span> below floor
         </div>
       </div>
@@ -5049,7 +5080,7 @@ PAGE_RENDERERS.qa_performance = function () {
         <div class="kpi-top"><div class="label">Reviews / hour</div><span class="kpi-icon">${KPI_ICONS.clock}</span></div>
         <div class="value-row"><span class="value">${reviewsPerHour}<span class="unit">/h</span></span></div>
         ${ctSpark(D.colSums,"#0EA56C",170,28)}
-        <div class="ct-sub">${reviewedToday.toLocaleString()} today across ${activeHours} active hour${activeHours===1?'':'s'}</div>
+        <div class="ct-sub">${reviewedStr} today across ${activeHours} active hour${activeHours===1?'':'s'}</div>
       </div>
       <div class="kpi k-orange">
         <div class="kpi-top"><div class="label">At-risk reviewers</div><span class="kpi-icon">${KPI_ICONS.alert}</span></div>
@@ -5079,7 +5110,7 @@ PAGE_RENDERERS.qa_performance = function () {
           <div class="qp-pcard"><div class="l">Avg sampling %</div><div class="v">${pooledSampling!=null?pooledSampling.toFixed(1)+"%":"—"}</div><div class="s">${pooledSampling!=null?`vs ${list[0]?.target||25}% floor &middot; ${(pooledSampling-(list[0]?.target||25))>=0?'+':''}${(pooledSampling-(list[0]?.target||25)).toFixed(1)}pp`:pend}</div></div>
           <div class="qp-pcard"><div class="l">Change %</div><div class="v">${poolChange.toFixed(1)}%</div><div class="s">vs ceiling 30% &middot; ${(poolChange-30)>=0?'+':''}${(poolChange-30).toFixed(1)}pp</div></div>
           <div class="qp-pcard"><div class="l">Median TAT</div><div class="v">${medTat!=null?formatDuration(medTat):"—"}</div><div class="s">per-record review turnaround</div></div>
-          <div class="qp-pcard"><div class="l">Reviewed today</div><div class="v">${reviewedToday.toLocaleString()}</div><div class="s">${totalRev} reviewers</div></div>
+          <div class="qp-pcard"><div class="l">Reviewed today</div><div class="v">${reviewedStr}</div><div class="s">${totalRev} reviewers &middot; observed</div></div>
         </div>
         <div class="qp-insights">${(()=>{const b=[];const samp=list.filter(r=>r.hasSampling);if(samp.length){const top=samp.slice().sort((a,b)=>b.sampling_pct_today-a.sampling_pct_today)[0];const low=samp.slice().sort((a,b)=>a.sampling_pct_today-b.sampling_pct_today)[0];b.push(`<li>Top sampling &middot; <b>${esc(top.name)}</b> ${top.sampling_pct_today.toFixed(1)}%</li>`);b.push(`<li>Lowest sampling &middot; <b>${esc(low.name)}</b> ${low.sampling_pct_today.toFixed(1)}%</li>`);}const exp=list.find(r=>r.isExpert && r.hasSampling);if(exp)b.push(`<li>Expert sanctions coverage &middot; <b>${esc(exp.name)}</b> ${exp.sampling_pct_today.toFixed(1)}%</li>`);const hc=list.slice().sort((a,b)=>b.changeRate-a.changeRate)[0];if(hc&&hc.changeRate>0)b.push(`<li>Highest change rate &middot; <b>${esc(hc.name)}</b> ${hc.changeRate.toFixed(1)}%</li>`);return b.join("")||'<li class="small-mono">No reviewer metrics yet.</li>';})()}</div>
       </div>
@@ -5092,6 +5123,16 @@ PAGE_RENDERERS.qa_performance = function () {
   renderQaPerfScorecards();
   renderQaPerfComparison();
   if (STATE.sidePanelOpen && STATE.qpSelectedReviewer) renderQaPerfDetail();
+
+  // Lazy-load the observation-time review data (totals + hourly) so a direct
+  // navigation / date change loads it and re-renders. Same one-shot guard as the
+  // QA Hourly + BO QA pages.
+  const _qpRevReady  = STATE.qaReviewHours != null;
+  const _qpRevFailed = !_qpRevReady && STATE.qaReviewHoursDate === (STATE.v2?.date || null);
+  if (!_qpRevReady && !_qpRevFailed && !STATE._qhReviewHoursLoading) {
+    STATE._qhReviewHoursLoading = true;
+    loadQaReviewHours(STATE.v2?.date || null).finally(() => { STATE._qhReviewHoursLoading = false; PAGE_RENDERERS.qa_performance(); });
+  }
 };
 
 function _qpExport(){
@@ -5797,8 +5838,16 @@ function _renderBoqaPage(){
   const f=STATE.bqFilters;
   const recs=_bqRecords();
   const reviewers=(v2.qa_reviewers||[]).slice().sort((a,b)=>(b.reviews||0)-(a.reviews||0));
+  // "Reviewed/changed today" from OBSERVATION time (ownership_qa_sampling.reviewed_at,
+  // via STATE.qaReviewToday) so this page agrees with QA Hourly Output. Falls back to
+  // the qa_status_ts snapshot (v2.qa_today_all) only until the observation data loads,
+  // so a number is never a hard 0 mid-load. See PR #175 + loadQaReviewHours.
+  const _obsTot=_qaReviewTotals();                 // {reviewed,changed} | null (loading/failed)
   const qaToday=v2.qa_today_all||{reviewed:0,changed:0};
-  const reviewedToday=qaToday.reviewed||0, changedToday=qaToday.changed||0;
+  const reviewedToday=_obsTot?_obsTot.reviewed:(qaToday.reviewed||0);
+  const changedToday =_obsTot?_obsTot.changed :(qaToday.changed||0);
+  const obsLoading=_obsTot==null;                  // for "…" display + banner false-fire guard
+  const reviewedStr=obsLoading?"…":reviewedToday.toLocaleString();
   const backlog=t.bo_qa_backlog||0;
   const validToday=(t.valid_today_support||0)+(t.valid_today_io||0);
   // all-time reviewer aggregates
@@ -5829,7 +5878,7 @@ function _renderBoqaPage(){
   const ct=STATE.completedTasks; let banner="";
   // proxy 14d daily review avg from reviewers all-time isn't a daily series; use a simple real trigger:
   // fire if there is a real backlog AND nothing reviewed today yet.
-  if(backlog>0 && reviewedToday===0){ banner=`<div class="bq-banner"><span class="ic">${KPI_ICONS.alert}</span><div class="bd">Backlog standing at <b>${backlog.toLocaleString()}</b> records selected for BO QA, with <b>0</b> reviewed so far today.</div><div class="acts"><button class="btn" data-bqnoop="see">See worklist</button><button class="btn btn-primary" data-bqnoop="strat">Auto-stratify</button></div></div>`; }
+  if(backlog>0 && reviewedToday===0 && !obsLoading){ banner=`<div class="bq-banner"><span class="ic">${KPI_ICONS.alert}</span><div class="bd">Backlog standing at <b>${backlog.toLocaleString()}</b> records selected for BO QA, with <b>0</b> reviewed so far today.</div><div class="acts"><button class="btn" data-bqnoop="see">See worklist</button><button class="btn btn-primary" data-bqnoop="strat">Auto-stratify</button></div></div>`; }
 
   const teamKeys=Object.keys(STATE.roster||{}).sort();
   const teamCount=(tm)=>recs.filter(r=>r.team===tm).length;
@@ -5852,7 +5901,7 @@ function _renderBoqaPage(){
         <h1 class="page-title">BO QA <em>console</em></h1>
         <div class="page-subtitle">
           <span class="num">${backlog.toLocaleString()}</span> awaiting review
-          <span class="dot-sep">&middot;</span><span class="num">${reviewedToday}</span> reviewed today
+          <span class="dot-sep">&middot;</span><span class="num">${reviewedStr}</span> reviewed today
           <span class="dot-sep">&middot;</span><span class="num">${t.add_new_company_open||0}</span> add-new-company need 100% QA
           <span class="dot-sep">&middot;</span><span class="num">${reviewers.length}</span> reviewers
         </div>
@@ -5873,8 +5922,8 @@ function _renderBoqaPage(){
       </div>
       <div class="kpi k-cyan">
         <div class="kpi-top"><div class="label">Inspected today</div><span class="kpi-icon">${KPI_ICONS.check}</span></div>
-        <div class="value-row"><span class="value">${reviewedToday.toLocaleString()}</span><span class="kpi-dod-light">DoD —</span></div>
-        <div class="bq-foot">${reviewers.length} reviewers · median review ${medReviewTime!=null?medReviewTime.toFixed(1)+"h":"—"}</div>
+        <div class="value-row"><span class="value">${reviewedStr}</span><span class="kpi-dod-light">DoD —</span></div>
+        <div class="bq-foot">${reviewers.length} reviewers · median review ${medReviewTime!=null?medReviewTime.toFixed(1)+"h":"—"} · observed (reviewed_at)</div>
       </div>
       <div class="kpi k-green">
         <div class="kpi-top"><div class="label">Coverage proxy</div><span class="kpi-icon">${KPI_ICONS.percent}</span></div>
@@ -5890,7 +5939,7 @@ function _renderBoqaPage(){
       </div>
     </div>
 
-    <div class="bq-section-head"><h2>Today's <em>reviewers</em></h2><span class="meta">${reviewers.length} reviewers · ${reviewedToday} reviewed today (aggregate) · per-reviewer stats are all-time</span></div>
+    <div class="bq-section-head"><h2>Today's <em>reviewers</em></h2><span class="meta">${reviewers.length} reviewers · ${reviewedStr} reviewed today (observed · reviewed_at) · per-reviewer stats are all-time</span></div>
     <div class="bq-reviewers">${reviewerCards}</div>
 
     <div class="bq-section-head"><h2>QA <em>worklist</em></h2><span class="meta">${totReviews.toLocaleString()} reviewed all-time · ${pendingN} pending · ${needsUpdateN} flagged for update</span></div>
@@ -5906,7 +5955,7 @@ function _renderBoqaPage(){
 
     <div class="bq-section-head"><h2>Today's <em>coverage</em></h2><span class="meta">hourly · comments · sanctions</span></div>
     <div class="bq-3col">
-      <div class="panel"><h3>Hourly intake &amp; review <span class="meta">from qa_hourly</span></h3><div id="bqHourly"></div></div>
+      <div class="panel"><h3>Hourly intake &amp; review <span class="meta">from reviewed_at (observed)</span></h3><div id="bqHourly"></div></div>
       <div class="panel"><h3>Comment distribution <span class="meta">flagged records</span></h3>${_bqDonut()}</div>
       <div class="panel"><h3>Sanctions cohort <span class="meta">today sanctions inspected: ${t.qa_inspected_today_sanctions||0}</span></h3>
         <div class="bq-sanc-row head"><span>Reviewer</span><span>Reviews</span><span>Approval</span><span>Median TAT</span></div>
@@ -5921,6 +5970,16 @@ function _renderBoqaPage(){
   renderBqHourly();
   renderBqWorklist();
   renderBqDrawer();
+
+  // Lazy-load the observation-time review totals/buckets so a direct navigation /
+  // date change loads them and re-renders (loadAll preloads them; this is the
+  // fallback). Same one-shot guard as the QA Hourly page.
+  const _bqRevReady  = STATE.qaReviewHours != null;
+  const _bqRevFailed = !_bqRevReady && STATE.qaReviewHoursDate === (STATE.v2?.date || null);
+  if (!_bqRevReady && !_bqRevFailed && !STATE._qhReviewHoursLoading) {
+    STATE._qhReviewHoursLoading = true;
+    loadQaReviewHours(STATE.v2?.date || null).finally(() => { STATE._qhReviewHoursLoading = false; _renderBoqaPage(); });
+  }
 }
 
 function _bqDonut(){
@@ -5934,19 +5993,19 @@ function _bqDonut(){
 
 function renderBqHourly(){
   const cont=document.getElementById("bqHourly"); if(!cont) return;
-  const qh=STATE.v2?.qa_hourly||{}; const qt=STATE.v2?.qa_today_all||{};
-  // tolerant flatten to hour→count (supports {hour:count} or {reviewer:{hour:count}})
-  const byHour={};
-  for(const [k,val] of Object.entries(qh)){
-    if(typeof val==="number"){ byHour[k]=(byHour[k]||0)+val; }
-    else if(val&&typeof val==="object"){ for(const [h,c] of Object.entries(val)) if(typeof c==="number") byHour[h]=(byHour[h]||0)+c; }
-  }
+  // Bars from OBSERVATION time (ownership_qa_sampling.reviewed_at via STATE.qaReviewHours),
+  // not the re-stamped qa_status_ts in v2.qa_hourly. Footnote totals from the matching
+  // observation totals (_qaReviewTotals), falling back to the snapshot until loaded.
+  const byHour=_qaReviewHoursByHour();             // {hour:count} flattened across reviewers
+  const obs=_qaReviewTotals();                      // {reviewed,changed} | null
+  const snap=STATE.v2?.qa_today_all||{};
+  const ft={ reviewed:(obs?obs.reviewed:(snap.reviewed||0)), changed:(obs?obs.changed:(snap.changed||0)) };
   const hours=Array.from({length:18},(_,i)=>i+6); // 06–23
   const vals=hours.map(h=>byHour[String(h)]||byHour[h]||0);
   const tot=vals.reduce((a,b)=>a+b,0);
-  if(tot===0){ cont.innerHTML=`<div class="empty" style="padding:18px">No hourly review activity recorded today yet.</div><div class="bq-pfoot" style="border:0">Today (aggregate): <span class="num">${qt.reviewed||0}</span> reviewed · <span class="num">${qt.changed||0}</span> changed.</div>`; return; }
+  if(tot===0){ cont.innerHTML=`<div class="empty" style="padding:18px">No hourly review activity observed today yet.</div><div class="bq-pfoot" style="border:0">Today (observed · reviewed_at): <span class="num">${ft.reviewed}</span> reviewed · <span class="num">${ft.changed}</span> changed.</div>`; return; }
   const mx=Math.max(1,...vals); const peak=hours[vals.indexOf(Math.max(...vals))];
-  cont.innerHTML=`<div class="bq-hbars">${vals.map((v,i)=>`<div class="hb"><div class="bar" style="height:${Math.max(2,Math.round(v/mx*82))}px${hours[i]===peak?';background:var(--accent)':''}" title="${hours[i]}:00 → ${v}"></div><div class="lab">${hours[i]}</div></div>`).join("")}</div><div class="bq-pfoot">Reviews by hour (EAT) · peak ${peak}:00 · total <span class="num">${tot}</span> · today changed <span class="num">${qt.changed||0}</span>.</div>`;
+  cont.innerHTML=`<div class="bq-hbars">${vals.map((v,i)=>`<div class="hb"><div class="bar" style="height:${Math.max(2,Math.round(v/mx*82))}px${hours[i]===peak?';background:var(--accent)':''}" title="${hours[i]}:00 → ${v}"></div><div class="lab">${hours[i]}</div></div>`).join("")}</div><div class="bq-pfoot">Reviews by hour (EAT) — observation time (<code>reviewed_at</code>, first-seen, append-only; ≈5-min poll cadence, so a burst after a failed poll lands at the next cycle) · peak ${peak}:00 · total <span class="num">${tot}</span> · today changed <span class="num">${ft.changed}</span>.</div>`;
 }
 
 function _bqExport(){
@@ -5966,7 +6025,7 @@ function renderBqWorklist(){
   const rowsAll=base.filter(_bqTabPred(tab)).slice().sort((a,b)=>(b.days_open||0)-(a.days_open||0));
   const total=rowsAll.length, pages=Math.max(1,Math.ceil(total/12)); if(STATE.bqPage>pages)STATE.bqPage=pages;
   const start=(STATE.bqPage-1)*12, end=Math.min(start+12,total), rows=rowsAll.slice(start,end);
-  const reviewedToday=(STATE.v2?.qa_today_all||{}).reviewed||0;
+  const _wlObs=_qaReviewTotals(); const reviewedToday=_wlObs?_wlObs.reviewed:((STATE.v2?.qa_today_all||{}).reviewed||0);
   const rowHtml=(r)=>{ const sel=STATE.bqSelectedImo===String(r.imo)?" selected":"";
     return `<div class="bq-row qd${sel}" data-imo="${esc(String(r.imo))}">
       <span class="bq-imocell"><span class="bq-cb"></span><span class="imo">${esc(r.imo||"—")}</span><button class="bq-copy" data-bqcopy="${esc(String(r.imo||""))}" title="Copy IMO">⧉</button></span>
