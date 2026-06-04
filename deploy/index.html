@@ -2327,7 +2327,7 @@ function navCountFor(pageId) {
   if (!v2) return null;
   const t = v2.totals || {};
   if (pageId === "intake")        return { n: t.relations_support_intake_today, tint: "cyan" };
-  if (pageId === "new_companies") return { n: (v2.add_new_company_records || []).length, tint: "orange" };
+  if (pageId === "new_companies") return { n: new Set((v2.add_new_company_records || []).map(r=>r.add_new_company).filter(Boolean)).size, tint: "orange" };
   if (pageId === "boqa")          return { n: t.bo_qa_backlog, tint: "purple" };
   if (pageId === "supply") {
     const rw = _supplyRunway();
