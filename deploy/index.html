@@ -7719,10 +7719,10 @@ PAGE_RENDERERS.new_companies = function () {
     ${chipsHtml}
     <div class="kpis kpis-overview-hero">
       <div class="kpi hero">
-        <div class="kpi-top"><div class="label">Total tagged</div><span class="kpi-icon">${KPI_ICONS.tag}</span></div>
-        <div class="value-row"><span class="value">${total.toLocaleString()}</span><span class="kpi-dod" title="Day-over-day needs a prior-window snapshot, not loaded here">DoD —</span></div>
+        <div class="kpi-top"><div class="label">New companies</div><span class="kpi-icon">${KPI_ICONS.tag}</span></div>
+        <div class="value-row"><span class="value">${uniqueCos.toLocaleString()}</span><span class="kpi-dod" title="Day-over-day needs a prior-window snapshot, not loaded here">DoD —</span></div>
         <div class="kpi-trend">${bCount.map((v,i)=>`<span class="bar${v===0?' miss':''}" style="height:${Math.max(8,Math.round(v/bMax*100))}%" title="${buckets[i][0]}: ${v}"></span>`).join("")}</div>
-        <div class="nc-sub">Across <b>${uniqueCos}</b> unique companies</div>
+        <div class="nc-sub">Across <b>${total.toLocaleString()}</b> tagged records</div>
         <div class="nc-foot">Median days_open: <span>${medDays!=null?medDays+"d":"—"}</span></div>
       </div>
       <div class="kpi k-cyan">
