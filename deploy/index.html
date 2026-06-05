@@ -7743,6 +7743,13 @@ PAGE_RENDERERS.new_companies = function () {
       </div>
     </div>
 
+    <div class="nc-2col">
+      <div class="panel"><h3>Tagger roster <span class="meta">cache window</span></h3><div id="ncRoster"></div></div>
+      <div class="panel" style="padding:8px 10px 10px"><h3 style="margin:4px 4px 8px">Companies queue <span class="meta" id="ncQueueMeta"></span></h3><div id="ncQueue"></div></div>
+    </div>
+
+    <div id="ncDetail"></div>
+
     <div class="nc-section-head"><h2>Break<em>downs</em></h2><span class="meta">${f.team==="__all__"?"all teams":esc(f.team)} &middot; ${filtered.length} records</span></div>
     <div class="nc-3col">
       <div class="panel"><h3>Days-open distribution <span class="meta">Median ${medDays!=null?medDays+"d":"—"} &middot; P90 ${p90Days!=null?p90Days+"d":"—"}</span></h3>
@@ -7763,13 +7770,6 @@ PAGE_RENDERERS.new_companies = function () {
         <div style="font-size:10px;text-transform:uppercase;letter-spacing:0.04em;color:var(--muted);font-weight:700;margin:6px 0 4px">Top taggers</div>
         ${topTaggers.map(t=>`<div class="nc-prow"><span class="task-avatar" style="background:${ncTeamHex(t.team)}">${esc(ncInitials(t.name))}</span><span class="who">${esc(t.name)}<span class="s"> &middot; ${esc(t.team||"—")}</span></span><span class="nc-barwrap"><span style="width:${(t.count/ttMax*100).toFixed(0)}%"></span></span><span class="v">${t.count}</span></div>`).join("")}
       </div>
-    </div>
-
-    <div id="ncDetail"></div>
-
-    <div class="nc-2col">
-      <div class="panel"><h3>Tagger roster <span class="meta">cache window</span></h3><div id="ncRoster"></div></div>
-      <div class="panel" style="padding:8px 10px 10px"><h3 style="margin:4px 4px 8px">Companies queue <span class="meta" id="ncQueueMeta"></span></h3><div id="ncQueue"></div></div>
     </div>
   `;
 
