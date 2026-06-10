@@ -8805,10 +8805,9 @@ function _ctBase(){
   return out;
 }
 function _ctTab(list,tab){
+  if(tab==="io") return list.filter(t=>t.latest.source_table==="relations_io");
+  if(tab==="support") return list.filter(t=>t.latest.source_table==="relations_support");
   if(tab==="sanctions") return list.filter(t=>!!t.latest.is_sanctions);
-  if(tab==="qa100") return list.filter(t=>(t.latest.qa_coverage_pct||0)>=100);
-  if(tab==="breach") return list.filter(t=>t.latest.tat_hours!=null && t.latest.tat_hours>96);
-  if(tab==="resub") return list.filter(t=>false); // resubmission not tracked in the ledger
   return list;
 }
 function _ctStatus(t){
@@ -8828,7 +8827,7 @@ function _ctExport(){
 
 function renderCompletedArchive(){
   const base=_ctBase(); const tab=STATE.completedTab||"all";
-  const tabs=[["all","All completed"],["sanctions","Sanctions"],["qa100","100% QA"],["breach","TAT breach"],["resub","Resubmitted"]];
+  const tabs=[["all","All completed"],["io","Relations IO"],["support","Relations support"],["sanctions","Sanctions"]];
   const cnt=(k)=>_ctTab(base,k).length;
   const rowsAll=_ctTab(base,tab).slice().sort((a,b)=> new Date(b.latest.end_time||b.lastRecorded)-new Date(a.latest.end_time||a.lastRecorded));
   const total=rowsAll.length; const recsVisible=rowsAll.reduce((s,t)=>s+(t.trueTotal||0),0);
