@@ -2535,7 +2535,7 @@ PAGE_RENDERERS.overview = function () {
       <div class="kpi k-cyan">
         <div class="kpi-top"><div class="label">Tagged today</div><span class="kpi-icon">${KPI_ICONS.tag}</span></div>
         <div class="value-row"><span class="value">${(t.tagged_today || 0).toLocaleString()}</span>${tgDoD == null ? "" : `<span class="kpi-dod-light ${tgDoD >= 0 ? "up" : "down"}">${tgDoD >= 0 ? "+" : ""}${tgDoD.toFixed(1)}%</span>`}</div>
-        <div class="delta">Floor ${FLOOR} &middot; <b>${teamsMet}/${teams.length}</b> teams met</div>
+        <div class="delta">Floor ${TEAM_FLOOR.toLocaleString()} &middot; <b>${teamsMet}/${teams.length}</b> teams met</div>
       </div>
       <div class="kpi k-orange ${sampNsClass}">
         <div class="kpi-top"><div class="label">QA sampling</div><span class="kpi-icon">${KPI_ICONS.percent}</span></div>
@@ -2630,7 +2630,7 @@ PAGE_RENDERERS.overview = function () {
   const sampSStatus = (t.tagged_today_sanctions || 0) === 0 ? "pass" : (sampSPct >= sampSTgt ? "pass" : "fail");
   const teamAlertsCount = (() => { try { return computeTeamAlerts().length; } catch { return 0; } })();
   const verdictChecks = [
-    { label: "Productivity floor", note: `${FLOOR} / day`, status: teamsMet === teams.length ? "pass" : "warn", value: `${teamsMet}/${teams.length} teams met` },
+    { label: "Productivity floor", note: `${TEAM_FLOOR.toLocaleString()} / day`, status: teamsMet === teams.length ? "pass" : "warn", value: `${teamsMet}/${teams.length} teams met` },
     { label: "Sampling", note: `vs ${sampNsTgt}%`, status: sampNsPct >= sampNsTgt ? "pass" : "warn", value: `${sampNsPct.toFixed(1)}%` },
     { label: "Sanctions", note: `vs ${sampSTgt}%`, status: sampSStatus, value: `${sampSPct.toFixed(1)}%` },
     { label: "Reject", note: `vs ${rejectTh}%`, status: rejectRate <= rejectTh ? "pass" : "fail", value: `${rejectRate.toFixed(1)}%` },
