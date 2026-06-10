@@ -64,7 +64,7 @@ Only when you're certain the result set is bounded below 1,000 by the query itse
 - **EAT vs UTC.** Airtable formulas use `DATEADD({field}, 3, 'hours')` to shift to EAT before date comparisons; Python uses `datetime.now(EAT).date()` where `EAT = timezone(timedelta(hours=3))`. Airtable's `NOW()` and `TODAY()` are UTC-based.
 - **`Valid Selected Time` is a formula field.** Airtable's `OR(IS_SAME(..., formula_field), IS_SAME(..., real_field))` silently returns the wrong count. Split into two separate fetches and dedupe at the aggregator. (See PR #8.)
 - **Airtable singleSelect / multipleRecordLinks shapes differ** between the legacy Cowork MCP wrapper (`{id, name}` dicts) and the raw REST API used by `poll_airtable.py` (plain strings / `["recXXX"]` lists). `extract_v2._name()` and `_id()` handle both. Don't reintroduce dict-only assumptions.
-- **`last_modified_by == "Automations"`** is Airtable's automation bot, not a human. `completion_detector.py` filters these out via `NON_HUMAN_LAST_MODIFIED` and falls through to `qa_assignee → assignee`.
+- **`last_modified_by == "Automations"`** is Airtable's automation bot, not a human. `completion_detector.py` filters these out via `NON_HUMAN_LAST_MODIFIED`; the attribution chain is `assignee → last_modified_by → qa_assignee` (tagger-first, per the James Maina audit — see the comment above `resolve_completed_by`).
 - **`.env.local` has `AIRTABLE_PAT` + Supabase service key.** Gitignored. Never commit. Service-role key bypasses RLS — only use server-side.
 - **PostgREST INSERT with `Prefer: resolution=ignore-duplicates`** requires `?on_conflict=<col>` in the URL or it's a no-op (returns 409 on the first dup). (See PR #9.)
 - **The poll pipeline is driven by an EXTERNAL scheduler, not a GitHub `schedule:` cron.** `.github/workflows/poll.yml` has only a `workflow_dispatch:` trigger; cron-job.org hits the dispatch API every 5 min during the EAT business window (see `docs/EXTERNAL_CRON_SETUP.md`). GitHub silently drops `schedule:` events on free-tier public repos (2026-05-19 audit: ~4 of ~60 expected firings ran), which is why the old `*/15 3-17 * * 1-6` GitHub cron was abandoned. So: runs show as `workflow_dispatch` (not `schedule`) at ~5-min cadence; if runs stop, suspect the external scheduler or repo/account access (e.g. a suspended account 403s the runner's Checkout), not a GitHub cron config.
@@ -83,9 +83,7 @@ The current script uploads every file under `.poll_work/snapshots/` regardless o
 
 Concrete failure mode (2026-05-19): a local backfill aggregator ran with `today_eat=2026-05-18` against ~hours-old cache files. It correctly fixed the `add_new_company_open` metric (16 → 84) but inadvertently regressed `bo_qa_backlog` per-team (Pweza/Tembo dropped from 165/179 → 0/0) because the cache was missing records that had transitioned to SBO since the last poll. `sync_to_supabase.py` then uploaded the regenerated `snapshots/2026-05-18.json`, overwriting the cron-written one that had the correct values.
 
-**Guardrail to add (follow-up):** `sync_to_supabase.py` should never upload a `snapshots/<date>.json` whose date is older than today (EAT). At minimum, add a printed warning if it's about to do so. Belt-and-braces: a flag like `--allow-historical-snapshots` that defaults off.
-
-**Until that ships, manual rule:** before running `sync_to_supabase.py` after any local aggregator run, check `ls .poll_work/snapshots/` — if there's a snapshot file for a date that's not today, delete it from the local copy before syncing.
+**Guardrail (implemented):** `sync_to_supabase.py` now skips any `snapshots/<date>.json` older than today (EAT) with a loud ⚠️ warning; pass `--allow-historical-snapshots` to override deliberately.
 
 ### 2. Backfills must re-poll Airtable when the local cache is stale
 
