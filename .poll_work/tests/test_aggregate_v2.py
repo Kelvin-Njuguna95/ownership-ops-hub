@@ -20,6 +20,7 @@ from aggregate_v2 import (  # noqa: E402
     _load_records,
     _save_snapshot,
     aggregate,
+    compute_add_new_company_cleared,
     compute_case_scenarios,
     compute_expert_activity,
     compute_metrics,
@@ -2341,6 +2342,33 @@ class TestFetchAlertsCounts(unittest.TestCase):
         with patch.dict("os.environ", {}, clear=True):
             r = _fetch_alerts_counts()
         self.assertEqual(r, {})
+
+
+class TestComputeAddNewCompanyCleared(unittest.TestCase):
+    """add_new_company_cleared — COUNT of cache records with add_new_company
+    filled whose CURRENT verification_status is Done/Valid. Complements the
+    pending-only add_new_company_records list (which can never show cleared
+    records, leaving the dashboard's "Cleared to Valid" KPI permanently 0)."""
+
+    def test_counts_only_done_valid_with_company(self):
+        records = [
+            _info(add_new_company="Cleared Co", verification_status="Valid"),
+            _info(add_new_company="Done Co", verification_status="Done"),
+            _info(add_new_company="Pending Co", verification_status=SELECTED_FOR_BO_QA),
+            _info(add_new_company="Pending Co 2", verification_status="need to be update"),
+            _info(add_new_company=None, verification_status="Valid"),       # no company
+            _info(add_new_company="   ", verification_status="Valid"),      # blank-ish
+            _info(add_new_company="Tagged Co", verification_status="tagged"),
+        ]
+        self.assertEqual(compute_add_new_company_cleared(records), 2)
+
+    def test_zero_when_nothing_cleared(self):
+        records = [
+            _info(add_new_company="Pending Co", verification_status=SELECTED_FOR_BO_QA),
+            _info(verification_status="Valid"),
+        ]
+        self.assertEqual(compute_add_new_company_cleared(records), 0)
+        self.assertEqual(compute_add_new_company_cleared([]), 0)
 
 
 if __name__ == "__main__":
