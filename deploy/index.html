@@ -2463,7 +2463,8 @@ PAGE_RENDERERS.overview = function () {
   const t = STATE.v2?.totals;
   if (!t) { root.innerHTML = noDataHtml("aggregates_v2 not in daily_aggregates.json — run aggregate_v2.py"); return; }
 
-  const FLOOR = 280;
+  const FLOOR = 420;
+  const TEAM_FLOOR = FLOOR * 4;  // 1,680 — same team benchmark regardless of headcount (even 5-agent teams)
   const sampNsClass = t.sampling_non_sanctions_pct < t.sampling_target_non_sanctions_pct ? "bad" : "good";
   const sampSClass  = t.sampling_sanctions_pct      < t.sampling_target_sanctions_pct      ? "bad" : "good";
   const rejectClass = t.reject_rate > t.reject_threshold ? "bad" : "good";
@@ -2471,7 +2472,7 @@ PAGE_RENDERERS.overview = function () {
   const byTeam      = STATE.v2.by_team || {};
   const teams       = Object.keys(STATE.roster || {}).sort();
   const agentCount  = teams.reduce((s, tm) => s + ((STATE.roster?.[tm]?.members || []).length), 0);
-  const teamsMet    = Object.values(byTeam).filter(m => (m?.tagged_today || 0) >= FLOOR).length;
+  const teamsMet    = Object.values(byTeam).filter(m => (m?.tagged_today || 0) >= TEAM_FLOOR).length;
   const newCompaniesOpen = (STATE.v2.add_new_company_records || []).length;
 
   // Page head with Export + Open BO QA buttons
@@ -2534,7 +2535,7 @@ PAGE_RENDERERS.overview = function () {
       <div class="kpi k-cyan">
         <div class="kpi-top"><div class="label">Tagged today</div><span class="kpi-icon">${KPI_ICONS.tag}</span></div>
         <div class="value-row"><span class="value">${(t.tagged_today || 0).toLocaleString()}</span>${tgDoD == null ? "" : `<span class="kpi-dod-light ${tgDoD >= 0 ? "up" : "down"}">${tgDoD >= 0 ? "+" : ""}${tgDoD.toFixed(1)}%</span>`}</div>
-        <div class="delta">Floor ${FLOOR} &middot; <b>${teamsMet}/${teams.length}</b> teams met</div>
+        <div class="delta">Floor ${TEAM_FLOOR.toLocaleString()} &middot; <b>${teamsMet}/${teams.length}</b> teams met</div>
       </div>
       <div class="kpi k-orange ${sampNsClass}">
         <div class="kpi-top"><div class="label">QA sampling</div><span class="kpi-icon">${KPI_ICONS.percent}</span></div>
@@ -2629,7 +2630,7 @@ PAGE_RENDERERS.overview = function () {
   const sampSStatus = (t.tagged_today_sanctions || 0) === 0 ? "pass" : (sampSPct >= sampSTgt ? "pass" : "fail");
   const teamAlertsCount = (() => { try { return computeTeamAlerts().length; } catch { return 0; } })();
   const verdictChecks = [
-    { label: "Productivity floor", note: `${FLOOR} / day`, status: teamsMet === teams.length ? "pass" : "warn", value: `${teamsMet}/${teams.length} teams met` },
+    { label: "Productivity floor", note: `${TEAM_FLOOR.toLocaleString()} / day`, status: teamsMet === teams.length ? "pass" : "warn", value: `${teamsMet}/${teams.length} teams met` },
     { label: "Sampling", note: `vs ${sampNsTgt}%`, status: sampNsPct >= sampNsTgt ? "pass" : "warn", value: `${sampNsPct.toFixed(1)}%` },
     { label: "Sanctions", note: `vs ${sampSTgt}%`, status: sampSStatus, value: `${sampSPct.toFixed(1)}%` },
     { label: "Reject", note: `vs ${rejectTh}%`, status: rejectRate <= rejectTh ? "pass" : "fail", value: `${rejectRate.toFixed(1)}%` },
@@ -2698,18 +2699,18 @@ PAGE_RENDERERS.overview = function () {
   // Teams vs floor
   const teamsFloorHtml = `
     <div class="panel">
-      <h3>Teams vs <em>${FLOOR}</em> floor <span class="meta">tagged today</span></h3>
+      <h3>Teams vs <em>${TEAM_FLOOR.toLocaleString()}</em> floor <span class="meta">tagged today</span></h3>
       <div class="teams-floor">
         ${teams.map(tm => {
           const m = byTeam[tm] || {};
           const tagged = m.tagged_today || 0;
-          const ratio = Math.min(1, FLOOR > 0 ? tagged / FLOOR : 0);
-          const met = tagged >= FLOOR;
+          const ratio = Math.min(1, TEAM_FLOOR > 0 ? tagged / TEAM_FLOOR : 0);
+          const met = tagged >= TEAM_FLOOR;
           return `
           <div class="teams-floor-row">
             <span class="dot" style="background:${TEAM_COLORS[tm]?.hex || "#7B68EE"}"></span>
             <span class="nm"><strong>${esc(tm)}</strong> <span class="sub">${(STATE.roster?.[tm]?.members || []).length} agents</span></span>
-            <span class="tgt">${tagged.toLocaleString()} / ${FLOOR}</span>
+            <span class="tgt">${tagged.toLocaleString()} / ${TEAM_FLOOR.toLocaleString()}</span>
             <span class="bar"><span class="fill ${met ? "met" : "under"}" style="width:${(ratio * 100).toFixed(0)}%"></span></span>
             <span class="status ${met ? "met" : "under"}">${met ? "met" : "below"}</span>
           </div>`;
