@@ -2092,6 +2092,7 @@ def _write_task_history(aggs):
             "snapshot_date":       snapshot_date,
             "computed_at":         computed_at,
             "is_sanctions":        t.get("is_sanctions"),
+            "source_table":        t.get("source_table"),
             "total_records":       t.get("total_records_in_cache"),
             "date_first_seen":     t.get("date_first_seen"),
             "date_last_modified":  t.get("date_last_modified"),
