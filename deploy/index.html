@@ -7213,7 +7213,7 @@ function renderTasksList(){
   const tab = STATE.tasksTab || "active";
   const tabs = [["active","Active"],["io","Relations io table"],["support","Relations support"],["boqa","BO QA pending"],["sanctions","Sanctions"],["completed","Completed (7d)"]];
   const cnt = (k)=>_tlTab(base,k).length;
-  const rows = _tlTab(base, tab).slice().sort((a,b)=> new Date(a.date_first_seen||0)-new Date(b.date_first_seen||0)); // oldest first
+  const rows = _tlTab(base, tab).slice().sort((a,b)=> new Date(b.date_first_seen||0)-new Date(a.date_first_seen||0)); // newest first
   const all = STATE.v2?.tasks_all || [];
   const compl7 = all.filter(t=>{ if(!t.is_completed) return false; const a=ageHours(t.end_time||t.date_last_modified); return a!=null&&a<=168; }).length;
   const f = STATE.tasksFilters || {};
@@ -7259,7 +7259,7 @@ function renderTasksList(){
     <div class="tl-tabs" id="tlTabs">
       ${tabs.map(([k,l])=>`<button data-tab="${k}" class="${tab===k?'active':''}">${l} <span class="ct">${cnt(k)}</span></button>`).join("")}
       <span class="spacer"></span>
-      <span class="tl-sortlabel">Sorted by: Age (oldest first) ↓</span>
+      <span class="tl-sortlabel">Sorted by: Age (newest first) ↓</span>
     </div>
     <div class="tl-fchips" id="tlFchips">${fchips.join("")}</div>
     <div class="panel" style="padding:6px 10px 10px">
