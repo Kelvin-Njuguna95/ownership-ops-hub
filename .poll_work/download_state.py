@@ -50,21 +50,32 @@ def _get(session, url, key, remote_path, local_path):
 
 def _list_prefix(session, url, key, prefix):
     """List objects under a Supabase Storage prefix. Returns a list of names
-    (filenames only, prefix stripped). Service-role key required for list()."""
-    r = session.post(
-        f"{url}/storage/v1/object/list/{BUCKET}",
-        headers={
-            "Authorization": f"Bearer {key}",
-            "apikey":        key,
-            "Content-Type":  "application/json",
-        },
-        json={"prefix": prefix, "limit": 1000, "offset": 0},
-        timeout=60,
-    )
-    if r.status_code != 200:
-        print(f"  list({prefix}) [{r.status_code}]: {r.text[:200]}", file=sys.stderr)
-        return []
-    return [o["name"] for o in r.json() if o.get("name")]
+    (filenames only, prefix stripped). Service-role key required for list().
+
+    Paginated: the list endpoint caps each response at ``limit`` objects, and
+    snapshots/ grows one file per day — a single page would silently truncate
+    at 1,000. Keep requesting with offset += 1000 until a short page."""
+    names = []
+    offset = 0
+    while True:
+        r = session.post(
+            f"{url}/storage/v1/object/list/{BUCKET}",
+            headers={
+                "Authorization": f"Bearer {key}",
+                "apikey":        key,
+                "Content-Type":  "application/json",
+            },
+            json={"prefix": prefix, "limit": 1000, "offset": offset},
+            timeout=60,
+        )
+        if r.status_code != 200:
+            print(f"  list({prefix}) [{r.status_code}]: {r.text[:200]}", file=sys.stderr)
+            return names
+        page = r.json()
+        names.extend(o["name"] for o in page if o.get("name"))
+        if len(page) < 1000:   # short page = last page (raw count, pre-filter)
+            return names
+        offset += 1000
 
 
 def main():

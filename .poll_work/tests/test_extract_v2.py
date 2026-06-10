@@ -195,6 +195,18 @@ class TestResolveQA(unittest.TestCase):
         self.assertEqual(name, "Other")
         self.assertTrue(fb)
 
+    def test_automations_last_modified_by_treated_as_absent(self):
+        # The Automations bot is not a QA reviewer — same NON_HUMAN_LAST_MODIFIED
+        # filter as completion_detector.resolve_completed_by.
+        name, fb = resolve_qa({"qa_assignee": "", "last_modified_by": "Automations"})
+        self.assertIsNone(name)
+        self.assertFalse(fb)
+
+    def test_human_last_modified_by_still_falls_back(self):
+        name, fb = resolve_qa({"qa_assignee": "", "last_modified_by": "Selah Nabiswa"})
+        self.assertEqual(name, "Selah Nabiswa")
+        self.assertTrue(fb)
+
 
 class TestIsProperlyCompleted(unittest.TestCase):
     """Ops definition: start_date filled AND (company_id filled OR dead_vessel=True)."""

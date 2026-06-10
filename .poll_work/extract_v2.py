@@ -6,6 +6,10 @@ names in this base have casing / punctuation drift (e.g. 'add a new company',
 'WW QA assignee') and other tools depend on them, so do not rename in Airtable.
 """
 
+# Non-human last_modified_by values (Airtable's automation bot). Mirror of the
+# same constant in completion_detector.py — keep the two in lockstep.
+NON_HUMAN_LAST_MODIFIED = {"Automations"}
+
 FIELD_IDS = {
     "imo": "fldqWGr2XDH9BRmtE",
     "assignee": "fldT4xElSgcdnqTmy",
@@ -266,11 +270,14 @@ def resolve_qa(info):
     Returns (qa_name, used_fallback). used_fallback is True iff qa_assignee
     was blank but last_modified_by populated the answer — the poller counts
     these so we can spot data-quality issues with unassigned QA reviews.
+    A non-human last_modified_by (Automations bot) is treated as absent, like
+    completion_detector.resolve_completed_by does.
     """
     if info.get("qa_assignee"):
         return info["qa_assignee"], False
-    if info.get("last_modified_by"):
-        return info["last_modified_by"], True
+    lmb = info.get("last_modified_by")
+    if lmb and lmb not in NON_HUMAN_LAST_MODIFIED:
+        return lmb, True
     return None, False
 
 

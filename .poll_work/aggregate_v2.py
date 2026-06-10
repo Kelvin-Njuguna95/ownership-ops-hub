@@ -1434,13 +1434,25 @@ def compute_supply(work_dir, ownership_assignees=None, today_eat=None, cap=500):
     pool = {}        # rid -> info
     table_of = {}    # rid -> "relations_support" | "relations_io"
     for p in sorted(work_dir.glob("unassigned_p*.json")):
-        for r in json.loads(p.read_text()).get("records", []):
+        try:
+            page = json.loads(p.read_text())
+        except (json.JSONDecodeError, OSError) as e:
+            print(f"WARN compute_supply: skipping corrupt cache page {p.name}: {e}",
+                  file=sys.stderr)
+            continue
+        for r in page.get("records", []):
             rid = r["id"]
             if rid not in pool:
                 pool[rid] = extract(r)
                 table_of[rid] = "relations_support"
     for p in sorted(work_dir.glob("unassigned_io_p*.json")):
-        for r in json.loads(p.read_text()).get("records", []):
+        try:
+            page = json.loads(p.read_text())
+        except (json.JSONDecodeError, OSError) as e:
+            print(f"WARN compute_supply: skipping corrupt cache page {p.name}: {e}",
+                  file=sys.stderr)
+            continue
+        for r in page.get("records", []):
             rid = r["id"]
             if rid not in pool:
                 pool[rid] = extract(r, FIELD_IDS_IO)
@@ -1562,12 +1574,24 @@ def _load_records(work_dir):
     }
     for pattern, letter in fetch_map.items():
         for p in sorted(work_dir.glob(pattern)):
-            for r in json.loads(p.read_text()).get("records", []):
+            try:
+                page = json.loads(p.read_text())
+            except (json.JSONDecodeError, OSError) as e:
+                print(f"WARN _load_records: skipping corrupt cache page {p.name}: {e}",
+                      file=sys.stderr)
+                continue
+            for r in page.get("records", []):
                 raw[r["id"]] = r
                 sources.setdefault(r["id"], set()).add(letter)
     for pattern, letter in io_fetch_map.items():
         for p in sorted(work_dir.glob(pattern)):
-            for r in json.loads(p.read_text()).get("records", []):
+            try:
+                page = json.loads(p.read_text())
+            except (json.JSONDecodeError, OSError) as e:
+                print(f"WARN _load_records: skipping corrupt cache page {p.name}: {e}",
+                      file=sys.stderr)
+                continue
+            for r in page.get("records", []):
                 raw[r["id"]] = r
                 sources.setdefault(r["id"], set()).add(letter)
                 io_ids.add(r["id"])
