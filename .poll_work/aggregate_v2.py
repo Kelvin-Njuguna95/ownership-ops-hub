@@ -1098,6 +1098,19 @@ def compute_add_new_company_records(records, today_eat, ownership_assignees, cap
     return out[:cap], truncated
 
 
+def compute_add_new_company_cleared(records):
+    """COUNT of records with add_new_company filled whose CURRENT
+    verification_status is Done/Valid — the "Cleared to Valid" KPI on the New
+    Companies page. A count, not a record list: add_new_company_records stays
+    pending-only by design (Kelvin 2026-05-30), which left the dashboard's
+    cleared KPI permanently 0. Cache-window count — scoped to whatever records
+    are still in the poll cache, not an all-time total (completed records
+    eventually drop out of the cache filters)."""
+    return sum(1 for info in records
+               if (info.get("add_new_company") or "").strip()
+               and info.get("verification_status") in DONE_LIKE)
+
+
 def compute_case_scenarios(records, today_eat, ownership_assignees, cap=500):
     """Case Scenarios drilldown — splits records into two operational lists by
     their `comment` (a singleSelect of 11 fixed case-scenario values):
@@ -1344,6 +1357,7 @@ def aggregate(records, today_eat, ownership_assignees, qa_team_map=None, qa_excl
     ]
 
     totals = compute_metrics(in_scope, today_eat, qa_exclude)
+    totals["add_new_company_cleared"] = compute_add_new_company_cleared(in_scope)
     totals["relations_support_intake_today"] = relations_support_intake_today
     totals["tasks_today"] = tasks_today
     totals["tasks_today_count"] = len(tasks_today)

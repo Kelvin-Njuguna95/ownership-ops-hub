@@ -355,7 +355,7 @@
   .verdict-fail .val { color: var(--bad); }
   .verdict-warn .val { color: var(--warn); }
 
-  /* Teams vs 280 floor mini-panel */
+  /* Teams vs floor mini-panel */
   .teams-floor { display: flex; flex-direction: column; gap: 8px; }
   .teams-floor-row { display: grid; grid-template-columns: 8px minmax(0,1fr) auto 140px auto; gap: 12px; align-items: center; padding: 8px 10px; border-radius: var(--radius-sm); background: var(--soft); }
   .teams-floor-row .dot { width: 8px; height: 8px; border-radius: 50%; }
@@ -3852,27 +3852,27 @@ PAGE_RENDERERS.comparison = function () {
 function _cmpSides(){
   const cs = COMPARISON_STATE, R = cs.range, floor = CMP_FLOOR();
   if (cs.mode === "team"){
-    const tf = (t) => 280 * ((STATE.roster?.[t]?.members || []).length || 1);
+    const tf = (t) => AGENT_FLOOR * ((STATE.roster?.[t]?.members || []).length || 1);
     return {
       A: { label: cs.a || "—", sub: "Team", color: tlTeamHex(cs.a), avatar: cs.a, floor: tf(cs.a), stats: _cmpStats(_seriesForTeam(cs.a, R), tf(cs.a)) },
       B: { label: cs.b || "—", sub: "Team", color: tlTeamHex(cs.b), avatar: cs.b, floor: tf(cs.b), stats: _cmpStats(_seriesForTeam(cs.b, R), tf(cs.b)) },
-      floorLabel: "team floor (280×agents)",
+      floorLabel: `team floor (${AGENT_FLOOR}×agents)`,
     };
   }
   if (cs.mode === "period"){
     const dates = _cmpDates(R), half = Math.max(1, Math.floor(dates.length / 2));
     const bDates = dates.slice(0, half), aDates = dates.slice(dates.length - half);   // A = recent, B = prior
-    const fl = floor * Object.keys(STATE.v2?.by_agent || {}).length || floor;   // all-agent floor ≈ 280×agents
+    const fl = floor * Object.keys(STATE.v2?.by_agent || {}).length || floor;   // all-agent floor ≈ AGENT_FLOOR×agents
     return {
       A: { label: `${aDates[0]} → ${aDates[aDates.length - 1]}`, sub: `recent ${aDates.length}d`, color: CMP_A_COLOR, avatar: null, floor: fl, stats: _cmpStats(_seriesForDates(aDates), fl), dates: aDates },
       B: { label: `${bDates[0]} → ${bDates[bDates.length - 1]}`, sub: `prior ${bDates.length}d`, color: CMP_B_COLOR, avatar: null, floor: fl, stats: _cmpStats(_seriesForDates(bDates), fl), dates: bDates },
-      floorLabel: "pool floor (280×agents)", period: true,
+      floorLabel: `pool floor (${AGENT_FLOOR}×agents)`, period: true,
     };
   }
   return {
     A: { label: cs.a || "—", sub: (teamForAgent(cs.a) || "—"), color: CMP_A_COLOR, avatar: cs.a, team: teamForAgent(cs.a), floor, stats: _cmpStats(_seriesForAgent(cs.a, R), floor) },
     B: { label: cs.b || "—", sub: (teamForAgent(cs.b) || "—"), color: CMP_B_COLOR, avatar: cs.b, team: teamForAgent(cs.b), floor, stats: _cmpStats(_seriesForAgent(cs.b, R), floor) },
-    floorLabel: "floor 280/day",
+    floorLabel: `floor ${AGENT_FLOOR}/day`,
   };
 }
 
@@ -6214,7 +6214,12 @@ PAGE_RENDERERS.intake = function () {
   const validToday = (t.valid_today_support || 0) + (t.valid_today_io || 0);
   const properlyToday = t.properly_completed_today || 0;
   const deadToday = t.dead_vessels_today || 0;
-  const properlyPct = validToday > 0 ? Math.round(((properlyToday + deadToday) / validToday) * 100) : 0;
+  // properly_completed_today already includes dead vessels with a start_date
+  // (see extract_v2.is_properly_completed) — do not add deadToday again.
+  // Denominator = the same cohort the numerator is computed over (records
+  // tagged today), NOT valid_today_* (whole-table, any tag date).
+  const taggedToday = t.tagged_today || 0;
+  const properlyPct = taggedToday > 0 ? Math.round((properlyToday / taggedToday) * 100) : 0;
 
   // DoD% delta on the intake hero
   const yIntake = STATE.intakeYesterday?.intake;
@@ -6286,7 +6291,7 @@ PAGE_RENDERERS.intake = function () {
       <div class="kpi k-green">
         <div class="kpi-top"><div class="label">Cleared today</div><span class="kpi-icon">${KPI_ICONS.check}</span></div>
         <div class="value-row"><span class="value">${validToday.toLocaleString()}</span></div>
-        <div class="delta">Properly <b>${properlyToday.toLocaleString()}</b> &middot; dead <b>${deadToday.toLocaleString()}</b><br>${properlyPct}% properly completed</div>
+        <div class="delta">Properly <b>${properlyToday.toLocaleString()}</b> &middot; dead <b>${deadToday.toLocaleString()}</b><br>${properlyPct}% of records tagged today properly completed</div>
       </div>
     </div>`;
 
@@ -6406,32 +6411,37 @@ PAGE_RENDERERS.intake = function () {
   const byTeam = STATE.v2?.by_team || {};
   const teamAllocHtml = `
     <div class="panel team-alloc-panel">
-      <h3>Team allocation <em>today</em> <span class="meta">routed by team &middot; floor ${FLOOR}/agent &middot; stacked bars include all active batches</span></h3>
+      <h3>Team allocation <em>today</em> <span class="meta">routed by team &middot; floor ${FLOOR}/agent</span></h3>
       <div class="team-alloc">
         ${teams.map(tm => {
           const m = byTeam[tm] || {};
           const tagged = m.tagged_today || 0;
           const inBoQa = m.bo_qa_backlog || 0;
           const valid  = m.done_today || 0;
-          const total  = tagged + inBoQa;
+          // Non-overlapping segments: Done/Valid today, then today's tagging
+          // not yet Done (floored at 0 — a record tagged yesterday can go Done
+          // today, so valid isn't a strict subset of tagged). BO QA backlog is
+          // an annotation, NOT a bar segment — it overlaps tagged_today (a
+          // record tagged today now sitting in BO QA would be counted twice).
+          const stillOpen = Math.max(0, tagged - valid);
           const agents = (STATE.roster?.[tm]?.members || []).length;
           const floor  = agents * FLOOR;
-          const pct    = floor > 0 ? Math.round(total / floor * 100) : 0;
-          const segMax = Math.max(1, floor, total);
+          const pct    = floor > 0 ? Math.round(tagged / floor * 100) : 0;   // tagging output only
+          const segMax = Math.max(1, floor, valid + stillOpen);
           return `
           <div class="team-alloc-row">
             <span class="dot" style="background:${TEAM_COLORS[tm]?.hex || "#7B68EE"}"></span>
             <span class="nm"><strong>${esc(tm)}</strong></span>
             <span class="bar-stack">
-              <span class="seg tagged" style="width:${(tagged / segMax * 100).toFixed(1)}%;background:${TEAM_COLORS[tm]?.hex || "#7B68EE"}" title="Tagged: ${tagged.toLocaleString()}">${tagged > 0 ? `<span class="seg-label">${tagged.toLocaleString()}</span>` : ""}</span>
-              <span class="seg inboqa" style="width:${(inBoQa / segMax * 100).toFixed(1)}%" title="In BO QA: ${inBoQa.toLocaleString()}">${inBoQa > 0 ? `<span class="seg-label">${inBoQa.toLocaleString()}</span>` : ""}</span>
+              <span class="seg tagged" style="width:${(valid / segMax * 100).toFixed(1)}%;background:${TEAM_COLORS[tm]?.hex || "#7B68EE"}" title="Done/Valid today: ${valid.toLocaleString()}">${valid > 0 ? `<span class="seg-label">${valid.toLocaleString()}</span>` : ""}</span>
+              <span class="seg inboqa" style="width:${(stillOpen / segMax * 100).toFixed(1)}%" title="Tagged today, not yet Done: ${stillOpen.toLocaleString()}">${stillOpen > 0 ? `<span class="seg-label">${stillOpen.toLocaleString()}</span>` : ""}</span>
             </span>
-            <span class="tot"><b>${total.toLocaleString()}</b> <span class="muted">/ ${agents} ag</span></span>
+            <span class="tot"><b>${tagged.toLocaleString()}</b> <span class="muted">tagged / ${agents} ag &middot; BO QA ${inBoQa.toLocaleString()}</span></span>
             <span class="pct ${pct >= 100 ? "met" : "under"}">${pct}%</span>
           </div>`;
         }).join("")}
       </div>
-      <div class="footer-note">Stacked bars: <b>Tagged · Valid</b> (team colour) + <b>In BO QA</b> (cyan). Percent = total / (agents × ${FLOOR}). 100%+ = team met floor.</div>
+      <div class="footer-note">Bar segments: <b>Done/Valid today</b> (team colour) + <b>tagged today, not yet Done</b> (cyan) — no record appears in both. <b>BO QA</b> backlog shown as a number (overlaps tagged, so not stacked). Percent = tagged today / (agents × ${FLOOR}) — tagging output only.</div>
     </div>`;
 
   // Upload timeline (last 4 days, today + 3 prior from STATE.intakeUploads4d)
@@ -7420,7 +7430,6 @@ const NC_PAGE_SIZE = 12;
 function ncInitials(n){ return String(n||"").split(/\s+/).filter(Boolean).map(p=>p[0].toUpperCase()).slice(0,2).join("")||"··"; }
 function ncTeamHex(tm){ return (TEAM_COLORS[tm]||{}).hex || "#7B68EE"; }
 function ncPct(arr,p){ const s=[...arr].filter(x=>x!=null).sort((a,b)=>a-b); if(!s.length) return null; return s[Math.min(s.length-1,Math.floor(p/100*s.length))]; }
-function ncCleared(r){ return r.verification_status==="Valid"; }
 function ncOpen(r){ return !["Valid","Done"].includes(r.verification_status); }
 function ncAgePill(d){
   d=d||0; let bg,fg;
@@ -7441,7 +7450,7 @@ PAGE_RENDERERS.new_companies = function () {
   const recs = STATE.v2?.add_new_company_records || [];
   const gaps = STATE.v2?.case_company_gap_records || [];
   const noimo = STATE.v2?.case_no_imo_records || [];
-  if (!STATE.ncFilters) STATE.ncFilters = { team:"__all__", open3:false, valid:false, gaps:false };
+  if (!STATE.ncFilters) STATE.ncFilters = { team:"__all__", open3:false, gaps:false };
   if (STATE.ncSelectedImo === undefined) STATE.ncSelectedImo = null;
   if (!STATE.ncPage) STATE.ncPage = 1;
   const f = STATE.ncFilters;
@@ -7449,8 +7458,12 @@ PAGE_RENDERERS.new_companies = function () {
   // ---- headline aggregates (all real) ----
   const total = recs.length;
   const stillOpen = recs.filter(ncOpen).length;
-  const cleared = recs.filter(ncCleared).length;
-  const clearedPct = total? cleared/total*100 : 0;
+  // add_new_company_records is pending-only (2026-05-30), so counting cleared
+  // records from it is permanently 0. The aggregator emits the cleared COUNT
+  // separately (totals.add_new_company_cleared, cache-window; absent in
+  // snapshots created before that key shipped → ?? 0).
+  const cleared = STATE.v2?.totals?.add_new_company_cleared ?? 0;
+  const clearedPct = (cleared + stillOpen) > 0 ? cleared/(cleared + stillOpen)*100 : 0;
   const gapsTotal = gaps.length + noimo.length;
   const uniqueCos = new Set(recs.map(r=>r.add_new_company).filter(Boolean)).size;
   const medDays = median(recs.map(r=>r.days_open||0));
@@ -7471,7 +7484,6 @@ PAGE_RENDERERS.new_companies = function () {
     ${teamKeys.map(tm=>chip(tm,tm,teamCount(tm),f.team===tm,ncTeamHex(tm))).join("")}
     <span class="spacer"></span>
     <button class="nc-chip${f.open3?" active":""}" data-nc="__open3"${f.open3?' style="background:var(--bad)"':""}>🚩 Open &gt;3d <span class="ct">${over3}</span></button>
-    <button class="nc-chip${f.valid?" active":""}" data-nc="__valid"${f.valid?' style="background:var(--good)"':""}>✓ Valid <span class="ct">${cleared}</span></button>
     <button class="nc-chip${f.gaps?" active":""}" data-nc="__gaps"${f.gaps?' style="background:var(--bad)"':""}>🔴 Quality gaps <span class="ct">${gapsTotal}</span></button>
   </div>`;
 
@@ -7528,7 +7540,7 @@ PAGE_RENDERERS.new_companies = function () {
         <div class="kpi-top"><div class="label">Cleared to Valid</div><span class="kpi-icon">${KPI_ICONS.check}</span></div>
         <div class="value-row"><span class="value">${cleared.toLocaleString()}</span><span class="kpi-dod-light up">${clearedPct.toFixed(1)}%</span></div>
         <div class="kpi-bar"><span class="fill green" style="width:${Math.min(100,clearedPct).toFixed(0)}%"></span></div>
-        <div class="nc-foot">of ${total.toLocaleString()} tagged records</div>
+        <div class="nc-foot">(cache window) &middot; % of cleared + still open</div>
       </div>
       <div class="kpi k-red ${gapsTotal>0?'bad':''}">
         <div class="kpi-top"><div class="label">Quality gaps</div><span class="kpi-icon">${KPI_ICONS.octagon}</span></div>
@@ -7569,7 +7581,7 @@ PAGE_RENDERERS.new_companies = function () {
 
   document.querySelectorAll("#ncChips .nc-chip").forEach(b=>b.addEventListener("click",()=>{
     const id=b.dataset.nc;
-    if(id==="__open3") f.open3=!f.open3; else if(id==="__valid") f.valid=!f.valid; else if(id==="__gaps") f.gaps=!f.gaps; else f.team=id;
+    if(id==="__open3") f.open3=!f.open3; else if(id==="__gaps") f.gaps=!f.gaps; else f.team=id;
     STATE.ncPage=1; PAGE_RENDERERS.new_companies();
   }));
   document.getElementById("ncExportBtn").addEventListener("click", _ncExport);
@@ -7583,7 +7595,6 @@ function _ncFiltered(){
   const gaps=STATE.v2?.case_company_gap_records||[], noimo=STATE.v2?.case_no_imo_records||[];
   if(f.team&&f.team!=="__all__") out=out.filter(r=>r.team===f.team);
   if(f.open3) out=out.filter(r=>(r.days_open||0)>3);
-  if(f.valid) out=out.filter(r=>r.verification_status==="Valid");
   if(f.gaps){ const set=new Set([...gaps.map(r=>String(r.imo)),...noimo.map(r=>String(r.imo))]); out=out.filter(r=>set.has(String(r.imo))); }
   return out;
 }
@@ -7648,7 +7659,9 @@ function renderNcDrawer(){
   const detail = field("Company name",co,true)+field("IMO",r.imo)+field("Role",(r.role||"").replace(/_/g," "))+field("Tagger",r.assignee)+`<div class="nc-field"><span class="k">Team</span><span class="val"><span class="task-team-chip" style="color:${ncTeamHex(r.team)}">&bull; ${esc(r.team||"—")}</span></span></div>`+`<div class="nc-field"><span class="k">Days open</span><span class="val">${r.days_open||0}d</span></div>`+field("Verification",r.verification_status)+field("QA status",r.qa_status)+field("QA assignee",r.qa_assignee)+field("Requested by",r.requested_by);
   // (b) tagger stats (across all recs)
   const tg=r.assignee; const tgRecs=recs.filter(x=>x.assignee===tg);
-  const tgCleared=tgRecs.filter(ncCleared).length; const tgClearedPct=tgRecs.length?tgCleared/tgRecs.length*100:0;
+  // tgRecs comes from the pending-only records list — it cannot show cleared
+  // records, so surface the open->3d count instead of a fake "Cleared (0%)".
+  const tgOver3=tgRecs.filter(r=>(r.days_open||0)>3).length;
   const tgMed=median(tgRecs.map(x=>x.days_open||0));
   const others=tgRecs.filter(x=>String(x.imo)!==String(r.imo)).sort((a,b)=>(a.days_open||0)-(b.days_open||0)).slice(0,5);
   const otherRows=others.map(x=>`<div class="nc-prow"><span class="who"><b>${esc(x.add_new_company||"(no company)")}</b><span class="s"> &middot; IMO ${esc(x.imo||"—")} &middot; ${esc((x.role||"—").replace(/_/g," "))}</span></span>${ncAgePill(x.days_open)}</div>`).join("")||'<div class="small-mono" style="padding:6px 0">No other records by this tagger.</div>';
@@ -7677,7 +7690,7 @@ function renderNcDrawer(){
     <div class="nc-drow">
       <div class="panel"><h3>Record detail</h3>${detail}<div class="nc-pfoot">Status: <span class="num">${statusOpen?"open":"cleared"}</span> &middot; provenance: batch <span class="num">${esc(r.requested_by||"—")}</span></div></div>
       <div class="panel"><h3>Tagger stats <span class="meta">${esc(tg||"unassigned")} · across ${tgRecs.length} records</span></h3>
-        <div class="nc-statblocks"><div class="b"><div class="v">${tgRecs.length}</div><div class="l">Total tagged</div></div><div class="b"><div class="v">${tgCleared}</div><div class="l">Cleared (${tgClearedPct.toFixed(0)}%)</div></div><div class="b"><div class="v">${tgMed!=null?tgMed+"d":"—"}</div><div class="l">Median days-open</div></div></div>
+        <div class="nc-statblocks"><div class="b"><div class="v">${tgRecs.length}</div><div class="l">Open new-co tags</div></div><div class="b"><div class="v">${tgOver3}</div><div class="l">Open &gt;3d</div></div><div class="b"><div class="v">${tgMed!=null?tgMed+"d":"—"}</div><div class="l">Median days-open</div></div></div>
         <div style="font-size:10px;text-transform:uppercase;letter-spacing:0.04em;color:var(--muted);font-weight:700;margin:8px 0 2px">Other new-co tags by ${esc(tg||"—")}</div>
         ${otherRows}
         <div class="nc-barwrap" style="margin-top:8px"><span style="width:${tgLoad.toFixed(0)}%"></span></div><div class="nc-pfoot" style="border:0;padding:4px 0 0;margin:0">Workload ${tgRecs.length}/20 reference</div>
@@ -9346,7 +9359,8 @@ async function renderWeeklyBody(startISO, endISO) {
       <div class="kpi"><div class="label">Flow C</div><div class="value">${rollup.totals.flow_c}</div><div class="delta">after QA</div></div>
       <div class="kpi"><div class="label">Total completions</div><div class="value">${rollup.totals.total_completions}</div></div>
       <div class="kpi"><div class="label">QA coverage %</div><div class="value">${qaCoverage.toFixed(0)}%</div></div>
-    </div>`;
+    </div>
+    <div class="footer-note" style="margin:-6px 0 12px">Flow A/B/C and Total completions are day-scoped (records that reached that state that day). Flow daily fields available from snapshots 2026-05-18 onward — earlier days show 0.</div>`;
 
   // Per-team performance
   const teamRows = Object.keys(STATE.roster || {}).sort().map(team => {
@@ -9507,10 +9521,14 @@ function _rollupClientSide(dayList) {
       date: day,
       tagged: tt.tagged_today || 0,
       done: tt.done_today || 0,
-      flow_a: (tt.flow_a_in_cache ?? tt.flow_a_count) || 0,
-      flow_b: (tt.flow_b_in_cache ?? tt.flow_b_count) || 0,
-      flow_c: (tt.flow_c_in_cache ?? tt.flow_c_count) || 0,
-      total_completions: tt.total_completions || 0,
+      // Day-scoped fields ONLY — the *_in_cache variants re-count the same
+      // record on every day it stays in the 7-day cache window, inflating
+      // weekly sums several-fold. Snapshots before 2026-05-18 lack the
+      // *_today keys and render as 0 (see the KPI footnote).
+      flow_a: tt.flow_a_today || 0,
+      flow_b: tt.flow_b_today || 0,
+      flow_c: tt.flow_c_today || 0,
+      total_completions: (tt.flow_a_today || 0) + (tt.flow_c_today || 0),
       active_agents: activeAgents,
       by_team: Object.fromEntries(Object.entries(aggs.by_team || {}).map(([t, m]) => [t, m.tagged_today || 0])),
     };
@@ -9755,12 +9773,12 @@ function _renderPipelinePage(){
       <div class="panel"><h3>Throughput &amp; lead-time <span class="meta">14d · completions + median TAT · SLA 36h</span></h3><div id="plThru"></div></div>
       <div class="panel"><h3>Flow Framework v3 <span class="meta">A/B/C/D today</span></h3>
         <div class="pl-flow">
-          <div class="pl-quad" style="background:var(--good-bg)"><div class="ql" style="color:var(--good)">A · Fast &amp; clean</div><div class="qv">${(t.flow_a_today||0).toLocaleString()}</div><div class="qs">avg — · kept —</div></div>
-          <div class="pl-quad" style="background:rgba(6,145,181,0.12)"><div class="ql" style="color:#0691B5">B · Slow &amp; clean</div><div class="qv">${(t.flow_b_today||0).toLocaleString()}</div><div class="qs">avg — · kept —</div></div>
-          <div class="pl-quad" style="background:var(--warn-bg)"><div class="ql" style="color:var(--warn)">C · Fast &amp; dirty</div><div class="qv">${(t.flow_c_today||0).toLocaleString()}</div><div class="qs">avg — · changed —</div></div>
-          <div class="pl-quad" style="background:var(--bad-bg)"><div class="ql" style="color:var(--bad)">D · Slow &amp; dirty</div><div class="qv">${(t.flow_d_today||0).toLocaleString()}</div><div class="qs">avg — · changed —</div></div>
+          <div class="pl-quad" style="background:var(--good-bg)"><div class="ql" style="color:var(--good)">A · Completed, no QA</div><div class="qv">${(t.flow_a_today||0).toLocaleString()}</div><div class="qs">Done/Valid, never sampled</div></div>
+          <div class="pl-quad" style="background:rgba(6,145,181,0.12)"><div class="ql" style="color:#0691B5">B · In BO QA sampling</div><div class="qv">${(t.flow_b_today||0).toLocaleString()}</div><div class="qs">awaiting review</div></div>
+          <div class="pl-quad" style="background:var(--warn-bg)"><div class="ql" style="color:var(--warn)">C · Completed after QA</div><div class="qv">${(t.flow_c_today||0).toLocaleString()}</div><div class="qs">Done/Valid with verdict</div></div>
+          <div class="pl-quad" style="background:var(--bad-bg)"><div class="ql" style="color:var(--bad)">D · In flight / other</div><div class="qv">${(t.flow_d_today||0).toLocaleString()}</div><div class="qs">tagged, not yet classified</div></div>
         </div>
-        <div class="nc-pfoot">QUALITY → · SPEED ↓ &middot; counts from <code>totals.flow_a/b/c/d_today</code>; per-bucket avg/kept rates not aggregated.</div>
+        <div class="nc-pfoot">Flow Framework v3 states (see aggregate_v2._compute_flow_framework_counts) &middot; counts from <code>totals.flow_a/b/c/d_today</code>.</div>
       </div>
     </div>`;
 
@@ -9820,10 +9838,12 @@ function renderPlThroughput(){
   const cont=document.getElementById("plThru"); if(!cont) return;
   const ct=STATE.completedTasks;
   if(ct==null){ cont.innerHTML='<div class="empty" style="padding:20px">Loading completion history…</div>'; return; }
-  // last 14 days
-  const days=[]; for(let i=13;i>=0;i--){ const d=new Date(); d.setUTCDate(d.getUTCDate()-i); days.push(d.toISOString().slice(0,10)); }
+  // last 14 days — EAT calendar days (the rest of the page buckets by EAT;
+  // UTC slicing shifted evening completions onto the wrong day).
+  const eatDay=(d)=>d.toLocaleDateString("en-CA",{timeZone:"Africa/Nairobi"});
+  const days=[]; for(let i=13;i>=0;i--){ const d=new Date(); d.setUTCDate(d.getUTCDate()-i); days.push(eatDay(d)); }
   const cnt=Object.fromEntries(days.map(d=>[d,0])), tats=Object.fromEntries(days.map(d=>[d,[]]));
-  for(const tk of ct){ if(!tk.isCompleted) continue; const e=tk.latest?.end_time; if(!e) continue; const dd=new Date(e).toISOString().slice(0,10); if(dd in cnt){ cnt[dd]++; if(tk.latest.tat_hours!=null) tats[dd].push(tk.latest.tat_hours); } }
+  for(const tk of ct){ if(!tk.isCompleted) continue; const e=tk.latest?.end_time; if(!e) continue; const dd=eatDay(new Date(e)); if(dd in cnt){ cnt[dd]++; if(tk.latest.tat_hours!=null) tats[dd].push(tk.latest.tat_hours); } }
   const bvals=days.map(d=>cnt[d]), lvals=days.map(d=>{const m=median(tats[d]); return m;});
   const totalC=bvals.reduce((a,b)=>a+b,0);
   if(totalC===0){ cont.innerHTML='<div class="empty" style="padding:20px">No completions recorded in the last 14 days.</div>'; return; }
