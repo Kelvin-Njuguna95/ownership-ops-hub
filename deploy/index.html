@@ -1753,6 +1753,7 @@ const F = {
   verification_status:"fldYSXHGwZvxXK7s6",
   status:             "flda5KtnUWmkFijJz",
   company_id_and_name:"fldaMBqa6bEANUPpn",
+  company_name_lookup:"flda5zj1ne1BuJhOm",
   is_change:          "fldGbrzM7z05OM6wb",
   created:            "fldZL6JmYMlFIhCLl",
   comment:            "fldr79tP2GV0OztrZ",
@@ -7950,20 +7951,30 @@ function wqEatHour(iso){
   const h = parseInt(hStr, 10);
   return isFinite(h) ? h : null;
 }
+// Cache records hold RAW Airtable REST shapes: singleSelect = plain string,
+// collaborator = [{id,name,email}], lookup = [string], record-link = ["recXXX"].
+// The legacy Cowork-MCP wrapper used {id,name} dicts — handle BOTH, like the
+// backend's extract_v2._name(). Returns "" for null/undefined.
+function wqVal(v){
+  if (Array.isArray(v)) v = v[0];
+  if (v && typeof v === "object") return v.name || "";
+  return v == null ? "" : v;
+}
 function wqCompanyByImo(){
   // Build {imo → company_name} from cacheRecords for the worklist + drawer.
   const map = {};
   for (const r of (STATE.cacheRecords || [])){
-    const c = r.cellValuesByFieldId || {};
-    const imo = c[F.imo];
+    const c = r.fields || r.cellValuesByFieldId || {};
+    const imo = wqVal(c[F.imo]);
     if (!imo) continue;
-    // Prefer the explicit company_name_lookup-shaped name field; fall back to
-    // the multi-record link's first .name. fldaMBqa6bEANUPpn is the multi-link,
-    // so its value may be an array — handle both shapes.
-    let nm = "";
-    const cv = c[F.company_id_and_name];
-    if (Array.isArray(cv) && cv.length) nm = cv[0]?.name || "";
-    else if (cv && typeof cv === "object" && cv.name) nm = cv.name;
+    // company_name_lookup is the lookup of name strings (what the backend
+    // prefers); company_id_and_name raw value is bare rec IDs — only usable
+    // in the legacy dict shape, so accept it only when it isn't a rec ID.
+    let nm = wqVal(c[F.company_name_lookup]);
+    if (!nm) {
+      const cv = wqVal(c[F.company_id_and_name]);
+      if (cv && !/^rec[A-Za-z0-9]{14}$/.test(cv)) nm = cv;
+    }
     if (nm && !map[imo]) map[imo] = nm;
   }
   return map;
@@ -7976,17 +7987,17 @@ function wqBacklogRecords(){
   // filled AND ww_qa blank. Either definition is "in the queue".
   const out = [];
   for (const r of (STATE.cacheRecords || [])){
-    const c = r.cellValuesByFieldId || {};
-    const vs = c[F.verification_status]?.name;
-    const wwAsg = c[F.ww_qa_assignee]?.name;
-    const wwVerdict = c[F.ww_qa]?.name;
+    const c = r.fields || r.cellValuesByFieldId || {};
+    const vs = wqVal(c[F.verification_status]);
+    const wwAsg = wqVal(c[F.ww_qa_assignee]);
+    const wwVerdict = wqVal(c[F.ww_qa]);
     const inQueue = (vs === "Selected for WW QA") || (wwAsg && !wwVerdict);
     if (!inQueue) continue;
     out.push({
-      imo:           c[F.imo] || "",
-      assignee:      (c[F.assignee] || [])[0]?.name || "",
-      qa_assignee:   c[F.qa_assignee]?.name || "",
-      qa_status:     c[F.qa_status]?.name || "",
+      imo:           wqVal(c[F.imo]) || "",
+      assignee:      wqVal(c[F.assignee]) || "",
+      qa_assignee:   wqVal(c[F.qa_assignee]) || "",
+      qa_status:     wqVal(c[F.qa_status]) || "",
       ww_qa_assignee: wwAsg || "",
       ww_qa:         wwVerdict || "",
       verification_status: vs || "",
