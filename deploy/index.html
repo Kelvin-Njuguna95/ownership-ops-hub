@@ -6887,6 +6887,8 @@ PAGE_RENDERERS.tasks = function () {
   const tatDays     = tasks.filter(t => t.is_completed && t.tat_hours != null).map(t => t.tat_hours / 24);
   const kMedianTatDays = median(tatDays);
   const flaggedN    = tasks.filter(t => (t.flags || []).length > 0).length;
+  const ioTasksN      = tasks.filter(t => t.source_table === "relations_io").length;
+  const supportTasksN = tasks.filter(t => t.source_table === "relations_support").length;
   const today       = STATE.v2?.date;
   const newToday    = activeTasks.filter(t => (t.date_first_seen || "").slice(0, 10) === today).length;
   const teamsActive = new Set(activeTasks.flatMap(t => (t.teams_worked || []).map(x => x.team))).size;
@@ -6935,7 +6937,6 @@ PAGE_RENDERERS.tasks = function () {
       ${chip("__all__", "All teams", tasks.length, f.team === "__all__", null)}
       ${teamKeys.map(tm => chip(tm, tm, teamCount(tm), f.team === tm, TEAM_COLORS[tm]?.hex || "#7B68EE")).join("")}
       <span class="spacer"></span>
-      <button class="tl-chip${f.flaggedOnly ? " active" : ""}" data-chip="__flagged"${f.flaggedOnly ? ' style="background:var(--bad)"' : ""}>🚩 Flagged only <span class="ct">${flaggedN}</span></button>
       <button class="tl-chip${f.last7 ? " active" : ""}" data-chip="__last7"${f.last7 ? ' style="background:var(--accent)"' : ""}>📅 Last 7 days <span class="ct">${last7N}</span></button>
     </div>`;
 
@@ -6949,7 +6950,7 @@ PAGE_RENDERERS.tasks = function () {
           All tagging tasks across the cache window — filter by team, status, age.
           <span class="dot-sep">&middot;</span><span class="num">${kActive}</span> active
           <span class="dot-sep">&middot;</span><span class="num">${kInFlight.toLocaleString()}</span> records in flight
-          <span class="dot-sep">&middot;</span><span class="num">${flaggedN}</span> flagged
+          <span class="dot-sep">&middot;</span><span class="num">${ioTasksN}</span> io &middot; <span class="num">${supportTasksN}</span> support
         </div>
       </div>
       <div class="page-head-actions">
@@ -6991,8 +6992,7 @@ PAGE_RENDERERS.tasks = function () {
   // Chip wiring (team filter + flagged-only + last-7) → re-render the list only.
   document.querySelectorAll("#tlChips .tl-chip").forEach(b => b.addEventListener("click", () => {
     const id = b.dataset.chip;
-    if (id === "__flagged") STATE.tasksFilters.flaggedOnly = !STATE.tasksFilters.flaggedOnly;
-    else if (id === "__last7") STATE.tasksFilters.last7 = !STATE.tasksFilters.last7;
+    if (id === "__last7") STATE.tasksFilters.last7 = !STATE.tasksFilters.last7;
     else STATE.tasksFilters.team = id;
     PAGE_RENDERERS.tasks();  // cheap full re-render keeps chip/badge state in sync
   }));
@@ -7183,13 +7183,13 @@ function _tlBase(){
   let out = (STATE.v2?.tasks_all || []);
   const f = STATE.tasksFilters || {};
   if (f.team && f.team !== "__all__") out = out.filter(t => (t.teams_worked||[]).some(x=>x.team===f.team));
-  if (f.flaggedOnly) out = out.filter(t => (t.flags||[]).length>0);
   if (f.last7) out = out.filter(t => { const a=ageHours(t.date_first_seen); return a!=null && a<=168; });
   return out;
 }
 function _tlTab(list, tab){
   if (tab==="active")    return list.filter(t=>!t.is_completed);
-  if (tab==="flagged")   return list.filter(t=>(t.flags||[]).length>0);
+  if (tab==="io")        return list.filter(t=>t.source_table==="relations_io");
+  if (tab==="support")   return list.filter(t=>t.source_table==="relations_support");
   if (tab==="boqa")      return list.filter(t=>((t.status_distribution||{})["Selected for BO QA "]||0)>0);
   if (tab==="sanctions") return list.filter(t=>t.is_sanctions);
   if (tab==="completed") return list.filter(t=>{ if(!t.is_completed) return false; const a=ageHours(t.end_time||t.date_last_modified); return a!=null && a<=168; });
@@ -7211,7 +7211,7 @@ function tlEatTime(iso){ return iso ? new Date(iso).toLocaleTimeString("en-GB",{
 function renderTasksList(){
   const base = _tlBase();
   const tab = STATE.tasksTab || "active";
-  const tabs = [["active","Active"],["flagged","Flagged"],["boqa","BO QA pending"],["sanctions","Sanctions"],["completed","Completed (7d)"]];
+  const tabs = [["active","Active"],["io","Relations io table"],["support","Relations support"],["boqa","BO QA pending"],["sanctions","Sanctions"],["completed","Completed (7d)"]];
   const cnt = (k)=>_tlTab(base,k).length;
   const rows = _tlTab(base, tab).slice().sort((a,b)=> new Date(a.date_first_seen||0)-new Date(b.date_first_seen||0)); // oldest first
   const all = STATE.v2?.tasks_all || [];
@@ -7221,7 +7221,6 @@ function renderTasksList(){
   fchips.push(`<span class="tl-fchip">Status &middot; ${esc(tabs.find(x=>x[0]===tab)[1])} <span class="x" data-fx="status">×</span></span>`);
   if(f.last7) fchips.push(`<span class="tl-fchip">Age &middot; ≤ 7 days <span class="x" data-fx="last7">×</span></span>`);
   if(f.team && f.team!=="__all__") fchips.push(`<span class="tl-fchip">Teams &middot; ${esc(f.team)} <span class="x" data-fx="team">×</span></span>`);
-  if(f.flaggedOnly) fchips.push(`<span class="tl-fchip">Flagged only <span class="x" data-fx="flagged">×</span></span>`);
   fchips.push(`<span class="tl-clear" data-fx="clear">Clear all</span>`);
 
   const rowHtml = (t)=>{
@@ -7240,8 +7239,13 @@ function renderTasksList(){
     const typeLbl = t.is_sanctions? "sanctions cohort":"cargo intel";
     const seen = shortDate(t.date_first_seen);
     const sel = STATE.selectedTaskId===t.name? " selected":"";
+    const tblLbl = t.source_table==="relations_io" ? "relations io"
+                 : t.source_table==="relations_support" ? "relations support"
+                 : t.source_table==="mixed" ? "mixed" : "—";
+    const tblColor = t.source_table==="relations_io" ? "var(--accent)"
+                   : t.source_table==="relations_support" ? "#0691B5" : "var(--muted)";
     return `<div class="tl-row${sel}" data-task="${esc(t.name)}">
-      <div class="tl-tb"><span class="ic">${KPI_ICONS.file}</span><div style="min-width:0"><div class="nm">${esc(t.name)}</div><div class="sub"><span class="pill-inline ${t.is_sanctions?'bad':'good'}" style="padding:0 5px">${t.is_sanctions?'sanctions':'standard'}</span> &middot; <span class="num">${total.toLocaleString()}</span> records &middot; ${typeLbl} &middot; since ${esc(seen)} &middot; ${esc(tlEatTime(t.date_first_seen))}</div></div></div>
+      <div class="tl-tb"><span class="ic">${KPI_ICONS.file}</span><div style="min-width:0"><div class="nm">${esc(t.name)}</div><div class="sub"><span class="pill-inline ${t.is_sanctions?'bad':'good'}" style="padding:0 5px">${t.is_sanctions?'sanctions':'standard'}</span> &middot; <span class="num">${total.toLocaleString()}</span> records &middot; <span class="pill-inline" style="padding:0 5px;background:var(--soft);color:${tblColor}" title="IO ${(t.records_io||0).toLocaleString()} · Support ${(t.records_support||0).toLocaleString()}">${esc(tblLbl)}</span> &middot; ${typeLbl} &middot; since ${esc(seen)} &middot; ${esc(tlEatTime(t.date_first_seen))}</div></div></div>
       <div><div class="tl-stage">${tlStageBar(sd)}</div><div class="small-mono" style="margin-top:3px;color:var(--muted)">${properPct.toFixed(0)}% properly</div></div>
       <div class="tl-teams">${teams||'<span class="small-mono">—</span>'}<span class="tl-ava">${avatars}</span>${moreAg}</div>
       <div>${flagPills.join(" ")||'<span class="small-mono">—</span>'}</div>
@@ -7251,7 +7255,7 @@ function renderTasksList(){
   };
 
   document.getElementById("tlList").innerHTML = `
-    <div class="tl-list-head"><h2>Task list</h2><span class="meta"><b>${cnt("active")}</b> active &middot; <b>${cnt("flagged")}</b> flagged &middot; <b>${compl7}</b> completed in last 7d</span></div>
+    <div class="tl-list-head"><h2>Task list</h2><span class="meta"><b>${cnt("active")}</b> active &middot; <b>${cnt("io")}</b> io &middot; <b>${cnt("support")}</b> support &middot; <b>${compl7}</b> completed in last 7d</span></div>
     <div class="tl-tabs" id="tlTabs">
       ${tabs.map(([k,l])=>`<button data-tab="${k}" class="${tab===k?'active':''}">${l} <span class="ct">${cnt(k)}</span></button>`).join("")}
       <span class="spacer"></span>
@@ -7269,7 +7273,6 @@ function renderTasksList(){
     if(fx==="status") STATE.tasksTab="active";
     else if(fx==="last7") STATE.tasksFilters.last7=false;
     else if(fx==="team") STATE.tasksFilters.team="__all__";
-    else if(fx==="flagged") STATE.tasksFilters.flaggedOnly=false;
     else if(fx==="clear"){ STATE.tasksTab="active"; STATE.tasksFilters={team:"__all__",flaggedOnly:false,last7:false}; }
     PAGE_RENDERERS.tasks();
   }));
