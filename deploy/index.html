@@ -1911,7 +1911,7 @@ async function loadCompletions(dateStr) {
         .select(`airtable_record_id,${agentCol},${tsCol}`)
         .gte(tsCol, start.toISOString())
         .lt(tsCol,  end.toISOString())
-        .order(tsCol, { ascending: true })
+        .order("airtable_record_id", { ascending: true })
         .range(page * 1000, page * 1000 + 999);
       if (error) {
         console.error(`loadCompletions(${table}):`, error);
@@ -2056,6 +2056,7 @@ async function loadTaskHistory() {
     const { data, error } = await sb.from("ownership_task_history")
       .select("*")
       .order("snapshot_date", { ascending: true })
+      .order("id", { ascending: true })
       .range(page * 1000, page * 1000 + 999);
     if (error) { console.error("loadTaskHistory:", error); return null; }
     if (!data || !data.length) break;
@@ -9105,7 +9106,7 @@ async function _loadReportData(start, end) {
         .select(cols)
         .gte(tsCol, startUtc)
         .lt(tsCol, endUtc)
-        .order(tsCol, { ascending: true })
+        .order("airtable_record_id", { ascending: true })
         .range(page * 1000, page * 1000 + 999);
       if (error) { console.error(`report load ${table}:`, error); return null; }
       if (!data || !data.length) break;
