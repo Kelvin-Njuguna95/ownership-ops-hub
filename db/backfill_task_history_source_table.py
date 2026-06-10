@@ -37,6 +37,13 @@ def get_all(path, params):
         off += 1000
     return rows
 
+def get_page(path, params):
+    """Single bounded GET (limit honoured via params). Returns the row list."""
+    r = requests.get(f"{REST}/{path}", headers=H, params=params, timeout=60)
+    if r.status_code not in (200, 206):
+        print("GET error", r.status_code, r.text[:300]); sys.exit(1)
+    return r.json()
+
 # 0) Preflight — confirm PostgREST can see ownership_task_history.source_table.
 pf = requests.get(f"{REST}/ownership_task_history", headers=H,
                   params={"select": "source_table", "limit": 1}, timeout=60)
@@ -65,15 +72,31 @@ def dominant(counter):
     if sup > io: return "relations_support"
     return "mixed"
 
-# 2) derive each needed task's dominant table from completions (per-task, paginated).
-print("Deriving dominant table per task from ownership_completions…")
-by_task = {}
-for name in need:
-    rows = get_all("ownership_completions",
-                   {"select": "source_table", "requested_by": f"eq.{name}"})
-    c = Counter(r["source_table"] for r in rows if r.get("source_table"))
-    if c: by_task[name] = c
-print(f"  resolved a table for {len(by_task)} / {len(need)} tasks")
+# 2) derive each needed task's dominant table from completions.
+# Single keyset-paginated pass over ownership_completions ordered by the `id`
+# primary key — each page is index-ordered and bounded, so it stays fast and
+# never trips the statement_timeout the way a per-task seq-scan (unindexed
+# requested_by) or an unordered OFFSET scan does on this large table.
+print("Deriving dominant table per task from ownership_completions (keyset pass)…")
+need_set = set(need)
+by_task = defaultdict(Counter)
+# `id` is a uuid PK; keyset-paginate lexically from the zero-uuid sentinel.
+cursor, pages, total = "00000000-0000-0000-0000-000000000000", 0, 0
+while True:
+    page = get_page("ownership_completions",
+                    {"select": "id,requested_by,source_table",
+                     "order": "id.asc", "id": f"gt.{cursor}", "limit": "1000"})
+    if not page: break
+    for c in page:
+        total += 1
+        nm = (c.get("requested_by") or "").strip()
+        st = c.get("source_table")
+        if nm in need_set and st:
+            by_task[nm][st] += 1
+    cursor = page[-1]["id"]; pages += 1
+    if len(page) < 1000: break
+print(f"  scanned {total} completion rows in {pages} pages; "
+      f"resolved a table for {len(by_task)} / {len(need)} tasks")
 
 # 3) PATCH each task's NULL rows to its dominant table (idempotent: WHERE is.null).
 updated = Counter(); skipped = []
