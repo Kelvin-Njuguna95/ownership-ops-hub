@@ -704,6 +704,43 @@ class TestCaptureGapClosure(unittest.TestCase):
 
 
 # ============================================================================
+# Flow-C closure — a record first observed already verdicted gets a sampling
+# row, so supabase_stamp_reviewed() has something to stamp reviewed_at on.
+# (Ashley, 2026-06-06: real 54 reviews vs 37 shown — the gap was Flow-C
+# records that never sat in "selected for BO QA" while the detector watched.)
+# ============================================================================
+class TestFlowCSamplingEmission(unittest.TestCase):
+    NOW = datetime(2026, 6, 8, 10, 0, 0, tzinfo=timezone.utc)
+
+    def _route(self, **kw):
+        return route_record({"id": kw.pop("rid", "recX"), "fields": _fields(**kw)}, self.NOW)
+
+    def test_flow_c_record_emits_sampling_row(self):
+        target, detail, comp, samp, alert = self._route(
+            rid="recFlowC",
+            verification_status=DONE,
+            assignee=[{"id": "j", "name": "JAMES MAINA"}],
+            qa_assignee={"id": "q", "name": "Ashley"},
+            qa_status="approve")
+        self.assertEqual((target, detail), ("completion", "C"))
+        self.assertIsNotNone(comp, "Flow C still yields its completion row")
+        self.assertIsNotNone(samp, "NEW: Flow C also yields a sampling row so "
+                                   "reviewed_at can be stamped in the same cycle")
+        self.assertEqual(samp["qa_assignee"], "Ashley")
+        self.assertEqual(samp["airtable_record_id"], "recFlowC")
+
+    def test_flow_a_record_emits_no_sampling_row(self):
+        # The new branch fires only for detail == "C": a Done record with no
+        # QA involvement (Flow A) must keep sampling None.
+        target, detail, comp, samp, alert = self._route(
+            verification_status=DONE,
+            assignee=[{"id": "j", "name": "JAMES MAINA"}])
+        self.assertEqual((target, detail), ("completion", "A"))
+        self.assertIsNotNone(comp)
+        self.assertIsNone(samp, "Flow A must not emit a sampling row")
+
+
+# ============================================================================
 # resolve_completion_ts — real-completion-time resolution (Cause C fix).
 # ============================================================================
 # Date-field IDs, both schemes. relations_support raw_payloads key by the first
