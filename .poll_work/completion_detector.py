@@ -741,6 +741,7 @@ def supabase_resolve_alerts(supabase_url, service_key, current_keys, now_utc):
     open_alerts = _sb_get_paginated(list_url, headers, {
         "select":      "id,airtable_record_id,alert_type",
         "resolved_at": "is.null",
+        "order":       "id.asc",
     })
     resolved = 0
     for a in open_alerts:
@@ -764,7 +765,8 @@ def detect_stuck_in_sampling(supabase_url, service_key, now_utc):
         f"{base}/rest/v1/ownership_qa_sampling",
         _sb_headers(service_key),
         {"select": "airtable_record_id,qa_assignee,sampled_at,raw_payload,source_table",
-         "sampled_at": f"lt.{cutoff}"},
+         "sampled_at": f"lt.{cutoff}",
+         "order": "airtable_record_id.asc"},
     )
     if not old_samples:
         return []
