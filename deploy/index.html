@@ -4450,9 +4450,9 @@ function _qhCompute(){
   // ownership_qa_sampling.reviewed_at) instead of the re-stampable v2.qa_hourly
   // (Airtable qa_status_ts). See loadQaReviewHours + PRs #138/#140. by_qa /
   // qa_reviewers (approval %, turnaround, backlog) stay sourced from aggregates_v2.
-  const qh = STATE.qaReviewHours || {};
-  const reviewReady   = STATE.qaReviewHours != null;
   const reviewDateOk  = STATE.qaReviewHoursDate === (v2?.date || null);
+  const qh = (reviewDateOk && STATE.qaReviewHours) || {};
+  const reviewReady   = STATE.qaReviewHours != null && reviewDateOk;
   const reviewFailed  = !reviewReady && reviewDateOk && !STATE._qhReviewHoursLoading;
   const reviewLoading = !reviewReady && !reviewFailed;   // not yet attempted, or in-flight
   const byqa = v2?.by_qa || {};
@@ -4661,7 +4661,7 @@ PAGE_RENDERERS.qa_hourly = function () {
   // headline + KPIs. loadAll preloads these, but direct navigation / a date
   // change can land here before they're ready. Guarded so a failure doesn't
   // loop; on completion re-render the whole page (headline/KPIs depend on it).
-  const _qhRevReady  = STATE.qaReviewHours != null;
+  const _qhRevReady  = STATE.qaReviewHours != null && STATE.qaReviewHoursDate === (STATE.v2?.date || null);
   const _qhRevFailed = !_qhRevReady && STATE.qaReviewHoursDate === (STATE.v2?.date || null);
   if (!_qhRevReady && !_qhRevFailed && !STATE._qhReviewHoursLoading) {
     STATE._qhReviewHoursLoading = true;
@@ -5144,7 +5144,7 @@ PAGE_RENDERERS.qa_performance = function () {
   // Lazy-load the observation-time review data (totals + hourly) so a direct
   // navigation / date change loads it and re-renders. Same one-shot guard as the
   // QA Hourly + BO QA pages.
-  const _qpRevReady  = STATE.qaReviewHours != null;
+  const _qpRevReady  = STATE.qaReviewHours != null && STATE.qaReviewHoursDate === (STATE.v2?.date || null);
   const _qpRevFailed = !_qpRevReady && STATE.qaReviewHoursDate === (STATE.v2?.date || null);
   if (!_qpRevReady && !_qpRevFailed && !STATE._qhReviewHoursLoading) {
     STATE._qhReviewHoursLoading = true;
@@ -5997,7 +5997,7 @@ function _renderBoqaPage(){
   // Lazy-load the observation-time review totals/buckets so a direct navigation /
   // date change loads them and re-renders (loadAll preloads them; this is the
   // fallback). Same one-shot guard as the QA Hourly page.
-  const _bqRevReady  = STATE.qaReviewHours != null;
+  const _bqRevReady  = STATE.qaReviewHours != null && STATE.qaReviewHoursDate === (STATE.v2?.date || null);
   const _bqRevFailed = !_bqRevReady && STATE.qaReviewHoursDate === (STATE.v2?.date || null);
   if (!_bqRevReady && !_bqRevFailed && !STATE._qhReviewHoursLoading) {
     STATE._qhReviewHoursLoading = true;
@@ -10439,6 +10439,9 @@ document.getElementById("refreshBtn").addEventListener("click", () => {
 // cheapest signal: fires when the user tabs back in, not on every focus
 // event. Re-fetches once, repaints Hourly Output if it's the current page.
 let _lastVisibilityRefresh = 0;
+// Pages that render from the per-record datasets (STATE.completions and/or
+// STATE.qaReviewHours) — the ones worth repainting after a visibility refresh.
+const _PAGES_USING_PER_RECORD_DATA = ["hourly", "qa_hourly", "qa_performance", "boqa"];
 document.addEventListener("visibilitychange", async () => {
   if (document.visibilityState !== "visible") return;
   // Debounce: skip if we refreshed in the last 30s to avoid hammering Supabase
@@ -10448,7 +10451,8 @@ document.addEventListener("visibilitychange", async () => {
   _lastVisibilityRefresh = now;
   if (!STATE.completionsDate) return;
   await loadCompletions(STATE.completionsDate);
-  if (STATE.currentPage === "hourly") rerenderCurrentPage();
+  if (STATE.qaReviewHoursDate) await loadQaReviewHours(STATE.qaReviewHoursDate);
+  if (_PAGES_USING_PER_RECORD_DATA.includes(STATE.currentPage)) rerenderCurrentPage();
 });
 
 // ---- Global date picker — jump STATE.v2 to any historical snapshot ----
@@ -10504,15 +10508,27 @@ document.getElementById("viewDate").addEventListener("change", async (e) => {
   if (!date) return;
   if (date === STATE.todayV2.date) setViewToToday();
   else                              await setViewToHistorical(date);
-  // Refresh completions for the newly-displayed date so the hourly grid
-  // shows that day's actual per-record completion timestamps, not today's.
-  await loadCompletions(STATE.viewDate);
+  // Refresh BOTH per-record datasets for the newly-displayed date: completions
+  // (hourly tagging grid) AND qa review hours (QA Hourly / QA Performance /
+  // BO QA Console read STATE.qaReviewHours — without this they kept showing
+  // TODAY's reviews under a historical date).
+  await Promise.all([
+    loadCompletions(STATE.viewDate),
+    loadQaReviewHours(STATE.viewDate),
+  ]);
   await computeStaleTasks();
   rerenderCurrentPage();
 });
 
 document.getElementById("todayBtn").addEventListener("click", async () => {
   setViewToToday();
+  // Programmatic .value writes don't fire the change listener, so reload the
+  // per-record datasets here too — otherwise returning to Today keeps the
+  // historical day's completions/reviews on screen.
+  await Promise.all([
+    loadCompletions(STATE.viewDate),
+    loadQaReviewHours(STATE.viewDate),
+  ]);
   await computeStaleTasks();
   rerenderCurrentPage();
 });
