@@ -732,9 +732,27 @@ def compute_task_breakdowns(records, today_eat, ownership_assignees):
         if total > 0 and status["waiting"] / total > 0.5:
             flags.append("high-waiting")
 
+        # Source-table rollup — which Airtable table this batch's records came from.
+        # Records carry `_table` from _load_records. Dominant table wins; exact tie → "mixed".
+        records_support = sum(1 for info in recs if info.get("_table") == "relations_support")
+        records_io      = sum(1 for info in recs if info.get("_table") == "relations_io")
+        if records_io and not records_support:
+            source_table = "relations_io"
+        elif records_support and not records_io:
+            source_table = "relations_support"
+        elif records_io > records_support:
+            source_table = "relations_io"
+        elif records_support > records_io:
+            source_table = "relations_support"
+        else:
+            source_table = "mixed"
+
         out.append({
             "name": name,
             "is_sanctions": is_sanctions(name),
+            "records_support": records_support,
+            "records_io": records_io,
+            "source_table": source_table,
             "total_records_in_cache": total,
             "date_first_seen": date_first_seen,
             "date_last_modified": date_last_modified,
