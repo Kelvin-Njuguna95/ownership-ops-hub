@@ -462,6 +462,17 @@ def route_record(rec, now_utc):
 
     if target == "completion":
         completion, _ = build_completion_row(rec, now_utc, flow=detail)
+        # Flow-C closure: a record FIRST observed already verdicted (Done/Valid
+        # + qa_assignee + qa_status) never sat in "selected for BO QA" while we
+        # were watching, so it has no ownership_qa_sampling row and
+        # supabase_stamp_reviewed() has nothing to stamp — the review vanishes
+        # from every reviewed_at-based QA surface (Ashley, 2026-06-06: real 54
+        # vs shown 37). Emit a sampling row here too. Idempotent: the insert
+        # uses on_conflict=airtable_record_id ignore-duplicates, so records
+        # that DID pass through BO QA keep their original sampled_at, and
+        # main() stamps reviewed_at in the same cycle right after insert.
+        if detail == "C":
+            sampling = build_sampling_row(rec, now_utc)
     elif target == "pre_flow":
         completion, _ = build_completion_row(rec, now_utc, flow=None)
     elif target == "sampling":
@@ -665,9 +676,9 @@ def supabase_stamp_reviewed(supabase_url, service_key, reviewed_updates, now_utc
 
     First-write-wins: the PostgREST filter ``&reviewed_at=is.null`` means a row
     already stamped is never re-stamped, so reviewed_at reflects the FIRST cycle
-    in which the detector observed the verdict. A record that has no sampling
-    row (e.g. first observed already complete) simply matches nothing — a
-    harmless no-op.
+    in which the detector observed the verdict. Records first observed already
+    verdicted (Flow C) get a sampling row emitted by route_record() in the same
+    cycle, inserted before this PATCH runs, so they are stamped here too.
 
     Batched PATCH grouped by verdict, mirroring supabase_insert_completions'
     flow-upsert: ~2 verdict groups x chunks of 100 ids = a handful of calls.
