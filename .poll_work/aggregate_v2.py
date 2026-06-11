@@ -236,6 +236,7 @@ def compute_metrics(records, today_eat, qa_exclude=None):
     vs_counts = Counter()
     qa_counts = Counter()
     comment_counts = Counter({v: 0 for v in COMMENT_VALUES})
+    comment_counts_io = Counter({v: 0 for v in COMMENT_VALUES})   # relations_io subset of comment_distribution
     source_counts = Counter()
     role_counts = Counter()
 
@@ -315,6 +316,8 @@ def compute_metrics(records, today_eat, qa_exclude=None):
         cm = info.get("comment")
         if cm:
             comment_counts[cm] += 1
+            if info.get("_table") == "relations_io":
+                comment_counts_io[cm] += 1
 
         sf = info.get("source_flow")
         if sf:
@@ -456,6 +459,7 @@ def compute_metrics(records, today_eat, qa_exclude=None):
         "counts_by_verification_status": dict(vs_counts),
         "counts_by_qa_status":           dict(qa_counts),
         "comment_distribution":          dict(comment_counts),
+        "comment_distribution_io":       dict(comment_counts_io),
         "source_flow_distribution":      dict(source_counts),
         "per_role_volume":               dict(role_counts),
         "add_new_company_open":          add_new_company_open,
@@ -1162,6 +1166,50 @@ def compute_case_scenarios(records, today_eat, ownership_assignees, cap=500):
     return gap[:cap], len(gap) > cap, no_imo[:cap], len(no_imo) > cap
 
 
+def compute_case_scenario_records(records, today_eat, ownership_assignees, cap=500):
+    """Flat, newest-first list of every record carrying a case-scenario comment.
+
+    Single source for the redesigned Case Scenarios page: the catalog drill-downs,
+    the per-task grouping, and the recent-comments view all read this one list. One
+    row per record whose ``comment`` is non-empty (any verification_status, either
+    ownership table). Each row carries exactly the fields the page renders:
+      imo, company (company_name — may be blank, which is correct for no-IMO records),
+      comment, team (resolved from the assignee roster), assignee, qa_assignee,
+      verification_status, source_table ("relations_io"/"relations_support" from the
+      record's _table marker set by _load_records), requested_by, role, and ``ts`` —
+      the record's tag time (``start_tagging`` falling back to ``created``), the same
+      base compute_case_scenarios uses for days_open.
+
+    Sorted newest-first by ``ts`` (ISO-8601 strings sort chronologically; missing
+    timestamps sort last). Capped at ``cap`` with a truncation flag — counts in
+    totals.comment_distribution remain complete even when this list truncates.
+    Returns (list, truncated_bool). Mirrors compute_case_scenarios' norm/team lookup.
+    """
+    norm = _normalize_ownership(ownership_assignees)
+    out = []
+    for info in records:
+        comment = info.get("comment")
+        if not comment:
+            continue
+        asg = info.get("assignee")
+        team = norm.get((asg or "").strip().lower(), {}).get("team")
+        out.append({
+            "imo":                 info.get("imo"),
+            "company":             info.get("company_name"),
+            "comment":             comment,
+            "team":                team,
+            "assignee":            asg,
+            "qa_assignee":         info.get("qa_assignee"),
+            "verification_status": info.get("verification_status"),
+            "source_table":        info.get("_table"),
+            "requested_by":        info.get("requested_by"),
+            "role":                info.get("role"),
+            "ts":                  info.get("start_tagging") or info.get("created"),
+        })
+    out.sort(key=lambda r: r["ts"] or "", reverse=True)
+    return out[:cap], len(out) > cap
+
+
 def compute_ww_qa_reviews(records, today_eat, ownership_assignees, cap=500):
     """Per-record WW QA review list. WW QA has no review-timestamp field, so its
     throughput stays a cumulative count (see ww_qa_throughput); this list surfaces
@@ -1368,6 +1416,7 @@ def aggregate(records, today_eat, ownership_assignees, qa_team_map=None, qa_excl
     qa_done_not_finalized = compute_qa_done_not_finalized(not_yet_finalized)
     add_new_company_records, anc_truncated = compute_add_new_company_records(in_scope, today_eat, ownership_assignees)
     case_gap, case_gap_trunc, case_no_imo, case_no_imo_trunc = compute_case_scenarios(in_scope, today_eat, ownership_assignees)
+    case_scenario_records, case_scenario_trunc = compute_case_scenario_records(in_scope, today_eat, ownership_assignees)
     ww_qa_reviews, ww_qa_reviews_trunc = compute_ww_qa_reviews(in_scope, today_eat, ownership_assignees)
     # Experts aren't in the roster, so scan the FULL record set by name (not in_scope).
     expert_activity = compute_expert_activity(records, today_eat)
@@ -1411,6 +1460,8 @@ def aggregate(records, today_eat, ownership_assignees, qa_team_map=None, qa_excl
         "case_company_gap_truncated": case_gap_trunc,
         "case_no_imo_records":        case_no_imo,
         "case_no_imo_truncated":      case_no_imo_trunc,
+        "case_scenario_records":      case_scenario_records,
+        "case_scenario_records_truncated": case_scenario_trunc,
         "bo_qa_coverage":             bo_qa_coverage,
         "ww_qa_review_records":           ww_qa_reviews,
         "ww_qa_review_records_truncated": ww_qa_reviews_trunc,

@@ -24,6 +24,7 @@ from aggregate_v2 import (  # noqa: E402
     aggregate,
     compute_add_new_company_cleared,
     compute_case_scenarios,
+    compute_case_scenario_records,
     compute_expert_activity,
     compute_metrics,
     compute_not_yet_finalized,
@@ -1659,6 +1660,76 @@ class TestComputeCaseScenarios(unittest.TestCase):
         self.assertEqual(t1["comment"], "IMO searched but not found")
         self.assertFalse(gap_trunc)
         self.assertFalse(no_imo_trunc)
+
+
+class TestCommentDistributionIoSplit(unittest.TestCase):
+    """comment_distribution_io counts only relations_io records; together with
+    comment_distribution (the total) it gives the support/io split. Records with no
+    _table (or _table == relations_support) contribute to the total only."""
+
+    def test_io_subset_of_total(self):
+        recs = [
+            _info(assignee="Alice", comment="suspected zombie vessel", _table="relations_io"),
+            _info(assignee="Alice", comment="suspected zombie vessel", _table="relations_support"),
+            _info(assignee="Alice", comment="Document Not Available",   _table="relations_io"),
+            _info(assignee="Alice", comment="Document Not Available"),   # no _table → total only
+        ]
+        m = compute_metrics(recs, TODAY)
+        total = m["comment_distribution"]
+        io = m["comment_distribution_io"]
+        # Total counts every commented record; io counts only relations_io ones.
+        self.assertEqual(total["suspected zombie vessel"], 2)
+        self.assertEqual(io["suspected zombie vessel"], 1)
+        self.assertEqual(total["Document Not Available"], 2)
+        self.assertEqual(io["Document Not Available"], 1)
+        # Same key set as the total; support split = total - io, never negative.
+        self.assertEqual(set(io.keys()), set(COMMENT_VALUES))
+        for k in COMMENT_VALUES:
+            self.assertLessEqual(io[k], total[k])
+
+
+class TestComputeCaseScenarioRecords(unittest.TestCase):
+    """compute_case_scenario_records is the single flat list powering the Case
+    Scenarios page: every commented record, newest-first, capped, with the page's
+    fields (incl. source_table and the company name)."""
+
+    def test_only_commented_records_with_fields_and_sort(self):
+        recs = [
+            _info(requested_by="T1", assignee="Alice", imo="1000001", company_name="Acme Shipping",
+                  comment="suspected zombie vessel", verification_status="tagged",
+                  qa_assignee="Q1", role="OWNER", _table="relations_support", start_tagging=_ts(0, 9)),
+            _info(requested_by="T2", assignee="Bob", imo="1000002", company_name=None,
+                  comment="IMO searched but not found", verification_status="Done",
+                  _table="relations_io", start_tagging=_ts(0, 14)),   # newer ts → should sort first
+            _info(requested_by="T3", assignee="Carol", comment=None, start_tagging=_ts(0, 18)),  # no comment → excluded
+            _info(requested_by="T4", assignee="Carol", comment="", start_tagging=_ts(0, 18)),    # blank → excluded
+        ]
+        out, trunc = compute_case_scenario_records(recs, TODAY, OWNERSHIP_ASSIGNEES)
+        self.assertFalse(trunc)
+        self.assertEqual(len(out), 2)                       # only the two commented records
+        self.assertEqual(out[0]["requested_by"], "T2")      # newest ts first
+        self.assertEqual(out[1]["requested_by"], "T1")
+        # Field shape + source_table + company + team-from-roster.
+        r2 = out[0]
+        self.assertEqual(r2["source_table"], "relations_io")
+        self.assertEqual(r2["imo"], "1000002")
+        self.assertIsNone(r2["company"])                    # blank company is correct for no-IMO records
+        self.assertEqual(r2["comment"], "IMO searched but not found")
+        r1 = out[1]
+        self.assertEqual(r1["company"], "Acme Shipping")
+        self.assertEqual(r1["source_table"], "relations_support")
+        self.assertEqual(r1["qa_assignee"], "Q1")
+        self.assertEqual(r1["team"], "Simba")               # Alice → Simba via roster
+        self.assertEqual(set(r1.keys()), {
+            "imo", "company", "comment", "team", "assignee", "qa_assignee",
+            "verification_status", "source_table", "requested_by", "role", "ts"})
+
+    def test_cap_and_truncation_flag(self):
+        recs = [_info(assignee="Alice", comment="suspected zombie vessel",
+                      start_tagging=_ts(0, 9)) for _ in range(7)]
+        out, trunc = compute_case_scenario_records(recs, TODAY, OWNERSHIP_ASSIGNEES, cap=5)
+        self.assertEqual(len(out), 5)
+        self.assertTrue(trunc)
 
 
 class TestComputeExpertActivity(unittest.TestCase):
