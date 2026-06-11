@@ -1787,6 +1787,12 @@ const STORAGE_PUBLIC = `${SUPABASE_URL}/storage/v1/object/public/${SUPABASE_BUCK
 const BASH_TOOL    = null;
 const AIRTABLE_TOOL= null;
 const BASE_ID      = "REDACTED_BASE_ID";
+// The repo is public; the real Airtable base id is deliberately kept out of it,
+// so BASE_ID ships as a placeholder and every link built from it 404s in
+// production. Owner's decision (2026-06-11): when BASE_ID isn't a real base id,
+// HIDE all Airtable-link affordances entirely rather than render dead buttons.
+// Real Airtable base ids are "app" + 14 alphanumerics; the placeholder fails this.
+const AIRTABLE_LINKABLE = /^app[A-Za-z0-9]{14}$/.test(BASE_ID);
 const TABLE_ID     = "tblpj9aJP4ExhYCZF";
 
 // Source-of-truth: extract_v2.FIELD_IDS
@@ -6366,7 +6372,7 @@ PAGE_RENDERERS.intake = function () {
       </div>
       <div class="page-head-actions">
         <button class="btn" id="intakeExportBtn">Export CSV</button>
-        <a class="btn btn-primary" id="intakeUploadBtn" href="https://airtable.com/REDACTED_BASE_ID/tblpj9aJP4ExhYCZF" target="_blank" rel="noopener">Manual upload</a>
+        ${AIRTABLE_LINKABLE ? `<a class="btn btn-primary" id="intakeUploadBtn" href="https://airtable.com/${BASE_ID}/${TABLE_ID}" target="_blank" rel="noopener">Manual upload</a>` : ""}
       </div>
     </div>`;
 
@@ -10019,7 +10025,7 @@ function renderCsComments(host) {
     ${teams.map(t => `<button class="tl-chip${CASE_STATE.team === t ? " active" : ""}" ${CASE_STATE.team === t ? 'style="background:var(--accent)"' : ""} data-csteam="${esc(t)}">${esc(t)}</button>`).join("")}</div>`;
 
   const recs = csFilteredRecords();
-  const linkBtns = Object.keys(CS_TABLES).map(t => `<a class="btn" href="${csAirtableUrl(t)}" target="_blank" rel="noopener">Open ${CS_TABLES[t].short} in Airtable ↗</a>`).join(" ");
+  const linkBtns = AIRTABLE_LINKABLE ? Object.keys(CS_TABLES).map(t => `<a class="btn" href="${csAirtableUrl(t)}" target="_blank" rel="noopener">Open ${CS_TABLES[t].short} in Airtable ↗</a>`).join(" ") : "";
 
   if (csRecords().length === 0) { host.innerHTML = teamChips + csNoDetailHtml(); return; }
 
@@ -10051,7 +10057,7 @@ function renderCsComments(host) {
         <thead><tr><th>IMO</th><th>Company · role</th><th>Scenario</th><th>Table</th><th>Task</th><th>Tagger</th><th>QA reviewer</th><th>When</th><th>Status</th></tr></thead>
         <tbody>${rows.map(rowHtml).join("") || '<tr><td colspan="9" class="empty">No records match the current filters.</td></tr>'}</tbody>
       </table></div>
-      <div class="footer-note" style="margin-top:8px">We have no vessel name/type/flag — Company · role is what analysts tag. Per-record Airtable deep links aren't possible (aggregates carry no record ids), so the links above open each table.</div>
+      <div class="footer-note" style="margin-top:8px">We have no vessel name/type/flag — Company · role is what analysts tag. Per-record Airtable deep links aren't possible (aggregates carry no record ids)${AIRTABLE_LINKABLE ? ", so the links above open each table." : "."}</div>
     </div>`;
 
   host.querySelectorAll("#csTeamChips [data-csteam]").forEach(b => b.addEventListener("click", () => { CASE_STATE.team = b.dataset.csteam; renderCsView(); }));
@@ -10147,7 +10153,7 @@ function csOpenRecordPanel(token) {
       ${field("Table", CS_TABLES[r.source_table]?.label || r.source_table)}${field("Task / batch", r.requested_by)}${field("Tagger", r.assignee)}${field("Team", r.team)}
       ${field("QA reviewer", r.qa_assignee)}${field("Verification status", r.verification_status)}${field("Tagged", csRel(r.ts))}
     </div>
-    <div style="margin-top:10px"><a class="btn" href="${csAirtableUrl(r.source_table)}" target="_blank" rel="noopener">Open ${esc(CS_TABLES[r.source_table]?.short || "table")} in Airtable ↗</a></div>`;
+    ${AIRTABLE_LINKABLE ? `<div style="margin-top:10px"><a class="btn" href="${csAirtableUrl(r.source_table)}" target="_blank" rel="noopener">Open ${esc(CS_TABLES[r.source_table]?.short || "table")} in Airtable ↗</a></div>` : ""}`;
 }
 function csOpenPlaybook() {
   openSidePanel("Scenario playbook", "How to handle each exception scenario");
