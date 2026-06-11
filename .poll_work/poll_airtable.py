@@ -405,20 +405,25 @@ def main():
     # that is Phase B (the detector + aggregator).
     print("\n=== relations_io: polling the second table (tblrOiHiLe2O3UhsE) ===")
     io_fetches = [
-        (filter_a,  "recent_io",            RECENT_PAGE_CAP,        "error"),
-        (filter_b,  "intake_io",            INTAKE_PAGE_CAP,        "warn"),
-        (filter_c,  "boqa_io",              BOQA_PAGE_CAP,          "error"),
-        (filter_d,  "tagged_today_io",      TAGGED_PAGE_CAP,        "error"),
-        (filter_e1, "done_today_io",        DONE_PAGE_CAP,          "error"),
-        (filter_e2, "valid_today_io",       DONE_PAGE_CAP,          "error"),
-        (filter_f,  "qa_reviewed_today_io", QA_REVIEWED_PAGE_CAP,   "error"),
-        (filter_g,  "ww_qa_backlog_io",     WW_QA_BACKLOG_PAGE_CAP, "error"),
-        (filter_s,  "unassigned_io",         UNASSIGNED_PAGE_CAP,    "warn"),
+        (filter_a,  "recent_io",            RECENT_PAGE_CAP,        "error", None),
+        (filter_b,  "intake_io",            INTAKE_PAGE_CAP,        "warn",  None),
+        (filter_c,  "boqa_io",              BOQA_PAGE_CAP,          "error", None),
+        (filter_d,  "tagged_today_io",      TAGGED_PAGE_CAP,        "error", None),
+        (filter_e1, "done_today_io",        DONE_PAGE_CAP,          "error", None),
+        (filter_e2, "valid_today_io",       DONE_PAGE_CAP,          "error", None),
+        (filter_f,  "qa_reviewed_today_io", QA_REVIEWED_PAGE_CAP,   "error", None),
+        (filter_g,  "ww_qa_backlog_io",     WW_QA_BACKLOG_PAGE_CAP, "error", None),
+        # Large pool (~10k+): project only the fields compute_supply needs,
+        # exactly like the support-side Fetch S. IDs cross-checked against
+        # extract_v2.FIELD_IDS_IO.
+        (filter_s,  "unassigned_io",        UNASSIGNED_PAGE_CAP,    "warn",  SUPPLY_FIELDS_IO),
     ]
     io_total_pages = 0
     io_total_recs  = 0
-    for filt, prefix, cap, on_trunc in io_fetches:
+    for filt, prefix, cap, on_trunc, fields in io_fetches:
         params = {**common, "filterByFormula": filt}
+        if fields:
+            params["fields[]"] = fields
         np_io, nr_io, _ = _paginate(headers, params, prefix, cap,
                                     f"relations_io/{prefix}",
                                     on_truncate=on_trunc, url=IO_API_URL)
