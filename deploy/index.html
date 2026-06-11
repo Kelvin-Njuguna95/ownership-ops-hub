@@ -1614,6 +1614,13 @@
   .cs-insgrid { display:grid; grid-template-columns:repeat(auto-fit, minmax(280px,1fr)); gap:14px; }
   .cs-pbrow { padding:11px 0; border-bottom:1px solid var(--border); }
   .cs-pbrow:last-child { border-bottom:0; }
+  /* task drill-down — per-scenario count breakdown */
+  .cs-swatch { width:11px; height:11px; border-radius:3px; flex-shrink:0; display:inline-block; }
+  .cs-tbreak-head { display:flex; align-items:flex-start; justify-content:space-between; gap:14px; }
+  .cs-tbreak-id { display:flex; align-items:center; gap:8px; flex-wrap:wrap; flex:1; min-width:0; }
+  .cs-tbreak-title { font-size:13px; font-weight:600; color:var(--ink); }
+  .cs-tbreak-num { text-align:right; flex-shrink:0; }
+  .cs-bignum { font-size:20px; font-weight:700; color:var(--ink); font-variant-numeric:tabular-nums; line-height:1.1; }
 </style>
 </head>
 <body>
@@ -10133,8 +10140,44 @@ function csOpenScenarioPanel(key) {
 }
 function csOpenTaskPanel(name) {
   const recs = csFilteredRecords().filter(r => (r.requested_by || "(no task name)") === name);
-  openSidePanel(name, `${recs.length} scenario record${recs.length === 1 ? "" : "s"}`);
-  const body = document.getElementById("sidePanelBody"); if (body) body.innerHTML = csRecordRowsHtml(recs);
+  const total = recs.length;
+  // Per-scenario count breakdown for this task (no per-record rows — owner's call).
+  const byKey = {}; const tables = new Set();
+  for (const r of recs) {
+    const k = csKeyForComment(r.comment);
+    if (!byKey[k]) byKey[k] = { n: 0, support: 0, io: 0 };
+    byKey[k].n++;
+    if (r.source_table === "relations_io") byKey[k].io++; else if (r.source_table === "relations_support") byKey[k].support++;
+    tables.add(r.source_table);
+  }
+  const bothTables = tables.has("relations_io") && tables.has("relations_support");
+  const rows = Object.keys(byKey).map(k => ({ g: csMeta(k), ...byKey[k] })).sort((a, b) => b.n - a.n);
+
+  openSidePanel(name, `${total.toLocaleString()} scenario comment${total === 1 ? "" : "s"}`);
+  const body = document.getElementById("sidePanelBody"); if (!body) return;
+  if (!total) { body.innerHTML = `<div class="empty" style="padding:24px">No scenario records in cache for this task.</div>`; return; }
+
+  const rowHtml = ({ g, n, support, io }) => {
+    const pct = total ? Math.round((n / total) * 100) : 0;
+    return `<div class="cs-pbrow">
+      <div class="cs-tbreak-head">
+        <div class="cs-tbreak-id">
+          <span class="cs-swatch" style="background:${g.color}"></span>
+          <span class="cs-badge">${esc(g.key)}</span>
+          <span class="cs-sev ${g.severity}">${g.severity}</span>
+          <span class="cs-tbreak-title">${esc(g.title)}</span>
+        </div>
+        <div class="cs-tbreak-num"><div class="cs-bignum">${n.toLocaleString()}</div><div class="cs-pct">of ${total.toLocaleString()} · ${pct}%</div></div>
+      </div>
+      <div class="cs-split" style="margin-top:8px"><span style="width:${pct}%;background:${g.color}"></span></div>
+      ${bothTables ? `<div class="cs-owner" style="margin-top:6px">Support ${support.toLocaleString()} · IO ${io.toLocaleString()}</div>` : ""}
+    </div>`;
+  };
+
+  body.innerHTML = `
+    ${bothTables ? `<div style="margin-bottom:12px">${csTableBadge("relations_support")} ${csTableBadge("relations_io")} <span class="cs-owner">spans both tables</span></div>` : ""}
+    ${rows.map(rowHtml).join("")}
+    <div class="footer-note" style="margin-top:12px">Counts from the records in cache for this task.</div>`;
 }
 function csOpenRecordPanel(token) {
   const [imo, ts, task] = token.split("|");
