@@ -3289,7 +3289,7 @@ function renderAgentBody(name){
         ${(remOpen || remOver) ? `<div style="display:flex;gap:18px;margin:6px 0"><div><div class="tl-bigpct">${remOpen}</div><div class="small-mono">open reminders</div></div><div><div class="tl-bigpct" style="color:var(--bad)">${remOver}</div><div class="small-mono">overdue</div></div></div>` : '<div class="small-mono" style="padding:8px 0">No open reminders for this agent.</div>'}
         <div class="tl-pfoot">Counts from <code>by_agent.reminder_open/overdue</code>. Per-record reminder rows (company / IMO / days-open) aren't emitted in <code>aggregates_v2</code> &middot; cleared last 30d —.</div>
       </div>
-      <div class="panel"><h3>Quality flags this week <span class="meta">QA-changed</span></h3>
+      <div class="panel"><h3>Quality flags today <span class="meta">QA-changed</span></h3>
         <div style="display:flex;align-items:baseline;gap:10px;margin:6px 0"><span class="tl-bigpct" style="color:${sel.chg > 0 ? 'var(--bad)' : 'var(--good)'}">${sel.chg}</span><span class="small-mono">records QA marked changed today</span></div>
         <div class="tl-pfoot">Real count from <code>by_agent.qa_changed_today</code> (${sel.chg} of ${sel.insp.toLocaleString()} reviewed). The per-record changed list isn't carried in the emitted cohort arrays, so only the count is shown.</div>
       </div>
@@ -3995,7 +3995,7 @@ function _cmpScorecard(A, B){
     ${row("Properly completed %", sA.completionPct, sB.completionPct, true, "%")}
     ${sec("Reminders & reliability")}
     ${row("Open reminders", sA.reminderOpen, sB.reminderOpen, false)}
-    ${row("Aged reminders > 14d", sA.reminderOverdue, sB.reminderOverdue, false)}
+    ${row("Reminders overdue", sA.reminderOverdue, sB.reminderOverdue, false)}
     <div class="tl-pfoot">SPEED section (P50/P90 tag time) dropped — per-record tag time isn't tracked (start_tagging is a batch-level field). Active strikes & 2-week reviews aren't tracked either, so those rows are omitted (no fabrication).</div>
   </div>`;
 }
@@ -4014,7 +4014,7 @@ function _cmpScenarioMix(A, B){
 
 function _cmpReminders(s){
   if (!s.reminderOpen && !s.reminderOverdue) return '<div class="small-mono" style="padding:8px 0">No open reminders.</div>';
-  return `<div style="display:flex;gap:20px;margin:6px 0"><div><div class="tl-bigpct">${s.reminderOpen}</div><div class="small-mono">open reminders</div></div><div><div class="tl-bigpct" style="color:var(--bad)">${s.reminderOverdue}</div><div class="small-mono">aged &gt; 14d (overdue)</div></div></div><div class="tl-pfoot">From the latest snapshot's reminder_open / reminder_overdue. Per-record reminder rows aren't emitted; strikes & 2-week reviews aren't tracked.</div>`;
+  return `<div style="display:flex;gap:20px;margin:6px 0"><div><div class="tl-bigpct">${s.reminderOpen}</div><div class="small-mono">open reminders</div></div><div><div class="tl-bigpct" style="color:var(--bad)">${s.reminderOverdue}</div><div class="small-mono">overdue (reminder date passed)</div></div></div><div class="tl-pfoot">From the latest snapshot's reminder_open / reminder_overdue. Per-record reminder rows aren't emitted; strikes & 2-week reviews aren't tracked.</div>`;
 }
 
 function _cmpDrawCharts(A, B){
@@ -5270,7 +5270,7 @@ function renderQaPerfDetail(){
     </div>
     <div class="tl-drow">
       <div class="panel"><h3>Today hourly <span class="meta">${r.todayCount.toLocaleString()} reviews</span></h3><div class="qh-hbars">${hb}</div>
-        <div class="tl-pfoot">Reviews stamped per EAT hour today (<code>qa_hourly</code>).</div>
+        <div class="tl-pfoot">Reviews stamped per EAT hour today (observation-time <code>ownership_qa_sampling.reviewed_at</code> via STATE.qaReviewHours).</div>
       </div>
       <div class="panel"><h3>Decisions <span class="meta">all-time &middot; ${(r.reviews||0).toLocaleString()}</span></h3>
         <div class="tl-donut" style="background:${donut}"><div class="hole"><b>${(r.reviews||0).toLocaleString()}</b><span>reviews</span></div></div>
@@ -5375,7 +5375,11 @@ function _supplyBurndown(rw) {
   const pts = [];
   let d = todayEat(), rem = total, runOutIndex = -1;
   for (let i = 0; i < 30; i++) {
-    if (i > 0 && dailyRate > 0 && !_isWeekendEat(d)) rem = Math.max(0, rem - dailyRate);
+    // Subtract on day 0 too (when today is a working day) so the RUN-OUT
+    // marker matches _supplyRunway's stepped date on the card/alert banner —
+    // the old `i > 0` guard plotted today as the full pool, landing the
+    // chart's run-out one working day late.
+    if (dailyRate > 0 && !_isWeekendEat(d)) rem = Math.max(0, rem - dailyRate);
     pts.push({ date: d, value: rem });
     if (rem <= 0 && runOutIndex < 0) runOutIndex = i;
     if (runOutIndex >= 0 && i >= runOutIndex + 2 && pts.length >= 5) break;  // ~1–2 points past empty
@@ -6304,7 +6308,11 @@ PAGE_RENDERERS.intake = function () {
     const waiting  = task.status_distribution?.waiting || 0;
     const dead     = task.dead_vessels || 0;
     const teamsOnTask = task.teams_worked || [];
-    const pct = records > 0 ? Math.round((tagged / records) * 100) : 0;
+    // Progress = records STARTED (left `waiting`). status_distribution.tagged
+    // is a transient seconds-long state — records move straight through it to
+    // BO QA / Done / Valid, so a tagged-based ring read ~0% on healthy tasks.
+    const started = Math.max(0, records - waiting);
+    const pct = records > 0 ? Math.round((started / records) * 100) : 0;
     const statusPill = task.is_completed ? `<span class="task-pill completed">Completed</span>`
       : task.is_sanctions ? `<span class="task-pill sanctions">Sanctions</span>`
       : `<span class="task-pill in-progress">Tagging in progress</span>`;
@@ -6322,7 +6330,7 @@ PAGE_RENDERERS.intake = function () {
           </div>
           <div class="task-card-progress">
             <svg class="ring" viewBox="0 0 36 36"><circle cx="18" cy="18" r="15.9" fill="none" stroke="var(--soft)" stroke-width="3"/><circle cx="18" cy="18" r="15.9" fill="none" stroke="var(--accent)" stroke-width="3" stroke-dasharray="${pct} ${100 - pct}" stroke-dashoffset="25" transform="rotate(-90 18 18)"/></svg>
-            <span class="ring-pct">${pct}%</span>
+            <span class="ring-pct" title="records started (no longer waiting)">${pct}%</span>
           </div>
         </div>
         <div class="task-card-body">
@@ -6336,7 +6344,7 @@ PAGE_RENDERERS.intake = function () {
             </div>
           </div>
           <div class="task-card-stats">
-            <div class="stat"><div class="lbl">Tagged</div><div class="val"><b>${tagged.toLocaleString()}</b> <span class="muted">/ ${records.toLocaleString()}</span></div><div class="sub">${waiting > 0 ? waiting.toLocaleString() + " waiting" : "all started"}</div></div>
+            <div class="stat"><div class="lbl">Started</div><div class="val"><b>${started.toLocaleString()}</b> <span class="muted">/ ${records.toLocaleString()}</span></div><div class="sub">${waiting > 0 ? waiting.toLocaleString() + " waiting" : "all started"}</div></div>
             <div class="stat"><div class="lbl">In BO QA</div><div class="val"><b>${inBoQa.toLocaleString()}</b>${tagged > 0 ? ` <span class="muted">/ ${tagged.toLocaleString()}</span>` : ""}</div><div class="sub">${tagged > 0 ? Math.round(inBoQa / tagged * 100) + "% sampled" : "—"}</div></div>
             <div class="stat"><div class="lbl">Valid</div><div class="val"><b>${valid.toLocaleString()}</b> <span class="muted">/ ${records.toLocaleString()}</span></div><div class="sub">${dead > 0 ? "Dead vessels " + dead.toLocaleString() : "no dead"}</div></div>
           </div>
@@ -9111,7 +9119,10 @@ function _buildAgentsWorkbook(data) {
   XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(summary), "Summary");
   XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([dailyHeader, ...dailyRows, dailyTotalRow]), "Daily Output");
   XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([hourlyHeader, ...hourlyRows]), "Hourly Profile");
-  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([scHeader, ...scRows]), "Agent Scorecard");
+  // Same disclosure the QAs workbook makes in its scNote: the QA columns are
+  // task-LIFETIME rollups for any task touching the range, not range-scoped.
+  const scNote = ["QA-checked / QA-changed / Reject rate are task-lifetime figures rolled up from any task touching the range."];
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([scNote, scHeader, ...scRows]), "Agent Scorecard");
   return wb;
 }
 
@@ -9708,7 +9719,7 @@ function _renderPipelinePage(){
         <h1 class="page-title">Pipeline &amp; <em>lead-time</em></h1>
         <div class="page-subtitle">
           Waiting → Tagged → BO QA → WW QA → Done &middot; current backlog + whole-funnel lead time. End-to-end P50 <span class="num">${p50||"—"}</span>
-          <span class="dot-sep">&middot;</span>P90 <span class="num">${p90||"—"}</span> &middot; <span class="num">${stuck.length}</span> records stuck
+          <span class="dot-sep">&middot;</span>P90 <span class="num">${p90||"—"}</span> &middot; <span class="num">${stuck.length}</span> tasks stuck
         </div>
       </div>
       <div class="page-head-actions">
@@ -9737,7 +9748,7 @@ function _renderPipelinePage(){
         <div class="pl-foot">${largestPct.toFixed(1)}% of pipeline &middot; median age ${largestAge!=null?largestAge.toFixed(1)+"d":"—"}</div>
       </div>
       <div class="kpi k-red ${stuck.length>0?'bad':''}">
-        <div class="kpi-top"><div class="label">Stuck &gt; 48h</div><span class="kpi-icon">${KPI_ICONS.alert}</span></div>
+        <div class="kpi-top"><div class="label">Tasks stuck &gt; 48h</div><span class="kpi-icon">${KPI_ICONS.alert}</span></div>
         <div class="value-row"><span class="value">${stuck.length.toLocaleString()}</span><span class="kpi-dod-light">DoD —</span></div>
         <div class="pl-segbar" style="background:var(--soft)">${stuckSeg}</div>
         <div class="pl-foot">Oldest ${oldestStuck!=null?oldestStuck.toFixed(1)+"d":"—"} &middot; ${stuckTopStage?PL_STAGES.find(s=>s.s===stuckTopStage).label+" holds "+stv:"—"}</div>
@@ -9765,7 +9776,7 @@ function _renderPipelinePage(){
       <div class="panel"><h3>Current volume · stage × team <span class="meta">primary-team attribution</span></h3>${_plHeatmap(tasks,teamKeys)}</div>
     </div>
 
-    <div class="pl-section-head"><h2>Stuck records · <em>past SLA</em></h2><span class="meta">${stuck.length} records · oldest ${oldestStuck!=null?(oldestStuck*24).toFixed(0)+"h":"—"}</span></div>
+    <div class="pl-section-head"><h2>Stuck tasks · <em>past SLA</em></h2><span class="meta">${stuck.length} tasks · oldest ${oldestStuck!=null?(oldestStuck*24).toFixed(0)+"h":"—"}</span></div>
     <div id="plStuck"></div>
 
     <div class="pl-section-head"><h2>Trend &amp; <em>classification</em></h2><span class="meta">14-day rolling · A/B/C/D today</span></div>
@@ -9826,7 +9837,7 @@ function renderPlStuck(){
     <div class="pl-tabs" id="plStuckTabs">${tabs.map(([k,l])=>`<button data-pst="${k}" class="${tab===k?'active':''}">${l} <span class="ct">${cnt(k)}</span></button>`).join("")}<span class="spacer"></span><span class="ct-sortlabel" style="font-size:11.5px;color:var(--muted)">↓ Oldest first</span> <button class="btn" data-plnoop="bulk" style="padding:4px 10px;font-size:12px">Bulk reassign</button></div>
     <div class="panel" style="padding:6px 10px 10px">
       <div class="pl-stuck-row head"><span>Task</span><span>Team</span><span>Stage</span><span>In stage</span><span>SLA exceed</span><span>Flow</span><span>Action</span></div>
-      ${page.map(rowHtml).join("")||'<div class="empty" style="padding:16px">No records stuck > 48h in this view.</div>'}
+      ${page.map(rowHtml).join("")||'<div class="empty" style="padding:16px">No tasks stuck > 48h in this view.</div>'}
     </div>
     <div class="pl-pag"><span>Showing ${total?start+1:0}–${end} of ${total}</span><span>${pages>1?pbtn(Math.max(1,STATE.plStuckPage-1),"‹",STATE.plStuckPage===1)+` page ${STATE.plStuckPage}/${pages} `+pbtn(Math.min(pages,STATE.plStuckPage+1),"›",STATE.plStuckPage===pages):""}</span></div>`;
   cont.querySelectorAll("#plStuckTabs button[data-pst]").forEach(b=>b.addEventListener("click",()=>{STATE.plStuckTab=b.dataset.pst;STATE.plStuckPage=1;renderPlStuck();}));

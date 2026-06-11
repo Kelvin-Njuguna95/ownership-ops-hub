@@ -1985,12 +1985,19 @@ def _compute_flow_framework_counts(work_dir, ownership_assignees):
     # _classify() and the FLD_ASSIGNEE roster filter run on them unchanged.
     tagged_files = ([(p, False) for p in sorted(work_dir.glob("tagged_today_p*.json"))]
                     + [(p, True) for p in sorted(work_dir.glob("tagged_today_io_p*.json"))])
+    seen_ids = set()   # a record shifting pages mid-fetch appears on two pages;
+                       # dedupe by id like _load_records so it isn't double-counted
     for p, is_io in tagged_files:
         try:
             page = json.loads(p.read_text())
         except (json.JSONDecodeError, OSError):
             continue
         for rec in page.get("records", []):
+            rid = rec.get("id")
+            if rid in seen_ids:
+                continue
+            if rid is not None:
+                seen_ids.add(rid)
             fields = rec.get("fields") or rec.get("cellValuesByFieldId") or {}
             if is_io:
                 fields = {IO_TO_SUPPORT_FIELD_IDS.get(fid, fid): val
