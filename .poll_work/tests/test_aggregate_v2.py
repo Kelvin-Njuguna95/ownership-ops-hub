@@ -7,6 +7,7 @@ import os
 import sys
 import unittest
 from datetime import date, datetime, timedelta
+from pathlib import Path
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
@@ -16,6 +17,7 @@ from aggregate_v2 import (  # noqa: E402
     REJECT_THRESHOLD,
     SAMPLING_TARGET_PCT,
     WW_QA_KEYS,
+    _check_cache_freshness,
     _intake_total_from_metadata,
     _load_records,
     _save_snapshot,
@@ -2342,6 +2344,54 @@ class TestFetchAlertsCounts(unittest.TestCase):
         with patch.dict("os.environ", {}, clear=True):
             r = _fetch_alerts_counts()
         self.assertEqual(r, {})
+
+
+class TestCacheFreshnessGuard(unittest.TestCase):
+    """_check_cache_freshness — the 2026-06-10 stale-cache incident guard.
+    A manual aggregator run against a 15-day-stale cache computed all-zero
+    *_today metrics; the guard must refuse unless --allow-stale-cache."""
+
+    def _work_dir(self, page_days_old=None):
+        """Temp work dir with one recent_p1.json cache page; optionally
+        backdate its mtime by ``page_days_old`` days via os.utime."""
+        import tempfile
+        import time as _time
+        tmp = Path(tempfile.mkdtemp())
+        p = tmp / "recent_p1.json"
+        p.write_text('{"records": []}')
+        if page_days_old:
+            ts = _time.time() - page_days_old * 86400
+            os.utime(p, (ts, ts))
+        return tmp
+
+    def _today(self):
+        return datetime.now(EAT).date()
+
+    def test_stale_cache_exits_without_flag(self):
+        work = self._work_dir(page_days_old=15)
+        with self.assertRaises(SystemExit) as ctx:
+            _check_cache_freshness(work, self._today(), allow_stale=False)
+        self.assertEqual(ctx.exception.code, 3)
+
+    def test_stale_cache_passes_with_flag(self):
+        work = self._work_dir(page_days_old=15)
+        _check_cache_freshness(work, self._today(), allow_stale=True)  # no raise
+
+    def test_fresh_cache_no_trigger(self):
+        work = self._work_dir()  # mtime = now
+        _check_cache_freshness(work, self._today(), allow_stale=False)  # no raise
+
+    def test_newest_page_wins(self):
+        # One stale page + one fresh page → the newest governs, no trigger
+        # (the cron just refreshed; a leftover old page must not block it).
+        work = self._work_dir(page_days_old=15)
+        (work / "tagged_today_p1.json").write_text('{"records": []}')
+        _check_cache_freshness(work, self._today(), allow_stale=False)  # no raise
+
+    def test_empty_dir_no_trigger(self):
+        import tempfile
+        work = Path(tempfile.mkdtemp())
+        _check_cache_freshness(work, self._today(), allow_stale=False)  # no raise
 
 
 class TestComputeAddNewCompanyCleared(unittest.TestCase):

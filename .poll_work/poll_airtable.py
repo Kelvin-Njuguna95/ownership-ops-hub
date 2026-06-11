@@ -25,6 +25,7 @@ from pathlib import Path
 
 try:
     import requests
+    from requests.exceptions import ConnectionError as RequestsConnectionError
 except ImportError:
     print("Missing dependency: requests. pip install requests", file=sys.stderr)
     sys.exit(1)
@@ -132,6 +133,41 @@ def _build_roster_or_clause():
     return "OR(" + ", ".join(finds) + ")"
 
 
+def _get_with_retry(url, headers, params, label, attempts=3, backoffs=(5, 15)):
+    """GET with retry + backoff for transient runner-network failures.
+
+    2026-06-10: 12 of 107 CI poll runs died on the identical transient
+    ``[Errno 101] Network is unreachable`` reaching api.airtable.com from the
+    GitHub-hosted runner. Retries ONLY the transient classes — connection-level
+    errors (ConnectionError/OSError) and HTTP 5xx/429. Anything else (4xx,
+    parse errors) goes straight back to the caller's existing loud-failure
+    path, and the final attempt's error is raised/returned unchanged: the goal
+    is absorbing network blips, not hiding real errors.
+
+    Imported exception class by NAME (not via the requests module attribute)
+    so tests that patch the whole ``requests`` module don't turn the except
+    tuple into a MagicMock.
+    """
+    for attempt in range(1, attempts + 1):
+        try:
+            r = requests.get(url, headers=headers, params=params, timeout=60)
+        except (RequestsConnectionError, OSError) as e:
+            if attempt == attempts:
+                raise
+            wait = backoffs[attempt - 1]
+            print(f"  [retry {attempt}/{attempts - 1}] {label}: "
+                  f"{type(e).__name__}: {e} — sleeping {wait}s", file=sys.stderr)
+            time.sleep(wait)
+            continue
+        if (r.status_code >= 500 or r.status_code == 429) and attempt < attempts:
+            wait = backoffs[attempt - 1]
+            print(f"  [retry {attempt}/{attempts - 1}] {label}: "
+                  f"HTTP {r.status_code} — sleeping {wait}s", file=sys.stderr)
+            time.sleep(wait)
+            continue
+        return r
+
+
 def _paginate(headers, params, file_prefix, page_cap, label, on_truncate="error", url=API_URL):
     """Page through the Airtable API and save each page as
     .poll_work/<prefix>_p<N>.json. Returns (n_pages_saved, n_records_total,
@@ -154,7 +190,7 @@ def _paginate(headers, params, file_prefix, page_cap, label, on_truncate="error"
         q = dict(params)
         if offset:
             q["offset"] = offset
-        r = requests.get(url, headers=headers, params=q, timeout=60)
+        r = _get_with_retry(url, headers, q, label)
         if r.status_code != 200:
             print(f"  [FAIL {r.status_code}] {label} page {n_pages + 1}: "
                   f"{r.text[:200]}", file=sys.stderr)
