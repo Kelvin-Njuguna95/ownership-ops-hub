@@ -1560,6 +1560,60 @@
   .topbar .date-jump { display: inline-flex; align-items: center; gap: 8px; }
   .topbar .date-jump input[type=date] { font-family: inherit; font-size: 12px; padding: 4px 8px; border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--surface); color: var(--ink); }
   .topbar .pill.warn { background: var(--warn-bg); color: var(--warn); border-color: var(--warn-bg); }
+  /* ===== Case Scenarios redesign (.cs-* namespace) ===== */
+  .cs-tablebadges { display:inline-flex; gap:6px; margin-left:8px; vertical-align:middle; }
+  .cs-tablebadge { font-size:10px; font-weight:700; padding:2px 7px; border-radius:5px; white-space:nowrap; }
+  .cs-tablebadge.support { background:rgba(6,145,181,0.13); color:#0691B5; }
+  .cs-tablebadge.io { background:var(--accent-soft); color:var(--accent); }
+  .cs-viewtabs { display:flex; gap:4px; background:var(--soft); padding:4px; border-radius:10px; margin-bottom:16px; width:fit-content; max-width:100%; flex-wrap:wrap; }
+  .cs-viewtabs button { padding:7px 16px; font-size:13px; font-family:inherit; border:0; background:transparent; color:var(--muted); border-radius:7px; cursor:pointer; font-weight:500; transition:background .15s,color .15s; }
+  .cs-viewtabs button:hover { color:var(--ink); }
+  .cs-viewtabs button.active { background:var(--surface); color:var(--ink); font-weight:600; box-shadow:var(--shadow-sm); }
+  .cs-cards { display:grid; grid-template-columns:repeat(auto-fill, minmax(345px,1fr)); gap:14px; }
+  .cs-card { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius-lg); padding:15px 16px; display:flex; flex-direction:column; gap:9px; box-shadow:var(--shadow-sm); }
+  .cs-cardhead { display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+  .cs-badge { font-family:ui-monospace,Menlo,monospace; font-size:10.5px; font-weight:700; letter-spacing:0.02em; padding:3px 8px; border-radius:6px; background:var(--soft); color:var(--ink); }
+  .cs-sev { font-size:9.5px; font-weight:700; text-transform:uppercase; letter-spacing:0.04em; padding:2px 8px; border-radius:999px; }
+  .cs-sev.high { background:var(--bad-bg); color:var(--bad); }
+  .cs-sev.medium { background:var(--warn-bg); color:var(--warn); }
+  .cs-sev.info { background:var(--soft); color:var(--muted); }
+  .cs-card .cs-title { font-size:14.5px; font-weight:650; color:var(--ink); }
+  .cs-card .cs-desc { font-size:12px; color:var(--muted); line-height:1.5; }
+  .cs-handle { font-size:11.5px; color:var(--ink); background:var(--soft); border-left:3px solid var(--accent); border-radius:0 6px 6px 0; padding:7px 10px; line-height:1.45; }
+  .cs-handle .h { color:var(--accent); font-weight:700; text-transform:uppercase; font-size:9.5px; letter-spacing:0.05em; }
+  .cs-metricrow { display:flex; align-items:baseline; gap:8px; margin-top:2px; }
+  .cs-count { font-size:24px; font-weight:700; color:var(--ink); font-variant-numeric:tabular-nums; }
+  .cs-pct { font-size:12px; color:var(--muted); }
+  .cs-trend { font-size:11.5px; font-weight:600; margin-left:auto; }
+  .cs-trend.up { color:var(--bad); } .cs-trend.down { color:var(--good); } .cs-trend.flat { color:var(--muted); }
+  .cs-split { display:flex; height:6px; border-radius:999px; overflow:hidden; background:var(--soft); }
+  .cs-split > span { height:100%; }
+  .cs-splitlbl { display:flex; justify-content:space-between; font-size:10.5px; color:var(--muted); }
+  .cs-cardfoot { display:flex; align-items:center; justify-content:space-between; gap:8px; margin-top:2px; }
+  .cs-owner { font-size:10.5px; color:var(--muted); }
+  .cs-drill { padding:5px 11px; font-size:12px; border:1px solid var(--border); background:var(--surface); border-radius:999px; cursor:pointer; color:var(--accent); font-weight:600; font-family:inherit; white-space:nowrap; }
+  .cs-drill:hover { background:var(--accent-soft); border-color:var(--accent); }
+  .cs-taskrow { display:grid; grid-template-columns:minmax(150px,2fr) auto 64px 1.5fr; gap:12px; align-items:center; padding:10px 8px; border-bottom:1px solid var(--border); cursor:pointer; }
+  .cs-taskrow:hover { background:var(--soft); }
+  .cs-taskrow.head { font-size:10px; text-transform:uppercase; letter-spacing:0.04em; color:var(--muted); font-weight:700; cursor:default; }
+  .cs-taskrow.head:hover { background:transparent; }
+  .cs-tn { font-weight:600; color:var(--ink); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .cs-stack { display:flex; height:8px; border-radius:999px; overflow:hidden; background:var(--soft); min-width:80px; }
+  .cs-stack > span { height:100%; }
+  .cs-scenchips { display:flex; gap:5px; flex-wrap:wrap; }
+  .cs-scenchip { font-size:10px; padding:1px 7px; border-radius:999px; background:var(--soft); color:var(--muted); font-weight:600; white-space:nowrap; }
+  .cs-cmtrow { cursor:pointer; }
+  .cs-cmtrow:hover { background:var(--soft); }
+  .cs-pill { font-size:10px; font-weight:600; padding:2px 8px; border-radius:999px; white-space:nowrap; }
+  .cs-pill.good { background:var(--good-bg); color:var(--good); }
+  .cs-pill.bad { background:var(--bad-bg); color:var(--bad); }
+  .cs-pill.accent { background:var(--accent-soft); color:var(--accent); }
+  .cs-pill.muted { background:var(--soft); color:var(--muted); }
+  .cs-statebar { display:flex; height:26px; border-radius:8px; overflow:hidden; margin:6px 0 4px; }
+  .cs-statebar > span { display:flex; align-items:center; justify-content:center; font-size:11px; font-weight:700; color:#fff; min-width:0; overflow:hidden; }
+  .cs-insgrid { display:grid; grid-template-columns:repeat(auto-fit, minmax(280px,1fr)); gap:14px; }
+  .cs-pbrow { padding:11px 0; border-bottom:1px solid var(--border); }
+  .cs-pbrow:last-child { border-bottom:0; }
 </style>
 </head>
 <body>
@@ -9679,141 +9733,485 @@ function renderPlThroughput(){
     <div class="nc-pfoot">14d avg · throughput <span class="num">${avgThru}</span>/d · lead <span class="num">${avgLead!=null?avgLead+"h":"—"}</span> &middot; <span style="color:#7B68EE">█</span> completions · <span style="color:#0691B5">▬</span> median TAT</div>`;
 }
 // -------- Case Scenarios (stub) --------
-// The 11 fixed comment values (mirrors extract_v2.COMMENT_VALUES, same order).
-// Five of them — indices 1..5 — mean the IMO could not be located.
-const CASE_COMMENT_VALUES = [
-  "suspected zombie vessel",
-  "IMO searched but not found",
-  "IMO not found, has positional data",
-  "IMO Never Existed, No positional data",
-  "IMO not found on Nexis/Equasis, No positional data",
-  "IMO not found on Nexis/Equasis/WW",
-  "IMO found, No positional data on WW",
-  "No Longer updated by (LRF) IHSF",
-  "Role not found",
-  "Cancelled before construction",
-  "Document Not Available",
+// ============================================================================
+//  Case Scenarios — scenario-intelligence page (catalog / tasks / comments /
+//  insights). Every analyst `comment` maps to one of 7 operational scenarios.
+//  Volume counts come from totals.comment_distribution (complete, poll-cache
+//  window); per-record detail (drill-downs, task grouping, comments) comes from
+//  the capped case_scenario_records list. Snapshots predating those keys degrade
+//  gracefully. Airtable base/table ids mirror Daily Intake's Manual-upload link.
+// ============================================================================
+const CS_TABLES = {
+  relations_support: { label: "Relations Support", short: "Support", cls: "support", tableId: "tblpj9aJP4ExhYCZF" },
+  relations_io:      { label: "Relations IO",      short: "IO",      cls: "io",      tableId: "tblrOiHiLe2O3UhsE" },
+};
+const csAirtableUrl = (t) => `https://airtable.com/${BASE_ID}/${CS_TABLES[t]?.tableId || ""}`;
+
+// Editorial grouping of the 11 fixed `comment` values into 7 scenarios. severity
+// / owner / mode / desc / handle are static guidance authored for the PM. Any
+// comment value not listed routes to OTHER, so a new Airtable choice never breaks.
+const SCENARIO_META = [
+  { key:"IMO_NOT_FOUND", title:"IMO not found in any registry", severity:"high", owner:"Analyst → BO QA", mode:"escalate", color:"#bb4338",
+    comments:["IMO searched but not found","IMO not found on Nexis/Equasis, No positional data","IMO Never Existed, No positional data","IMO not found on Nexis/Equasis/WW"],
+    desc:"The supplied IMO returns nothing on Nexis, Equasis or WW — wrong, mistyped, or never registered. Ownership can't be tagged until the number is corrected.",
+    handle:"Re-verify the 7 IMO digits against the request, retry across all three registries, then mark unresolvable. Never infer ownership from a near-match." },
+  { key:"POSITIONAL_NO_IMO", title:"No IMO, but positional data exists", severity:"high", owner:"Sanctions desk", mode:"escalate", color:"#d1495b",
+    comments:["IMO not found, has positional data"],
+    desc:"No registry hit, yet the vessel is broadcasting position — a classic dark-fleet / spoofing signature that needs sanctions review, not ownership tagging.",
+    handle:"Do not tag ownership — flag for dark-fleet review and escalate with the positional evidence." },
+  { key:"NO_POSITIONAL", title:"IMO found, no WW positional track", severity:"info", owner:"Analyst", mode:"self", color:"#3d63dd",
+    comments:["IMO found, No positional data on WW"],
+    desc:"Registry ownership exists but Windward has no positional track for the vessel.",
+    handle:"Tag ownership from the registry as normal and note the positional gap so WW can backfill the track." },
+  { key:"LRF_STALE", title:"LRF / IHSF no longer updating", severity:"medium", owner:"WW QA", mode:"self", color:"#9a6a12",
+    comments:["No Longer updated by (LRF) IHSF"],
+    desc:"Lloyd's Register Fairplay / IHS Fairplay has stopped maintaining this record — the controller on file may be stale.",
+    handle:"Tag the last-known Commercial Controller with a freshness flag and escalate to WW QA for second-source confirmation." },
+  { key:"ZOMBIE", title:"Suspected zombie vessel", severity:"medium", owner:"WW QA", mode:"self", color:"#7c5cbf",
+    comments:["suspected zombie vessel"],
+    desc:"Vessel looks dormant or abandoned — possibly scrapped or long-inactive.",
+    handle:"Cross-check Windward positional history; if no track in 180 days, tag suspected zombie and flag for client removal review." },
+  { key:"DOC_UNAVAIL", title:"Source document unavailable", severity:"info", owner:"Analyst", mode:"self", color:"#1a7a55",
+    comments:["Document Not Available"],
+    desc:"The approved source document couldn't be retrieved for this record.",
+    handle:"Attempt the second approved source; if both fail, log doc-unavailable with the exact reason — never leave the field blank." },
+  { key:"OTHER", title:"Other exceptions", severity:"info", owner:"Analyst", mode:"other", color:"#8a93a3",
+    comments:["Role not found","Cancelled before construction"],
+    desc:"Lower-frequency exceptions — role-not-found and cancelled-before-construction records, plus any new comment value.",
+    handle:"Resolve per the standard checklist for the specific value; route anything unfamiliar to a lead." },
 ];
-const CASE_STATE = { team: "all" };
+const _csKeyByComment = (() => { const m = {}; for (const g of SCENARIO_META) for (const c of g.comments) m[c] = g.key; return m; })();
+const csKeyForComment = (c) => _csKeyByComment[c] || "OTHER";
+const csMeta = (key) => SCENARIO_META.find(g => g.key === key) || SCENARIO_META[SCENARIO_META.length - 1];
+
+const CASE_STATE = { view: "catalog", table: "all", severity: "all", team: "all", catSub: "all", tasksAll: false };
+
+// --- data accessors (degrade when new keys are absent on old snapshots) ---
+const csRecords  = () => STATE.v2?.case_scenario_records || [];
+const csTrunc    = () => !!STATE.v2?.case_scenario_records_truncated;
+const csDist     = () => STATE.v2?.totals?.comment_distribution || {};
+const csDistIo   = () => STATE.v2?.totals?.comment_distribution_io || null;   // null ⇒ pre-split snapshot
+const csGroupCount = (dist, key) => csMeta(key).comments.reduce((s, c) => s + (dist[c] || 0), 0);
+const csSum = (dist) => Object.values(dist || {}).reduce((s, v) => s + v, 0);
+// Distribution under the active table chip: all ⇒ total; io ⇒ io split; support ⇒ total − io.
+function csActiveDist() {
+  const d = csDist(), io = csDistIo();
+  if (CASE_STATE.table === "all" || !io) return d;
+  if (CASE_STATE.table === "relations_io") return io;
+  const out = {}; for (const k of Object.keys(d)) out[k] = (d[k] || 0) - (io[k] || 0); return out;
+}
+function csStatus(vs) {
+  if (vs === "Valid" || vs === "Done") return { label: "Cleared", cls: "good" };
+  if (vs === "need to be update")      return { label: "Escalated", cls: "bad" };
+  if (vs === "Selected for BO QA " || vs === "Selected for WW QA") return { label: "In review", cls: "accent" };
+  return { label: "Open", cls: "muted" };   // waiting / tagged / blank
+}
+function csRel(ts) {
+  if (!ts) return "—";
+  const t = new Date(ts).getTime(); if (isNaN(t)) return "—";
+  const mins = Math.max(0, Math.round((Date.now() - t) / 60000));
+  if (mins < 60) return mins <= 1 ? "just now" : `${mins}m ago`;
+  const hrs = Math.round(mins / 60); if (hrs < 24) return `${hrs}h ago`;
+  const days = Math.round(hrs / 24); if (days < 30) return `${days}d ago`;
+  return new Date(ts).toLocaleDateString("en-GB", { timeZone: "Africa/Nairobi", day: "numeric", month: "short" });
+}
+// Records after the active table + severity + team filters (powers detail views).
+function csFilteredRecords() {
+  let recs = csRecords();
+  if (CASE_STATE.table !== "all") recs = recs.filter(r => r.source_table === CASE_STATE.table);
+  if (CASE_STATE.severity !== "all") recs = recs.filter(r => csMeta(csKeyForComment(r.comment)).severity === CASE_STATE.severity);
+  if (CASE_STATE.team !== "all") recs = recs.filter(r => (r.team || "—") === CASE_STATE.team);
+  return recs;
+}
+const csTeams = () => [...new Set(csRecords().map(r => r.team).filter(Boolean))].sort();
+const csTableBadge = (t) => { const m = CS_TABLES[t]; return m ? `<span class="cs-tablebadge ${m.cls}">${m.short}</span>` : `<span class="cs-tablebadge io">mixed</span>`; };
 
 PAGE_RENDERERS.scenarios = function () {
   const root = document.getElementById("page-scenarios");
-  const gaps       = STATE.v2?.case_company_gap_records || [];
-  const noImo      = STATE.v2?.case_no_imo_records || [];
-  const gapTrunc   = !!STATE.v2?.case_company_gap_truncated;
-  const noImoTrunc = !!STATE.v2?.case_no_imo_truncated;
-  const teams      = Object.keys(STATE.roster || {}).sort();
-  CASE_STATE.team  = localStorage.getItem("wqa.caseTeam") || "all";
+  const dist = csDist(), io = csDistIo();
+  const total = csSum(dist);
+  const ioN = io ? csSum(io) : null;
+  const supN = io ? total - ioN : null;
+  const recs = csRecords();
+  const tasksInvolved = new Set(recs.map(r => r.requested_by || "—")).size;
+  // Top scenario by complete count.
+  const groupCounts = SCENARIO_META.map(g => ({ g, n: csGroupCount(dist, g.key) }));
+  const top = groupCounts.slice().sort((a, b) => b.n - a.n)[0] || { g: SCENARIO_META[0], n: 0 };
+  const pct = (n) => total ? Math.round((n / total) * 100) : 0;
+  const fresh = STATE.freshness || {};
+  const synced = STATE.v2?.computed_at ? tlEatTime(STATE.v2.computed_at) : "—";
+  const today = STATE.v2?.date ? new Date(STATE.v2.date + "T00:00:00+03:00").toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short", year: "numeric" }) : "";
+  const livePill = fresh.level === "fresh"
+    ? `<span class="pill" style="background:var(--good-bg);color:var(--good)">● Live</span>`
+    : `<span class="pill warn">● ${esc(fresh.label || "stale")}</span>`;
 
+  const heroIcon = (k) => KPI_ICONS[k] || "";
   root.innerHTML = `
-    <h3 style="font-size:18px;font-weight:600;color:var(--ink);margin-bottom:8px">Case Scenarios</h3>
-    <div class="footer-note" style="margin-bottom:10px">The <code>comment</code> field is a fixed set of 11 case-scenario values. Five of them mean the vessel's IMO could not be located — for those a blank company id/name is correct (no IMO ⇒ nothing to attach), so those records are listed separately rather than flagged as gaps.</div>
+    <div class="page-head">
+      <div>
+        <div class="page-eyebrow">Operations · exception handling${today ? " · " + esc(today) + " EAT" : ""} ${livePill} <span class="meta">Airtable synced ${esc(synced)} EAT</span></div>
+        <h1 class="page-title">Case scenarios</h1>
+        <div class="page-subtitle">Every analyst comment maps to a scenario — read from two Airtable tables ${csTableBadge("relations_support")} ${csTableBadge("relations_io")}. <b>${total.toLocaleString()}</b> scenario comments across <b>${tasksInvolved.toLocaleString()}</b> task${tasksInvolved === 1 ? "" : "s"} in the current poll-cache window.</div>
+      </div>
+      <div class="page-head-actions">
+        <button class="btn" id="csExportBtn">Export</button>
+        <button class="btn btn-primary" id="csPlaybookBtn">📖 Scenario playbook</button>
+      </div>
+    </div>
+
     <div class="kpis">
-      <div class="kpi ${gaps.length > 0 ? 'warn' : ''}"><div class="label">Company-gap records</div><div class="value">${gaps.length}${gapTrunc ? '+' : ''}</div><div class="delta">Done/Valid · no company · not dead · not no-IMO</div></div>
-      <div class="kpi"><div class="label">No-IMO-found records</div><div class="value">${noImo.length}${noImoTrunc ? '+' : ''}</div><div class="delta">blank company is correct here</div></div>
+      <div class="kpi k-neutral"><div class="kpi-top"><div class="label">Comments in cache</div><span class="kpi-icon">${heroIcon("layers")}</span></div><div class="value">${total.toLocaleString()}</div><div class="delta">scenario comments in the current poll-cache window — not all-time</div><div id="csSpark"></div></div>
+      <div class="kpi k-neutral"><div class="kpi-top"><div class="label">From Relations Support</div><span class="kpi-icon">${heroIcon("inbox")}</span></div><div class="value">${supN == null ? "—" : supN.toLocaleString()}</div><div class="delta">${supN == null ? "table split not in this snapshot" : pct(supN) + "% of comments"}</div></div>
+      <div class="kpi k-neutral"><div class="kpi-top"><div class="label">From Relations IO</div><span class="kpi-icon">${heroIcon("inbox")}</span></div><div class="value">${ioN == null ? "—" : ioN.toLocaleString()}</div><div class="delta">${ioN == null ? "table split not in this snapshot" : pct(ioN) + "% of comments"}</div></div>
+      <div class="kpi k-neutral"><div class="kpi-top"><div class="label">Top scenario</div><span class="kpi-icon">${heroIcon("percent")}</span></div><div class="value">${pct(top.n)}%</div><div class="delta">${esc(top.g.title)} — ${top.n.toLocaleString()} comments</div></div>
     </div>
 
-    <div class="panel">
-      <h3>Monthly case-type trend <span class="meta">whole team · from daily snapshots</span></h3>
-      <div id="caseTrendHeatmap"><div class="empty">Loading monthly trend…</div></div>
+    <div class="tl-chips" id="csTableChips">
+      <span class="small-mono" style="color:var(--muted);margin-right:2px">Table</span>
+      ${csChipHtml("table", "all", "All tables", total)}
+      ${csChipHtml("table", "relations_support", "Relations Support", supN)}
+      ${csChipHtml("table", "relations_io", "Relations IO", ioN)}
+      <span class="spacer" style="width:14px"></span>
+      <span class="small-mono" style="color:var(--muted);margin-right:2px">Severity</span>
+      ${csChipHtml("severity", "all", "All", null)}
+      ${csChipHtml("severity", "high", "High", null)}
+      ${csChipHtml("severity", "medium", "Medium", null)}
+      ${csChipHtml("severity", "info", "Info", null)}
     </div>
 
-    <div class="controls-row">
-      <label class="small-mono">Team:</label>
-      <select id="caseTeamFilter">
-        <option value="all" ${CASE_STATE.team === 'all' ? 'selected' : ''}>All teams</option>
-        ${teams.map(t => `<option value="${esc(t)}" ${CASE_STATE.team === t ? 'selected' : ''}>${esc(t)}</option>`).join("")}
-      </select>
-      <span class="small-mono">filters both lists below</span>
+    <div class="cs-viewtabs" id="csViewTabs">
+      <button data-csview="catalog">Catalog</button>
+      <button data-csview="tasks">Tasks</button>
+      <button data-csview="comments">Comments</button>
+      <button data-csview="insights">Insights</button>
     </div>
 
-    <div class="panel">
-      <h3>Company gaps — need attention <span class="meta" id="caseGapCount"></span></h3>
-      ${gapTrunc ? `<div class="alert-row warn" style="margin-bottom:10px"><span class="icon">!</span><div>Showing the first ${gaps.length} records — older entries truncated. Bump the cap in <code>compute_case_scenarios</code> if you need more.</div></div>` : ""}
-      <div class="case-scroll" id="caseGapTable"></div>
-    </div>
+    <div id="csView"></div>`;
 
-    <div class="panel">
-      <h3>No-IMO-found records <span class="meta" id="caseNoImoCount"></span></h3>
-      ${noImoTrunc ? `<div class="alert-row warn" style="margin-bottom:10px"><span class="icon">!</span><div>Showing the first ${noImo.length} records — older entries truncated. Bump the cap in <code>compute_case_scenarios</code> if you need more.</div></div>` : ""}
-      <div class="case-scroll" id="caseNoImoTable"></div>
-    </div>
-  `;
+  document.getElementById("csExportBtn").addEventListener("click", csExport);
+  document.getElementById("csPlaybookBtn").addEventListener("click", csOpenPlaybook);
+  root.querySelectorAll("#csTableChips [data-csfilter]").forEach(b => b.addEventListener("click", () => {
+    const [grp, val] = [b.dataset.csgrp, b.dataset.csfilter];
+    CASE_STATE[grp] = val;
+    PAGE_RENDERERS.scenarios();   // chips affect hero + all views; full re-render keeps everything in sync
+  }));
+  root.querySelectorAll("#csViewTabs button[data-csview]").forEach(b => b.addEventListener("click", () => {
+    CASE_STATE.view = b.dataset.csview; renderCsView();
+  }));
 
-  document.getElementById("caseTeamFilter").addEventListener("change", (e) => {
-    CASE_STATE.team = e.target.value;
-    localStorage.setItem("wqa.caseTeam", CASE_STATE.team);
-    renderCaseTables();
-  });
-
-  renderCaseTables();
-  renderCaseTrendHeatmap();
+  renderCsView();
+  csPatchSparkline();   // best-effort async trend on card 1 + per-card 30d arrows
 };
 
-function _caseFilter(rows) {
-  return CASE_STATE.team === "all" ? rows : rows.filter(r => r.team === CASE_STATE.team);
-}
-function _caseTableHtml(rows) {
-  const cols = ["Task name", "IMO", "Agent", "Team", "Comment", "Status", "Days open"];
-  const head = `<thead><tr>${cols.map(c => `<th class="${c === 'Days open' ? 'right' : ''}">${esc(c)}</th>`).join("")}</tr></thead>`;
-  const body = rows.map(r => `<tr>
-    <td>${esc(r.requested_by || "—")}</td>
-    <td class="mono">${esc(r.imo || "—")}</td>
-    <td>${esc(r.assignee || "—")}</td>
-    <td>${esc(r.team || "—")}</td>
-    <td>${esc(r.comment || "—")}</td>
-    <td>${esc(r.verification_status || "—")}</td>
-    <td class="right">${r.days_open ?? 0}</td>
-  </tr>`).join("");
-  return `<table>${head}<tbody>${body || '<tr><td colspan="7" class="empty">No records.</td></tr>'}</tbody></table>`;
-}
-function renderCaseTables() {
-  const gaps  = _caseFilter(STATE.v2?.case_company_gap_records || []);
-  const noImo = _caseFilter(STATE.v2?.case_no_imo_records || []);
-  const gapEl = document.getElementById("caseGapTable");
-  const noImoEl = document.getElementById("caseNoImoTable");
-  if (gapEl)  gapEl.innerHTML  = _caseTableHtml(gaps);
-  if (noImoEl) noImoEl.innerHTML = _caseTableHtml(noImo);
-  const gc = document.getElementById("caseGapCount");  if (gc) gc.textContent  = `${gaps.length} shown`;
-  const nc = document.getElementById("caseNoImoCount"); if (nc) nc.textContent = `${noImo.length} shown`;
+function csChipHtml(grp, val, label, count) {
+  const active = CASE_STATE[grp] === val;
+  const ct = (count != null) ? `<span class="ct">${count.toLocaleString()}</span>` : "";
+  return `<button class="tl-chip${active ? " active" : ""}" ${active ? 'style="background:var(--accent)"' : ""} data-csgrp="${grp}" data-csfilter="${esc(val)}">${esc(label)} ${ct}</button>`;
 }
 
-// 7-day case-type heatmap: rows = the 11 comment values, columns = the last 7
-// EAT days, each cell = that comment's count that day. Read from the daily
-// snapshots' totals.comment_distribution (same approach as the Daily Intake
-// 7-day chart). Whole-team — per-team history isn't in old snapshots. Days with
-// no snapshot render as a muted blank cell.
-async function renderCaseTrendHeatmap() {
-  const wrap = document.getElementById("caseTrendHeatmap");
-  if (!wrap) return;
-  // Monthly window — only days whose snapshot carries a comment_distribution
-  // (days with data). One column per such day; the grid template and the
-  // overflow-x wrapper both scale with the day count.
-  const monthSnaps = await loadMonthSnapshots(STATE.selectedMonth || _currentMonth());
-  const snaps = monthSnaps
-    .map(s => ({ d: s.date, cd: s.agg?.totals?.comment_distribution || null }))
-    .filter(s => s.cd);
-  if (!snaps.length) {
-    wrap.innerHTML = `<div class="empty">No case-type data for ${esc(STATE.selectedMonth || _currentMonth())} yet.</div>`;
-    return;
+function renderCsView() {
+  // active state on the view tabs
+  document.querySelectorAll("#csViewTabs button[data-csview]").forEach(b =>
+    b.classList.toggle("active", b.dataset.csview === CASE_STATE.view));
+  const host = document.getElementById("csView");
+  if (!host) return;
+  if (CASE_STATE.view === "catalog")       renderCsCatalog(host);
+  else if (CASE_STATE.view === "tasks")    renderCsTasks(host);
+  else if (CASE_STATE.view === "comments") renderCsComments(host);
+  else                                     renderCsInsights(host);
+}
+
+// ---------- Catalog: one card per scenario group ----------
+function renderCsCatalog(host) {
+  const dist = csActiveDist();
+  const total = csSum(csActiveDist());
+  const io = csDistIo();
+  const subTabs = [["all", "All"], ["escalate", "Escalate"], ["self", "Self-resolve"]];
+  const cards = SCENARIO_META
+    .map(g => ({ g, n: csGroupCount(dist, g.key) }))
+    .filter(({ g, n }) => n > 0
+      && (CASE_STATE.severity === "all" || g.severity === CASE_STATE.severity)
+      && (CASE_STATE.catSub === "all" || (CASE_STATE.catSub === "escalate" ? g.mode === "escalate" : g.mode !== "escalate")))
+    .sort((a, b) => b.n - a.n);
+
+  const cardHtml = ({ g, n }) => {
+    const pct = total ? Math.round((n / total) * 100) : 0;
+    // support/io split for this group (only when the table chip is "all" and io split exists)
+    let splitHtml = "";
+    if (CASE_STATE.table === "all" && io) {
+      const ioN = csMeta(g.key).comments.reduce((s, c) => s + (io[c] || 0), 0);
+      const supN = n - ioN;
+      const ioPct = n ? (ioN / n) * 100 : 0;
+      splitHtml = `
+        <div class="cs-split"><span style="width:${(100 - ioPct).toFixed(1)}%;background:#0691B5"></span><span style="width:${ioPct.toFixed(1)}%;background:var(--accent)"></span></div>
+        <div class="cs-splitlbl"><span>Support ${supN.toLocaleString()}</span><span>IO ${ioN.toLocaleString()}</span></div>`;
+    }
+    const recN = csRecords().filter(r => csKeyForComment(r.comment) === g.key && (CASE_STATE.table === "all" || r.source_table === CASE_STATE.table)).length;
+    return `<div class="cs-card">
+      <div class="cs-cardhead"><span class="cs-badge">${esc(g.key)}</span><span class="cs-sev ${g.severity}">${g.severity}</span><span class="cs-trend" data-cstrend="${g.key}"></span></div>
+      <div class="cs-title">${esc(g.title)}</div>
+      <div class="cs-desc">${esc(g.desc)}</div>
+      <div class="cs-handle"><span class="h">Handle</span> · ${esc(g.handle)}</div>
+      <div class="cs-metricrow"><span class="cs-count">${n.toLocaleString()}</span><span class="cs-pct">${pct}% of comments</span></div>
+      ${splitHtml}
+      <div class="cs-cardfoot"><span class="cs-owner">Owner · ${esc(g.owner)}</span>${recN > 0 ? `<button class="cs-drill" data-csdrill="${g.key}">→ ${recN} record${recN === 1 ? "" : "s"}</button>` : `<span class="cs-owner">no records in cache</span>`}</div>
+    </div>`;
+  };
+
+  const detailNote = (csRecords().length === 0)
+    ? `<div class="footer-note" style="margin-bottom:10px">Counts below are complete for the poll-cache window. Per-record drill-downs aren't in this snapshot — they're captured from newer poll cycles.</div>`
+    : (csTrunc() ? `<div class="alert-row warn" style="margin-bottom:10px"><span class="icon">!</span><div>Card counts are complete. Per-record drill-downs show the <b>500 most recent</b> records — older records exceed the cache cap.</div></div>` : "");
+
+  host.innerHTML = `
+    <div class="tl-chips" id="csCatSub">${subTabs.map(([v, l]) => `<button class="tl-chip${CASE_STATE.catSub === v ? " active" : ""}" ${CASE_STATE.catSub === v ? 'style="background:var(--ink);color:#fff"' : ""} data-cssub="${v}">${l}</button>`).join("")}</div>
+    ${detailNote}
+    <div class="cs-cards">${cards.map(cardHtml).join("") || '<div class="empty" style="padding:30px">No scenarios match the current filters.</div>'}</div>`;
+
+  host.querySelectorAll("#csCatSub [data-cssub]").forEach(b => b.addEventListener("click", () => { CASE_STATE.catSub = b.dataset.cssub; renderCsView(); }));
+  host.querySelectorAll("[data-csdrill]").forEach(b => b.addEventListener("click", () => csOpenScenarioPanel(b.dataset.csdrill)));
+  csPatchTrends();
+}
+
+// ---------- Tasks: per-task-batch breakdown ----------
+function renderCsTasks(host) {
+  const recs = csFilteredRecords();
+  if (!recs.length) { host.innerHTML = csNoDetailHtml(); return; }
+  const byTask = new Map();
+  for (const r of recs) {
+    const k = r.requested_by || "(no task name)";
+    if (!byTask.has(k)) byTask.set(k, { name: k, recs: [], tables: new Set(), newest: "" });
+    const t = byTask.get(k); t.recs.push(r); t.tables.add(r.source_table); if ((r.ts || "") > t.newest) t.newest = r.ts || "";
   }
-  let max = 1;
-  for (const s of snaps) for (const c of CASE_COMMENT_VALUES) max = Math.max(max, s.cd[c] || 0);
-  const shortDay = d => new Date(d + "T00:00:00+03:00").toLocaleDateString("en-GB", { timeZone: "Africa/Nairobi", day: "numeric", month: "short" });
-  const headerCells = snaps.map(s => `<div class="header">${esc(shortDay(s.d))}</div>`).join("");
-  const rows = CASE_COMMENT_VALUES.map(c => {
-    const cells = snaps.map(s => {
-      const v = s.cd[c] || 0;
-      if (v === 0) return `<div class="cell z" title="${esc(c)} · ${esc(s.d)}: 0">0</div>`;
-      const alpha = (0.2 + 0.8 * (v / max)).toFixed(2);
-      return `<div class="cell" style="background:rgba(123,104,238,${alpha})" title="${esc(c)} · ${esc(s.d)}: ${v}">${v}</div>`;
-    }).join("");
-    return `<div class="label">${esc(c)}</div>${cells}`;
-  }).join("");
-  wrap.innerHTML = `<div style="overflow-x:auto"><div class="heatmap" style="grid-template-columns: 280px repeat(${snaps.length}, minmax(40px, 1fr));">
-    <div class="header"></div>${headerCells}
-    ${rows}
-  </div></div>`;
+  const tasks = [...byTask.values()].sort((a, b) => (b.newest || "").localeCompare(a.newest || ""));
+  const shown = CASE_STATE.tasksAll ? tasks : tasks.slice(0, 10);
+
+  const rowHtml = (t) => {
+    const counts = {}; for (const r of t.recs) { const k = csKeyForComment(r.comment); counts[k] = (counts[k] || 0) + 1; }
+    const ordered = SCENARIO_META.filter(g => counts[g.key]);
+    const stack = ordered.map(g => `<span style="width:${((counts[g.key] / t.recs.length) * 100).toFixed(1)}%;background:${g.color}" title="${esc(g.title)}: ${counts[g.key]}"></span>`).join("");
+    const chips = ordered.map(g => `<span class="cs-scenchip" style="color:${g.color}">${esc(g.key)} ${counts[g.key]}</span>`).join("");
+    const badges = [...t.tables].map(csTableBadge).join(" ");
+    return `<div class="cs-taskrow" data-cstask="${esc(t.name)}">
+      <span class="cs-tn" title="${esc(t.name)}">${esc(t.name)}</span>
+      <span>${badges}</span>
+      <span class="ct-num" style="font-weight:700">${t.recs.length}</span>
+      <span><div class="cs-stack">${stack}</div><div class="cs-scenchips" style="margin-top:5px">${chips}</div></span>
+    </div>`;
+  };
+
+  host.innerHTML = `
+    <div class="panel">
+      <h3>Scenario comments by task <span class="meta">${tasks.length} task${tasks.length === 1 ? "" : "s"} · newest first${csTrunc() ? " · most recent 500 records" : ""}</span></h3>
+      <div class="cs-taskrow head"><span>Task / batch</span><span>Table</span><span>Records</span><span>Scenario mix</span></div>
+      ${shown.map(rowHtml).join("")}
+      ${tasks.length > 10 ? `<div style="text-align:center;padding:12px 0 2px"><button class="btn" id="csTasksToggle">${CASE_STATE.tasksAll ? "Show top 10" : `Show all ${tasks.length} tasks`}</button></div>` : ""}
+    </div>`;
+
+  host.querySelectorAll("[data-cstask]").forEach(r => r.addEventListener("click", () => csOpenTaskPanel(r.dataset.cstask)));
+  const tg = document.getElementById("csTasksToggle"); if (tg) tg.addEventListener("click", () => { CASE_STATE.tasksAll = !CASE_STATE.tasksAll; renderCsView(); });
+}
+
+// ---------- Comments: recent scenario records across both tables ----------
+function renderCsComments(host) {
+  const teams = csTeams();
+  const teamChips = `<div class="tl-chips" id="csTeamChips"><span class="small-mono" style="color:var(--muted);margin-right:2px">Team</span>
+    <button class="tl-chip${CASE_STATE.team === "all" ? " active" : ""}" ${CASE_STATE.team === "all" ? 'style="background:var(--accent)"' : ""} data-csteam="all">All teams</button>
+    ${teams.map(t => `<button class="tl-chip${CASE_STATE.team === t ? " active" : ""}" ${CASE_STATE.team === t ? 'style="background:var(--accent)"' : ""} data-csteam="${esc(t)}">${esc(t)}</button>`).join("")}</div>`;
+
+  const recs = csFilteredRecords();
+  const linkBtns = Object.keys(CS_TABLES).map(t => `<a class="btn" href="${csAirtableUrl(t)}" target="_blank" rel="noopener">Open ${CS_TABLES[t].short} in Airtable ↗</a>`).join(" ");
+
+  if (csRecords().length === 0) { host.innerHTML = teamChips + csNoDetailHtml(); return; }
+
+  const rowHtml = (r) => {
+    const g = csMeta(csKeyForComment(r.comment));
+    const st = csStatus(r.verification_status);
+    const coRole = [r.company, r.role ? r.role.replace(/_/g, " ") : null].filter(Boolean).map(esc).join(" · ") || '<span style="color:var(--muted)">—</span>';
+    return `<tr class="cs-cmtrow" data-csrec="${esc(r.imo || "")}|${esc(r.ts || "")}|${esc(r.requested_by || "")}">
+      <td class="mono">${esc(r.imo || "—")}</td>
+      <td>${coRole}</td>
+      <td><span class="cs-scenchip" style="color:${g.color}" title="${esc(r.comment)}">${esc(g.key)}</span></td>
+      <td>${csTableBadge(r.source_table)}</td>
+      <td>${esc(r.requested_by || "—")}</td>
+      <td>${esc(r.assignee || "—")}</td>
+      <td>${esc(r.qa_assignee || "—")}</td>
+      <td class="small-mono" title="${esc(r.ts || "")}">${esc(csRel(r.ts))}</td>
+      <td><span class="cs-pill ${st.cls}">${st.label}</span></td>
+    </tr>`;
+  };
+  const MAXROWS = 200;
+  const rows = recs.slice(0, MAXROWS);
+  host.innerHTML = teamChips + `
+    <div class="panel">
+      <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:8px">
+        <h3 style="margin:0">Recent scenario comments <span class="meta">${recs.length.toLocaleString()} match current filters${recs.length > MAXROWS ? ` · showing ${MAXROWS}` : ""}</span></h3>
+        <div style="display:flex;gap:6px">${linkBtns}</div>
+      </div>
+      <div style="overflow-x:auto"><table>
+        <thead><tr><th>IMO</th><th>Company · role</th><th>Scenario</th><th>Table</th><th>Task</th><th>Tagger</th><th>QA reviewer</th><th>When</th><th>Status</th></tr></thead>
+        <tbody>${rows.map(rowHtml).join("") || '<tr><td colspan="9" class="empty">No records match the current filters.</td></tr>'}</tbody>
+      </table></div>
+      <div class="footer-note" style="margin-top:8px">We have no vessel name/type/flag — Company · role is what analysts tag. Per-record Airtable deep links aren't possible (aggregates carry no record ids), so the links above open each table.</div>
+    </div>`;
+
+  host.querySelectorAll("#csTeamChips [data-csteam]").forEach(b => b.addEventListener("click", () => { CASE_STATE.team = b.dataset.csteam; renderCsView(); }));
+  host.querySelectorAll(".cs-cmtrow[data-csrec]").forEach(row => row.addEventListener("click", () => csOpenRecordPanel(row.dataset.csrec)));
+}
+
+// ---------- Insights: table split, distribution donut, lifecycle state ----------
+function renderCsInsights(host) {
+  const dist = csDist(), io = csDistIo();
+  const total = csSum(dist);
+  const ioN = io ? csSum(io) : null, supN = io ? total - ioN : null;
+  // donut over scenario groups
+  const groups = SCENARIO_META.map(g => ({ g, n: csGroupCount(dist, g.key) })).filter(x => x.n > 0).sort((a, b) => b.n - a.n);
+  let acc = 0; const stops = [];
+  for (const { g, n } of groups) { const a = (acc / Math.max(1, total)) * 360, b = ((acc + n) / Math.max(1, total)) * 360; stops.push(`${g.color} ${a.toFixed(1)}deg ${b.toFixed(1)}deg`); acc += n; }
+  if (!stops.length) stops.push("var(--soft) 0deg 360deg");
+  const legend = groups.map(({ g, n }) => `<div style="display:flex;align-items:center;gap:7px;font-size:11.5px;padding:2px 0"><span style="width:9px;height:9px;border-radius:2px;background:${g.color};flex-shrink:0"></span><span style="flex:1">${esc(g.title)}</span><b>${n.toLocaleString()}</b><span style="color:var(--muted);width:34px;text-align:right">${total ? Math.round(n / total * 100) : 0}%</span></div>`).join("");
+
+  // lifecycle state from the records list (honest replacement for the mock's "reassessment" card)
+  const recs = csRecords();
+  let cleared = 0, review = 0, open = 0;
+  for (const r of recs) { const l = csStatus(r.verification_status).label; if (l === "Cleared") cleared++; else if (l === "In review" || l === "Escalated") review++; else open++; }
+  const stTot = Math.max(1, recs.length);
+  const seg = (n, color, label) => n > 0 ? `<span style="width:${(n / stTot * 100).toFixed(1)}%;background:${color}" title="${label}: ${n}">${n / stTot > 0.08 ? n : ""}</span>` : "";
+
+  const supPctTxt = supN == null ? "—" : `${total ? Math.round(supN / total * 100) : 0}%`;
+  const ioPctTxt = ioN == null ? "—" : `${total ? Math.round(ioN / total * 100) : 0}%`;
+
+  host.innerHTML = `
+    <div class="cs-insgrid">
+      <div class="panel">
+        <h3>Comments by table</h3>
+        <div class="cs-pbrow"><div style="display:flex;justify-content:space-between"><b>Relations Support</b><span>${supN == null ? "—" : supN.toLocaleString()} · ${supPctTxt}</span></div><div class="cs-desc">Main ownership table — the bulk of analyst exception comments originate here.</div></div>
+        <div class="cs-pbrow"><div style="display:flex;justify-content:space-between"><b>Relations IO</b><span>${ioN == null ? "—" : ioN.toLocaleString()} · ${ioPctTxt}</span></div><div class="cs-desc">Second ownership table (IO flow). ${ioN == null ? "Per-table split isn't in this snapshot — it's captured from newer poll cycles." : "Tracked separately so each table's exception load is visible."}</div></div>
+      </div>
+      <div class="panel">
+        <h3>Scenario distribution <span class="meta">${total.toLocaleString()} comments</span></h3>
+        <div class="bq-donut" style="background:conic-gradient(${stops.join(",")})"><div class="hole"><b>${total.toLocaleString()}</b><span>comments</span></div></div>
+        <div class="bq-legend" style="margin-top:10px">${legend || '<div class="empty">No comments in cache.</div>'}</div>
+      </div>
+      <div class="panel">
+        <h3>Current state of commented records <span class="meta">${recs.length.toLocaleString()} record${recs.length === 1 ? "" : "s"}${csTrunc() ? " · most recent 500" : ""}</span></h3>
+        <div class="cs-desc" style="margin-bottom:8px">Do flagged exceptions get resolved? Live <code>verification_status</code> of every commented record in cache.</div>
+        ${recs.length ? `<div class="cs-statebar"><span style="width:0"></span>${seg(cleared, "#1a7a55", "Cleared")}${seg(review, "#0691B5", "In review / escalated")}${seg(open, "#8a93a3", "Open")}</div>
+        <div class="cs-splitlbl" style="margin-top:6px"><span style="color:#1a7a55"><b>${cleared.toLocaleString()}</b> Cleared (Valid/Done)</span><span style="color:#0691B5"><b>${review.toLocaleString()}</b> In review</span><span style="color:#8a93a3"><b>${open.toLocaleString()}</b> Open</span></div>` : csNoDetailHtml()}
+      </div>
+    </div>`;
+}
+
+// ---------- side panels (drill-downs) ----------
+function csRecordRowsHtml(recs) {
+  return `<div style="overflow-x:auto"><table>
+    <thead><tr><th>IMO</th><th>Company · role</th><th>Scenario</th><th>Table</th><th>Task</th><th>Tagger</th><th>QA</th><th>When</th><th>Status</th></tr></thead>
+    <tbody>${recs.map(r => {
+      const g = csMeta(csKeyForComment(r.comment)); const st = csStatus(r.verification_status);
+      const coRole = [r.company, r.role ? r.role.replace(/_/g, " ") : null].filter(Boolean).map(esc).join(" · ") || "—";
+      return `<tr><td class="mono">${esc(r.imo || "—")}</td><td>${coRole}</td><td><span class="cs-scenchip" style="color:${g.color}">${esc(g.key)}</span></td><td>${csTableBadge(r.source_table)}</td><td>${esc(r.requested_by || "—")}</td><td>${esc(r.assignee || "—")}</td><td>${esc(r.qa_assignee || "—")}</td><td class="small-mono">${esc(csRel(r.ts))}</td><td><span class="cs-pill ${st.cls}">${st.label}</span></td></tr>`;
+    }).join("") || '<tr><td colspan="9" class="empty">No records.</td></tr>'}</tbody>
+  </table></div>`;
+}
+function csOpenScenarioPanel(key) {
+  const g = csMeta(key);
+  const recs = csRecords().filter(r => csKeyForComment(r.comment) === key && (CASE_STATE.table === "all" || r.source_table === CASE_STATE.table));
+  const complete = csGroupCount(csActiveDist(), key);
+  openSidePanel(g.title, `${esc(g.key)} · ${g.severity.toUpperCase()} · owner ${g.owner}`);
+  const body = document.getElementById("sidePanelBody"); if (!body) return;
+  const truncNote = (csTrunc() && recs.length < complete) ? `<div class="alert-row warn" style="margin:8px 0"><span class="icon">!</span><div>Showing the <b>${recs.length}</b> most recent of <b>${complete}</b> — older records exceed the 500-row cache cap.</div></div>` : "";
+  body.innerHTML = `
+    <div class="cs-handle" style="margin-bottom:10px"><span class="h">Handle</span> · ${esc(g.handle)}</div>
+    <div class="cs-desc" style="margin-bottom:10px">${esc(g.desc)}</div>
+    <div style="font-size:12px;color:var(--muted);margin-bottom:6px"><b>${complete.toLocaleString()}</b> comment${complete === 1 ? "" : "s"}${CASE_STATE.table !== "all" ? " · " + esc(CS_TABLES[CASE_STATE.table].label) : ""}</div>
+    ${truncNote}${csRecordRowsHtml(recs)}`;
+}
+function csOpenTaskPanel(name) {
+  const recs = csFilteredRecords().filter(r => (r.requested_by || "(no task name)") === name);
+  openSidePanel(name, `${recs.length} scenario record${recs.length === 1 ? "" : "s"}`);
+  const body = document.getElementById("sidePanelBody"); if (body) body.innerHTML = csRecordRowsHtml(recs);
+}
+function csOpenRecordPanel(token) {
+  const [imo, ts, task] = token.split("|");
+  const r = csRecords().find(x => (x.imo || "") === imo && (x.ts || "") === ts && (x.requested_by || "") === task);
+  if (!r) return;
+  const g = csMeta(csKeyForComment(r.comment)); const st = csStatus(r.verification_status);
+  openSidePanel(r.company || `IMO ${r.imo || "—"}`, `${esc(g.key)} · ${esc(r.requested_by || "—")}`);
+  const body = document.getElementById("sidePanelBody"); if (!body) return;
+  const field = (k, v) => `<div class="bq-field"><span class="k">${esc(k)}</span><span class="val">${v == null || v === "" ? '<span style="color:var(--muted)">—</span>' : esc(v)}</span></div>`;
+  body.innerHTML = `
+    <div class="cs-cardhead" style="margin-bottom:10px"><span class="cs-badge">${esc(g.key)}</span><span class="cs-sev ${g.severity}">${g.severity}</span><span class="cs-pill ${st.cls}">${st.label}</span></div>
+    <div class="cs-desc" style="margin-bottom:8px">${esc(g.desc)}</div>
+    <div class="cs-handle" style="margin-bottom:12px"><span class="h">Handle</span> · ${esc(g.handle)}</div>
+    <div class="panel"><h3>Record</h3>
+      ${field("IMO", r.imo)}${field("Company", r.company)}${field("Role", r.role ? r.role.replace(/_/g, " ") : null)}${field("Comment", r.comment)}
+      ${field("Table", CS_TABLES[r.source_table]?.label || r.source_table)}${field("Task / batch", r.requested_by)}${field("Tagger", r.assignee)}${field("Team", r.team)}
+      ${field("QA reviewer", r.qa_assignee)}${field("Verification status", r.verification_status)}${field("Tagged", csRel(r.ts))}
+    </div>
+    <div style="margin-top:10px"><a class="btn" href="${csAirtableUrl(r.source_table)}" target="_blank" rel="noopener">Open ${esc(CS_TABLES[r.source_table]?.short || "table")} in Airtable ↗</a></div>`;
+}
+function csOpenPlaybook() {
+  openSidePanel("Scenario playbook", "How to handle each exception scenario");
+  const body = document.getElementById("sidePanelBody"); if (!body) return;
+  body.innerHTML = SCENARIO_META.map(g => `
+    <div class="cs-pbrow">
+      <div class="cs-cardhead"><span class="cs-badge">${esc(g.key)}</span><span class="cs-sev ${g.severity}">${g.severity}</span><span class="cs-owner">Owner · ${esc(g.owner)}</span></div>
+      <div class="cs-title" style="margin:6px 0 3px">${esc(g.title)}</div>
+      <div class="cs-desc" style="margin-bottom:6px">${esc(g.desc)}</div>
+      <div class="cs-handle"><span class="h">Handle</span> · ${esc(g.handle)}</div>
+    </div>`).join("");
+}
+
+function csNoDetailHtml() {
+  return `<div class="panel"><div class="empty" style="padding:24px">Per-record scenario detail isn't in this snapshot — it's captured from newer poll cycles. The catalog counts above are complete for the cache window.</div></div>`;
+}
+
+// CSV of the records under the current filters (what the Comments tab shows).
+function csExport() {
+  const recs = csFilteredRecords();
+  const cell = (v) => `"${String(v ?? "").replace(/"/g, '""')}"`;
+  const lines = ["IMO,Company,Role,Scenario,Comment,Table,Task,Tagger,QA reviewer,Status,When"];
+  for (const r of recs) {
+    const g = csMeta(csKeyForComment(r.comment));
+    lines.push([cell(r.imo), cell(r.company), cell(r.role), cell(g.key), cell(r.comment),
+      cell(CS_TABLES[r.source_table]?.label || r.source_table), cell(r.requested_by), cell(r.assignee),
+      cell(r.qa_assignee), cell(csStatus(r.verification_status).label), cell(r.ts)].join(","));
+  }
+  const blob = new Blob([lines.join("\n")], { type: "text/csv" });
+  const a = document.createElement("a"); a.href = URL.createObjectURL(blob);
+  a.download = `case-scenarios-${STATE.v2?.date || "today"}.csv`; a.click(); URL.revokeObjectURL(a.href);
+}
+
+// Best-effort: card-1 sparkline of daily total comments + per-card 30d arrows,
+// from month snapshots. Silently no-ops when snapshot history is unavailable.
+let _csTrendCache = null;
+async function csPatchSparkline() {
+  try {
+    const snaps = (await loadMonthSnapshots(STATE.selectedMonth || _currentMonth()))
+      .map(s => ({ d: s.date, cd: s.agg?.totals?.comment_distribution || null })).filter(s => s.cd);
+    _csTrendCache = snaps;
+    const el = document.getElementById("csSpark");
+    if (el && snaps.length >= 2) {
+      const totals = snaps.map(s => csSum(s.cd));
+      const max = Math.max(1, ...totals);
+      el.innerHTML = `<div class="kpi-trend" style="margin-top:8px">${totals.map((v, i) => `<span class="bar" style="height:${Math.max(8, Math.round(v / max * 100))}%" title="${snaps[i].d}: ${v}"></span>`).join("")}</div>`;
+    }
+    csPatchTrends();
+  } catch (_) { /* snapshots unavailable — omit silently */ }
+}
+function csPatchTrends() {
+  const snaps = _csTrendCache;
+  if (!snaps || snaps.length < 2) return;
+  const cur = snaps[snaps.length - 1].cd, base = snaps[0].cd, baseDate = snaps[0].d;
+  document.querySelectorAll("[data-cstrend]").forEach(el => {
+    const key = el.dataset.cstrend;
+    const now = csGroupCount(cur, key), then = csGroupCount(base, key);
+    const d = now - then;
+    if (then === 0 && now === 0) { el.textContent = ""; return; }
+    const cls = d > 0 ? "up" : d < 0 ? "down" : "flat";
+    el.className = `cs-trend ${cls}`;
+    el.title = `vs ${baseDate}: ${then} → ${now}`;
+    el.textContent = d === 0 ? "● flat" : `${d > 0 ? "▲" : "▼"} ${Math.abs(d)}`;
+  });
 }
 
 // ============================================================================
