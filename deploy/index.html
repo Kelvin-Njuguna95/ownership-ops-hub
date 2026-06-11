@@ -6261,15 +6261,15 @@ PAGE_RENDERERS.intake = function () {
   const filter = STATE.intakeFilter || "all";
   const cAll       = tasksAll.length;
   const cToday     = todaysTasksAll.length;
-  const cInProg    = tasksAll.filter(x => !x.is_completed).length;
-  const cCompleted = tasksAll.filter(x => x.is_completed).length;
+  const cIo        = tasksAll.filter(x => x.source_table === "relations_io"      || x.source_table === "mixed").length;
+  const cSupport   = tasksAll.filter(x => x.source_table === "relations_support" || x.source_table === "mixed").length;
   const cSanctions = tasksAll.filter(x => x.is_sanctions).length;
   const tabsHtml = `
     <div class="intake-tabs" id="intakeTabs">
       <button data-if="all"        class="${filter === "all" ? "active" : ""}">All tasks <span class="ct">${cAll}</span></button>
       <button data-if="today"      class="${filter === "today" ? "active" : ""}">Today's intake <span class="ct">${cToday}</span></button>
-      <button data-if="inprogress" class="${filter === "inprogress" ? "active" : ""}">In progress <span class="ct">${cInProg}</span></button>
-      <button data-if="completed"  class="${filter === "completed" ? "active" : ""}">Completed <span class="ct">${cCompleted}</span></button>
+      <button data-if="io"         class="${filter === "io" ? "active" : ""}">Relations IO <span class="ct">${cIo}</span></button>
+      <button data-if="support"    class="${filter === "support" ? "active" : ""}">Relations Support <span class="ct">${cSupport}</span></button>
       <button data-if="sanctions"  class="${filter === "sanctions" ? "active" : ""}">Sanctions <span class="ct">${cSanctions}</span></button>
     </div>`;
 
@@ -6400,8 +6400,8 @@ PAGE_RENDERERS.intake = function () {
   // Other active batches — task cards (filtered by tab)
   let visibleOther = tasksAll.filter(x => x !== todaysFeatured);
   if (filter === "today")       visibleOther = visibleOther.filter(x => (x.date_first_seen || "").slice(0, 10) === todayISO);
-  else if (filter === "inprogress") visibleOther = visibleOther.filter(x => !x.is_completed);
-  else if (filter === "completed")  visibleOther = visibleOther.filter(x => x.is_completed);
+  else if (filter === "io")         visibleOther = visibleOther.filter(x => x.source_table === "relations_io"      || x.source_table === "mixed");
+  else if (filter === "support")    visibleOther = visibleOther.filter(x => x.source_table === "relations_support" || x.source_table === "mixed");
   else if (filter === "sanctions")  visibleOther = visibleOther.filter(x => x.is_sanctions);
   visibleOther = visibleOther.slice().sort((a, b) => (b.date_first_seen || "").localeCompare(a.date_first_seen || ""));
   const OTHER_MAX = 12;
