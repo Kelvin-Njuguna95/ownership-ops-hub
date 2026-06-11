@@ -2189,6 +2189,68 @@ def _write_task_history(aggs):
         print(f"  WARN _write_task_history: {e}")
 
 
+# The cache page globs the aggregator consumes — mirror of _load_records'
+# fetch_map + io_fetch_map keys (plus compute_supply's unassigned caches).
+_FRESHNESS_GLOBS = (
+    "recent_p*.json", "intake_p*.json", "boqa_p*.json", "tagged_today_p*.json",
+    "done_today_p*.json", "valid_today_p*.json", "qa_reviewed_today_p*.json",
+    "ww_qa_backlog_p*.json",
+    "recent_io_p*.json", "intake_io_p*.json", "boqa_io_p*.json",
+    "tagged_today_io_p*.json", "done_today_io_p*.json", "valid_today_io_p*.json",
+    "qa_reviewed_today_io_p*.json", "ww_qa_backlog_io_p*.json",
+    "unassigned_p*.json", "unassigned_io_p*.json",
+)
+
+
+def _check_cache_freshness(work_dir, today_eat, allow_stale=False):
+    """Refuse to aggregate against a stale local cache.
+
+    2026-06-10 incident: a manual ``aggregate_v2.py && sync_to_supabase.py``
+    run against a 15-day-stale cache (.poll_work pages from May 26) faithfully
+    computed all-zero *_today metrics and wrote a zeros daily_aggregates.json
+    + today's snapshot. sync_to_supabase's guardrail only blocks HISTORICAL
+    snapshot dates, so the zeros TODAY snapshot would have clobbered the live
+    dashboard had the sync completed.
+
+    CI safety: in .github/workflows/poll.yml the aggregator always runs right
+    after poll_airtable.py writes fresh pages in the same job (Poll → Detect →
+    Aggregate → Sync), so this guard never fires there — it only bites manual
+    local runs, which is exactly where the incident happened.
+
+    Exits 3 when the newest cache page's mtime (EAT date) is older than today,
+    unless ``allow_stale`` (--allow-stale-cache) is set. No cache at all is
+    left to _load_records' existing empty-aggregate behavior.
+    """
+    newest_path, newest_mtime = None, None
+    for pattern in _FRESHNESS_GLOBS:
+        for p in work_dir.glob(pattern):
+            try:
+                mt = p.stat().st_mtime
+            except OSError:
+                continue
+            if newest_mtime is None or mt > newest_mtime:
+                newest_path, newest_mtime = p, mt
+    if newest_path is None:
+        return
+    newest_date = datetime.fromtimestamp(newest_mtime, EAT).date()
+    if newest_date >= today_eat:
+        return
+    age_days = (today_eat - newest_date).days
+    print(f"""
+⚠️  STALE CACHE — refusing to aggregate.
+    Newest cache page: {newest_path.name} (mtime {newest_date}, {age_days} day{'s' if age_days != 1 else ''} old, EAT).
+    Every *_today metric for {today_eat} would compute to ZERO/wrong values,
+    and syncing would clobber the live dashboard with them (the sync guardrail
+    only blocks HISTORICAL snapshot dates, not a wrong TODAY snapshot).
+    Re-poll first:  set -a && . ./.env.local && set +a && python3 .poll_work/poll_airtable.py
+    Or, if you really mean to aggregate this cache: --allow-stale-cache""",
+          file=sys.stderr)
+    if allow_stale:
+        print("    --allow-stale-cache set — proceeding anyway.", file=sys.stderr)
+        return
+    sys.exit(3)
+
+
 def main():
     here = Path(__file__).resolve().parent.parent
     work = here / ".poll_work"
@@ -2198,6 +2260,8 @@ def main():
     qa_exclude = _load_team_leaders(here)
 
     today_eat = datetime.now(EAT).date()
+    _check_cache_freshness(work, today_eat,
+                           allow_stale="--allow-stale-cache" in sys.argv)
     records = _load_records(work)
     aggs = aggregate(records, today_eat, ownership_assignees, qa_team_map, qa_exclude)
     aggs["companies_hourly"] = compute_companies_hourly(work, today_eat)
