@@ -5152,7 +5152,7 @@ PAGE_RENDERERS.qa_performance = function () {
 
   document.querySelectorAll("#qpChips .tl-chip").forEach(b=>b.addEventListener("click",()=>{ STATE.qpFilters.view = (STATE.qpFilters.view===b.dataset.qp && b.dataset.qp!=="all") ? "all" : b.dataset.qp; PAGE_RENDERERS.qa_performance(); }));
   document.getElementById("qpExportBtn").addEventListener("click", _qpExport);
-  document.querySelectorAll("[data-qpnoop]").forEach(b=>b.addEventListener("click",()=>{}));
+  document.querySelectorAll("[data-qpnoop]").forEach(b=>b.addEventListener("click",()=>{ STATE.qpFilters.view="below"; PAGE_RENDERERS.qa_performance(); }));
 
   renderQaPerfScorecards();
   renderQaPerfComparison();
@@ -6010,7 +6010,7 @@ function _renderBoqaPage(){
 
   document.querySelectorAll("#bqChips .bq-chip").forEach(b=>b.addEventListener("click",()=>{ const id=b.dataset.bq; if(!id) return; if(id==="__today")f.today=!f.today; else f.team=id; STATE.bqPage=1; _renderBoqaPage(); }));
   document.getElementById("bqExportBtn").addEventListener("click",_bqExport);
-  document.querySelectorAll("[data-bqnoop]").forEach(b=>b.addEventListener("click",()=>{}));
+  document.querySelectorAll("[data-bqnoop]").forEach(b=>b.addEventListener("click",()=>{ if(b.dataset.bqnoop==="see") document.getElementById("bqWorklist")?.scrollIntoView({behavior:"smooth",block:"start"}); }));
   renderBqHourly();
   renderBqWorklist();
   renderBqDrawer();
@@ -6127,7 +6127,7 @@ function renderBqDrawer(){
         <div style="min-width:0"><div class="nm">${esc(co)} <span class="pill-inline" style="margin-left:4px;background:var(--soft);color:var(--muted)">IMO ${esc(r.imo||"—")}</span> ${bqStatePill(r)} ${bqAgePill(r.days_open)}</div>
           <div class="meta">Tagged by ${esc(r.assignee||"—")} &middot; ${esc(r.team||"—")} &middot; Role ${esc((r.role||"—").replace(/_/g," "))} &middot; QA ${esc(r.qa_status||"pending")} &middot; Reviewer ${esc(r.qa_assignee||"—")}</div>
         </div>
-        <div class="bq-dh acts"><button class="btn" data-bqnoop="airtable">Open in Airtable</button><button class="btn" id="bqDrawerClose" title="Clear selection">×</button></div>
+        <div class="bq-dh acts"><button class="btn" id="bqDrawerClose" title="Clear selection">×</button></div>
       </div>
     </div>
     <div class="bq-drow">
@@ -6805,7 +6805,11 @@ PAGE_RENDERERS.tasks = function () {
   }));
   // Visual-only buttons (no handlers per spec) + Export (real).
   document.getElementById("tasksExportBtn").addEventListener("click", () => {
-    const rows = _tasksFiltered();
+    // Match exactly what renderTasksList() shows: chip filters (_tlBase) + active
+    // tab (_tlTab), newest-first — not the older standalone TASKS_STATE model.
+    const rows = _tlTab(_tlBase(), STATE.tasksTab || "active")
+      .slice()
+      .sort((a, b) => new Date(b.date_first_seen || 0) - new Date(a.date_first_seen || 0));
     const cell = (v) => `"${String(v ?? "").replace(/"/g, '""')}"`;
     const lines = ["Task,Records,Properly completed,Valid,In BO QA,Waiting,Tagged,Completed,QA reviewed,TAT/age hours,Flags,First seen,Last modified"];
     for (const t of rows) {
@@ -7692,7 +7696,7 @@ function renderNcDrawer(){
         <div style="min-width:0"><div class="nm">${esc(co)} <span class="pill-inline" style="margin-left:4px;background:var(--soft);color:var(--muted)">IMO ${esc(r.imo||"—")}</span> ${ncVpill(r.verification_status)} <span class="nc-agepill" style="background:${(r.days_open||0)>3?'var(--bad-bg)':'var(--soft)'};color:${(r.days_open||0)>3?'var(--bad)':'var(--muted)'}">● ${r.days_open||0}d old</span></div>
           <div class="meta">Tagged by ${esc(r.assignee||"unassigned")} &middot; ${esc(r.team||"—")} &middot; Role ${esc((r.role||"—").replace(/_/g," "))} &middot; ${r.days_open||0}d open &middot; QA ${esc(r.qa_status||"—")}</div>
         </div>
-        <div class="nc-dh acts"><button class="btn" data-ncnoop="airtable">Open in Airtable</button><button class="btn" id="ncDetailClose" title="Clear selection">×</button></div>
+        <div class="nc-dh acts"><button class="btn" id="ncDetailClose" title="Clear selection">×</button></div>
       </div>
     </div>
     <div class="nc-drow">
@@ -8167,7 +8171,6 @@ PAGE_RENDERERS.wwqa = function () {
         </div>
       </div>
       <div class="page-head-actions">
-        <button class="btn" id="wqTodayBtn">📅 ${esc(headDate || "Today")}</button>
         <button class="btn" id="wqExportBtn">Export queue</button>
       </div>
     </div>
@@ -8331,11 +8334,6 @@ PAGE_RENDERERS.wwqa = function () {
       STATE.wqSelectedImo = null; // reset drawer when filter changes
       PAGE_RENDERERS.wwqa();
     });
-  });
-  // 📅 Today — opens the global view-date picker if it exists, otherwise no-op
-  document.getElementById("wqTodayBtn").addEventListener("click", () => {
-    const dp = document.querySelector("#viewDatePicker, #datePicker, [data-role='date-picker']");
-    if (dp) { dp.focus(); dp.click && dp.click(); }
   });
   // Export queue — CSV of the currently visible worklist
   document.getElementById("wqExportBtn").addEventListener("click", () => {
@@ -8607,7 +8605,8 @@ function _renderCompletedPage(){
     STATE.completedPage=1; _renderCompletedPage();
   }));
   document.getElementById("ctExportBtn").addEventListener("click", _ctExport);
-  // visual-only buttons: ctRangeBtn, ctReportBtn (no handlers)
+  document.getElementById("ctReportBtn")?.addEventListener("click", () => goto("report_builder"));
+  // visual-only button: ctRangeBtn (no handler)
 
   renderCompletedArchive();
   // Restore the detail panel in-place if a batch was selected before this re-render
@@ -8757,7 +8756,7 @@ function renderCompletedDetail(){
         <div class="ct-pfoot">Rejections <span class="num">${(QP.qa_changed||0).toLocaleString()}</span> &middot; Resubmitted <span class="num">—</span></div></div>
     </div>`;
   openSidePanel(t.name, `Peak-day breakdown · ${total.toLocaleString()} records`);
-  cont.querySelectorAll("[data-ctnoop]").forEach(b=>b.addEventListener("click",()=>{}));
+  cont.querySelectorAll("[data-ctnoop]").forEach(b=>b.addEventListener("click",()=>{ if(b.dataset.ctnoop==="report") goto("report_builder"); }));
   const c=cont.querySelector("#ctDetailClose"); if(c) c.addEventListener("click", closeSidePanel);
 }
 
@@ -9795,7 +9794,7 @@ function _renderPipelinePage(){
 
   document.querySelectorAll("#plChips .pl-chip").forEach(b=>b.addEventListener("click",()=>{ const id=b.dataset.pl; if(id==="__stuck")f.stuck48=!f.stuck48; else if(id==="__anc")f.anc=!f.anc; else if(id==="__sanc")f.sanctions=!f.sanctions; else f.team=id; STATE.plStuckPage=1; _renderPipelinePage(); }));
   document.getElementById("plExportBtn").addEventListener("click",_plExport);
-  document.querySelectorAll("[data-plnoop]").forEach(b=>b.addEventListener("click",()=>{}));
+  document.querySelectorAll("[data-plnoop]").forEach(b=>b.addEventListener("click",()=>{ if(b.dataset.plnoop==="stuck") document.getElementById("plStuck")?.scrollIntoView({behavior:"smooth",block:"start"}); }));
   renderPlStuck();
   renderPlThroughput();
 }
