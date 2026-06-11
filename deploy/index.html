@@ -1036,7 +1036,7 @@
   .pl-heat .hc { padding:5px 4px; text-align:center; border-radius:4px; font-variant-numeric:tabular-nums; }
   .pl-heat .hh { font-size:10px; color:var(--muted); font-weight:700; text-align:center; }
   .pl-heat .rl { font-size:11px; color:var(--ink); font-weight:600; display:flex; align-items:center; }
-  .pl-stuck-row { display:grid; grid-template-columns:minmax(150px,2fr) 1fr 1fr 80px 90px 1.2fr 90px; gap:10px; align-items:center; padding:9px 8px; border-bottom:1px solid var(--border); font-size:12px; }
+  .pl-stuck-row { display:grid; grid-template-columns:minmax(150px,2fr) 1fr 1fr 80px 90px 1.2fr; gap:10px; align-items:center; padding:9px 8px; border-bottom:1px solid var(--border); font-size:12px; }
   .pl-stuck-row.head { font-size:10px; text-transform:uppercase; letter-spacing:0.04em; color:var(--muted); font-weight:700; }
   .pl-stuck-row .tn { font-weight:600; color:var(--ink); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
   .pl-stuck-row .flow { display:flex; height:8px; border-radius:999px; overflow:hidden; background:var(--soft); } .pl-stuck-row .flow > span { height:100%; }
@@ -1108,7 +1108,7 @@
   .bq-agepill { font-size:10.5px; font-weight:700; padding:2px 8px; border-radius:999px; font-variant-numeric:tabular-nums; white-space:nowrap; }
   .bq-cb { width:14px; height:14px; border-radius:3px; border:1.5px solid var(--border); display:inline-block; flex-shrink:0; } .bq-row.selected .bq-cb { background:var(--accent); border-color:var(--accent); }
   /* QA-disposition worklist (PR #128) */
-  .bq-row.qd { grid-template-columns:minmax(118px,138px) 88px 1.6fr minmax(116px,1fr) 104px minmax(104px,0.95fr) 46px 80px; }
+  .bq-row.qd { grid-template-columns:minmax(118px,138px) 88px 1.6fr minmax(116px,1fr) 104px minmax(104px,0.95fr) 46px; }
   .bq-imocell { display:flex; align-items:center; gap:6px; min-width:0; } .bq-imocell .imo { overflow:hidden; text-overflow:ellipsis; }
   .bq-copy { border:0; background:transparent; color:var(--muted); cursor:pointer; font-size:12px; padding:0 2px; line-height:1; border-radius:4px; flex-shrink:0; } .bq-copy:hover { color:var(--accent); background:var(--soft); }
   .bq-statepill { font-size:10.5px; font-weight:700; padding:2px 9px; border-radius:999px; white-space:nowrap; display:inline-block; } .bq-statepill.lg { font-size:12px; padding:4px 12px; }
@@ -1665,8 +1665,6 @@
       <div id="page-weekly"         class="page" style="display:none"></div>
       <div id="page-report_builder" class="page" style="display:none"></div>
       <div id="page-comparison"     class="page" style="display:none"></div>
-      <div id="taskDrawerBackdrop" class="drawer-backdrop"></div>
-      <div id="taskDrawer"         class="drawer"></div>
       <div id="completedDrawerBackdrop" class="drawer-backdrop"></div>
       <div id="completedDrawer"         class="drawer"></div>
       <!-- Shared right-side slide-out detail panel (Tasks + Completed). Fixed-position; escapes the grid. -->
@@ -3107,14 +3105,12 @@ PAGE_RENDERERS.agent = function () {
       <div class="page-head-actions">
         <button class="btn" id="agCompareBtn">👥 Compare</button>
         <button class="btn" id="agExportBtn">Export</button>
-        <button class="btn btn-primary" id="agMsgBtn">💬 Send message</button>
       </div>
     </div>
     <div id="agentBody"></div>`;
 
   document.getElementById("agCompareBtn").addEventListener("click", renderAgentDeepDive);
   document.getElementById("agExportBtn").addEventListener("click", _agExport);
-  document.getElementById("agMsgBtn").addEventListener("click", () => {});
   renderAgentBody(STATE.agentSelected);
 };
 
@@ -3298,7 +3294,7 @@ function renderAgentBody(name){
     <div class="panel">
       <div class="tl-list-head"><h2>Tagged records <span class="meta">emitted cohorts</span></h2><span class="meta">showing ${recs.length} of ${totalRecs} in add-new-company / case / pending cohorts</span></div>
       <table class="sortable ag-table"><thead><tr><th>When</th><th>IMO</th><th>Company</th><th>Scenario</th><th>Team</th><th>QA reviewer</th><th>Status</th></tr></thead><tbody>${recRows}</tbody></table>
-      <div class="tl-pfoot">${totalRecs.toLocaleString()} of this agent's records appear in the emitted record cohorts (not the full ${sel.tagged.toLocaleString()}-record tag log — <code>aggregates_v2</code> doesn't carry a full per-agent record list). Tag timestamps aren't emitted, so When is —. <span class="qh-cfg">View full activity log →</span></div>
+      <div class="tl-pfoot">${totalRecs.toLocaleString()} of this agent's records appear in the emitted record cohorts (not the full ${sel.tagged.toLocaleString()}-record tag log — <code>aggregates_v2</code> doesn't carry a full per-agent record list). Tag timestamps aren't emitted, so When is —.</div>
     </div>`;
 
   document.getElementById("agSwitch").addEventListener("change", (e) => { STATE.agentSelected = e.target.value; localStorage.setItem("wqa.agent", e.target.value); renderAgentBody(e.target.value); });
@@ -4571,7 +4567,6 @@ PAGE_RENDERERS.qa_hourly = function () {
         ${idleList.slice(0,3).map(r=>`${esc(r.name)} <span class="qh-idledur">~${r.idleHrs}h</span>`).join(", ")}${idleList.length>3?` +${idleList.length-3} more`:""}.
         ${backlog!=null?`<span class="qh-banner-sub">Backlog ${backlog.toLocaleString()} records awaiting BO QA.</span>`:""}
       </div>
-      <div class="qh-banner-acts"><button class="btn" data-qhnoop="view">View activity</button><button class="btn" data-qhnoop="ping">Ping ${idleN} reviewer${idleN===1?'':'s'}</button></div>
     </div>` : "";
 
   const avatars = D.reviewers.slice(0,5).map(r=>`<span class="task-avatar" style="background:rgba(${QH_RGB[r.idx%QH_RGB.length]},${r.active?1:0.4})" title="${esc(r.name)} · ${r.active?'active':'idle'}">${esc(tlInitials(r.name))}</span>`).join("");
@@ -4588,9 +4583,7 @@ PAGE_RENDERERS.qa_hourly = function () {
         </div>
       </div>
       <div class="page-head-actions">
-        <button class="btn" id="qhRangeBtn">📅 Today</button>
         <button class="btn" id="qhExportBtn">Export</button>
-        <button class="btn btn-primary" id="qhWakeBtn">⚡ Wake idle reviewers</button>
       </div>
     </div>
     ${chipsHtml}
@@ -4634,7 +4627,7 @@ PAGE_RENDERERS.qa_hourly = function () {
     <div class="tl-drow" style="grid-template-columns:1fr 1fr">
       <div class="panel"><h3>Idle reviewers <span class="meta">${idleN} idle &middot; threshold 60m</span></h3>
         ${idleList.length? idleList.map(r=>`<div class="tl-prow"><span class="task-avatar" style="background:rgba(${QH_RGB[r.idx%QH_RGB.length]},0.5)">${esc(tlInitials(r.name))}</span><span class="who">${esc(r.name)}<span class="s"> &middot; BO QA &middot; ${r.today.toLocaleString()} today &middot; last active ${r.lastHour!=null?String(r.lastHour).padStart(2,'0')+":00":"—"} EAT</span></span><span class="pill-inline ${r.idleHrs>=2?'bad':'warn'}" style="margin-left:auto">idle ~${r.idleHrs}h</span></div>`).join("") : '<div class="small-mono" style="padding:10px 0">No reviewers idle right now — all active within the last hour.</div>'}
-        <div class="tl-pfoot">Idle threshold 60m &middot; work hours 06:00 → 19:00 EAT &middot; derived from hourly buckets (no minute precision). <span class="qh-cfg">Configure →</span></div>
+        <div class="tl-pfoot">Idle threshold 60m &middot; work hours 06:00 → 19:00 EAT &middot; derived from hourly buckets (no minute precision).</div>
       </div>
       <div class="panel"><h3>Today's pace <span class="meta">${totalRev} reviewers &middot; by reviews desc</span></h3>
         <div class="qh-pace-head"><span>Reviewer</span><span>Reviews today</span><span>P50/record</span><span>Peak hour</span></div>
@@ -4652,8 +4645,6 @@ PAGE_RENDERERS.qa_hourly = function () {
   document.querySelectorAll("#qhChips .tl-chip").forEach(b=>b.addEventListener("click",()=>{ STATE.qhFilters.view = (STATE.qhFilters.view===b.dataset.qh && b.dataset.qh!=="all") ? "all" : b.dataset.qh; PAGE_RENDERERS.qa_hourly(); }));
   // Export = reviewer × hour CSV (real)
   document.getElementById("qhExportBtn").addEventListener("click", _qhExport);
-  // visual-only: range / wake / banner buttons
-  document.querySelectorAll("[data-qhnoop]").forEach(b=>b.addEventListener("click",()=>{}));
 
   renderQaHeatmap();
   renderQaTaggingHeatmap();
@@ -5091,7 +5082,6 @@ PAGE_RENDERERS.qa_performance = function () {
         </div>
       </div>
       <div class="page-head-actions">
-        <button class="btn" id="qpRangeBtn">📅 Today</button>
         <button class="btn" id="qpExportBtn">Export</button>
       </div>
     </div>
@@ -5922,7 +5912,7 @@ function _renderBoqaPage(){
   const ct=STATE.completedTasks; let banner="";
   // proxy 14d daily review avg from reviewers all-time isn't a daily series; use a simple real trigger:
   // fire if there is a real backlog AND nothing reviewed today yet.
-  if(backlog>0 && reviewedToday===0 && !obsLoading){ banner=`<div class="bq-banner"><span class="ic">${KPI_ICONS.alert}</span><div class="bd">Backlog standing at <b>${backlog.toLocaleString()}</b> records selected for BO QA, with <b>0</b> reviewed so far today.</div><div class="acts"><button class="btn" data-bqnoop="see">See worklist</button><button class="btn btn-primary" data-bqnoop="strat">Auto-stratify</button></div></div>`; }
+  if(backlog>0 && reviewedToday===0 && !obsLoading){ banner=`<div class="bq-banner"><span class="ic">${KPI_ICONS.alert}</span><div class="bd">Backlog standing at <b>${backlog.toLocaleString()}</b> records selected for BO QA, with <b>0</b> reviewed so far today.</div><div class="acts"><button class="btn" data-bqnoop="see">See worklist</button></div></div>`; }
 
   const teamKeys=Object.keys(STATE.roster||{}).sort();
   const teamCount=(tm)=>recs.filter(r=>r.team===tm).length;
@@ -5951,9 +5941,7 @@ function _renderBoqaPage(){
         </div>
       </div>
       <div class="page-head-actions">
-        <button class="btn" id="bqTodayBtn">📅 Today</button>
         <button class="btn" id="bqExportBtn">Export queue</button>
-        <button class="btn btn-primary" id="bqStratBtn">⚡ Auto-stratify</button>
       </div>
     </div>
     ${banner}
@@ -6079,21 +6067,19 @@ function renderBqWorklist(){
       <span>${bqStatePill(r)}</span>
       <span>${bqVerifChip(r.verification_status)}</span>
       <span>${bqAgePill(r.days_open)}</span>
-      <span class="bq-acts"><button class="bq-act" data-bqnoop="approve" title="Approve (action in Airtable)">✓</button><button class="bq-act" data-bqnoop="edit" title="Edit (action in Airtable)">✎</button><button class="bq-act" data-bqnoop="open" title="Open record">↗</button></span>
     </div>`; };
   const pbtn=(p,l,dis,act)=>`<button data-bqpg="${p}"${dis?" disabled":""}${act?' class="active"':""}>${l||p}</button>`;
   let pagesHtml=""; if(pages>1){ pagesHtml+=pbtn(Math.max(1,STATE.bqPage-1),"‹",STATE.bqPage===1); for(let p=1;p<=pages;p++){ if(p===1||p===pages||Math.abs(p-STATE.bqPage)<=1)pagesHtml+=pbtn(p,null,false,p===STATE.bqPage); else if(Math.abs(p-STATE.bqPage)===2)pagesHtml+=`<span style="padding:3px 2px">…</span>`; } pagesHtml+=pbtn(Math.min(pages,STATE.bqPage+1),"›",STATE.bqPage===pages); }
   cont.innerHTML=`
     <div class="bq-tabs" id="bqTabs">${tabs.map(([k,l])=>`<button data-bqt="${k}" class="${tab===k?'active':''}">${l} <span class="ct">${cnt(k)}</span></button>`).join("")}<span class="spacer"></span><input id="bqSearch" type="text" placeholder="search imo / company / agent…" value="${esc(STATE.bqSearch)}"/></div>
     <div class="panel" style="padding:6px 10px 10px">
-      <div class="bq-row qd head"><span>IMO</span><span>Role</span><span>Company / agent</span><span>QA reviewer</span><span>QA state</span><span>Verification</span><span>Age</span><span>Actions</span></div>
+      <div class="bq-row qd head"><span>IMO</span><span>Role</span><span>Company / agent</span><span>QA reviewer</span><span>QA state</span><span>Verification</span><span>Age</span></div>
       ${rows.map(rowHtml).join("")||'<div class="empty" style="padding:16px">No records in this tab/filter.</div>'}
     </div>
     <div class="bq-pag"><span>Showing ${total?start+1:0}–${end} of ${total} · ${reviewedToday} reviewed today</span><span class="pages">${pagesHtml}</span></div>`;
   cont.querySelectorAll("#bqTabs button[data-bqt]").forEach(b=>b.addEventListener("click",()=>{STATE.bqTab=b.dataset.bqt;STATE.bqPage=1;renderBqWorklist();}));
   const si=document.getElementById("bqSearch"); if(si) si.addEventListener("input",(e)=>{ STATE.bqSearch=e.target.value; STATE.bqPage=1; renderBqWorklist(); const x=document.getElementById("bqSearch"); if(x){x.focus();x.setSelectionRange(x.value.length,x.value.length);} });
   cont.querySelectorAll("[data-bqcopy]").forEach(b=>b.addEventListener("click",(e)=>{e.stopPropagation(); try{navigator.clipboard&&navigator.clipboard.writeText(b.dataset.bqcopy);}catch{} }));
-  cont.querySelectorAll(".bq-act[data-bqnoop]").forEach(b=>b.addEventListener("click",(e)=>e.stopPropagation()));
   cont.querySelectorAll(".bq-row[data-imo]").forEach(row=>row.addEventListener("click",()=>{STATE.bqSelectedImo=row.dataset.imo;renderBqWorklist();renderBqDrawer();document.getElementById("bqDrawer").scrollIntoView({behavior:"smooth",block:"start"});}));
   cont.querySelectorAll("[data-bqpg]").forEach(b=>b.addEventListener("click",()=>{if(b.disabled)return;STATE.bqPage=parseInt(b.dataset.bqpg,10);renderBqWorklist();}));
 }
@@ -6136,7 +6122,6 @@ function renderBqDrawer(){
       <div class="panel"><h3>Audit trail <span class="meta">real events</span></h3><div class="bq-trail">${trail}</div></div>
     </div>
     <div class="bq-pfoot" style="text-align:center;border:0">ⓘ Decisions happen in Airtable — this dashboard is read-only. Open the record above to action it.</div>`;
-  cont.querySelectorAll("[data-bqnoop]").forEach(b=>b.addEventListener("click",()=>{}));
   const c=document.getElementById("bqDrawerClose"); if(c)c.addEventListener("click",()=>{STATE.bqSelectedImo=null;renderBqWorklist();cont.innerHTML="";});
 }
 // Per-reviewer BO QA load — from the cached snapshot's by_qa block (works in
@@ -6664,7 +6649,6 @@ function sumByTeam(field) {
 }
 
 // -------- Tasks --------
-const TASKS_STATE = { filter: "", view: "all", sortBy: "date_first_seen", sortDir: "desc" };
 
 // Status → colour map for tasks-layer segmented bars / donut / legend.
 const TL_STATUS = [
@@ -6761,9 +6745,7 @@ PAGE_RENDERERS.tasks = function () {
         </div>
       </div>
       <div class="page-head-actions">
-        <button class="btn" id="tasksFilterBtn">Filter</button>
         <button class="btn" id="tasksExportBtn">Export</button>
-        <button class="btn btn-primary" id="tasksNewBtn">+ New task</button>
       </div>
     </div>
     ${chipsHtml}
@@ -6803,10 +6785,10 @@ PAGE_RENDERERS.tasks = function () {
     else STATE.tasksFilters.team = id;
     PAGE_RENDERERS.tasks();  // cheap full re-render keeps chip/badge state in sync
   }));
-  // Visual-only buttons (no handlers per spec) + Export (real).
+  // Export (real).
   document.getElementById("tasksExportBtn").addEventListener("click", () => {
     // Match exactly what renderTasksList() shows: chip filters (_tlBase) + active
-    // tab (_tlTab), newest-first — not the older standalone TASKS_STATE model.
+    // tab (_tlTab), newest-first.
     const rows = _tlTab(_tlBase(), STATE.tasksTab || "active")
       .slice()
       .sort((a, b) => new Date(b.date_first_seen || 0) - new Date(a.date_first_seen || 0));
@@ -6835,62 +6817,6 @@ PAGE_RENDERERS.tasks = function () {
   // (filter/tab change) — never auto-open on a fresh page load.
   if (STATE.sidePanelOpen && STATE.selectedTaskId) renderTaskDetail();
 };
-
-function _tasksFiltered() {
-  const today = STATE.v2?.date;
-  let out = STATE.v2?.tasks_all || [];
-  if (TASKS_STATE.filter) {
-    const f = TASKS_STATE.filter.toLowerCase();
-    out = out.filter(t => t.name.toLowerCase().includes(f));
-  }
-  if (TASKS_STATE.view === "today") {
-    out = out.filter(t => (t.date_first_seen || "").slice(0, 10) === today);
-  } else if (TASKS_STATE.view === "incomplete") {
-    out = out.filter(t => t.flags.includes("incomplete"));
-  } else if (TASKS_STATE.view === "stuck") {
-    out = out.filter(t => t.flags.includes("stuck"));
-  } else if (TASKS_STATE.view === "stale") {
-    out = out.filter(t => (t.flags || []).includes("stale-24h"));
-  } else if (TASKS_STATE.view === "completed") {
-    out = out.filter(t => t.is_completed);
-  } else if (TASKS_STATE.view === "aging") {
-    out = out.filter(t => (t.flags || []).includes("aging"));
-  } else if (TASKS_STATE.view === "flagged") {
-    out = out.filter(t => t.flags.length > 0);
-  }
-  // Sort
-  const k = TASKS_STATE.sortBy, dir = TASKS_STATE.sortDir === "asc" ? 1 : -1;
-  out = [...out].sort((a, b) => {
-    let av, bv;
-    if (k === "name") { av = a.name; bv = b.name; }
-    else if (k === "total") { av = a.total_records_in_cache; bv = b.total_records_in_cache; }
-    else if (k === "Valid")   { av = a.status_distribution.Valid;   bv = b.status_distribution.Valid; }
-    else if (k === "BO QA")   { av = a.status_distribution["Selected for BO QA "]; bv = b.status_distribution["Selected for BO QA "]; }
-    else if (k === "waiting") { av = a.status_distribution.waiting; bv = b.status_distribution.waiting; }
-    else if (k === "tagged")  { av = a.status_distribution.tagged;  bv = b.status_distribution.tagged; }
-    else if (k === "donePct") {
-      av = a.total_records_in_cache ? a.properly_completed / a.total_records_in_cache : 0;
-      bv = b.total_records_in_cache ? b.properly_completed / b.total_records_in_cache : 0;
-    }
-    else if (k === "completed")   { av = a.completed || 0; bv = b.completed || 0; }
-    else if (k === "qa_reviewed") { av = a.qa_reviewed || 0; bv = b.qa_reviewed || 0; }
-    else if (k === "qa_coverage") { av = a.qa_coverage_pct || 0; bv = b.qa_coverage_pct || 0; }
-    else if (k === "teams")   { av = a.teams_worked.length; bv = b.teams_worked.length; }
-    else if (k === "flags")   { av = a.flags.length; bv = b.flags.length; }
-    else if (k === "tat") {
-      // Completed → turn-around hours; in-progress → current age. Mixed on one
-      // numeric axis so the column sorts sensibly across both kinds of row.
-      av = a.is_completed && a.tat_hours != null ? a.tat_hours : (ageHours(a.date_first_seen) || 0);
-      bv = b.is_completed && b.tat_hours != null ? b.tat_hours : (ageHours(b.date_first_seen) || 0);
-    }
-    else if (k === "date_last_modified") { av = a.date_last_modified || ""; bv = b.date_last_modified || ""; }
-    else /* date_first_seen */ { av = a.date_first_seen || ""; bv = b.date_first_seen || ""; }
-    if (av < bv) return -1 * dir;
-    if (av > bv) return  1 * dir;
-    return 0;
-  });
-  return out;
-}
 
 const FLAG_STYLES = {
   "company-gap": "red",
@@ -7209,8 +7135,6 @@ function renderTaskDetail(){
           <div class="meta"><span class="num">${total.toLocaleString()}</span> records &middot; Routed to ${esc(routed)} &middot; Uploaded ${esc(tlEatTime(t.date_first_seen))} EAT &middot; Last activity ${esc(tlEatTime(t.date_last_modified))} EAT &middot; Age ${esc(ageStr)}</div>
         </div>
         <div class="acts">
-          <button class="btn" data-tlnoop="open">Open task</button>
-          <button class="btn btn-primary" data-tlnoop="reassign">Reassign</button>
           <button class="btn" id="tlDetailClose" title="Clear selection">×</button>
         </div>
       </div>
@@ -7245,190 +7169,6 @@ function renderTaskDetail(){
   openSidePanel(t.name, `${total.toLocaleString()} records · since ${shortDate(t.date_first_seen)}`);
   const close=cont.querySelector("#tlDetailClose");
   if(close) close.addEventListener("click", closeSidePanel);
-}
-// ----- Task detail drawer -----
-function openTaskDrawer(taskName) {
-  const t = (STATE.v2?.tasks_all || []).find(x => x.name === taskName);
-  if (!t) return;
-  const drawer = document.getElementById("taskDrawer");
-  const backdrop = document.getElementById("taskDrawerBackdrop");
-
-  // Completion breakdown rows
-  const noCoNoDead = t.total_records_in_cache - t.with_company - (t.dead_vessels);  // approximation; see note
-  // Better: derive from records — but we don't have records in aggregates_v2. So compute from emitted fields:
-  // with_company AND dead_vessel ticked is not separately emitted, so approximate buckets.
-  const flagsHtml = t.flags.map(f => `<span class="flag-pill ${FLAG_STYLES[f] || 'gray'}">${esc(f)}</span>`).join("") || '<span class="small-mono">no flags</span>';
-  const sd = t.status_distribution;
-
-  // QA metrics — task-lifetime cumulative (by current qa_status). Null-guarded:
-  // qa_changed / per-agent qa_checked/qa_changed predate older snapshots.
-  const qaReviewed = t.qa_reviewed || 0;
-  const qaChanged = t.qa_changed || 0;
-  const qaCoverage = t.qa_coverage_pct || 0;
-  const qaChangeRate = qaReviewed > 0 ? Math.round((qaChanged / qaReviewed) * 100) : null;
-  const qaRateCls = qaChangeRate == null ? "" : (qaChangeRate < 10 ? "good" : qaChangeRate < 30 ? "warn" : "bad");
-
-  drawer.innerHTML = `
-    <div class="drawer-header">
-      <button class="drawer-close" id="drawerCloseBtn" title="Close">×</button>
-      <h2>${esc(t.name)}</h2>
-      <div>
-        <span class="pill-inline ${t.is_sanctions ? 'bad' : 'good'}">${t.is_sanctions ? 'Sanctions' : 'Standard'}</span>
-        <span class="small-mono"> · ${t.total_records_in_cache.toLocaleString()} records in cache · last active ${esc(timeAgo(t.date_last_modified))}</span>
-      </div>
-      <div style="margin-top:6px">${flagsHtml}</div>
-    </div>
-    <div class="drawer-body">
-
-      <div class="panel">
-        <h3>Lifecycle <span class="meta">client upload → 95% Valid</span></h3>
-        <table>
-          <tr><td>Started <span class="small-mono">client upload</span></td><td class="right">${t.date_first_seen ? esc(fmtEatDateTime(t.date_first_seen)) : '<span class="small-mono">—</span>'}</td></tr>
-          <tr><td>Finished <span class="small-mono">crossed 95% Valid</span></td><td class="right">${t.is_completed && t.end_time ? esc(fmtEatDateTime(t.end_time)) : '<span class="small-mono">in progress</span>'}</td></tr>
-          <tr><td>Turn-around</td><td class="right"><strong>${t.is_completed && t.tat_hours != null ? esc(formatDuration(t.tat_hours)) : esc(formatDuration(ageHours(t.date_first_seen))) + ' open so far'}</strong></td></tr>
-        </table>
-      </div>
-
-      <div class="row equal">
-        <div class="panel">
-          <h3>Status breakdown</h3>
-          <div class="chart-wrap small"><canvas id="drawerStatusChart"></canvas></div>
-        </div>
-        <div class="panel">
-          <h3>Completion breakdown</h3>
-          <table>
-            <tr><td>Properly completed</td><td class="right"><strong>${t.properly_completed}</strong> / ${t.total_records_in_cache}</td></tr>
-            <tr><td>With company</td><td class="right">${t.with_company}</td></tr>
-            <tr><td>Without company</td><td class="right">${t.without_company}</td></tr>
-            <tr><td>Dead vessels (any status)</td><td class="right">${t.dead_vessels}</td></tr>
-            <tr><td>On reminder</td><td class="right">${t.with_reminder}</td></tr>
-          </table>
-          <div class="footer-note">Detailed "with company AND dead vessel" / "no company, no dead vessel" breakdown requires per-record visibility — click "Fetch all records" below.</div>
-        </div>
-      </div>
-
-      <div class="panel">
-        <h3>QA metrics <span class="meta">task-lifetime · by current QA status</span></h3>
-        <table>
-          <tr><td>Checked <span class="small-mono">% of completed work QA-checked</span></td><td class="right"><strong>${qaCoverage.toFixed(0)}%</strong> <span class="small-mono">(${qaReviewed} of ${t.completed || 0} completed)</span></td></tr>
-          <tr><td>Changed <span class="small-mono">records QA bounced back</span></td><td class="right">${qaChanged}</td></tr>
-          <tr><td>Change rate <span class="small-mono">changed / checked</span></td><td class="right">${qaChangeRate == null ? '<span class="small-mono">—</span>' : `<span class="pill-inline ${qaRateCls}">${qaChangeRate}%</span>`}</td></tr>
-        </table>
-      </div>
-
-      <div class="row equal">
-        <div class="panel">
-          <h3>Agents working this task <span class="meta">multi-assignee aware</span></h3>
-          <table>
-            <thead><tr><th>Agent</th><th>Team</th><th class="right">Records touched</th><th class="right">Checked</th><th class="right">Changed</th></tr></thead>
-            <tbody>${t.agents_worked.map(a => `<tr><td class="agent-name">${esc(a.name)}</td><td>${esc(a.team || '—')}</td><td class="right">${a.records}</td><td class="right">${a.qa_checked || 0}</td><td class="right">${a.qa_changed || 0}</td></tr>`).join("") || '<tr><td colspan="5" class="empty">no assignees in cache window</td></tr>'}</tbody>
-          </table>
-        </div>
-        <div class="panel">
-          <h3>Teams involved</h3>
-          <table>
-            <thead><tr><th>Team</th><th class="right">Distinct records</th></tr></thead>
-            <tbody>${t.teams_worked.map(x => `<tr><td>${esc(x.team)}</td><td class="right">${x.records}</td></tr>`).join("") || '<tr><td colspan="2" class="empty">no in-roster assignees</td></tr>'}</tbody>
-          </table>
-        </div>
-      </div>
-
-      <div class="panel">
-        <h3>Records in this task <span class="meta">live from Airtable, read-only</span></h3>
-        <div class="controls-row">
-          <button class="btn primary" id="fetchTaskBtn">Fetch all records from Airtable for this task</button>
-          <span class="small-mono" id="fetchTaskStatus"></span>
-        </div>
-        <div id="fetchTaskResults"></div>
-      </div>
-
-    </div>
-  `;
-
-  // Status doughnut
-  const labels = Object.keys(sd).filter(k => sd[k] > 0);
-  const data = labels.map(k => sd[k]);
-  const ctx = document.getElementById("drawerStatusChart");
-  if (ctx && labels.length) {
-    if (STATE.charts["drawerStatusChart"]) STATE.charts["drawerStatusChart"].destroy();
-    STATE.charts["drawerStatusChart"] = new Chart(ctx, {
-      type: "doughnut",
-      data: { labels, datasets: [{ data, backgroundColor: ["#3d63dd","#9a6a12","#bb4338","#1a7a55","#8a93a3","#7c5cbf","#c98a3f"] }] },
-      options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: "right", labels: { font: { size: 10 } } } } }
-    });
-  }
-
-  document.getElementById("drawerCloseBtn").addEventListener("click", closeTaskDrawer);
-  document.getElementById("taskDrawerBackdrop").addEventListener("click", closeTaskDrawer);
-  document.getElementById("fetchTaskBtn").addEventListener("click", () => fetchTaskRecords(t.name));
-
-  drawer.classList.add("open");
-  backdrop.classList.add("open");
-}
-
-function closeTaskDrawer() {
-  document.getElementById("taskDrawer").classList.remove("open");
-  document.getElementById("taskDrawerBackdrop").classList.remove("open");
-  if (STATE.charts["drawerStatusChart"]) { STATE.charts["drawerStatusChart"].destroy(); delete STATE.charts["drawerStatusChart"]; }
-}
-
-async function fetchTaskRecords(taskName) {
-  const status = document.getElementById("fetchTaskStatus");
-  const out = document.getElementById("fetchTaskResults");
-  if (STATE.viewIsHistorical) {
-    status.textContent = "Live record fetch disabled in historical view.";
-    return;
-  }
-  if (!HAS_COWORK) {
-    status.textContent = "Cowork required for live fetch.";
-    return;
-  }
-  document.getElementById("fetchTaskBtn").disabled = true;
-  status.textContent = "fetching…";
-  const args = {
-    baseId: BASE_ID,
-    tableId: TABLE_ID,
-    pageSize: 100,
-    filters: { operator: "and", operands: [{ operator: "=", operands: [F.requested_by, taskName] }] },
-    sort: [{ fieldId: F.last_modified, direction: "desc" }],
-  };
-  const all = [];
-  let cursor;
-  for (let i = 0; i < 30; i++) {
-    if (cursor) args.cursor = cursor; else delete args.cursor;
-    let result;
-    try { result = await window.cowork.callMcpTool(AIRTABLE_TOOL, args); }
-    catch (e) { console.error(e); break; }
-    const payload = unwrapJson(result);
-    if (!payload || !payload.records) break;
-    all.push(...payload.records);
-    if (!payload.nextCursor) break;
-    cursor = payload.nextCursor;
-  }
-  status.textContent = `fetched ${all.length} record${all.length === 1 ? '' : 's'}`;
-  document.getElementById("fetchTaskBtn").disabled = false;
-
-  const rows = all.slice(0, 500).map(r => {
-    const c = r.cellValuesByFieldId || {};
-    const asgs = (c[F.assignee] || []).map(x => x.name).join(", ");
-    const vs = c[F.verification_status]?.name || "";
-    const co = (c[F.company_id_and_name] || [])[0]?.name || "";
-    const lm = c[F.last_modified] || "";
-    const recFlags = [];
-    if ((vs === "Done" || vs === "Valid") && !co && c[F.dead_vessel] !== true) recFlags.push('<span class="flag-pill red">company-gap</span>');
-    if (!asgs) recFlags.push('<span class="flag-pill red">unassigned</span>');
-    return `<tr>
-      <td class="mono">${esc(c[F.imo] || "")}</td>
-      <td>${esc(c[F.role]?.name || "")}</td>
-      <td>${esc(vs)}</td>
-      <td>${esc(co || "—")}</td>
-      <td>${esc(asgs || "—")}</td>
-      <td class="mono">${esc(fmtEatDateTime(lm))}</td>
-      <td>${recFlags.join(" ")}</td>
-    </tr>`;
-  }).join("");
-  const more = all.length > 500 ? `<div class="footer-note">${all.length - 500} more not shown.</div>` : "";
-  out.innerHTML = `<table><thead><tr><th>IMO</th><th>Role</th><th>Status</th><th>Company</th><th>Assignees</th><th>Last modified</th><th>Flags</th></tr></thead><tbody>${rows}</tbody></table>${more}`;
 }
 
 // -------- New Companies --------
@@ -7529,9 +7269,7 @@ PAGE_RENDERERS.new_companies = function () {
         </div>
       </div>
       <div class="page-head-actions">
-        <button class="btn" id="ncFilterBtn">Filter</button>
         <button class="btn" id="ncExportBtn">Export</button>
-        <button class="btn btn-primary" id="ncNewBtn">+ New</button>
       </div>
     </div>
     ${chipsHtml}
@@ -7716,7 +7454,6 @@ function renderNcDrawer(){
       </div>
     </div>
     <div class="nc-pfoot" style="text-align:center;border:0">ⓘ Decisions happen in Airtable — this dashboard is read-only. Open the record above to action it.</div>`;
-  cont.querySelectorAll("[data-ncnoop]").forEach(b=>b.addEventListener("click",()=>{}));
   const c=document.getElementById("ncDetailClose"); if(c) c.addEventListener("click",()=>{ STATE.ncSelectedImo=null; renderNcQueue(); cont.innerHTML=""; });
 }
 // -------- WW QA Console --------
@@ -8559,7 +8296,6 @@ function _renderCompletedPage(){
         </div>
       </div>
       <div class="page-head-actions">
-        <button class="btn" id="ctRangeBtn">📅 Last 30 days</button>
         <button class="btn" id="ctExportBtn">Export</button>
         <button class="btn btn-primary" id="ctReportBtn">Open report builder</button>
       </div>
@@ -8606,7 +8342,6 @@ function _renderCompletedPage(){
   }));
   document.getElementById("ctExportBtn").addEventListener("click", _ctExport);
   document.getElementById("ctReportBtn")?.addEventListener("click", () => goto("report_builder"));
-  // visual-only button: ctRangeBtn (no handler)
 
   renderCompletedArchive();
   // Restore the detail panel in-place if a batch was selected before this re-render
@@ -8742,7 +8477,7 @@ function renderCompletedDetail(){
         <div style="min-width:0"><div class="nm">${esc(t.name)} <span class="pill-inline ${L.is_sanctions?'bad':'good'}" style="margin-left:4px">${L.is_sanctions?'sanctions':'standard'}</span> <span class="ct-pill ${sc}">${slabel}</span></div>
           <div class="meta"><span class="num">${total.toLocaleString()}</span> records &middot; Routed to ${esc(routed)} &middot; Opened ${esc(ctDayDate(L.date_first_seen))} · ${esc(ctEatTime(L.date_first_seen))} &middot; Closed ${esc(ctDayDate(L.end_time))} · ${esc(ctEatTime(L.end_time))} &middot; Duration ${esc(dur)}</div>
         </div>
-        <div class="acts"><button class="btn" data-ctnoop="open">Open batch</button><button class="btn btn-primary" data-ctnoop="report">Build report</button><button class="btn" id="ctDetailClose" title="Clear selection">×</button></div>
+        <div class="acts"><button class="btn btn-primary" data-ctnoop="report">Build report</button><button class="btn" id="ctDetailClose" title="Clear selection">×</button></div>
       </div>
     </div>
     <div class="ct-drow">
@@ -9703,8 +9438,7 @@ function _renderPipelinePage(){
 
   // largest-backlog banner (only if > 2× median stage)
   const showBanner = medStageVol>0 && lv > 2*medStageVol;
-  const ancDominant = (t.add_new_company_open||0) > wip*0.25;
-  const bannerHtml = showBanner? `<div class="pl-banner"><span class="ic">${KPI_ICONS.alert}</span><div class="bd">Largest backlog: <b>${esc(largest.label)}</b> — <b>${lv.toLocaleString()}</b> records, ${(lv/Math.max(1,medStageVol)).toFixed(1)}× the median stage.${ancDominant?` Auto-route ${(t.add_new_company_open||0)} add-new-company first?`:""}</div><div class="acts"><button class="btn" data-plnoop="stuck">See stuck list</button>${ancDominant?`<button class="btn btn-primary" data-plnoop="route">Auto-route ${t.add_new_company_open||0}</button>`:""}</div></div>`:"";
+  const bannerHtml = showBanner? `<div class="pl-banner"><span class="ic">${KPI_ICONS.alert}</span><div class="bd">Largest backlog: <b>${esc(largest.label)}</b> — <b>${lv.toLocaleString()}</b> records, ${(lv/Math.max(1,medStageVol)).toFixed(1)}× the median stage.</div><div class="acts"><button class="btn" data-plnoop="stuck">See stuck list</button></div></div>`:"";
 
   // hero segbar (5 stages)
   const segTot=Math.max(1,pipelineTot);
@@ -9722,9 +9456,7 @@ function _renderPipelinePage(){
         </div>
       </div>
       <div class="page-head-actions">
-        <button class="btn" id="plRangeBtn">📅 Last 14 days</button>
         <button class="btn" id="plExportBtn">Export</button>
-        <button class="btn btn-primary" id="plUnblockBtn">⚡ Unblock bottleneck</button>
       </div>
     </div>
     ${bannerHtml}
@@ -9830,18 +9562,17 @@ function renderPlStuck(){
   const tabs=[["all","All"],...PL_STAGES.slice(0,4).map(st=>[st.s,st.label])];
   const rowHtml=(x)=>{ const d=plDominant(x); const age=ageHours(x.date_first_seen)||0; const sd=x.status_distribution||{}; const segTot=Math.max(1,PL_STAGES.reduce((s,st)=>s+(sd[st.key]||0)+st.extra.reduce((q,k)=>q+(sd[k]||0),0),0));
     const flow=PL_STAGES.map(st=>{const v=(sd[st.key]||0)+st.extra.reduce((q,k)=>q+(sd[k]||0),0); return v>0?`<span style="width:${(v/segTot*100).toFixed(1)}%;background:${st.color}"></span>`:"";}).join("");
-    return `<div class="pl-stuck-row"><span class="tn">${esc(x.name)}</span><span><span class="task-team-chip" style="color:${plTeamHex(plPrimaryTeam(x))}">&bull; ${esc(plPrimaryTeam(x))}</span></span><span><span class="pl-pill" style="background:${d.color}22;color:${d.color}">${d.label}</span></span><span class="ct-num">${(age/24).toFixed(1)}d</span><span class="ct-num" style="color:var(--bad)">+${((age-48)/24).toFixed(1)}d</span><span class="flow">${flow}</span><span><button class="btn" data-plnoop="reassign" style="padding:3px 8px;font-size:11px">Reassign</button></span></div>`; };
+    return `<div class="pl-stuck-row"><span class="tn">${esc(x.name)}</span><span><span class="task-team-chip" style="color:${plTeamHex(plPrimaryTeam(x))}">&bull; ${esc(plPrimaryTeam(x))}</span></span><span><span class="pl-pill" style="background:${d.color}22;color:${d.color}">${d.label}</span></span><span class="ct-num">${(age/24).toFixed(1)}d</span><span class="ct-num" style="color:var(--bad)">+${((age-48)/24).toFixed(1)}d</span><span class="flow">${flow}</span></div>`; };
   const pbtn=(p,l,dis,act)=>`<button class="btn" data-plpg="${p}"${dis?" disabled":""} style="padding:3px 9px;font-size:12px${act?';background:var(--ink);color:#fff':''}">${l||p}</button>`;
   cont.innerHTML=`
-    <div class="pl-tabs" id="plStuckTabs">${tabs.map(([k,l])=>`<button data-pst="${k}" class="${tab===k?'active':''}">${l} <span class="ct">${cnt(k)}</span></button>`).join("")}<span class="spacer"></span><span class="ct-sortlabel" style="font-size:11.5px;color:var(--muted)">↓ Oldest first</span> <button class="btn" data-plnoop="bulk" style="padding:4px 10px;font-size:12px">Bulk reassign</button></div>
+    <div class="pl-tabs" id="plStuckTabs">${tabs.map(([k,l])=>`<button data-pst="${k}" class="${tab===k?'active':''}">${l} <span class="ct">${cnt(k)}</span></button>`).join("")}<span class="spacer"></span><span class="ct-sortlabel" style="font-size:11.5px;color:var(--muted)">↓ Oldest first</span></div>
     <div class="panel" style="padding:6px 10px 10px">
-      <div class="pl-stuck-row head"><span>Task</span><span>Team</span><span>Stage</span><span>In stage</span><span>SLA exceed</span><span>Flow</span><span>Action</span></div>
+      <div class="pl-stuck-row head"><span>Task</span><span>Team</span><span>Stage</span><span>In stage</span><span>SLA exceed</span><span>Flow</span></div>
       ${page.map(rowHtml).join("")||'<div class="empty" style="padding:16px">No tasks stuck > 48h in this view.</div>'}
     </div>
     <div class="pl-pag"><span>Showing ${total?start+1:0}–${end} of ${total}</span><span>${pages>1?pbtn(Math.max(1,STATE.plStuckPage-1),"‹",STATE.plStuckPage===1)+` page ${STATE.plStuckPage}/${pages} `+pbtn(Math.min(pages,STATE.plStuckPage+1),"›",STATE.plStuckPage===pages):""}</span></div>`;
   cont.querySelectorAll("#plStuckTabs button[data-pst]").forEach(b=>b.addEventListener("click",()=>{STATE.plStuckTab=b.dataset.pst;STATE.plStuckPage=1;renderPlStuck();}));
   cont.querySelectorAll("[data-plpg]").forEach(b=>b.addEventListener("click",()=>{if(b.disabled)return;STATE.plStuckPage=parseInt(b.dataset.plpg,10);renderPlStuck();}));
-  cont.querySelectorAll("[data-plnoop]").forEach(b=>b.addEventListener("click",()=>{}));
 }
 
 function renderPlThroughput(){
