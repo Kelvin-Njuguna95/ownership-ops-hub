@@ -3715,6 +3715,42 @@ async function renderExpertsWeekly() {
 // (start_tagging is batch-level) so the SPEED section / P50 KPI are dropped;
 // strikes & 2-week reviews aren't tracked so those panels are dropped too.
 const COMPARISON_STATE = { mode: "agent", range: 30, a: null, b: null, _pick: null };
+// --- Comparison share-link + saved views (local, no backend) ---
+const CMP_SAVED_KEY = "cmpSavedViews";
+function _cmpSavedViews() {
+  try { const a = JSON.parse(localStorage.getItem(CMP_SAVED_KEY) || "[]"); return Array.isArray(a) ? a : []; }
+  catch { return []; }
+}
+function _cmpWriteSavedViews(arr) {
+  try { localStorage.setItem(CMP_SAVED_KEY, JSON.stringify((arr || []).slice(0, 20))); } catch (_) {}
+}
+function _cmpSavedBarHtml() {
+  const views = _cmpSavedViews();
+  if (!views.length) return "";   // empty state: render nothing
+  const chips = views.map((v, i) =>
+    `<span class="tl-fchip"><span data-cmpload="${i}" style="cursor:pointer">${esc(v.name)}</span><span class="x" data-cmpdel="${i}" title="Delete">&times;</span></span>`
+  ).join("");
+  return `<div class="tl-fchips" id="cmpSavedBar">${chips}<span class="meta">Saved in this browser</span></div>`;
+}
+// Defensive boot-time application of a shared "#cmp=<json>" hash. Returns
+// "comparison" when a valid hash was applied (so boot lands there), else null.
+// Never throws — any malformed/invalid hash falls through to the normal landing page.
+function _applyCmpShareHash() {
+  try {
+    const h = location.hash || "";
+    if (!h.startsWith("#cmp=")) return null;
+    const obj = JSON.parse(decodeURIComponent(h.slice(5)));
+    if (!obj || typeof obj !== "object") return null;
+    if (!["agent", "team", "period"].includes(obj.mode)) return null;
+    if (![7, 30, 90].includes(obj.range)) return null;
+    COMPARISON_STATE.mode  = obj.mode;
+    COMPARISON_STATE.range = obj.range;
+    COMPARISON_STATE.a = (typeof obj.a === "string") ? obj.a : null;
+    COMPARISON_STATE.b = (typeof obj.b === "string") ? obj.b : null;
+    COMPARISON_STATE._pick = null;
+    return "comparison";
+  } catch (_) { return null; }
+}
 const CMP_FLOOR = () => AGENT_FLOOR;  // was config-driven; ww_audit_log.json config is stale (280)
 const CMP_A_COLOR = "#0EA56C", CMP_B_COLOR = "#0691B5";   // A green, B cyan
 
@@ -3834,13 +3870,51 @@ PAGE_RENDERERS.comparison = function () {
       <span class="spacer"></span>
       ${rangeTab(7)}${rangeTab(30)}${rangeTab(90)}
     </div>
+    ${_cmpSavedBarHtml()}
     <div id="cmpBody"><div class="empty" style="padding:30px"><span class="spinning-icon">↻</span> Loading ${cs.range} days of history…</div></div>`;
 
   document.querySelectorAll("#cmpModeBar [data-cmpmode]").forEach(b => b.addEventListener("click", () => { COMPARISON_STATE.mode = b.dataset.cmpmode; COMPARISON_STATE.a = null; COMPARISON_STATE.b = null; PAGE_RENDERERS.comparison(); }));
   document.querySelectorAll("#cmpModeBar [data-cmprange]").forEach(b => b.addEventListener("click", () => { COMPARISON_STATE.range = parseInt(b.dataset.cmprange, 10); PAGE_RENDERERS.comparison(); }));
   document.getElementById("cmpExportBtn").addEventListener("click", _cmpExport);
-  document.getElementById("cmpShareBtn").addEventListener("click", () => {});
-  document.getElementById("cmpSaveBtn").addEventListener("click", () => {});
+  document.getElementById("cmpShareBtn").addEventListener("click", async () => {
+    const cs = COMPARISON_STATE;
+    location.hash = "cmp=" + encodeURIComponent(JSON.stringify({ mode: cs.mode, range: cs.range, a: cs.a, b: cs.b }));
+    try { if (navigator.clipboard && navigator.clipboard.writeText) await navigator.clipboard.writeText(location.href); } catch (_) {}
+    const btn = document.getElementById("cmpShareBtn");
+    if (btn) { const orig = btn.textContent; btn.textContent = "✓ Copied"; setTimeout(() => { btn.textContent = orig; }, 1500); }
+  });
+  document.getElementById("cmpSaveBtn").addEventListener("click", () => {
+    const name = (prompt("Name this comparison view:") || "").trim();
+    if (!name) return;
+    const cs = COMPARISON_STATE;
+    const views = _cmpSavedViews();
+    views.unshift({ name, mode: cs.mode, range: cs.range, a: cs.a, b: cs.b, savedAt: new Date().toISOString() });
+    _cmpWriteSavedViews(views);   // newest first, capped at 20
+    PAGE_RENDERERS.comparison();
+  });
+  // Saved-views chips: one delegated listener — × deletes, name applies the view.
+  const savedBar = document.getElementById("cmpSavedBar");
+  if (savedBar) savedBar.addEventListener("click", (e) => {
+    const del = e.target.closest("[data-cmpdel]");
+    if (del) {
+      const views = _cmpSavedViews();
+      views.splice(parseInt(del.dataset.cmpdel, 10), 1);
+      _cmpWriteSavedViews(views);
+      PAGE_RENDERERS.comparison();
+      return;
+    }
+    const load = e.target.closest("[data-cmpload]");
+    if (load) {
+      const v = _cmpSavedViews()[parseInt(load.dataset.cmpload, 10)];
+      if (!v) return;
+      COMPARISON_STATE.mode  = v.mode;
+      COMPARISON_STATE.range = v.range;
+      COMPARISON_STATE.a = v.a;
+      COMPARISON_STATE.b = v.b;
+      COMPARISON_STATE._pick = null;
+      PAGE_RENDERERS.comparison();
+    }
+  });
 
   loadHistory(cs.range).then(() => { if (STATE.currentPage === "comparison") renderComparisonBody(); });
 };
@@ -9829,7 +9903,11 @@ async function init() {
   renderNav();
   renderFreshness();
   _wireSidePanel();   // idempotent: × / backdrop / Escape close handlers (once)
-  goto(STATE.currentPage);
+  // A shared "#cmp=" hash (set by the Comparison Share-link button) lands on the
+  // Comparison page with that selection. Runs only here — after login + data load —
+  // so auth is unaffected; a malformed hash falls through to the normal page silently.
+  const _cmpShared = _applyCmpShareHash();
+  goto(_cmpShared || STATE.currentPage);
 }
 
 // Reusable refresh-with-feedback wrapper. Use for any button that triggers
