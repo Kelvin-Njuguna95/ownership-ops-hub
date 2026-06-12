@@ -6317,6 +6317,16 @@ PAGE_RENDERERS.intake = function () {
     try { return new Date(iso).toLocaleTimeString("en-GB", { timeZone: "Africa/Nairobi", hour: "2-digit", minute: "2-digit" }); }
     catch { return "—"; }
   };
+  // Upload date+time stamp, EAT — reuses _supDayMon ("12 Jun") + fmtTime ("12:00").
+  // Returns "12 Jun · 12:00"; "—" when date_first_seen is missing or unparseable
+  // (never blank or "Invalid Date"). Date is always shown (consistent across the
+  // featured card and every mini card, regardless of day).
+  const dateTimeStamp = (iso) => {
+    if (!iso || isNaN(new Date(iso))) return "—";
+    const t = fmtTime(iso);
+    const dateLabel = _supDayMon(iso);
+    return (t === "—" || !dateLabel) ? "—" : `${dateLabel} · ${t}`;
+  };
   const headDate = (() => {
     const d = STATE.v2?.date; if (!d) return "";
     const dt = new Date(d + "T00:00:00");
@@ -6434,6 +6444,7 @@ PAGE_RENDERERS.intake = function () {
     const waiting  = task.status_distribution?.waiting || 0;
     const dead     = task.dead_vessels || 0;
     const teamsOnTask = task.teams_worked || [];
+    const firstSeen = dateTimeStamp(task.date_first_seen);
     // Progress = records STARTED (left `waiting`). status_distribution.tagged
     // is a transient seconds-long state — records move straight through it to
     // BO QA / Done / Valid, so a tagged-based ring read ~0% on healthy tasks.
@@ -6452,7 +6463,7 @@ PAGE_RENDERERS.intake = function () {
           <span class="task-card-icon" style="background:${TEAM_COLORS[primaryTeam]?.hex || "#7B68EE"}20;color:${TEAM_COLORS[primaryTeam]?.hex || "#7B68EE"}">${KPI_ICONS.file}</span>
           <div class="task-card-titles">
             <div class="task-card-name"><strong>${esc(task.name)}</strong> ${statusPill}</div>
-            <div class="task-card-meta"><span class="num">${records.toLocaleString()}</span> records &middot; ${typeLabel} &middot; First seen <span class="num">${fmtTime(task.date_first_seen)} EAT</span>${task.date_last_modified ? ` &middot; Last activity <span class="num">${fmtTime(task.date_last_modified)} EAT</span>` : ""}</div>
+            <div class="task-card-meta"><span class="num">${records.toLocaleString()}</span> records &middot; ${typeLabel} &middot; First seen <span class="num">${firstSeen}${firstSeen === "—" ? "" : " EAT"}</span>${task.date_last_modified ? ` &middot; Last activity <span class="num">${fmtTime(task.date_last_modified)} EAT</span>` : ""}</div>
           </div>
           <div class="task-card-progress">
             <svg class="ring" viewBox="0 0 36 36"><circle cx="18" cy="18" r="15.9" fill="none" stroke="var(--soft)" stroke-width="3"/><circle cx="18" cy="18" r="15.9" fill="none" stroke="var(--accent)" stroke-width="3" stroke-dasharray="${pct} ${100 - pct}" stroke-dashoffset="25" transform="rotate(-90 18 18)"/></svg>
@@ -6486,6 +6497,7 @@ PAGE_RENDERERS.intake = function () {
     const waiting  = task.status_distribution?.waiting || 0;
     const dead     = task.dead_vessels || 0;
     const days = daysSince(task.date_first_seen);
+    const upload = dateTimeStamp(task.date_first_seen);
     const teamsOnTask = task.teams_worked || [];
     const statusPill = task.is_completed ? `<span class="task-pill completed">Completed</span>`
       : (task.flags || []).includes("incomplete") ? `<span class="task-pill bo-qa">BO QA pending</span>`
@@ -6497,8 +6509,8 @@ PAGE_RENDERERS.intake = function () {
         <div class="task-card-head">
           <span class="task-card-icon" style="background:${TEAM_COLORS[primaryTeam]?.hex || "#7B68EE"}20;color:${TEAM_COLORS[primaryTeam]?.hex || "#7B68EE"}">${KPI_ICONS.file}</span>
           <div class="task-card-titles">
-            <div class="task-card-name"><strong>${esc(task.name)}</strong> ${statusPill}</div>
-            <div class="task-card-meta"><span class="num">${records.toLocaleString()}</span> records &middot; ${teamsOnTask.map(esc).join(", ") || "—"}${unassigned > 0 ? ` &middot; <span class="warn-text">${unassigned.toLocaleString()} unassigned</span>` : ""}</div>
+            <div class="task-card-name"><strong>${esc(task.name)}</strong> ${statusPill} ${csTableBadge(task.source_table)}</div>
+            <div class="task-card-meta"><span class="num">${records.toLocaleString()}</span> records &middot; Uploaded <span class="num">${upload}${upload === "—" ? "" : " EAT"}</span>${teamsOnTask.length ? ` &middot; ${teamsOnTask.map(esc).join(", ")}` : ""}${unassigned > 0 ? ` &middot; <span class="warn-text">${unassigned.toLocaleString()} unassigned</span>` : ""}</div>
           </div>
         </div>
         <div class="task-card-stats mini">
