@@ -5789,8 +5789,14 @@ PAGE_RENDERERS.supply = function () {
   const sort = STATE.supplySort || "priority";
   let tasks = (supply.by_task || []).slice();
   if (sort === "count") tasks.sort((a, b) => b.count - a.count);
-  else if (sort === "age") tasks.sort((a, b) => (b.age_days || 0) - (a.age_days || 0));
-  // "priority" keeps the API order (sanctions-first, then oldest-first).
+  else if (sort === "age") tasks.sort((a, b) => (b.age_days || 0) - (a.age_days || 0));   // explicit oldest-first (find stale tasks)
+  // Priority: sanctions tasks first, then NEWEST-first (oldest at the bottom) — within
+  // each group by waiting age ascending (newest waiting-since = smallest age at top),
+  // ties by name. age_days drives the "Oldest waiting" column; unknown age sorts last.
+  else tasks.sort((a, b) =>
+    (b.is_sanctions ? 1 : 0) - (a.is_sanctions ? 1 : 0)
+    || (a.age_days == null ? Infinity : a.age_days) - (b.age_days == null ? Infinity : b.age_days)
+    || (a.requested_by || "").localeCompare(b.requested_by || ""));
   const maxCount = Math.max(1, ...tasks.map(t => t.count || 0));
   const maxAge = tasks.reduce((m, t) => Math.max(m, t.age_days || 0), 0);
   const rows = tasks.map((t, i) => {
@@ -5917,11 +5923,11 @@ PAGE_RENDERERS.supply = function () {
 
     <div class="panel">
       <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:10px;flex-wrap:wrap">
-        <div><div class="sup-panel-head" style="margin-bottom:2px">Priority tasks</div><div class="sup-panel-sub" style="margin-bottom:0">Sanctions first, then oldest waiting</div></div>
+        <div><div class="sup-panel-head" style="margin-bottom:2px">Priority tasks</div><div class="sup-panel-sub" style="margin-bottom:0">Sanctions first, then newest — oldest at the bottom</div></div>
         <div style="font-size:12px;color:var(--muted);display:flex;align-items:center;gap:6px">Sort
-          <button class="btn btn-sm sup-sort${sort === "priority" ? " btn-primary" : ""}" data-supsort="priority">Priority</button>
-          <button class="btn btn-sm sup-sort${sort === "count" ? " btn-primary" : ""}" data-supsort="count">Count</button>
-          <button class="btn btn-sm sup-sort${sort === "age" ? " btn-primary" : ""}" data-supsort="age">Age</button>
+          <button class="btn btn-sm sup-sort${sort === "priority" ? " btn-primary" : ""}" data-supsort="priority" title="Sanctions first, then newest — oldest at the bottom">Priority</button>
+          <button class="btn btn-sm sup-sort${sort === "count" ? " btn-primary" : ""}" data-supsort="count" title="Most unassigned first">Count</button>
+          <button class="btn btn-sm sup-sort${sort === "age" ? " btn-primary" : ""}" data-supsort="age" title="Oldest waiting first — find stale tasks">Age (oldest first)</button>
         </div>
       </div>
       <table class="sup-table">
