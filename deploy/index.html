@@ -1660,6 +1660,13 @@
   .ce-weekpick button:hover:not(:disabled) { background:var(--soft); }
   .ce-weekpick button:disabled { opacity:0.4; cursor:not-allowed; }
   .ce-panelrow td { font-size:12px; }
+  .ce-scopebar { display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin-bottom:8px; }
+  .ce-scopebar input[type="date"], .ce-scopebar select { font-family:inherit; font-size:12.5px; padding:5px 10px; border:1px solid var(--border); border-radius:999px; background:var(--surface); color:var(--ink); cursor:pointer; }
+  .ce-scopebar input.active, .ce-scopebar select.active { border-color:var(--bad); box-shadow:0 0 0 2px var(--bad-bg); color:var(--bad); font-weight:600; }
+  .ce-callout { display:flex; align-items:center; gap:8px; font-size:13px; background:var(--bad-bg); color:var(--bad); border-radius:8px; padding:9px 13px; margin-bottom:14px; font-weight:600; }
+  .ce-callout .muted { color:var(--muted); font-weight:400; }
+  .ce-sancpill { font-size:9px; font-weight:700; text-transform:uppercase; letter-spacing:0.03em; padding:2px 7px; border-radius:999px; background:var(--bad-bg); color:var(--bad); white-space:nowrap; }
+  .ce-sanccell { color:var(--bad); font-weight:700; }
 </style>
 </head>
 <body>
@@ -10348,12 +10355,16 @@ const CE_COMPLETE_FROM = "2026-06-10";  // complete from here; 05-25..06-09 unde
 
 const CE_STATE = {
   view: "leaderboard",   // "leaderboard" | "weekly"
-  win:  "today",         // chart/leaderboard scope: "today" | "week" | "30d"
+  win:  "today",         // active scope: "today" | "week" | "30d" | "day" | "month"
+  day:  null,            // ISO date for win="day"
+  month: null,           // "yyyy-mm" for win="month"
   week: null,            // ISO Monday for the weekly view (default = current week)
   nonRosterOpen: false,
+  qaPairsAll: false,     // QA↔agent breakdown "show all"
+  tasksAll: false,       // errors-by-task "show all"
   status: "idle",        // "idle" | "loading" | "ready" | "error"
   errMsg: null,
-  errors: [],            // resolved 30d "changed" rows
+  errors: [],            // resolved "changed" rows since CE_HISTORY_START
   reviewedByAgent: {},   // {canonicalAgent: reviewedCount} — current week only
 };
 
@@ -10369,14 +10380,40 @@ function ceWindowRange(win, weekMon) {
   return [mon, (sat < today ? sat : today)];
 }
 const ceInRange = (d, r) => !!d && d >= r[0] && d <= r[1];
-const ceWinLabel = (win) => win === "today" ? "today" : win === "week" ? "this week (Mon–Sat to date)" : "the last 30 days";
-const ceWinKey   = (win) => win === "today" ? "today" : win === "week" ? "week" : "d30";
+const ceRange30 = () => [_isoAddDays(todayEat(), -29), todayEat()];
+const ceMonthEnd = (m) => { const [y, mo] = m.split("-").map(Number); const last = new Date(Date.UTC(y, mo, 0)).getUTCDate(); return `${m}-${String(last).padStart(2, "0")}`; };
+const ceMonthLabel = (m) => { const [y, mo] = m.split("-").map(Number); return new Date(Date.UTC(y, mo - 1, 1)).toLocaleDateString("en-GB", { month: "long", year: "numeric", timeZone: "UTC" }); };
+const ceMonthShort = (m) => { const [y, mo] = m.split("-").map(Number); return new Date(Date.UTC(y, mo - 1, 1)).toLocaleDateString("en-GB", { month: "short", timeZone: "UTC" }); };
+function ceMonthOptions() { const cur = todayEat().slice(0, 7); const out = []; let m = CE_HISTORY_START.slice(0, 7); while (m <= cur) { out.push(m); const [y, mo] = m.split("-").map(Number); m = new Date(Date.UTC(y, mo, 1)).toISOString().slice(0, 7); } return out; }
+// Active leaderboard scope → inclusive EAT date range.
+function ceScopeRange() {
+  const today = todayEat();
+  switch (CE_STATE.win) {
+    case "week":  return ceWindowRange("week");
+    case "30d":   return ceRange30();
+    case "day":   { const d = CE_STATE.day || today; return [d, d]; }
+    case "month": { const m = CE_STATE.month || today.slice(0, 7); const s = m + "-01", e = ceMonthEnd(m); return [s, e < today ? e : today]; }
+    default:      return [today, today];   // today
+  }
+}
+const ceScopeLabel = () => CE_STATE.win === "week" ? "this week (Mon–Sat to date)" : CE_STATE.win === "30d" ? "the last 30 days" : CE_STATE.win === "day" ? shortDate(CE_STATE.day || todayEat()) : CE_STATE.win === "month" ? ceMonthLabel(CE_STATE.month || todayEat().slice(0, 7)) : "today";
+const ceScopeShort = () => CE_STATE.win === "week" ? "This wk" : CE_STATE.win === "30d" ? "30d" : CE_STATE.win === "day" ? shortDate(CE_STATE.day || todayEat()) : CE_STATE.win === "month" ? ceMonthShort(CE_STATE.month || todayEat().slice(0, 7)) : "Today";
+const ceScopePreFix = () => ceScopeRange()[0] < CE_COMPLETE_FROM;   // scope overlaps the undercount period
+// Sanctions classification for a task name: prefer the cached task's is_sanctions,
+// else the dashboard-wide rule (extract_v2.is_sanctions: 'sanction' substring).
+function ceTaskSanctions(task) {
+  if (!task || task === "(no task)") return false;
+  const t = (STATE.v2?.tasks_all || []).find(x => x.name === task);
+  if (t && typeof t.is_sanctions === "boolean") return t.is_sanctions;
+  return /sanction/i.test(task);
+}
+const ceSancPill = (on) => on ? `<span class="ce-sancpill">Sanctions</span>` : "";
 
 // Paginated load (per CLAUDE.md — .range() in 1000-row chunks, ordered by id).
 async function loadCriticalErrors() {
   CE_STATE.status = "loading"; CE_STATE.errMsg = null;
   const today = todayEat();
-  const start30 = new Date(`${_isoAddDays(today, -29)}T00:00:00+03:00`);
+  const startHist = new Date(`${CE_HISTORY_START}T00:00:00+03:00`);
   const endTom  = new Date(`${_isoAddDays(today, 1)}T00:00:00+03:00`);
   const startWk = new Date(`${ceWeekMonday(today)}T00:00:00+03:00`);
   const page = async (sel, build) => {
@@ -10392,11 +10429,16 @@ async function loadCriticalErrors() {
     return byId;
   };
   try {
-    // 1) every "changed" row in the last 30 days (a small minority — still paginated).
+    // 1) EVERY "changed" row since CE_HISTORY_START (sparse — ~hundreds; one cheap
+    //    paginated load). The task name lives in raw_payload under the requested_by
+    //    field id; io rows are rekeyed to support field ids before insert, so the
+    //    support id works for both tables (proven by loadQaReviewHours). Projected
+    //    via JSON-arrows — lighter than pulling the whole raw_payload.
     const changed = await page(
-      "airtable_record_id,assignee,qa_assignee,reviewed_at,imo,role,source_table,add_a_new_company",
-      (q) => q.eq("qa_status", "changed").gte("reviewed_at", start30.toISOString()).lt("reviewed_at", endTom.toISOString()));
-    // 2) reviewed totals for THIS WEEK only (bounded ~≤6 days) → context rate.
+      "airtable_record_id,assignee,qa_assignee,reviewed_at,imo,role,source_table,task:raw_payload->>fldlPkvV6BiE7glLZ,reqby_io:raw_payload->>fldnkt2u2LGVTc0eY",
+      (q) => q.eq("qa_status", "changed").gte("reviewed_at", startHist.toISOString()).lt("reviewed_at", endTom.toISOString()));
+    // 2) reviewed totals for THIS WEEK only (bounded ~≤6 days) → context rate. NO
+    //    raw_payload here (kept light — the rate doesn't need task/QA detail).
     const reviewed = await page(
       "airtable_record_id,assignee,qa_status,reviewed_at",
       (q) => q.in("qa_status", ["approve", "changed"]).gte("reviewed_at", startWk.toISOString()).lt("reviewed_at", endTom.toISOString()));
@@ -10405,9 +10447,12 @@ async function loadCriticalErrors() {
     for (const r of changed.values()) {
       const agent = canonicalAgent((r.assignee || "").trim());
       const team = teamForAgent(agent);
+      const task = ((r.task || r.reqby_io || "").trim()) || "(no task)";
       errors.push({ rec: r.airtable_record_id, agent: agent || "(unattributed)", team, isRoster: !!team,
-        imo: r.imo, role: r.role, source_table: r.source_table, qa_assignee: r.qa_assignee,
-        reviewed_at: r.reviewed_at, eatDate: ceEatDate(r.reviewed_at) });
+        imo: r.imo, role: r.role, source_table: r.source_table,
+        qa: (r.qa_assignee || "").trim() || "(unattributed)",
+        reviewed_at: r.reviewed_at, eatDate: ceEatDate(r.reviewed_at),
+        task, sanctions: ceTaskSanctions(task) });
     }
     const reviewedByAgent = {};
     for (const r of reviewed.values()) {
@@ -10425,33 +10470,53 @@ async function loadCriticalErrors() {
   }
 }
 
-// Per-agent + team aggregates from CE_STATE.errors.
+// Per-agent + team aggregates from CE_STATE.errors, scoped to the active scope.
 function ceAgg() {
   const today = todayEat();
   const weekRange = ceWindowRange("week");
+  const r30 = ceRange30();
+  const scope = ceScopeRange();
   const errors = CE_STATE.errors, roster = STATE.roster || {};
+  const inScope = errors.filter(e => ceInRange(e.eatDate, scope));
   const byAgent = {};
   for (const e of errors) (byAgent[e.agent] = byAgent[e.agent] || { team: e.team, isRoster: e.isRoster, rows: [] }).rows.push(e);
   const spark7 = (rows) => { const out = []; for (let i = 6; i >= 0; i--) { const d = _isoAddDays(today, -i); out.push(rows.filter(r => r.eatDate === d).length); } return out; };
-  const mk = (agent, team, rows) => ({ agent, team, rows,
-    today: rows.filter(r => r.eatDate === today).length,
-    week:  rows.filter(r => ceInRange(r.eatDate, weekRange)).length,
-    d30:   rows.length,
-    reviewedWk: CE_STATE.reviewedByAgent[agent] || 0,
-    spark: spark7(rows) });
+  const mk = (agent, team, rows) => {
+    const sc = rows.filter(r => ceInRange(r.eatDate, scope));
+    return { agent, team, rows,
+      week:  rows.filter(r => ceInRange(r.eatDate, weekRange)).length,
+      d30:   rows.filter(r => ceInRange(r.eatDate, r30)).length,   // explicit last-30-days (fetch is now full history)
+      scope: sc.length,
+      sancScope: sc.filter(r => r.sanctions).length,
+      reviewedWk: CE_STATE.reviewedByAgent[agent] || 0,
+      spark: spark7(rows) };
+  };
   const rosterAgents = [];
   for (const team in roster) for (const m of (roster[team].members || [])) rosterAgents.push(mk(m.name, team, (byAgent[m.name]?.rows) || []));
   const nonRoster = [];
   for (const agent in byAgent) if (!byAgent[agent].isRoster) nonRoster.push(mk(agent, null, byAgent[agent].rows));
+  // Trend: roster team errors per day over the full available range.
   const dayCounts = {};
   for (const e of errors) if (e.isRoster && e.eatDate) dayCounts[e.eatDate] = (dayCounts[e.eatDate] || 0) + 1;
-  let worst = null;
-  for (const d in dayCounts) if (!worst || dayCounts[d] > worst.n) worst = { date: d, n: dayCounts[d] };
+  // Worst day WITHIN the active scope (roster).
+  const scopeDay = {};
+  for (const e of inScope) if (e.isRoster && e.eatDate) scopeDay[e.eatDate] = (scopeDay[e.eatDate] || 0) + 1;
+  let worst = null; for (const d in scopeDay) if (!worst || scopeDay[d] > worst.n) worst = { date: d, n: scopeDay[d] };
+  // QA-catcher (scoped, ALL in-scope errors — roster + non-roster).
+  const byQa = {}; for (const e of inScope) byQa[e.qa] = (byQa[e.qa] || 0) + 1;
+  const pairMap = {}; for (const e of inScope) { const k = e.qa + "§" + e.agent; (pairMap[k] = pairMap[k] || { qa: e.qa, agent: e.agent, n: 0 }).n++; }
+  const pairs = Object.values(pairMap).sort((p, q) => q.n - p.n || p.qa.localeCompare(q.qa) || p.agent.localeCompare(q.agent));
+  // Tasks (scoped).
+  const taskMap = {}; for (const e of inScope) { const t = taskMap[e.task] = taskMap[e.task] || { task: e.task, n: 0, agents: new Set(), sanctions: e.sanctions }; t.n++; t.agents.add(e.agent); }
+  const tasks = Object.values(taskMap).map(t => ({ task: t.task, n: t.n, agents: t.agents.size, sanctions: t.sanctions })).sort((p, q) => q.n - p.n || p.task.localeCompare(q.task));
   return {
-    rosterAgents, nonRoster, dayCounts, worst,
-    teamToday: rosterAgents.reduce((s, a) => s + a.today, 0),
-    teamWeek:  rosterAgents.reduce((s, a) => s + a.week, 0),
-    team30:    rosterAgents.reduce((s, a) => s + a.d30, 0),
+    rosterAgents, nonRoster, dayCounts, worst, inScope, byQa, pairs, tasks,
+    teamScope:     rosterAgents.reduce((s, a) => s + a.scope, 0),
+    teamScopeSanc: rosterAgents.reduce((s, a) => s + a.sancScope, 0),
+    teamWeek:      rosterAgents.reduce((s, a) => s + a.week, 0),
+    team30:        rosterAgents.reduce((s, a) => s + a.d30, 0),
+    scopeTotal:    inScope.length,
+    sancInScope:   inScope.filter(e => e.sanctions).length,
     reviewedWkTeam: Object.values(CE_STATE.reviewedByAgent).reduce((s, n) => s + n, 0),
     reviewedTodayTeam: Object.values(STATE.v2?.by_agent || {}).reduce((s, m) => s + (m.qa_inspected_today || 0), 0),
   };
@@ -10490,7 +10555,7 @@ function ceRenderBody() {
   document.querySelectorAll("#ceViewTabs button[data-ceview]").forEach(b => b.classList.toggle("active", b.dataset.ceview === CE_STATE.view));
   const host = document.getElementById("ceBody"); if (!host) return;
   if (CE_STATE.status === "loading" || CE_STATE.status === "idle") {
-    host.innerHTML = `<div class="empty-state"><div class="title"><span class="spinning-icon">↻</span> Loading critical errors…</div>Reading the QA sampling table (last 30 days).</div>`; return;
+    host.innerHTML = `<div class="empty-state"><div class="title"><span class="spinning-icon">↻</span> Loading critical errors…</div>Reading the QA sampling table (since ${CE_HISTORY_START}).</div>`; return;
   }
   if (CE_STATE.status === "error") {
     host.innerHTML = `<div class="empty-state"><div class="title">Couldn't load critical errors</div>The <code>ownership_qa_sampling</code> table could not be read (${esc(CE_STATE.errMsg || "unknown error")}). <button class="btn" id="ceRetry" style="margin-top:10px">Retry</button></div>`;
@@ -10501,25 +10566,39 @@ function ceRenderBody() {
   else ceRenderLeaderboard(host);
 }
 
-const CE_FOOTNOTE = `<div class="ce-note" style="margin-top:16px">⚠️ <b>Data honesty.</b> Error history is <b>complete from ${CE_COMPLETE_FROM}</b> onward (the Flow-C fix); <b>${CE_HISTORY_START}–2026-06-09 undercount</b>, and there is <b>no QA history before ${CE_HISTORY_START}</b>. Pre-history days are omitted (never shown as fabricated zeros). Error <b>rate</b> is computed over <b>this week (Mon–Sat to date)</b> — the bounded window fetched for reviewed totals; today's rate uses <code>by_agent.qa_inspected_today</code>.</div>`;
+const CE_FOOTNOTE = `<div class="ce-note" style="margin-top:16px">⚠️ <b>Data honesty.</b> All <code>changed</code> rows are fetched <b>since ${CE_HISTORY_START}</b> (the full QA history), so any day/week/month scope back to then is exact-as-recorded. But error history is only <b>complete from ${CE_COMPLETE_FROM}</b> onward (the Flow-C fix); <b>${CE_HISTORY_START}–2026-06-09 undercount</b>, and there is <b>no QA history before ${CE_HISTORY_START}</b> (those days are omitted, never fabricated zeros). Error <b>rate</b> stays computed over <b>this week (Mon–Sat to date)</b> — the bounded window fetched for reviewed totals; today's rate uses <code>by_agent.qa_inspected_today</code>.</div>`;
 
 function ceRenderLeaderboard(host) {
   const a = ceAgg();
+  const today = todayEat();
   const rate = (chg, rev) => rev > 0 ? `${(chg / rev * 100).toFixed(1)}%` : "—";
-  const winChip = (k, label) => `<button class="tl-chip${CE_STATE.win === k ? " active" : ""}"${CE_STATE.win === k ? ' style="background:var(--bad);color:#fff;border-color:transparent"' : ""} data-cewin="${k}">${label}</button>`;
+  const chip = (k, label) => `<button class="tl-chip${CE_STATE.win === k ? " active" : ""}"${CE_STATE.win === k ? ' style="background:var(--bad);color:#fff;border-color:transparent"' : ""} data-cewin="${k}">${label}</button>`;
+  const custom = CE_STATE.win === "day" || CE_STATE.win === "month";
+  const k1label = CE_STATE.win === "today" ? "Errors today" : CE_STATE.win === "week" ? "Errors this week" : CE_STATE.win === "30d" ? "Errors last 30 days" : "Errors in scope";
+  const k1sub = custom ? esc(ceScopeLabel()) : (CE_STATE.win === "today" ? (a.reviewedTodayTeam > 0 ? rate(a.teamScope, a.reviewedTodayTeam) + " of reviewed today" : "team · rate n/a") : CE_STATE.win === "week" ? `Mon–Sat to date · ${rate(a.teamScope, a.reviewedWkTeam)} of reviewed` : "team total · changed verdicts");
+  const monthOpts = ceMonthOptions().map(m => `<option value="${m}"${CE_STATE.win === "month" && (CE_STATE.month || today.slice(0, 7)) === m ? " selected" : ""}>${esc(ceMonthLabel(m))}</option>`).join("");
+  const sancPct = a.scopeTotal > 0 ? Math.round(a.sancInScope / a.scopeTotal * 100) : 0;
 
   host.innerHTML = `
     <div class="kpis">
-      <div class="kpi k-neutral"><div class="kpi-top"><div class="label">Errors today</div><span class="kpi-icon">${KPI_ICONS.alert}</span></div><div class="value">${a.teamToday.toLocaleString()}</div><div class="delta">team · ${a.reviewedTodayTeam > 0 ? rate(a.teamToday, a.reviewedTodayTeam) + " of reviewed today" : "rate n/a"}</div></div>
+      <div class="kpi k-neutral"><div class="kpi-top"><div class="label">${esc(k1label)}</div><span class="kpi-icon">${KPI_ICONS.alert}</span></div><div class="value">${a.teamScope.toLocaleString()}</div><div class="delta">${k1sub}</div></div>
       <div class="kpi k-neutral"><div class="kpi-top"><div class="label">Errors this week</div><span class="kpi-icon">${KPI_ICONS.clock}</span></div><div class="value">${a.teamWeek.toLocaleString()}</div><div class="delta">Mon–Sat to date · ${rate(a.teamWeek, a.reviewedWkTeam)} of reviewed</div></div>
       <div class="kpi k-neutral"><div class="kpi-top"><div class="label">Errors last 30 days</div><span class="kpi-icon">${KPI_ICONS.layers}</span></div><div class="value">${a.team30.toLocaleString()}</div><div class="delta">team total · changed verdicts</div></div>
-      <div class="kpi k-neutral"><div class="kpi-top"><div class="label">Worst day (30d)</div><span class="kpi-icon">${KPI_ICONS.octagon || KPI_ICONS.alert}</span></div><div class="value">${a.worst ? a.worst.n.toLocaleString() : "—"}</div><div class="delta">${a.worst ? esc(shortDate(a.worst.date)) + " · most errors" : "no errors in range"}</div></div>
+      <div class="kpi k-neutral"><div class="kpi-top"><div class="label">Worst day in scope</div><span class="kpi-icon">${KPI_ICONS.octagon || KPI_ICONS.alert}</span></div><div class="value">${a.worst ? a.worst.n.toLocaleString() : "—"}</div><div class="delta">${a.worst ? esc(shortDate(a.worst.date)) + " · most errors" : "no errors in scope"}</div></div>
     </div>
 
-    <div class="tl-chips" id="ceWinChips" style="margin-bottom:6px"><span class="small-mono" style="color:var(--muted);margin-right:2px">Scope</span>${winChip("today", "Today")}${winChip("week", "This week")}${winChip("30d", "30 days")}</div>
+    <div class="ce-scopebar" id="ceScopeBar">
+      <span class="small-mono" style="color:var(--muted)">Scope</span>${chip("today", "Today")}${chip("week", "This week")}${chip("30d", "30 days")}
+      <span style="color:var(--muted);font-size:12px">·</span>
+      <input type="date" id="ceDayInput" class="${CE_STATE.win === "day" ? "active" : ""}" min="${CE_HISTORY_START}" max="${today}" value="${CE_STATE.win === "day" ? (CE_STATE.day || today) : ""}" title="Pick any day (EAT)">
+      <select id="ceMonthSel" class="${CE_STATE.win === "month" ? "active" : ""}" title="Pick any month"><option value="">Month…</option>${monthOpts}</select>
+    </div>
+
+    <div class="ce-callout"><span>${KPI_ICONS.alert}</span>Errors on <b>sanctions tasks</b>: <span style="font-weight:800">${a.sancInScope.toLocaleString()}</span> <span class="muted">(${sancPct}% of ${a.scopeTotal.toLocaleString()} errors · ${esc(ceScopeLabel())})</span></div>
+    ${ceScopePreFix() ? `<div class="ce-note" style="background:var(--warn-bg);color:var(--warn)">⚠️ This scope includes days before <b>${CE_COMPLETE_FROM}</b> — error counts <b>undercount</b> (QA history was incomplete then; none before ${CE_HISTORY_START}).</div>` : ""}
 
     <div class="panel">
-      <h3>Error distribution <span class="meta">by agent · ${ceWinLabel(CE_STATE.win)} · most errors first</span></h3>
+      <h3>Error distribution <span class="meta">by agent · ${esc(ceScopeLabel())} · most errors first</span></h3>
       <div id="ceDist"></div>
     </div>
 
@@ -10529,28 +10608,86 @@ function ceRenderLeaderboard(host) {
     </div>
 
     <div class="panel">
-      <h3>Agent leaderboard <span class="meta">all roster agents · sorted by ${ceWinLabel(CE_STATE.win)} · click a row for the records</span></h3>
+      <h3>Agent leaderboard <span class="meta">all roster agents · sorted by ${esc(ceScopeLabel())} · click a row for the records</span></h3>
       <div id="ceBoard"></div>
     </div>
     ${ceNonRosterHtml(a.nonRoster)}
+
+    <div class="panel">
+      <h3>Who caught the errors <span class="meta">by BO QA reviewer · ${esc(ceScopeLabel())}</span></h3>
+      <div id="ceQaDist"></div>
+    </div>
+
+    <div class="panel">
+      <h3>QA ↔ agent breakdown <span class="meta">reviewer → tagger pairs · ${esc(ceScopeLabel())} · click a row for the records</span></h3>
+      <div id="cePairs"></div>
+    </div>
+
+    <div class="panel">
+      <h3>Errors by task <span class="meta">${esc(ceScopeLabel())} · sanctions emphasised · click a row for the records</span></h3>
+      <div id="ceTasks"></div>
+    </div>
     ${CE_FOOTNOTE}`;
 
-  host.querySelectorAll("#ceWinChips [data-cewin]").forEach(b => b.addEventListener("click", () => { CE_STATE.win = b.dataset.cewin; ceRenderBody(); }));
+  host.querySelectorAll("#ceScopeBar [data-cewin]").forEach(b => b.addEventListener("click", () => { CE_STATE.win = b.dataset.cewin; ceRenderBody(); }));
+  const di = host.querySelector("#ceDayInput"); if (di) di.addEventListener("change", (e) => { if (!e.target.value) return; CE_STATE.win = "day"; CE_STATE.day = e.target.value; ceRenderBody(); });
+  const ms = host.querySelector("#ceMonthSel"); if (ms) ms.addEventListener("change", (e) => { if (!e.target.value) return; CE_STATE.win = "month"; CE_STATE.month = e.target.value; ceRenderBody(); });
   ceRenderDist(a.rosterAgents);
   ceRenderBoard(a.rosterAgents);
+  ceRenderQaCatcher(a.byQa);
+  ceRenderPairs(a.pairs);
+  ceRenderTasks(a.tasks);
   const nrh = host.querySelector("#ceNonRosterHead"); if (nrh) nrh.addEventListener("click", () => { CE_STATE.nonRosterOpen = !CE_STATE.nonRosterOpen; ceRenderBody(); });
 }
 
 function ceRenderDist(rosterAgents) {
   const host = document.getElementById("ceDist"); if (!host) return;
-  const key = ceWinKey(CE_STATE.win);
-  const shown = rosterAgents.filter(x => x[key] > 0).sort((p, q) => q[key] - p[key] || p.agent.localeCompare(q.agent));
-  if (!shown.length) { host.innerHTML = `<div class="empty" style="padding:18px;color:var(--muted)">No critical errors ${esc(ceWinLabel(CE_STATE.win))} 🎉</div>`; return; }
-  const max = shown[0][key];
+  const shown = rosterAgents.filter(x => x.scope > 0).sort((p, q) => q.scope - p.scope || p.agent.localeCompare(q.agent));
+  if (!shown.length) { host.innerHTML = `<div class="empty" style="padding:18px;color:var(--muted)">No critical errors ${esc(ceScopeLabel())} 🎉</div>`; return; }
+  const max = shown[0].scope;
   host.innerHTML = `<div class="ce-dist">${shown.map(x => {
     const hex = TEAM_COLORS[x.team]?.hex || "#bb4338";
-    return `<div class="ce-distrow"><div class="ce-distname" title="${esc(x.agent)}"><span class="dot" style="background:${hex}"></span>${esc(x.agent)}</div><div class="ce-disttrack"><div class="ce-distfill" style="width:${(x[key] / max * 100).toFixed(1)}%;background:${hex}"></div></div><div class="ce-distcount">${x[key].toLocaleString()}</div></div>`;
+    return `<div class="ce-distrow"><div class="ce-distname" title="${esc(x.agent)}"><span class="dot" style="background:${hex}"></span>${esc(x.agent)}</div><div class="ce-disttrack"><div class="ce-distfill" style="width:${(x.scope / max * 100).toFixed(1)}%;background:${hex}"></div></div><div class="ce-distcount">${x.scope.toLocaleString()}</div></div>`;
   }).join("")}</div>`;
+}
+
+// Horizontal bars per QA reviewer (who caught the errors) — neutral/QA colour, not
+// team colours. "(unattributed)" is flagged amber when present.
+function ceRenderQaCatcher(byQa) {
+  const host = document.getElementById("ceQaDist"); if (!host) return;
+  const rows = Object.entries(byQa).map(([qa, n]) => ({ qa, n })).sort((p, q) => q.n - p.n || p.qa.localeCompare(q.qa));
+  if (!rows.length) { host.innerHTML = `<div class="empty" style="padding:18px;color:var(--muted)">No errors ${esc(ceScopeLabel())} 🎉</div>`; return; }
+  const max = rows[0].n;
+  host.innerHTML = `<div class="ce-dist">${rows.map(x => {
+    const hex = x.qa === "(unattributed)" ? "var(--warn)" : "#5b6472";
+    return `<div class="ce-distrow"><div class="ce-distname" title="${esc(x.qa)}"><span class="dot" style="background:${hex}"></span>${esc(x.qa)}</div><div class="ce-disttrack"><div class="ce-distfill" style="width:${(x.n / max * 100).toFixed(1)}%;background:${hex}"></div></div><div class="ce-distcount">${x.n.toLocaleString()}</div></div>`;
+  }).join("")}</div>`;
+}
+
+function ceRenderPairs(pairs) {
+  const host = document.getElementById("cePairs"); if (!host) return;
+  if (!pairs.length) { host.innerHTML = `<div class="empty" style="padding:18px;color:var(--muted)">No errors ${esc(ceScopeLabel())} 🎉</div>`; return; }
+  const CAP = 25;
+  const shown = CE_STATE.qaPairsAll ? pairs : pairs.slice(0, CAP);
+  host.innerHTML = `<div style="overflow-x:auto"><table class="ce-tbl">
+    <thead><tr><th>QA reviewer</th><th>Agent (tagger)</th><th class="r">Errors</th></tr></thead>
+    <tbody>${shown.map(p => `<tr class="clickable" data-ceqa="${esc(p.qa)}" data-cepairagent="${esc(p.agent)}"><td>${esc(p.qa)}</td><td class="agent">${esc(p.agent)}</td><td class="r"><span class="ce-bignum">${p.n}</span></td></tr>`).join("")}</tbody>
+  </table></div>${pairs.length > CAP ? `<div style="text-align:center;padding:10px 0 2px"><button class="btn" id="cePairsToggle">${CE_STATE.qaPairsAll ? "Show top 25" : `Show all ${pairs.length} pairs`}</button></div>` : ""}`;
+  host.querySelectorAll("tr[data-ceqa]").forEach(tr => tr.addEventListener("click", () => ceOpenPairPanel(tr.dataset.ceqa, tr.dataset.cepairagent)));
+  const tg = host.querySelector("#cePairsToggle"); if (tg) tg.addEventListener("click", () => { CE_STATE.qaPairsAll = !CE_STATE.qaPairsAll; ceRenderPairs(pairs); });
+}
+
+function ceRenderTasks(tasks) {
+  const host = document.getElementById("ceTasks"); if (!host) return;
+  if (!tasks.length) { host.innerHTML = `<div class="empty" style="padding:18px;color:var(--muted)">No errors ${esc(ceScopeLabel())} 🎉</div>`; return; }
+  const CAP = 15;
+  const shown = CE_STATE.tasksAll ? tasks : tasks.slice(0, CAP);
+  host.innerHTML = `<div style="overflow-x:auto"><table class="ce-tbl">
+    <thead><tr><th>Task / batch</th><th></th><th class="r">Errors</th><th class="r">Agents</th></tr></thead>
+    <tbody>${shown.map(t => `<tr class="clickable" data-cetask="${esc(t.task)}"><td class="agent">${esc(t.task)}</td><td>${ceSancPill(t.sanctions)}</td><td class="r"><span class="${t.sanctions ? "ce-sanccell" : "ce-bignum"}">${t.n}</span></td><td class="r">${t.agents}</td></tr>`).join("")}</tbody>
+  </table></div>${tasks.length > CAP ? `<div style="text-align:center;padding:10px 0 2px"><button class="btn" id="ceTasksToggle">${CE_STATE.tasksAll ? "Show top 15" : `Show all ${tasks.length} tasks`}</button></div>` : ""}`;
+  host.querySelectorAll("tr[data-cetask]").forEach(tr => tr.addEventListener("click", () => ceOpenTaskPanel(tr.dataset.cetask)));
+  const tg = host.querySelector("#ceTasksToggle"); if (tg) tg.addEventListener("click", () => { CE_STATE.tasksAll = !CE_STATE.tasksAll; ceRenderTasks(tasks); });
 }
 
 function ceTrendHtml(dayCounts) {
@@ -10575,54 +10712,97 @@ function ceSparkHtml(spark) {
 
 function ceRenderBoard(rosterAgents) {
   const host = document.getElementById("ceBoard"); if (!host) return;
-  const key = ceWinKey(CE_STATE.win);
-  const rows = rosterAgents.slice().sort((p, q) => q[key] - p[key] || p.agent.localeCompare(q.agent));
+  const rows = rosterAgents.slice().sort((p, q) => q.scope - p.scope || p.agent.localeCompare(q.agent));
   host.innerHTML = `<div style="overflow-x:auto"><table class="ce-tbl">
-    <thead><tr><th>Agent</th><th>Team</th><th class="r">Today</th><th class="r">This wk</th><th class="r">30d</th><th class="r">Reviewed (wk)</th><th class="r">Rate (wk)</th><th>7-day</th></tr></thead>
+    <thead><tr><th>Agent</th><th>Team</th><th class="r">${esc(ceScopeShort())}</th><th class="r">Sanctions</th><th class="r">30d</th><th class="r">Reviewed (wk)</th><th class="r">Rate (wk)</th><th>7-day</th></tr></thead>
     <tbody>${rows.map(x => {
       const hex = TEAM_COLORS[x.team]?.hex || "#7B68EE";
-      const rate = x.reviewedWk > 0 ? `${(x.week / x.reviewedWk * 100).toFixed(1)}%` : "—";
+      const rate = x.reviewedWk > 0 ? `${(x.scope / x.reviewedWk * 100).toFixed(1)}%` : "—";
       const cell = (n) => n > 0 ? `<span class="ce-bignum">${n.toLocaleString()}</span>` : `<span class="ce-zero">0</span>`;
+      const sanc = x.sancScope > 0 ? `<span class="ce-sanccell">${x.sancScope.toLocaleString()}</span>` : `<span class="ce-zero">0</span>`;
       return `<tr class="clickable" data-ceagent="${esc(x.agent)}">
         <td class="agent">${esc(x.agent)}</td>
         <td><span class="ce-teamchip" style="background:${hex}22;color:${hex}">${esc(x.team)}</span></td>
-        <td class="r">${cell(x.today)}</td><td class="r">${cell(x.week)}</td><td class="r">${cell(x.d30)}</td>
-        <td class="r">${x.reviewedWk.toLocaleString()}</td><td class="r ${x.reviewedWk > 0 && x.week > 0 ? "" : "ce-zero"}">${rate}</td>
+        <td class="r">${cell(x.scope)}</td><td class="r">${sanc}</td><td class="r">${cell(x.d30)}</td>
+        <td class="r">${x.reviewedWk.toLocaleString()}</td><td class="r ${x.reviewedWk > 0 && x.scope > 0 ? "" : "ce-zero"}">${rate}</td>
         <td>${ceSparkHtml(x.spark)}</td>
       </tr>`;
     }).join("")}</tbody></table></div>`;
-  host.querySelectorAll("tr[data-ceagent]").forEach(tr => tr.addEventListener("click", () => ceOpenAgentPanel(tr.dataset.ceagent, CE_STATE.win, ceWindowRange(CE_STATE.win, CE_STATE.week))));
+  host.querySelectorAll("tr[data-ceagent]").forEach(tr => tr.addEventListener("click", () => ceOpenAgentPanel(tr.dataset.ceagent, ceScopeRange())));
 }
 
 function ceNonRosterHtml(nonRoster) {
   if (!nonRoster.length) return "";
   const total = nonRoster.reduce((s, x) => s + x.d30, 0);
   const body = !CE_STATE.nonRosterOpen ? "" : `<div class="panel" style="margin-top:6px"><div style="overflow-x:auto"><table class="ce-tbl">
-    <thead><tr><th>Name (non-roster)</th><th class="r">Today</th><th class="r">This wk</th><th class="r">30d</th></tr></thead>
-    <tbody>${nonRoster.slice().sort((p, q) => q.d30 - p.d30).map(x => `<tr class="clickable" data-ceagent="${esc(x.agent)}"><td class="agent">${esc(x.agent)}</td><td class="r">${x.today}</td><td class="r">${x.week}</td><td class="r">${x.d30}</td></tr>`).join("")}</tbody></table></div>
+    <thead><tr><th>Name (non-roster)</th><th class="r">${esc(ceScopeShort())}</th><th class="r">Sanctions</th><th class="r">This wk</th><th class="r">30d</th></tr></thead>
+    <tbody>${nonRoster.slice().sort((p, q) => q.scope - p.scope).map(x => `<tr><td class="agent">${esc(x.agent)}</td><td class="r">${x.scope}</td><td class="r">${x.sancScope > 0 ? `<span class="ce-sanccell">${x.sancScope}</span>` : 0}</td><td class="r">${x.week}</td><td class="r">${x.d30}</td></tr>`).join("")}</tbody></table></div>
     <div class="footer-note" style="margin-top:8px">Experts and QAs who also tag — not part of the roster leaderboard.</div></div>`;
   return `<div class="ce-nonroster-head" id="ceNonRosterHead">${CE_STATE.nonRosterOpen ? "▾" : "▸"} Non-roster taggers — <b style="color:var(--ink)">${nonRoster.length}</b> name${nonRoster.length === 1 ? "" : "s"}, ${total.toLocaleString()} error${total === 1 ? "" : "s"} (30d)</div>${body}`;
 }
 
-function ceOpenAgentPanel(agent, win, range, pageN) {
+// "Caught by: QA-A (3) · QA-B (1)" summary for a set of records.
+function ceCaughtByLine(rows) {
+  const by = {}; for (const e of rows) by[e.qa] = (by[e.qa] || 0) + 1;
+  const parts = Object.entries(by).sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0])).map(([qa, n]) => `${esc(qa)} (${n})`);
+  return `<div class="footer-note" style="margin-bottom:8px"><b style="color:var(--ink)">Caught by:</b> ${parts.join(" · ")}</div>`;
+}
+const ceTaskCell = (e) => `${esc(e.task)} ${ceSancPill(e.sanctions)}`;
+
+function ceOpenAgentPanel(agent, range, label, pageN) {
   pageN = pageN || 0;
+  label = label || ceScopeLabel();
   const rows = CE_STATE.errors.filter(e => e.agent === agent && ceInRange(e.eatDate, range))
     .sort((p, q) => (q.reviewed_at || "").localeCompare(p.reviewed_at || ""));
-  openSidePanel(agent, `${rows.length} critical error${rows.length === 1 ? "" : "s"} · ${ceWinLabel(win)}`);
+  openSidePanel(agent, `${rows.length} critical error${rows.length === 1 ? "" : "s"} · ${label}`);
   const body = document.getElementById("sidePanelBody"); if (!body) return;
-  if (!rows.length) { body.innerHTML = `<div class="empty" style="padding:24px">No critical errors for ${esc(agent)} ${esc(ceWinLabel(win))} 🎉</div>`; return; }
+  if (!rows.length) { body.innerHTML = `<div class="empty" style="padding:24px">No critical errors for ${esc(agent)} ${esc(label)} 🎉</div>`; return; }
   const PER = 50;
   const pages = Math.ceil(rows.length / PER);
   const slice = rows.slice(pageN * PER, pageN * PER + PER);
   const pager = pages > 1 ? `<div class="ce-weekpick" style="justify-content:center;margin-top:10px"><button id="cePanPrev" ${pageN === 0 ? "disabled" : ""}>‹ Prev</button><span class="small-mono">Page ${pageN + 1} / ${pages} · ${rows.length} records</span><button id="cePanNext" ${pageN >= pages - 1 ? "disabled" : ""}>Next ›</button></div>` : "";
   body.innerHTML = `
-    <div class="footer-note" style="margin-bottom:8px">The records BO QA changed — the receipts for a feedback conversation.</div>
+    <div class="footer-note" style="margin-bottom:4px">The records BO QA changed — the receipts for a feedback conversation.</div>
+    ${ceCaughtByLine(rows)}
     <div style="overflow-x:auto"><table class="ce-tbl">
-      <thead><tr><th>IMO</th><th>Role</th><th>Table</th><th>QA reviewer</th><th>When (EAT)</th></tr></thead>
-      <tbody>${slice.map(e => `<tr class="ce-panelrow"><td class="mono">${esc(e.imo || "—")}</td><td>${esc((e.role || "—").replace(/_/g, " "))}</td><td>${csTableBadge(e.source_table)}</td><td>${esc(e.qa_assignee || "—")}</td><td class="small-mono">${esc(ceEatDateTime(e.reviewed_at))}</td></tr>`).join("")}</tbody>
+      <thead><tr><th>IMO</th><th>Role</th><th>Table</th><th>Task</th><th>QA reviewer</th><th>When (EAT)</th></tr></thead>
+      <tbody>${slice.map(e => `<tr class="ce-panelrow"><td class="mono">${esc(e.imo || "—")}</td><td>${esc((e.role || "—").replace(/_/g, " "))}</td><td>${csTableBadge(e.source_table)}</td><td>${ceTaskCell(e)}</td><td>${esc(e.qa)}</td><td class="small-mono">${esc(ceEatDateTime(e.reviewed_at))}</td></tr>`).join("")}</tbody>
     </table></div>${pager}`;
-  const pv = document.getElementById("cePanPrev"); if (pv) pv.addEventListener("click", () => ceOpenAgentPanel(agent, win, range, pageN - 1));
-  const nx = document.getElementById("cePanNext"); if (nx) nx.addEventListener("click", () => ceOpenAgentPanel(agent, win, range, pageN + 1));
+  const pv = document.getElementById("cePanPrev"); if (pv) pv.addEventListener("click", () => ceOpenAgentPanel(agent, range, label, pageN - 1));
+  const nx = document.getElementById("cePanNext"); if (nx) nx.addEventListener("click", () => ceOpenAgentPanel(agent, range, label, pageN + 1));
+}
+
+// QA → agent receipts (scoped).
+function ceOpenPairPanel(qa, agent) {
+  const range = ceScopeRange();
+  const rows = CE_STATE.errors.filter(e => e.qa === qa && e.agent === agent && ceInRange(e.eatDate, range))
+    .sort((p, q) => (q.reviewed_at || "").localeCompare(p.reviewed_at || ""));
+  openSidePanel(`${qa} → ${agent}`, `${rows.length} critical error${rows.length === 1 ? "" : "s"} · ${ceScopeLabel()}`);
+  const body = document.getElementById("sidePanelBody"); if (!body) return;
+  if (!rows.length) { body.innerHTML = `<div class="empty" style="padding:24px">No records.</div>`; return; }
+  body.innerHTML = `
+    <div class="footer-note" style="margin-bottom:8px">Records <b>${esc(qa)}</b> changed for <b>${esc(agent)}</b> — both sides of the conversation.</div>
+    <div style="overflow-x:auto"><table class="ce-tbl">
+      <thead><tr><th>IMO</th><th>Role</th><th>Table</th><th>Task</th><th>When (EAT)</th></tr></thead>
+      <tbody>${rows.map(e => `<tr class="ce-panelrow"><td class="mono">${esc(e.imo || "—")}</td><td>${esc((e.role || "—").replace(/_/g, " "))}</td><td>${csTableBadge(e.source_table)}</td><td>${ceTaskCell(e)}</td><td class="small-mono">${esc(ceEatDateTime(e.reviewed_at))}</td></tr>`).join("")}</tbody>
+    </table></div>`;
+}
+
+// Per-task receipts (scoped).
+function ceOpenTaskPanel(task) {
+  const range = ceScopeRange();
+  const rows = CE_STATE.errors.filter(e => e.task === task && ceInRange(e.eatDate, range))
+    .sort((p, q) => (q.reviewed_at || "").localeCompare(p.reviewed_at || ""));
+  const sanc = rows.length && rows[0].sanctions;
+  openSidePanel(task, `${rows.length} critical error${rows.length === 1 ? "" : "s"} · ${ceScopeLabel()}`);
+  const body = document.getElementById("sidePanelBody"); if (!body) return;
+  if (!rows.length) { body.innerHTML = `<div class="empty" style="padding:24px">No records.</div>`; return; }
+  body.innerHTML = `
+    <div class="footer-note" style="margin-bottom:8px">${sanc ? ceSancPill(true) + " " : ""}Errors made on this task.</div>
+    <div style="overflow-x:auto"><table class="ce-tbl">
+      <thead><tr><th>IMO</th><th>Agent</th><th>QA reviewer</th><th>When (EAT)</th></tr></thead>
+      <tbody>${rows.map(e => `<tr class="ce-panelrow"><td class="mono">${esc(e.imo || "—")}</td><td class="agent">${esc(e.agent)}</td><td>${esc(e.qa)}</td><td class="small-mono">${esc(ceEatDateTime(e.reviewed_at))}</td></tr>`).join("")}</tbody>
+    </table></div>`;
 }
 
 function ceRenderWeekly(host) {
@@ -10631,13 +10811,13 @@ function ceRenderWeekly(host) {
   const mon = CE_STATE.week || curMon;
   const range = ceWindowRange("week", mon);   // [mon, min(sat, today)]
   const sat = _isoAddDays(mon, 5);
-  const minMon = ceWeekMonday(_isoAddDays(today, -29));   // earliest week the 30d data covers
+  const minMon = ceWeekMonday(CE_HISTORY_START);   // earliest week with any QA history
   const isCurrent = mon === curMon;
   const roster = STATE.roster || {};
   const byAgent = {};
   for (const e of CE_STATE.errors) if (ceInRange(e.eatDate, [mon, sat])) (byAgent[e.agent] = byAgent[e.agent] || []).push(e);
   const agents = [];
-  for (const team in roster) for (const m of (roster[team].members || [])) agents.push({ agent: m.name, team, n: (byAgent[m.name] || []).length, reviewedWk: isCurrent ? (CE_STATE.reviewedByAgent[m.name] || 0) : null });
+  for (const team in roster) for (const m of (roster[team].members || [])) { const rs = byAgent[m.name] || []; agents.push({ agent: m.name, team, n: rs.length, sanc: rs.filter(e => e.sanctions).length, reviewedWk: isCurrent ? (CE_STATE.reviewedByAgent[m.name] || 0) : null }); }
   const ranked = agents.slice().sort((p, q) => q.n - p.n || p.agent.localeCompare(q.agent));
   const withErrors = ranked.filter(x => x.n > 0);
   const max = withErrors.length ? withErrors[0].n : 1;
@@ -10648,7 +10828,11 @@ function ceRenderWeekly(host) {
       <button id="ceWkPrev" ${mon <= minMon ? "disabled" : ""}>‹ Prev week</button>
       <b>Week of ${esc(shortDate(mon))} – ${esc(shortDate(sat))}</b>${isCurrent ? ' <span class="meta">(current · to date)</span>' : ""}
       <button id="ceWkNext" ${isCurrent ? "disabled" : ""}>Next week ›</button>
+      <span style="color:var(--muted);font-size:12px">·</span>
+      <span class="small-mono" style="color:var(--muted)">jump to</span>
+      <input type="date" id="ceWkInput" min="${CE_HISTORY_START}" max="${today}" value="${mon}" title="Pick any date — snaps to that week (Mon–Sat)">
     </div>
+    ${mon < CE_COMPLETE_FROM ? `<div class="ce-note" style="background:var(--warn-bg);color:var(--warn)">⚠️ This week is before <b>${CE_COMPLETE_FROM}</b> — error counts <b>undercount</b> (QA history was incomplete then).</div>` : ""}
     <div class="kpis" style="grid-template-columns:repeat(auto-fit,minmax(180px,1fr))">
       <div class="kpi k-neutral"><div class="kpi-top"><div class="label">Team errors this week</div><span class="kpi-icon">${KPI_ICONS.alert}</span></div><div class="value">${teamTotal.toLocaleString()}</div><div class="delta">Mon–Sat${isCurrent ? " to date" : ""}</div></div>
       <div class="kpi k-neutral"><div class="kpi-top"><div class="label">Agents with ≥1 error</div><span class="kpi-icon">${KPI_ICONS.users}</span></div><div class="value">${withErrors.length}</div><div class="delta">of ${agents.length} roster agents</div></div>
@@ -10660,8 +10844,8 @@ function ceRenderWeekly(host) {
     <div class="panel">
       <h3>Per-agent weekly totals <span class="meta">all roster agents${mon < CE_HISTORY_START ? " · pre-history week" : ""}</span></h3>
       <div style="overflow-x:auto"><table class="ce-tbl">
-        <thead><tr><th>Agent</th><th>Team</th><th class="r">Errors</th><th class="r">Reviewed</th><th class="r">Rate</th></tr></thead>
-        <tbody>${ranked.map(x => { const hex = TEAM_COLORS[x.team]?.hex || "#7B68EE"; const rate = (x.reviewedWk != null && x.reviewedWk > 0) ? `${(x.n / x.reviewedWk * 100).toFixed(1)}%` : "—"; return `<tr class="clickable" data-ceagent="${esc(x.agent)}"><td class="agent">${esc(x.agent)}</td><td><span class="ce-teamchip" style="background:${hex}22;color:${hex}">${esc(x.team)}</span></td><td class="r">${x.n > 0 ? `<span class="ce-bignum">${x.n}</span>` : `<span class="ce-zero">0</span>`}</td><td class="r">${x.reviewedWk == null ? "<span class='ce-zero'>—</span>" : x.reviewedWk.toLocaleString()}</td><td class="r">${rate}</td></tr>`; }).join("")}</tbody>
+        <thead><tr><th>Agent</th><th>Team</th><th class="r">Errors</th><th class="r">Sanctions</th><th class="r">Reviewed</th><th class="r">Rate</th></tr></thead>
+        <tbody>${ranked.map(x => { const hex = TEAM_COLORS[x.team]?.hex || "#7B68EE"; const rate = (x.reviewedWk != null && x.reviewedWk > 0) ? `${(x.n / x.reviewedWk * 100).toFixed(1)}%` : "—"; const sanc = x.sanc > 0 ? `<span class="ce-sanccell">${x.sanc}</span>` : `<span class="ce-zero">0</span>`; return `<tr class="clickable" data-ceagent="${esc(x.agent)}"><td class="agent">${esc(x.agent)}</td><td><span class="ce-teamchip" style="background:${hex}22;color:${hex}">${esc(x.team)}</span></td><td class="r">${x.n > 0 ? `<span class="ce-bignum">${x.n}</span>` : `<span class="ce-zero">0</span>`}</td><td class="r">${sanc}</td><td class="r">${x.reviewedWk == null ? "<span class='ce-zero'>—</span>" : x.reviewedWk.toLocaleString()}</td><td class="r">${rate}</td></tr>`; }).join("")}</tbody>
       </table></div>
       ${isCurrent ? "" : `<div class="footer-note" style="margin-top:8px">Reviewed totals / rate are only fetched for the current week, so they read “—” for past weeks (errors are still exact).</div>`}
     </div>
@@ -10669,16 +10853,19 @@ function ceRenderWeekly(host) {
 
   const pv = host.querySelector("#ceWkPrev"); if (pv) pv.addEventListener("click", () => { CE_STATE.week = _isoAddDays(mon, -7); ceRenderBody(); });
   const nx = host.querySelector("#ceWkNext"); if (nx) nx.addEventListener("click", () => { CE_STATE.week = _isoAddDays(mon, 7); ceRenderBody(); });
-  host.querySelectorAll("tr[data-ceagent]").forEach(tr => tr.addEventListener("click", () => ceOpenAgentPanel(tr.dataset.ceagent, "week", [mon, sat])));
+  const wi = host.querySelector("#ceWkInput"); if (wi) wi.addEventListener("change", (e) => { if (!e.target.value) return; let m = ceWeekMonday(e.target.value); if (m < minMon) m = minMon; if (m > curMon) m = curMon; CE_STATE.week = m; ceRenderBody(); });
+  const wkLabel = `week of ${shortDate(mon)}`;
+  host.querySelectorAll("tr[data-ceagent]").forEach(tr => tr.addEventListener("click", () => ceOpenAgentPanel(tr.dataset.ceagent, [mon, sat], wkLabel)));
 }
 
 function ceExport() {
   const a = ceAgg();
   const cell = (v) => `"${String(v ?? "").replace(/"/g, '""')}"`;
-  const lines = ["Agent,Team,Errors today,Errors this week,Errors 30d,Reviewed (this week),Rate this week (%)"];
-  const push = (x) => { const rate = x.reviewedWk > 0 ? (x.week / x.reviewedWk * 100).toFixed(1) : ""; lines.push([cell(x.agent), cell(x.team || "(non-roster)"), x.today, x.week, x.d30, x.reviewedWk, cell(rate)].join(",")); };
-  a.rosterAgents.slice().sort((p, q) => q.d30 - p.d30 || p.agent.localeCompare(q.agent)).forEach(push);
-  a.nonRoster.slice().sort((p, q) => q.d30 - p.d30).forEach(push);
+  const scopeCol = `Errors (${ceScopeLabel()})`;
+  const lines = [`Agent,Team,${scopeCol},Sanctions errors (scope),Errors this week,Errors 30d,Reviewed (this week),Rate this week (%)`];
+  const push = (x) => { const rate = x.reviewedWk > 0 ? (x.scope / x.reviewedWk * 100).toFixed(1) : ""; lines.push([cell(x.agent), cell(x.team || "(non-roster)"), x.scope, x.sancScope, x.week, x.d30, x.reviewedWk, cell(rate)].join(",")); };
+  a.rosterAgents.slice().sort((p, q) => q.scope - p.scope || p.agent.localeCompare(q.agent)).forEach(push);
+  a.nonRoster.slice().sort((p, q) => q.scope - p.scope).forEach(push);
   const blob = new Blob([lines.join("\n")], { type: "text/csv" });
   const el = document.createElement("a"); el.href = URL.createObjectURL(blob);
   el.download = `critical-errors-${todayEat()}.csv`; el.click(); URL.revokeObjectURL(el.href);
