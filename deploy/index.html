@@ -6513,7 +6513,11 @@ PAGE_RENDERERS.intake = function () {
   // Today's batch — featured card for the most recent today's task
   const todaysFeatured = todaysTasksAll.slice().sort((a, b) => (b.date_first_seen || "").localeCompare(a.date_first_seen || ""))[0];
   const todaysBatchName = todaysFeatured?.name?.split(/\s+/)[0] || (lastUploadISO ? "CargoChangeIntel" : "—");
-  const todaysBatchHtml = todaysFeatured ? `
+  // The featured "Today's batch" hero (heading + big card / empty state) renders
+  // ONLY on the Today's-intake tab. On every other tab — including All tasks — it
+  // doesn't render at all; today's batch instead appears as a normal mini card
+  // wherever it matches the active filter (see the exclusion below).
+  const todaysBatchHtml = filter !== "today" ? "" : todaysFeatured ? `
     <section class="intake-section">
       <div class="intake-section-head"><h3>Today's batch &middot; <span class="batch-name">${esc(todaysBatchName)}</span></h3><span class="meta">Uploaded by automation${lastUploadISO ? " &middot; " + fmtTime(lastUploadISO) + " EAT" : ""}</span></div>
       ${taskCardFeaturedHtml(todaysFeatured, todaysBatchName)}
@@ -6523,8 +6527,10 @@ PAGE_RENDERERS.intake = function () {
       <div class="panel"><div class="empty" style="padding:20px;text-align:center;color:var(--muted);">No tasks created today yet — the daily upload usually lands mid-morning EAT.</div></div>
     </section>`;
 
-  // Other active batches — task cards (filtered by tab)
-  let visibleOther = tasksAll.filter(x => x !== todaysFeatured);
+  // Other active batches — task cards (filtered by tab). Exclude the featured task
+  // ONLY when the hero actually shows it (Today's-intake tab); on every other tab the
+  // hero is hidden, so today's batch must appear here as a normal card when it matches.
+  let visibleOther = tasksAll.filter(x => !(filter === "today" && x === todaysFeatured));
   if (filter === "today")       visibleOther = visibleOther.filter(x => (x.date_first_seen || "").slice(0, 10) === todayISO);
   else if (filter === "io")         visibleOther = visibleOther.filter(x => x.source_table === "relations_io"      || x.source_table === "mixed");
   else if (filter === "support")    visibleOther = visibleOther.filter(x => x.source_table === "relations_support" || x.source_table === "mixed");
