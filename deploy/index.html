@@ -1667,6 +1667,75 @@
   .ce-callout .muted { color:var(--muted); font-weight:400; }
   .ce-sancpill { font-size:9px; font-weight:700; text-transform:uppercase; letter-spacing:0.03em; padding:2px 7px; border-radius:999px; background:var(--bad-bg); color:var(--bad); white-space:nowrap; }
   .ce-sanccell { color:var(--bad); font-weight:700; }
+  /* ---- redesign (mockup adaptation): header summary, scope chips, hero, section tabs ---- */
+  .ce-summary { color:var(--muted); font-weight:500; }
+  .ce-summary b { color:var(--ink); }
+  .ce-daybtn { display:inline-flex; align-items:center; gap:6px; position:relative; font-size:13px; padding:7px 14px; border:1px solid var(--border); border-radius:9px; background:var(--surface); color:var(--ink); cursor:pointer; font-family:inherit; }
+  .ce-daybtn:hover { background:var(--soft); }
+  .ce-daybtn.active { border-color:var(--bad); color:var(--bad); font-weight:600; }
+  .ce-daybtn input[type="date"] { position:absolute; inset:0; opacity:0; cursor:pointer; }
+  .ce-toprow { display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap; margin-bottom:14px; }
+  .ce-toprow .ce-scopebar, .ce-toprow .ce-viewtabs, .ce-toprow .ce-weekpick { margin-bottom:0; }
+  .ce-scopelbl { font-size:11px; text-transform:uppercase; letter-spacing:0.05em; color:var(--muted); font-weight:700; }
+  .ce-chip { font-family:inherit; font-size:12.5px; padding:6px 12px; border:1px solid var(--border); border-radius:999px; background:var(--surface); color:var(--ink); cursor:pointer; display:inline-flex; align-items:center; gap:6px; transition:background .15s,border-color .15s,color .15s; }
+  .ce-chip:hover { background:var(--soft); }
+  .ce-chip.active { background:var(--bad); border-color:transparent; color:#fff; font-weight:600; }
+  .ce-chipn { font-variant-numeric:tabular-nums; font-weight:700; opacity:0.85; }
+  .ce-chip.active .ce-chipn { opacity:1; }
+  .ce-chipsel { -webkit-appearance:none; appearance:none; }
+  .ce-scopebar select.ce-chipsel.active { background:var(--bad); color:#fff; border-color:transparent; box-shadow:none; font-weight:600; }
+  .kpi.ce-hero { background:linear-gradient(135deg,#E5384F 0%,#FB62A1 100%); border:0; color:#fff; box-shadow:0 12px 28px rgba(229,56,79,0.26), 0 4px 10px rgba(251,98,161,0.16); overflow:hidden; }
+  .kpi.ce-hero::before { content:""; position:absolute; right:-40px; top:-40px; width:160px; height:160px; border-radius:50%; background:radial-gradient(circle, rgba(255,255,255,0.16), transparent 60%); pointer-events:none; }
+  .kpi.ce-hero .label { color:rgba(255,255,255,0.85); position:relative; }
+  .kpi.ce-hero .value { color:#fff; position:relative; }
+  .kpi.ce-hero .delta { color:rgba(255,255,255,0.82); position:relative; }
+  .kpi.ce-hero .kpi-icon { background:rgba(255,255,255,0.20); color:#fff; }
+  .ce-herorow { display:flex; align-items:center; gap:10px; margin-top:7px; position:relative; min-height:28px; }
+  .ce-herostrip { display:inline-flex; align-items:flex-end; gap:3px; height:28px; }
+  .ce-herostrip .b { width:6px; background:rgba(255,255,255,0.85); border-radius:1px; min-height:3px; }
+  .ce-herostrip .b.z { background:rgba(255,255,255,0.4); }
+  .ce-herostrip .b.fut { background:rgba(255,255,255,0.18); }
+  .ce-delta { display:inline-flex; align-items:center; gap:3px; font-size:11px; font-weight:700; padding:2px 8px; border-radius:999px; font-variant-numeric:tabular-nums; white-space:nowrap; }
+  .ce-delta.worse { background:var(--bad-bg); color:var(--bad); }
+  .ce-delta.better { background:var(--good-bg); color:var(--good); }
+  .ce-delta.flat { background:var(--soft); color:var(--muted); }
+  .ce-delta.on-hero.worse { background:rgba(255,255,255,0.22); color:#fff; }
+  .ce-delta.on-hero.better { background:rgba(255,255,255,0.95); color:var(--good); }
+  .ce-delta.on-hero.flat { background:rgba(255,255,255,0.18); color:#fff; }
+  .ce-callout { display:flex; align-items:center; gap:10px; font-weight:500; }
+  .ce-callicon { display:inline-flex; flex-shrink:0; }
+  .ce-calltext { flex:1; }
+  .ce-calltext b { font-weight:700; color:var(--bad); }
+  .ce-callbig { font-weight:800; font-size:15px; }
+  .ce-callbtn { flex-shrink:0; background:var(--bad); color:#fff; border:0; font-weight:600; }
+  .ce-callbtn:hover { background:#c92d42; }
+  .ce-sectabs-wrap { display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap; margin-bottom:14px; }
+  .ce-sectabs { display:inline-flex; gap:4px; background:var(--soft); padding:4px; border-radius:10px; flex-wrap:wrap; }
+  .ce-sectab { font-family:inherit; font-size:13px; padding:7px 14px; border:0; background:transparent; color:var(--muted); border-radius:7px; cursor:pointer; font-weight:500; display:inline-flex; align-items:center; gap:6px; }
+  .ce-sectab:hover { color:var(--ink); }
+  .ce-sectab.active { background:var(--surface); color:var(--ink); font-weight:600; box-shadow:var(--shadow-sm); }
+  .ce-secn { font-size:11px; font-weight:700; background:var(--border); color:var(--muted); padding:1px 7px; border-radius:999px; font-variant-numeric:tabular-nums; }
+  .ce-sectab.active .ce-secn { background:var(--bad-bg); color:var(--bad); }
+  .ce-seccap { font-size:11.5px; color:var(--muted); }
+  .ce-statstrip { display:flex; flex-wrap:wrap; gap:20px; padding:11px 15px; background:var(--soft); border-radius:9px; margin-bottom:12px; font-size:12.5px; color:var(--muted); }
+  .ce-statstrip b { color:var(--ink); font-variant-numeric:tabular-nums; font-size:14px; }
+  .ce-qagrid { display:grid; grid-template-columns:1fr 1fr; gap:14px; }
+  .ce-tbl td.ce-arrow { color:var(--muted); text-align:center; width:18px; padding-left:0; padding-right:0; }
+  .ce-sharebar { display:inline-block; width:84px; height:8px; background:var(--soft); border-radius:999px; overflow:hidden; vertical-align:middle; }
+  .ce-sharefill { height:100%; background:#5b6472; border-radius:999px; min-width:2px; }
+  .ce-sharefill.sanc { background:var(--bad); }
+  .ce-sharepct { font-size:11px; color:var(--muted); margin-left:8px; font-variant-numeric:tabular-nums; }
+  .ce-tbl tbody tr.ce-sancrow { background:rgba(229,56,79,0.05); }
+  .ce-tbl tbody tr.ce-sancrow:hover { background:rgba(229,56,79,0.10); }
+  .ce-agcell { display:inline-flex; align-items:center; gap:8px; }
+  .ce-cleanhead { font-size:10.5px; font-weight:700; text-transform:uppercase; letter-spacing:0.05em; color:var(--muted); margin:16px 0 10px; }
+  .ce-cleangrid { display:flex; flex-wrap:wrap; gap:8px; }
+  .ce-cleanchip { display:inline-flex; align-items:center; gap:7px; font-size:12px; color:var(--muted); background:var(--soft); border-radius:999px; padding:4px 12px 4px 5px; cursor:pointer; }
+  .ce-cleanchip:hover { color:var(--ink); background:var(--border); }
+  .ce-cleanchip .task-avatar { width:22px; height:22px; border-radius:6px; font-size:9px; opacity:0.9; }
+  .ce-trendlegend { display:flex; gap:18px; margin-top:12px; font-size:11px; color:var(--muted); }
+  .ce-trendlegend .dot { display:inline-block; width:9px; height:9px; border-radius:2px; margin-right:5px; vertical-align:middle; }
+  @media (max-width:900px) { .ce-qagrid { grid-template-columns:1fr; } }
 </style>
 </head>
 <body>
@@ -1903,7 +1972,7 @@ const PAGES = [
   { id: "qa_performance", label: "QA Performance",          tag: null,   group: "Quality"    },
   { id: "boqa",           label: "BO QA Console",           tag: null,   group: "Quality"    },
   { id: "wwqa",           label: "WW QA Console",           tag: null,   group: "Quality"    },
-  { id: "errors",         label: "Critical errors",         tag: null,   group: "Quality"    },
+  { id: "errors",         label: "Critical Errors",         tag: null,   group: "Quality"    },
   { id: "agent",          label: "Agent Scorecard",         tag: null,   group: "People"     },
   { id: "comparison",     label: "Comparison",              tag: null,   group: "People"     },
   { id: "experts",        label: "Ownership Experts",        tag: null,   group: "People"     },
@@ -10355,6 +10424,7 @@ const CE_COMPLETE_FROM = "2026-06-10";  // complete from here; 05-25..06-09 unde
 
 const CE_STATE = {
   view: "leaderboard",   // "leaderboard" | "weekly"
+  section: "agents",     // active section tab (leaderboard view): "agents" | "tasks" | "qa" | "trend"
   win:  "today",         // active scope: "today" | "week" | "30d" | "day" | "month"
   day:  null,            // ISO date for win="day"
   month: null,           // "yyyy-mm" for win="month"
@@ -10371,6 +10441,9 @@ const CE_STATE = {
 const ceEatDate = (iso) => { try { const d = new Date(iso); return isNaN(d) ? null : d.toLocaleDateString("en-CA", { timeZone: "Africa/Nairobi" }); } catch { return null; } };
 const ceEatDateTime = (iso) => { try { const d = new Date(iso); return isNaN(d) ? "—" : d.toLocaleString("en-GB", { timeZone: "Africa/Nairobi", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit", hour12: false }); } catch { return "—"; } };
 const ceWeekMonday = (eatISO) => { const d = new Date(eatISO + "T00:00:00Z"); const dow = d.getUTCDay(); return _isoAddDays(eatISO, -(dow === 0 ? 6 : dow - 1)); };
+// Previous BUSINESS day before `eatISO` (skip Sundays — agents are off, per the roster schedule).
+const cePrevBusinessDay = (eatISO) => { let d = _isoAddDays(eatISO, -1); while (new Date(d + "T00:00:00Z").getUTCDay() === 0) d = _isoAddDays(d, -1); return d; };
+const ceDayShort = (eatISO) => new Date(eatISO + "T00:00:00Z").toLocaleDateString("en-GB", { weekday: "short", timeZone: "UTC" });
 function ceWindowRange(win, weekMon) {
   const today = todayEat();
   if (win === "today") return [today, today];
@@ -10509,11 +10582,34 @@ function ceAgg() {
   // Tasks (scoped).
   const taskMap = {}; for (const e of inScope) { const t = taskMap[e.task] = taskMap[e.task] || { task: e.task, n: 0, agents: new Set(), sanctions: e.sanctions }; t.n++; t.agents.add(e.agent); }
   const tasks = Object.values(taskMap).map(t => ({ task: t.task, n: t.n, agents: t.agents.size, sanctions: t.sanctions })).sort((p, q) => q.n - p.n || p.task.localeCompare(q.task));
+  const agentsInScope = new Set(inScope.map(e => e.agent)).size;
+  const sancTaskCount = tasks.filter(t => t.sanctions).length;
+  // Top sanctions task within scope — drives the callout's narrative clause.
+  const sancByTask = {}; for (const e of inScope) if (e.sanctions) sancByTask[e.task] = (sancByTask[e.task] || 0) + 1;
+  let sancTopTask = null; for (const t in sancByTask) if (!sancTopTask || sancByTask[t] > sancTopTask.n) sancTopTask = { task: t, n: sancByTask[t] };
+
+  // --- Hero deltas: ALWAYS relative to fixed today / this-week (independent of the active scope). ---
+  const curMon = ceWeekMonday(today);
+  const daysInto = Math.min(5, Math.round((new Date(today + "T00:00:00Z") - new Date(curMon + "T00:00:00Z")) / 86400000));
+  const lastMon = _isoAddDays(curMon, -7);
+  const lastWkRange = [lastMon, _isoAddDays(lastMon, daysInto)];                 // last week, SAME window (Mon..same weekday)
+  const teamWeek = rosterAgents.reduce((s, a) => s + a.week, 0);
+  const teamLastWk = errors.filter(e => e.isRoster && ceInRange(e.eatDate, lastWkRange)).length;
+  const teamToday = errors.filter(e => e.isRoster && e.eatDate === today).length;
+  const prevBiz = cePrevBusinessDay(today);
+  const teamPrevBiz = errors.filter(e => e.isRoster && e.eatDate === prevBiz).length;
+  // Mon–Sat daily strip for the hero mini-bars (current week).
+  const weekDaily = []; for (let i = 0; i < 6; i++) { const d = _isoAddDays(curMon, i); weekDaily.push({ date: d, n: errors.filter(e => e.isRoster && e.eatDate === d).length, future: d > today }); }
+
   return {
     rosterAgents, nonRoster, dayCounts, worst, inScope, byQa, pairs, tasks,
+    agentsInScope, sancTaskCount, sancTopTask,
     teamScope:     rosterAgents.reduce((s, a) => s + a.scope, 0),
     teamScopeSanc: rosterAgents.reduce((s, a) => s + a.sancScope, 0),
-    teamWeek:      rosterAgents.reduce((s, a) => s + a.week, 0),
+    teamWeek,
+    teamLastWk, wow: teamWeek - teamLastWk,
+    teamToday, teamPrevBiz, prevBiz, prevBizLabel: ceDayShort(prevBiz), dod: teamToday - teamPrevBiz,
+    weekDaily,
     team30:        rosterAgents.reduce((s, a) => s + a.d30, 0),
     scopeTotal:    inScope.length,
     sancInScope:   inScope.filter(e => e.sanctions).length,
@@ -10528,31 +10624,45 @@ PAGE_RENDERERS.errors = function () {
   if (CE_STATE.status === "idle") {
     loadCriticalErrors().then(() => { if (STATE.currentPage === "errors") PAGE_RENDERERS.errors(); });
   }
+  const today = todayEat();
+  const a = CE_STATE.status === "ready" ? ceAgg() : null;
+  const nowLabel = new Date().toLocaleString("en-GB", { timeZone: "Africa/Nairobi", weekday: "long", day: "numeric", month: "long", year: "numeric", hour: "2-digit", minute: "2-digit", hour12: false });
   const synced = STATE.v2?.computed_at ? new Date(STATE.v2.computed_at).toLocaleTimeString("en-GB", { timeZone: "Africa/Nairobi", hour: "2-digit", minute: "2-digit" }) : "—";
+  const freshLabel = STATE.freshness?.label || "no cache";
+  const summary = a ? ` <span class="ce-summary">· <b>${a.teamWeek.toLocaleString()}</b> this week · <b>${a.reviewedWkTeam.toLocaleString()}</b> reviewed</span>` : "";
   root.innerHTML = `
     <div class="page-head">
       <div>
-        <div class="page-eyebrow">Quality · accountability${`  ·  ${esc(todayEat())} EAT`} <span class="pill warn" style="background:var(--bad-bg);color:var(--bad)">● Critical</span></div>
-        <h1 class="page-title">Critical errors</h1>
-        <div class="page-subtitle">Every record BO QA marked <b>changed</b> — the tagger's work needed correction. Ranked by raw error count.</div>
+        <div class="page-eyebrow">Quality · Accountability · ${esc(nowLabel)} EAT · <span class="pill warn" style="background:var(--bad-bg);color:var(--bad)">● Critical</span> · Cache from ${esc(synced)} · synced ${esc(freshLabel)}</div>
+        <h1 class="page-title">Critical Errors</h1>
+        <div class="page-subtitle">Every record BO QA marked <b>changed</b> — the tagger's work needed correction. Ranked by raw error count.${summary}</div>
       </div>
       <div class="page-head-actions">
-        <button class="btn" id="ceExportBtn">Export CSV</button>
+        <label class="ce-daybtn${CE_STATE.win === "day" ? " active" : ""}" id="ceDayBtnWrap" title="Pick any day (EAT) — this page is independent of the global View date picker">📅 <span id="ceDayBtnLabel">${CE_STATE.win === "day" ? esc(shortDate(CE_STATE.day || today)) : "Pick a day"}</span><input type="date" id="ceDayInput" min="${CE_HISTORY_START}" max="${today}" value="${CE_STATE.win === "day" ? (CE_STATE.day || today) : ""}"></label>
+        <button class="btn" id="ceRefreshBtn">Refresh</button>
+        <button class="btn btn-primary" id="ceExportBtn">Export CSV</button>
       </div>
-    </div>
-    <div class="ce-note">📅 This page reads <code>ownership_qa_sampling</code> directly and has its <b>own</b> window controls — it's <b>independent of the global “View” date picker</b> (same as the QA pages). Date basis is <code>reviewed_at</code> (when BO QA's verdict was observed), EAT.</div>
-    <div class="ce-viewtabs" id="ceViewTabs">
-      <button data-ceview="leaderboard">Leaderboard &amp; trend</button>
-      <button data-ceview="weekly">Weekly rollup</button>
     </div>
     <div id="ceBody"></div>`;
   root.querySelector("#ceExportBtn").addEventListener("click", ceExport);
-  root.querySelectorAll("#ceViewTabs button[data-ceview]").forEach(b => b.addEventListener("click", () => { CE_STATE.view = b.dataset.ceview; ceRenderBody(); }));
+  const di = root.querySelector("#ceDayInput");
+  if (di) di.addEventListener("change", (e) => { if (!e.target.value) return; CE_STATE.win = "day"; CE_STATE.day = e.target.value; CE_STATE.view = "leaderboard"; PAGE_RENDERERS.errors(); });
+  const rb = root.querySelector("#ceRefreshBtn");
+  if (rb) rb.addEventListener("click", () => runRefresh({ btn: rb, action: () => loadCriticalErrors(), idleLabel: "Refresh" }).then(() => { if (STATE.currentPage === "errors") PAGE_RENDERERS.errors(); }));
   ceRenderBody();
 };
 
+// Segmented "Leaderboard & trend | Weekly rollup" toggle — rendered at the top of
+// each view (so it survives the view-specific re-render) and wired here.
+function ceViewTabsHtml() {
+  const b = (k, label) => `<button data-ceview="${k}"${CE_STATE.view === k ? ' class="active"' : ""}>${label}</button>`;
+  return `<div class="ce-viewtabs" id="ceViewTabs">${b("leaderboard", "Leaderboard &amp; trend")}${b("weekly", "Weekly rollup")}</div>`;
+}
+function ceWireViewTabs(host) {
+  host.querySelectorAll("#ceViewTabs button[data-ceview]").forEach(b => b.addEventListener("click", () => { CE_STATE.view = b.dataset.ceview; ceRenderBody(); }));
+}
+
 function ceRenderBody() {
-  document.querySelectorAll("#ceViewTabs button[data-ceview]").forEach(b => b.classList.toggle("active", b.dataset.ceview === CE_STATE.view));
   const host = document.getElementById("ceBody"); if (!host) return;
   if (CE_STATE.status === "loading" || CE_STATE.status === "idle") {
     host.innerHTML = `<div class="empty-state"><div class="title"><span class="spinning-icon">↻</span> Loading critical errors…</div>Reading the QA sampling table (since ${CE_HISTORY_START}).</div>`; return;
@@ -10568,76 +10678,133 @@ function ceRenderBody() {
 
 const CE_FOOTNOTE = `<div class="ce-note" style="margin-top:16px">⚠️ <b>Data honesty.</b> All <code>changed</code> rows are fetched <b>since ${CE_HISTORY_START}</b> (the full QA history), so any day/week/month scope back to then is exact-as-recorded. But error history is only <b>complete from ${CE_COMPLETE_FROM}</b> onward (the Flow-C fix); <b>${CE_HISTORY_START}–2026-06-09 undercount</b>, and there is <b>no QA history before ${CE_HISTORY_START}</b> (those days are omitted, never fabricated zeros). Error <b>rate</b> stays computed over <b>this week (Mon–Sat to date)</b> — the bounded window fetched for reviewed totals; today's rate uses <code>by_agent.qa_inspected_today</code>.</div>`;
 
+// Delta pill: positive delta = MORE errors = worse (red, ↑); negative = better (green, ↓).
+function ceDeltaPill(delta, suffix, onHero) {
+  if (delta === 0) return `<span class="ce-delta flat${onHero ? " on-hero" : ""}">→ no change ${esc(suffix)}</span>`;
+  const cls = delta > 0 ? "worse" : "better";
+  const arrow = delta > 0 ? "↑" : "↓";
+  const sign = delta > 0 ? "+" : "−";
+  return `<span class="ce-delta ${cls}${onHero ? " on-hero" : ""}">${arrow} ${sign}${Math.abs(delta)} ${esc(suffix)}</span>`;
+}
+
 function ceRenderLeaderboard(host) {
   const a = ceAgg();
   const today = todayEat();
   const rate = (chg, rev) => rev > 0 ? `${(chg / rev * 100).toFixed(1)}%` : "—";
-  const chip = (k, label) => `<button class="tl-chip${CE_STATE.win === k ? " active" : ""}"${CE_STATE.win === k ? ' style="background:var(--bad);color:#fff;border-color:transparent"' : ""} data-cewin="${k}">${label}</button>`;
-  const custom = CE_STATE.win === "day" || CE_STATE.win === "month";
-  const k1label = CE_STATE.win === "today" ? "Errors today" : CE_STATE.win === "week" ? "Errors this week" : CE_STATE.win === "30d" ? "Errors last 30 days" : "Errors in scope";
-  const k1sub = custom ? esc(ceScopeLabel()) : (CE_STATE.win === "today" ? (a.reviewedTodayTeam > 0 ? rate(a.teamScope, a.reviewedTodayTeam) + " of reviewed today" : "team · rate n/a") : CE_STATE.win === "week" ? `Mon–Sat to date · ${rate(a.teamScope, a.reviewedWkTeam)} of reviewed` : "team total · changed verdicts");
+  const chip = (k, label, n) => `<button class="ce-chip${CE_STATE.win === k ? " active" : ""}" data-cewin="${k}">${label}${n != null ? ` <span class="ce-chipn">${n.toLocaleString()}</span>` : ""}</button>`;
   const monthOpts = ceMonthOptions().map(m => `<option value="${m}"${CE_STATE.win === "month" && (CE_STATE.month || today.slice(0, 7)) === m ? " selected" : ""}>${esc(ceMonthLabel(m))}</option>`).join("");
   const sancPct = a.scopeTotal > 0 ? Math.round(a.sancInScope / a.scopeTotal * 100) : 0;
 
+  // Hero mini bar strip — this week's daily totals (Mon–Sat).
+  const wkMax = Math.max(1, ...a.weekDaily.map(d => d.n));
+  const heroStrip = a.weekDaily.map(d => `<span class="b${d.future ? " fut" : (d.n === 0 ? " z" : "")}" style="height:${d.future ? 3 : Math.max(3, Math.round(d.n / wkMax * 26))}px" title="${esc(ceDayShort(d.date))} ${esc(shortDate(d.date))}: ${d.future ? "—" : d.n}"></span>`).join("");
+
+  // Sanctions narrative clause (when one task dominates).
+  let sancNarr = "";
+  if (a.sancInScope > 0 && a.sancTopTask) {
+    if (a.sancTopTask.n === a.sancInScope && a.sancTaskCount === 1) sancNarr = ` <b>${esc(a.sancTopTask.task)}</b> alone accounts for all ${a.sancInScope}.`;
+    else sancNarr = ` — top task <b>${esc(a.sancTopTask.task)}</b> (${a.sancTopTask.n} of ${a.sancInScope}).`;
+  }
+  const callout = a.sancInScope > 0 ? `<div class="ce-callout" id="ceCallout">
+      <span class="ce-callicon">${KPI_ICONS.alert}</span>
+      <div class="ce-calltext">Errors on <b>sanctions tasks</b>: <span class="ce-callbig">${a.sancInScope.toLocaleString()}</span> — that's ${sancPct}% of ${esc(ceScopeLabel())}'s ${a.scopeTotal.toLocaleString()} errors.${sancNarr}</div>
+      <button class="btn ce-callbtn" id="ceSancReview">Review the ${a.sancInScope} record${a.sancInScope === 1 ? "" : "s"}</button>
+    </div>` : "";
+
+  const sec = (k, label, n) => `<button class="ce-sectab${CE_STATE.section === k ? " active" : ""}" data-cesec="${k}">${label}${n != null ? ` <span class="ce-secn">${n.toLocaleString()}</span>` : ""}</button>`;
+
   host.innerHTML = `
+    <div class="ce-toprow">
+      <div class="ce-scopebar" id="ceScopeBar">
+        <span class="ce-scopelbl">Scope</span>${chip("today", "Today", a.teamToday)}${chip("week", "This week", a.teamWeek)}${chip("30d", "30 days", a.team30)}
+        <button class="ce-chip${CE_STATE.win === "day" ? " active" : ""}" data-cecustom="1">Custom… 📅</button>
+        <select class="ce-chip ce-chipsel${CE_STATE.win === "month" ? " active" : ""}" id="ceMonthSel" title="Pick any month"><option value="">Month…</option>${monthOpts}</select>
+      </div>
+      ${ceViewTabsHtml()}
+    </div>
+
     <div class="kpis">
-      <div class="kpi k-neutral"><div class="kpi-top"><div class="label">${esc(k1label)}</div><span class="kpi-icon">${KPI_ICONS.alert}</span></div><div class="value">${a.teamScope.toLocaleString()}</div><div class="delta">${k1sub}</div></div>
-      <div class="kpi k-neutral"><div class="kpi-top"><div class="label">Errors this week</div><span class="kpi-icon">${KPI_ICONS.clock}</span></div><div class="value">${a.teamWeek.toLocaleString()}</div><div class="delta">Mon–Sat to date · ${rate(a.teamWeek, a.reviewedWkTeam)} of reviewed</div></div>
+      <div class="kpi ce-hero">
+        <div class="kpi-top"><div class="label">Errors this week</div><span class="kpi-icon">${KPI_ICONS.alert}</span></div>
+        <div class="value">${a.teamWeek.toLocaleString()}</div>
+        <div class="ce-herorow">${ceDeltaPill(a.wow, "WoW", true)}<div class="ce-herostrip">${heroStrip}</div></div>
+        <div class="delta">Mon–Sat to date · ${a.reviewedWkTeam > 0 ? rate(a.teamWeek, a.reviewedWkTeam) + " of reviewed" : "rate n/a"}</div>
+      </div>
+      <div class="kpi k-neutral"><div class="kpi-top"><div class="label">Errors today</div><span class="kpi-icon">${KPI_ICONS.clock}</span></div><div class="value">${a.teamToday.toLocaleString()}</div><div class="ce-herorow">${ceDeltaPill(a.dod, "vs " + a.prevBizLabel)}</div><div class="delta">${a.reviewedTodayTeam > 0 ? rate(a.teamToday, a.reviewedTodayTeam) + " of reviewed today" : "team · rate n/a"}</div></div>
       <div class="kpi k-neutral"><div class="kpi-top"><div class="label">Errors last 30 days</div><span class="kpi-icon">${KPI_ICONS.layers}</span></div><div class="value">${a.team30.toLocaleString()}</div><div class="delta">team total · changed verdicts</div></div>
-      <div class="kpi k-neutral"><div class="kpi-top"><div class="label">Worst day in scope</div><span class="kpi-icon">${KPI_ICONS.octagon || KPI_ICONS.alert}</span></div><div class="value">${a.worst ? a.worst.n.toLocaleString() : "—"}</div><div class="delta">${a.worst ? esc(shortDate(a.worst.date)) + " · most errors" : "no errors in scope"}</div></div>
+      <div class="kpi k-neutral"><div class="kpi-top"><div class="label">Worst day in scope</div><span class="kpi-icon">${KPI_ICONS.octagon || KPI_ICONS.alert}</span></div><div class="value">${a.worst ? a.worst.n.toLocaleString() : "—"}</div><div class="delta">${a.worst ? esc(shortDate(a.worst.date)) + " · most errors" : "no errors in scope"} · ${esc(ceScopeShort())}</div></div>
     </div>
 
-    <div class="ce-scopebar" id="ceScopeBar">
-      <span class="small-mono" style="color:var(--muted)">Scope</span>${chip("today", "Today")}${chip("week", "This week")}${chip("30d", "30 days")}
-      <span style="color:var(--muted);font-size:12px">·</span>
-      <input type="date" id="ceDayInput" class="${CE_STATE.win === "day" ? "active" : ""}" min="${CE_HISTORY_START}" max="${today}" value="${CE_STATE.win === "day" ? (CE_STATE.day || today) : ""}" title="Pick any day (EAT)">
-      <select id="ceMonthSel" class="${CE_STATE.win === "month" ? "active" : ""}" title="Pick any month"><option value="">Month…</option>${monthOpts}</select>
-    </div>
-
-    <div class="ce-callout"><span>${KPI_ICONS.alert}</span>Errors on <b>sanctions tasks</b>: <span style="font-weight:800">${a.sancInScope.toLocaleString()}</span> <span class="muted">(${sancPct}% of ${a.scopeTotal.toLocaleString()} errors · ${esc(ceScopeLabel())})</span></div>
+    ${callout}
     ${ceScopePreFix() ? `<div class="ce-note" style="background:var(--warn-bg);color:var(--warn)">⚠️ This scope includes days before <b>${CE_COMPLETE_FROM}</b> — error counts <b>undercount</b> (QA history was incomplete then; none before ${CE_HISTORY_START}).</div>` : ""}
 
-    <div class="panel">
-      <h3>Error distribution <span class="meta">by agent · ${esc(ceScopeLabel())} · most errors first</span></h3>
-      <div id="ceDist"></div>
+    <div class="ce-sectabs-wrap">
+      <div class="ce-sectabs" id="ceSecTabs">
+        ${sec("agents", "Agent leaderboard", a.rosterAgents.filter(x => x.scope > 0).length)}
+        ${sec("tasks", "Errors by task", a.scopeTotal)}
+        ${sec("qa", "QA reviewers", Object.keys(a.byQa).length)}
+        <button class="ce-sectab${CE_STATE.section === "trend" ? " active" : ""}" data-cesec="trend">Daily trend</button>
+      </div>
+      <div class="ce-seccap">${esc(ceScopeLabel())} · click a row for the records</div>
     </div>
 
-    <div class="panel">
-      <h3>Daily team errors <span class="meta">last 30 available days · dimmed = pre-${CE_COMPLETE_FROM} (undercount)</span></h3>
-      ${ceTrendHtml(a.dayCounts)}
-    </div>
-
-    <div class="panel">
-      <h3>Agent leaderboard <span class="meta">all roster agents · sorted by ${esc(ceScopeLabel())} · click a row for the records</span></h3>
-      <div id="ceBoard"></div>
-    </div>
-    ${ceNonRosterHtml(a.nonRoster)}
-
-    <div class="panel">
-      <h3>Who caught the errors <span class="meta">by BO QA reviewer · ${esc(ceScopeLabel())}</span></h3>
-      <div id="ceQaDist"></div>
-    </div>
-
-    <div class="panel">
-      <h3>QA ↔ agent breakdown <span class="meta">reviewer → tagger pairs · ${esc(ceScopeLabel())} · click a row for the records</span></h3>
-      <div id="cePairs"></div>
-    </div>
-
-    <div class="panel">
-      <h3>Errors by task <span class="meta">${esc(ceScopeLabel())} · sanctions emphasised · click a row for the records</span></h3>
-      <div id="ceTasks"></div>
-    </div>
+    <div id="ceSection"></div>
     ${CE_FOOTNOTE}`;
 
-  host.querySelectorAll("#ceScopeBar [data-cewin]").forEach(b => b.addEventListener("click", () => { CE_STATE.win = b.dataset.cewin; ceRenderBody(); }));
-  const di = host.querySelector("#ceDayInput"); if (di) di.addEventListener("change", (e) => { if (!e.target.value) return; CE_STATE.win = "day"; CE_STATE.day = e.target.value; ceRenderBody(); });
-  const ms = host.querySelector("#ceMonthSel"); if (ms) ms.addEventListener("change", (e) => { if (!e.target.value) return; CE_STATE.win = "month"; CE_STATE.month = e.target.value; ceRenderBody(); });
-  ceRenderDist(a.rosterAgents);
-  ceRenderBoard(a.rosterAgents);
-  ceRenderQaCatcher(a.byQa);
-  ceRenderPairs(a.pairs);
-  ceRenderTasks(a.tasks);
-  const nrh = host.querySelector("#ceNonRosterHead"); if (nrh) nrh.addEventListener("click", () => { CE_STATE.nonRosterOpen = !CE_STATE.nonRosterOpen; ceRenderBody(); });
+  host.querySelectorAll("#ceScopeBar [data-cewin]").forEach(b => b.addEventListener("click", () => { CE_STATE.win = b.dataset.cewin; PAGE_RENDERERS.errors(); }));
+  const cc = host.querySelector("#ceScopeBar [data-cecustom]"); if (cc) cc.addEventListener("click", () => { const di = document.getElementById("ceDayInput"); if (di) { if (di.showPicker) { try { di.showPicker(); } catch { di.focus(); } } else di.focus(); } });
+  const ms = host.querySelector("#ceMonthSel"); if (ms) ms.addEventListener("change", (e) => { if (!e.target.value) return; CE_STATE.win = "month"; CE_STATE.month = e.target.value; PAGE_RENDERERS.errors(); });
+  ceWireViewTabs(host);
+  const sr = host.querySelector("#ceSancReview"); if (sr) sr.addEventListener("click", () => ceOpenSanctionsPanel());
+  host.querySelectorAll("#ceSecTabs [data-cesec]").forEach(b => b.addEventListener("click", () => {
+    CE_STATE.section = b.dataset.cesec;
+    host.querySelectorAll("#ceSecTabs [data-cesec]").forEach(x => x.classList.toggle("active", x.dataset.cesec === CE_STATE.section));
+    ceRenderSection(a);
+  }));
+  ceRenderSection(a);
+}
+
+// Routes the active section tab into #ceSection (state survives re-render via CE_STATE.section).
+function ceRenderSection(a) {
+  const host = document.getElementById("ceSection"); if (!host) return;
+  if (CE_STATE.section === "tasks") {
+    host.innerHTML = `<div class="ce-statstrip"><span><b>${a.tasks.length.toLocaleString()}</b> task${a.tasks.length === 1 ? "" : "s"} hit</span><span><b>${a.scopeTotal.toLocaleString()}</b> error${a.scopeTotal === 1 ? "" : "s"}</span><span><b>${a.sancTaskCount.toLocaleString()}</b> sanctions task${a.sancTaskCount === 1 ? "" : "s"}</span><span><b>${a.agentsInScope.toLocaleString()}</b> agent${a.agentsInScope === 1 ? "" : "s"} involved</span></div>
+      <div class="panel"><h3>Errors by task <span class="meta">${esc(ceScopeLabel())} · sanctions emphasised · click a row for the records</span></h3><div id="ceTasks"></div></div>`;
+    ceRenderTasks(a.tasks);
+  } else if (CE_STATE.section === "qa") {
+    host.innerHTML = `<div class="ce-qagrid">
+        <div class="panel"><h3>Who caught the errors <span class="meta">by BO QA reviewer · ${esc(ceScopeLabel())}</span></h3><div id="ceQaDist"></div></div>
+        <div class="panel"><h3>QA → agent breakdown <span class="meta">reviewer → tagger · ${esc(ceScopeLabel())} · click a row for the records</span></h3><div id="cePairs"></div></div>
+      </div>`;
+    ceRenderQaCatcher(a.byQa);
+    ceRenderPairs(a.pairs);
+  } else if (CE_STATE.section === "trend") {
+    host.innerHTML = `<div class="panel"><h3>Daily team errors <span class="meta">last 30 available days</span></h3>
+      ${ceTrendHtml(a.dayCounts)}
+      <div class="ce-trendlegend"><span><i class="dot" style="background:var(--bad)"></i> complete history</span><span><i class="dot" style="background:var(--bad);opacity:0.45"></i> pre-${CE_COMPLETE_FROM} · undercount</span></div></div>`;
+  } else {
+    host.innerHTML = `<div class="panel"><h3>Agent leaderboard <span class="meta">all roster agents · sorted by ${esc(ceScopeLabel())} · click a row for the records</span></h3><div id="ceBoard"></div></div>
+      ${ceNonRosterHtml(a.nonRoster)}`;
+    ceRenderBoard(a.rosterAgents);
+    const nrh = host.querySelector("#ceNonRosterHead"); if (nrh) nrh.addEventListener("click", () => { CE_STATE.nonRosterOpen = !CE_STATE.nonRosterOpen; ceRenderSection(a); });
+  }
+}
+
+// All in-scope errors on SANCTIONS tasks — the callout's "Review the N records" drawer.
+function ceOpenSanctionsPanel() {
+  const range = ceScopeRange();
+  const rows = CE_STATE.errors.filter(e => e.sanctions && ceInRange(e.eatDate, range))
+    .sort((p, q) => (q.reviewed_at || "").localeCompare(p.reviewed_at || ""));
+  openSidePanel("Sanctions-task errors", `${rows.length} record${rows.length === 1 ? "" : "s"} · ${ceScopeLabel()}`);
+  const body = document.getElementById("sidePanelBody"); if (!body) return;
+  if (!rows.length) { body.innerHTML = `<div class="empty" style="padding:24px">No sanctions-task errors ${esc(ceScopeLabel())} 🎉</div>`; return; }
+  body.innerHTML = `
+    <div class="footer-note" style="margin-bottom:8px">${ceSancPill(true)} Every in-scope error tagged on a <b>sanctions</b> task — the highest-stakes corrections.</div>
+    ${ceCaughtByLine(rows)}
+    <div style="overflow-x:auto"><table class="ce-tbl">
+      <thead><tr><th>IMO</th><th>Agent</th><th>QA reviewer</th><th>Task</th><th>When (EAT)</th></tr></thead>
+      <tbody>${rows.map(e => `<tr class="ce-panelrow"><td class="mono">${esc(e.imo || "—")}</td><td class="agent">${esc(e.agent)}</td><td>${esc(e.qa)}</td><td>${esc(e.task)}</td><td class="small-mono">${esc(ceEatDateTime(e.reviewed_at))}</td></tr>`).join("")}</tbody>
+    </table></div>`;
 }
 
 function ceRenderDist(rosterAgents) {
@@ -10670,8 +10837,8 @@ function ceRenderPairs(pairs) {
   const CAP = 25;
   const shown = CE_STATE.qaPairsAll ? pairs : pairs.slice(0, CAP);
   host.innerHTML = `<div style="overflow-x:auto"><table class="ce-tbl">
-    <thead><tr><th>QA reviewer</th><th>Agent (tagger)</th><th class="r">Errors</th></tr></thead>
-    <tbody>${shown.map(p => `<tr class="clickable" data-ceqa="${esc(p.qa)}" data-cepairagent="${esc(p.agent)}"><td>${esc(p.qa)}</td><td class="agent">${esc(p.agent)}</td><td class="r"><span class="ce-bignum">${p.n}</span></td></tr>`).join("")}</tbody>
+    <thead><tr><th>QA reviewer</th><th></th><th>Agent (tagger)</th><th class="r">Errors</th></tr></thead>
+    <tbody>${shown.map(p => `<tr class="clickable" data-ceqa="${esc(p.qa)}" data-cepairagent="${esc(p.agent)}"><td>${esc(p.qa)}</td><td class="ce-arrow">→</td><td class="agent">${esc(p.agent)}</td><td class="r"><span class="ce-bignum">${p.n}</span></td></tr>`).join("")}</tbody>
   </table></div>${pairs.length > CAP ? `<div style="text-align:center;padding:10px 0 2px"><button class="btn" id="cePairsToggle">${CE_STATE.qaPairsAll ? "Show top 25" : `Show all ${pairs.length} pairs`}</button></div>` : ""}`;
   host.querySelectorAll("tr[data-ceqa]").forEach(tr => tr.addEventListener("click", () => ceOpenPairPanel(tr.dataset.ceqa, tr.dataset.cepairagent)));
   const tg = host.querySelector("#cePairsToggle"); if (tg) tg.addEventListener("click", () => { CE_STATE.qaPairsAll = !CE_STATE.qaPairsAll; ceRenderPairs(pairs); });
@@ -10682,9 +10849,14 @@ function ceRenderTasks(tasks) {
   if (!tasks.length) { host.innerHTML = `<div class="empty" style="padding:18px;color:var(--muted)">No errors ${esc(ceScopeLabel())} 🎉</div>`; return; }
   const CAP = 15;
   const shown = CE_STATE.tasksAll ? tasks : tasks.slice(0, CAP);
+  const total = tasks.reduce((s, t) => s + t.n, 0) || 1;
+  const max = tasks[0].n || 1;
   host.innerHTML = `<div style="overflow-x:auto"><table class="ce-tbl">
-    <thead><tr><th>Task / batch</th><th></th><th class="r">Errors</th><th class="r">Agents</th></tr></thead>
-    <tbody>${shown.map(t => `<tr class="clickable" data-cetask="${esc(t.task)}"><td class="agent">${esc(t.task)}</td><td>${ceSancPill(t.sanctions)}</td><td class="r"><span class="${t.sanctions ? "ce-sanccell" : "ce-bignum"}">${t.n}</span></td><td class="r">${t.agents}</td></tr>`).join("")}</tbody>
+    <thead><tr><th>Task / batch</th><th></th><th class="r">Errors</th><th>Share</th><th class="r">Agents</th></tr></thead>
+    <tbody>${shown.map(t => {
+      const pct = Math.round(t.n / total * 100);
+      return `<tr class="clickable${t.sanctions ? " ce-sancrow" : ""}" data-cetask="${esc(t.task)}"><td class="agent">${esc(t.task)}</td><td>${ceSancPill(t.sanctions)}</td><td class="r"><span class="${t.sanctions ? "ce-sanccell" : "ce-bignum"}">${t.n}</span></td><td><div class="ce-sharebar"><div class="ce-sharefill${t.sanctions ? " sanc" : ""}" style="width:${(t.n / max * 100).toFixed(1)}%"></div></div><span class="ce-sharepct">${pct}%</span></td><td class="r">${t.agents}</td></tr>`;
+    }).join("")}</tbody>
   </table></div>${tasks.length > CAP ? `<div style="text-align:center;padding:10px 0 2px"><button class="btn" id="ceTasksToggle">${CE_STATE.tasksAll ? "Show top 15" : `Show all ${tasks.length} tasks`}</button></div>` : ""}`;
   host.querySelectorAll("tr[data-cetask]").forEach(tr => tr.addEventListener("click", () => ceOpenTaskPanel(tr.dataset.cetask)));
   const tg = host.querySelector("#ceTasksToggle"); if (tg) tg.addEventListener("click", () => { CE_STATE.tasksAll = !CE_STATE.tasksAll; ceRenderTasks(tasks); });
@@ -10712,23 +10884,31 @@ function ceSparkHtml(spark) {
 
 function ceRenderBoard(rosterAgents) {
   const host = document.getElementById("ceBoard"); if (!host) return;
-  const rows = rosterAgents.slice().sort((p, q) => q.scope - p.scope || p.agent.localeCompare(q.agent));
-  host.innerHTML = `<div style="overflow-x:auto"><table class="ce-tbl">
-    <thead><tr><th>Agent</th><th>Team</th><th class="r">${esc(ceScopeShort())}</th><th class="r">Sanctions</th><th class="r">30d</th><th class="r">Reviewed (wk)</th><th class="r">Rate (wk)</th><th>7-day</th></tr></thead>
-    <tbody>${rows.map(x => {
-      const hex = TEAM_COLORS[x.team]?.hex || "#7B68EE";
-      const rate = x.reviewedWk > 0 ? `${(x.scope / x.reviewedWk * 100).toFixed(1)}%` : "—";
-      const cell = (n) => n > 0 ? `<span class="ce-bignum">${n.toLocaleString()}</span>` : `<span class="ce-zero">0</span>`;
-      const sanc = x.sancScope > 0 ? `<span class="ce-sanccell">${x.sancScope.toLocaleString()}</span>` : `<span class="ce-zero">0</span>`;
-      return `<tr class="clickable" data-ceagent="${esc(x.agent)}">
-        <td class="agent">${esc(x.agent)}</td>
-        <td><span class="ce-teamchip" style="background:${hex}22;color:${hex}">${esc(x.team)}</span></td>
-        <td class="r">${cell(x.scope)}</td><td class="r">${sanc}</td><td class="r">${cell(x.d30)}</td>
-        <td class="r">${x.reviewedWk.toLocaleString()}</td><td class="r ${x.reviewedWk > 0 && x.scope > 0 ? "" : "ce-zero"}">${rate}</td>
-        <td>${ceSparkHtml(x.spark)}</td>
-      </tr>`;
-    }).join("")}</tbody></table></div>`;
-  host.querySelectorAll("tr[data-ceagent]").forEach(tr => tr.addEventListener("click", () => ceOpenAgentPanel(tr.dataset.ceagent, ceScopeRange())));
+  const sorted = rosterAgents.slice().sort((p, q) => q.scope - p.scope || p.agent.localeCompare(q.agent));
+  const withErrors = sorted.filter(x => x.scope > 0);
+  const clean = sorted.filter(x => x.scope === 0);
+  const row = (x) => {
+    const hex = TEAM_COLORS[x.team]?.hex || "#7B68EE";
+    const rate = x.reviewedWk > 0 ? `${(x.scope / x.reviewedWk * 100).toFixed(1)}%` : "—";
+    const cell = (n) => n > 0 ? `<span class="ce-bignum">${n.toLocaleString()}</span>` : `<span class="ce-zero">0</span>`;
+    const sanc = x.sancScope > 0 ? `<span class="ce-sanccell">${x.sancScope.toLocaleString()}</span>` : `<span class="ce-zero">0</span>`;
+    return `<tr class="clickable" data-ceagent="${esc(x.agent)}">
+      <td class="agent"><span class="ce-agcell"><span class="task-avatar" style="background:${hex}">${esc(tlInitials(x.agent))}</span>${esc(x.agent)}</span></td>
+      <td><span class="ce-teamchip" style="background:${hex}22;color:${hex}">${esc(x.team)}</span></td>
+      <td class="r">${cell(x.scope)}</td><td class="r">${sanc}</td><td class="r">${cell(x.d30)}</td>
+      <td class="r">${x.reviewedWk.toLocaleString()}</td><td class="r ${x.reviewedWk > 0 && x.scope > 0 ? "" : "ce-zero"}">${rate}</td>
+      <td>${ceSparkHtml(x.spark)}</td>
+    </tr>`;
+  };
+  const head = `<thead><tr><th>Agent</th><th>Team</th><th class="r">${esc(ceScopeShort())}</th><th class="r">Sanctions</th><th class="r">30d</th><th class="r">Reviewed (wk)</th><th class="r">Rate (wk)</th><th>7-day</th></tr></thead>`;
+  const mainTable = withErrors.length
+    ? `<div style="overflow-x:auto"><table class="ce-tbl">${head}<tbody>${withErrors.map(row).join("")}</tbody></table></div>`
+    : `<div class="empty" style="padding:18px;color:var(--muted)">No critical errors ${esc(ceScopeLabel())} — every roster agent is clean 🎉</div>`;
+  const cleanBlock = clean.length ? `
+    <div class="ce-cleanhead">CLEAN ${esc(ceScopeShort().toUpperCase())} — ${clean.length} AGENT${clean.length === 1 ? "" : "S"} · 0 ERRORS</div>
+    <div class="ce-cleangrid">${clean.map(x => { const hex = TEAM_COLORS[x.team]?.hex || "#7B68EE"; return `<span class="ce-cleanchip clickable" data-ceagent="${esc(x.agent)}" title="${esc(x.agent)} · ${esc(x.team)} · 0 errors ${esc(ceScopeLabel())}"><span class="task-avatar" style="background:${hex}">${esc(tlInitials(x.agent))}</span>${esc(x.agent)}</span>`; }).join("")}</div>` : "";
+  host.innerHTML = mainTable + cleanBlock;
+  host.querySelectorAll("[data-ceagent]").forEach(el => el.addEventListener("click", () => ceOpenAgentPanel(el.dataset.ceagent, ceScopeRange())));
 }
 
 function ceNonRosterHtml(nonRoster) {
@@ -10824,13 +11004,16 @@ function ceRenderWeekly(host) {
   const teamTotal = agents.reduce((s, x) => s + x.n, 0);
 
   host.innerHTML = `
-    <div class="ce-weekpick">
-      <button id="ceWkPrev" ${mon <= minMon ? "disabled" : ""}>‹ Prev week</button>
-      <b>Week of ${esc(shortDate(mon))} – ${esc(shortDate(sat))}</b>${isCurrent ? ' <span class="meta">(current · to date)</span>' : ""}
-      <button id="ceWkNext" ${isCurrent ? "disabled" : ""}>Next week ›</button>
-      <span style="color:var(--muted);font-size:12px">·</span>
-      <span class="small-mono" style="color:var(--muted)">jump to</span>
-      <input type="date" id="ceWkInput" min="${CE_HISTORY_START}" max="${today}" value="${mon}" title="Pick any date — snaps to that week (Mon–Sat)">
+    <div class="ce-toprow">
+      <div class="ce-weekpick">
+        <button id="ceWkPrev" ${mon <= minMon ? "disabled" : ""}>‹ Prev week</button>
+        <b>Week of ${esc(shortDate(mon))} – ${esc(shortDate(sat))}</b>${isCurrent ? ' <span class="meta">(current · to date)</span>' : ""}
+        <button id="ceWkNext" ${isCurrent ? "disabled" : ""}>Next week ›</button>
+        <span style="color:var(--muted);font-size:12px">·</span>
+        <span class="small-mono" style="color:var(--muted)">jump to</span>
+        <input type="date" id="ceWkInput" min="${CE_HISTORY_START}" max="${today}" value="${mon}" title="Pick any date — snaps to that week (Mon–Sat)">
+      </div>
+      ${ceViewTabsHtml()}
     </div>
     ${mon < CE_COMPLETE_FROM ? `<div class="ce-note" style="background:var(--warn-bg);color:var(--warn)">⚠️ This week is before <b>${CE_COMPLETE_FROM}</b> — error counts <b>undercount</b> (QA history was incomplete then).</div>` : ""}
     <div class="kpis" style="grid-template-columns:repeat(auto-fit,minmax(180px,1fr))">
@@ -10854,6 +11037,7 @@ function ceRenderWeekly(host) {
   const pv = host.querySelector("#ceWkPrev"); if (pv) pv.addEventListener("click", () => { CE_STATE.week = _isoAddDays(mon, -7); ceRenderBody(); });
   const nx = host.querySelector("#ceWkNext"); if (nx) nx.addEventListener("click", () => { CE_STATE.week = _isoAddDays(mon, 7); ceRenderBody(); });
   const wi = host.querySelector("#ceWkInput"); if (wi) wi.addEventListener("change", (e) => { if (!e.target.value) return; let m = ceWeekMonday(e.target.value); if (m < minMon) m = minMon; if (m > curMon) m = curMon; CE_STATE.week = m; ceRenderBody(); });
+  ceWireViewTabs(host);
   const wkLabel = `week of ${shortDate(mon)}`;
   host.querySelectorAll("tr[data-ceagent]").forEach(tr => tr.addEventListener("click", () => ceOpenAgentPanel(tr.dataset.ceagent, [mon, sat], wkLabel)));
 }
