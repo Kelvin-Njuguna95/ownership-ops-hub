@@ -1,0 +1,54 @@
+name: Pipeline health sentinel
+
+# Slack alerts for the two failure modes that lose data (2026-06-11 audit):
+#   1. end-of-day snapshot froze early / missing  (the 2026-05-29 failure)
+#   2. poll.yml has had no successful run in >60 min  (the 2026-05-29/30 outage)
+# Posts to #windward-team-leaders (same channel/path as the stale-uploads alert).
+#
+# workflow_dispatch-only — same rationale as poll.yml and stale-uploads-alert.yml:
+# GitHub Actions silently drops scheduled events on free-tier public repos, so the
+# schedule lives in cron-job.org (see docs/EXTERNAL_CRON_SETUP.md), which hits the
+# workflow_dispatch API. Two new cron-job.org entries are needed (EAT, Mon–Sat):
+#   • blind-window: ~09:30 / 13:30 / 17:30 EAT  → dispatch with inputs.check=blindwindow
+#   • snapshot:     ~19:30 EAT                  → dispatch with inputs.check=snapshot
+# (The script itself also skips Sundays.) Default input is "both" for manual runs.
+#
+# Requires repo secrets: SLACK_WEBHOOK_URL (existing — incoming webhook bound to
+# #windward-team-leaders). The blind-window check uses the built-in GITHUB_TOKEN
+# (actions:read) — no extra secret.
+
+on:
+  workflow_dispatch:
+    inputs:
+      check:
+        description: "Which check to run"
+        type: choice
+        options: [both, snapshot, blindwindow]
+        default: both
+
+permissions:
+  actions: read     # read poll.yml run history for the blind-window check
+  contents: read
+
+jobs:
+  sentinel:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install dependencies
+        run: pip install requests
+
+      - name: Run pipeline health sentinel
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+          GITHUB_TOKEN:      ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+        run: python3 alerts/pipeline_health_sentinel.py --check "${{ inputs.check || 'both' }}"
