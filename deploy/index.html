@@ -1744,6 +1744,7 @@
   .ce-cleanchip .task-avatar { width:22px; height:22px; border-radius:6px; font-size:9px; opacity:0.9; }
   .ce-trendlegend { display:flex; gap:18px; margin-top:12px; font-size:11px; color:var(--muted); }
   .ce-trendlegend .dot { display:inline-block; width:9px; height:9px; border-radius:2px; margin-right:5px; vertical-align:middle; }
+  .ce-trendlegend .line { display:inline-block; width:18px; height:0; margin-right:6px; vertical-align:middle; }
   @media (max-width:900px) { .ce-qagrid { grid-template-columns:1fr; } }
   .ua-kpis { display:flex; gap:14px; flex-wrap:wrap; margin-bottom:18px; }
   .ua-kpi { background:var(--surface); border:1px solid var(--border); border-radius:10px; padding:16px 18px; min-width:160px; }
@@ -10901,8 +10902,9 @@ function ceRenderSection(a) {
     ceRenderPairs(a.pairs);
   } else if (CE_STATE.section === "trend") {
     host.innerHTML = `<div class="panel"><h3>Daily team errors <span class="meta">last 30 available days</span></h3>
-      ${ceTrendHtml(a.dayCounts)}
-      <div class="ce-trendlegend"><span><i class="dot" style="background:var(--bad)"></i> complete history</span><span><i class="dot" style="background:var(--bad);opacity:0.45"></i> pre-${CE_COMPLETE_FROM} · undercount</span></div></div>`;
+      <div class="ce-trendchart" style="position:relative;height:300px"><canvas id="ceTrendCanvas"></canvas></div>
+      <div class="ce-trendlegend"><span><i class="line" style="border-top:2.5px solid var(--bad)"></i> complete history</span><span><i class="line" style="border-top:2.5px dashed var(--bad);opacity:0.6"></i> pre-${CE_COMPLETE_FROM} · undercount</span></div></div>`;
+    ceRenderTrendChart(a.dayCounts);
   } else {
     host.innerHTML = `<div class="panel"><h3>Agent leaderboard <span class="meta">all roster agents · sorted by ${esc(ceScopeLabel())} · click a row for the records</span></h3><div id="ceBoard"></div></div>
       ${ceNonRosterHtml(a.nonRoster)}`;
@@ -10983,19 +10985,88 @@ function ceRenderTasks(tasks) {
   const tg = host.querySelector("#ceTasksToggle"); if (tg) tg.addEventListener("click", () => { CE_STATE.tasksAll = !CE_STATE.tasksAll; ceRenderTasks(tasks); });
 }
 
-function ceTrendHtml(dayCounts) {
+function ceRenderTrendChart(dayCounts) {
+  const canvas = document.getElementById("ceTrendCanvas");
+  if (!canvas || typeof Chart === "undefined") return;
+  destroyChart("ceTrend");
+
   const today = todayEat();
   const startCap = _isoAddDays(today, -29) > CE_HISTORY_START ? _isoAddDays(today, -29) : CE_HISTORY_START;
   const days = []; for (let d = startCap; d <= today; d = _isoAddDays(d, 1)) days.push(d);
-  if (!days.length) return `<div class="empty" style="padding:14px;color:var(--muted)">No data in range.</div>`;
-  const max = Math.max(1, ...days.map(d => dayCounts[d] || 0));
-  const everyN = days.length > 16 ? Math.ceil(days.length / 12) : 1;
-  return `<div class="ce-trend">${days.map((d, i) => {
-    const n = dayCounts[d] || 0;
-    const partial = d < CE_COMPLETE_FROM ? " partial" : "";
-    const lab = (i % everyN === 0) ? esc(new Date(d).toLocaleDateString("en-GB", { timeZone: "Africa/Nairobi", day: "numeric", month: i === 0 ? "short" : undefined })) : "";
-    return `<div class="col" title="${esc(shortDate(d))}: ${n} error${n === 1 ? "" : "s"}${d < CE_COMPLETE_FROM ? " (undercount)" : ""}"><div class="bar${partial}" style="height:${Math.max(2, Math.round(n / max * 100))}%"></div><div class="lab">${lab}</div></div>`;
-  }).join("")}</div>`;
+  if (!days.length) return;
+
+  const values = days.map(d => dayCounts[d] || 0);
+  const labels = days.map(d => new Date(d).toLocaleDateString("en-GB", { timeZone: "Africa/Nairobi", day: "numeric", month: "short" }));
+  const cutoffIndex = days.findIndex(d => d >= CE_COMPLETE_FROM);   // first complete day; -1 if none in range
+  // Peak = highest day; tie-break to the LAST day at the max.
+  let peakIndex = 0; for (let i = 0; i < values.length; i++) if (values[i] >= values[peakIndex]) peakIndex = i;
+
+  const css = getComputedStyle(document.documentElement);
+  const RED = (css.getPropertyValue("--bad") || "#E5384F").trim() || "#E5384F";
+  const FADE = RED.startsWith("#") ? RED + "70" : RED;
+
+  const ctx = canvas.getContext("2d");
+  const grad = ctx.createLinearGradient(0, 0, 0, 300);
+  grad.addColorStop(0, RED.startsWith("#") ? RED + "30" : RED);
+  grad.addColorStop(1, RED.startsWith("#") ? RED + "05" : RED);
+
+  const markerPlugin = {
+    id: "ceTrendMarker",
+    afterDatasetsDraw(chart) {
+      const a = chart.chartArea; if (!a) return;
+      const c = chart.ctx; c.save();
+      if (cutoffIndex > 0) {
+        const x = chart.scales.x.getPixelForValue(cutoffIndex);
+        c.strokeStyle = RED; c.lineWidth = 1.5; c.setLineDash([4, 4]);
+        c.beginPath(); c.moveTo(x, a.top); c.lineTo(x, a.bottom); c.stroke(); c.setLineDash([]);
+        const right = x > (a.left + a.right) / 2;
+        c.fillStyle = RED; c.textAlign = right ? "right" : "left";
+        c.font = "700 10px -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif";
+        c.fillText("complete from " + new Date(CE_COMPLETE_FROM).toLocaleDateString("en-GB", { timeZone: "Africa/Nairobi", day: "numeric", month: "short" }), right ? x - 7 : x + 7, a.top + 11);
+      }
+      const pk = chart.getDatasetMeta(0).data[peakIndex];
+      if (pk && values[peakIndex] > 0) {
+        c.fillStyle = "#1B2240"; c.textAlign = "center";
+        c.font = "700 11px -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif";
+        c.fillText("peak " + values[peakIndex], pk.x, pk.y - 11);
+      }
+      c.restore();
+    },
+  };
+
+  STATE.charts["ceTrend"] = new Chart(ctx, {
+    type: "line",
+    data: { labels, datasets: [{
+      label: "Errors", data: values, borderColor: RED, backgroundColor: grad,
+      borderWidth: 2.5, fill: true, tension: 0.35,
+      pointRadius: values.map((_, i) => i === peakIndex ? 6 : i === values.length - 1 ? 5 : 3),
+      pointHoverRadius: values.map((_, i) => i === peakIndex ? 7 : 5),
+      pointBackgroundColor: days.map(d => d < CE_COMPLETE_FROM ? "#fff" : RED),
+      pointBorderColor: days.map(d => d < CE_COMPLETE_FROM ? FADE : RED),
+      pointBorderWidth: 2,
+      segment: {
+        borderColor: seg => days[seg.p0DataIndex] < CE_COMPLETE_FROM ? FADE : RED,
+        borderDash: seg => days[seg.p0DataIndex] < CE_COMPLETE_FROM ? [5, 4] : undefined,
+      },
+    }] },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      layout: { padding: { top: 22, right: 14, left: 2 } },
+      interaction: { mode: "index", intersect: false },
+      plugins: {
+        legend: { display: false },
+        tooltip: { callbacks: {
+          title: items => shortDate(days[items[0].dataIndex]),
+          label: c => `${c.parsed.y} error${c.parsed.y === 1 ? "" : "s"}${days[c.dataIndex] < CE_COMPLETE_FROM ? " (undercount)" : ""}`,
+        } },
+      },
+      scales: {
+        x: { grid: { display: false }, ticks: { font: { size: 10 }, maxRotation: 0, autoSkip: true, maxTicksLimit: 12 } },
+        y: { beginAtZero: true, ticks: { precision: 0, font: { size: 10 } }, grid: { color: "rgba(0,0,0,0.05)" } },
+      },
+    },
+    plugins: [markerPlugin],
+  });
 }
 
 function ceSparkHtml(spark) {
