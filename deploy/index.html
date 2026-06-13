@@ -1910,7 +1910,8 @@ if (window.Chart) { try {
 const SUPABASE_URL      = "https://isccbmgjgtdosiccstcp.supabase.co";
 const SUPABASE_ANON_KEY = "sb_publishable_M4_8MhW0xVUC6HEwp57sow_Yims-p3k";
 const SUPABASE_BUCKET   = "dashboard-data";
-const ALLOWED_DOMAIN    = "@impactoutsourcing.co.ke";
+const ALLOWED_DOMAINS       = ["@impactoutsourcing.co.ke", "@wnwd.com"];
+const ALLOWED_DOMAINS_LABEL = ALLOWED_DOMAINS.join(" or ");
 const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 const STORAGE_PUBLIC = `${SUPABASE_URL}/storage/v1/object/public/${SUPABASE_BUCKET}`;
 
@@ -11367,7 +11368,9 @@ function hideLogin() {
 }
 
 function emailOk(email) {
-  return !!email && email.toLowerCase().endsWith(ALLOWED_DOMAIN);
+  if (!email) return false;
+  const e = email.toLowerCase();
+  return ALLOWED_DOMAINS.some(d => e.endsWith(d));
 }
 
 // Email + 6-digit PIN (Supabase password auth). Tabs flip between sign-in and sign-up.
@@ -11423,7 +11426,7 @@ document.getElementById("loginForm").addEventListener("submit", async (e) => {
 
   // Validate domain
   if (!emailOk(email)) {
-    msg.textContent = `Only ${ALLOWED_DOMAIN} addresses can access this dashboard.`;
+    msg.textContent = `Only ${ALLOWED_DOMAINS_LABEL} addresses can access this dashboard.`;
     msg.className = "login-msg err";
     msg.style.display = "block";
     return;
@@ -11475,7 +11478,7 @@ document.getElementById("loginResetForm").addEventListener("submit", async (e) =
   const msg = document.getElementById("loginMsg");
   const btn = document.getElementById("resetBtn");
   if (!emailOk(email)) {
-    msg.textContent = `Only ${ALLOWED_DOMAIN} addresses can access this dashboard.`;
+    msg.textContent = `Only ${ALLOWED_DOMAINS_LABEL} addresses can access this dashboard.`;
     msg.className = "login-msg err";
     msg.style.display = "block";
     return;
@@ -11554,7 +11557,7 @@ async function checkSessionAndBoot() {
   const email = session.user?.email || "";
   if (!emailOk(email)) {
     await sb.auth.signOut();
-    showLogin(`Signed-in email ${email} is not on the ${ALLOWED_DOMAIN} domain. Use a company address.`, "err");
+    showLogin(`Signed-in email ${email} is not on an authorized domain (${ALLOWED_DOMAINS_LABEL}). Use your company account.`, "err");
     return;
   }
   hideLogin();
