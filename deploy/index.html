@@ -1745,6 +1745,18 @@
   .ce-trendlegend { display:flex; gap:18px; margin-top:12px; font-size:11px; color:var(--muted); }
   .ce-trendlegend .dot { display:inline-block; width:9px; height:9px; border-radius:2px; margin-right:5px; vertical-align:middle; }
   @media (max-width:900px) { .ce-qagrid { grid-template-columns:1fr; } }
+  .ua-kpis { display:flex; gap:14px; flex-wrap:wrap; margin-bottom:18px; }
+  .ua-kpi { background:var(--surface); border:1px solid var(--border); border-radius:10px; padding:16px 18px; min-width:160px; }
+  .ua-kpi-n { font-size:26px; font-weight:700; letter-spacing:-0.02em; }
+  .ua-kpi-l { font-size:12px; color:var(--muted); margin-top:4px; }
+  .ua-tabs { display:flex; gap:8px; margin-bottom:14px; }
+  .ua-tab { font-family:inherit; font-size:13px; padding:8px 14px; border:1px solid var(--border); background:var(--surface); border-radius:8px; cursor:pointer; color:var(--muted); }
+  .ua-tab.active { background:var(--ink); color:#fff; border-color:var(--ink); font-weight:600; }
+  .ua-h { font-size:14px; margin:18px 0 8px; }
+  .ua-table { width:100%; border-collapse:collapse; font-size:13px; }
+  .ua-table th, .ua-table td { text-align:left; padding:8px 10px; border-bottom:1px solid var(--border); }
+  .ua-table th.num, .ua-table td.num { text-align:right; }
+  .ua-table td.muted { color:var(--muted); }
 </style>
 </head>
 <body>
@@ -1851,6 +1863,7 @@
       <div id="page-weekly"         class="page" style="display:none"></div>
       <div id="page-report_builder" class="page" style="display:none"></div>
       <div id="page-comparison"     class="page" style="display:none"></div>
+      <div id="page-useraudit"      class="page" style="display:none"></div>
       <div id="completedDrawerBackdrop" class="drawer-backdrop"></div>
       <div id="completedDrawer"         class="drawer"></div>
       <!-- Shared right-side slide-out detail panel (Tasks + Completed). Fixed-position; escapes the grid. -->
@@ -1912,6 +1925,7 @@ const SUPABASE_ANON_KEY = "sb_publishable_M4_8MhW0xVUC6HEwp57sow_Yims-p3k";
 const SUPABASE_BUCKET   = "dashboard-data";
 const ALLOWED_DOMAINS       = ["@impactoutsourcing.co.ke", "@wnwd.com"];
 const ALLOWED_DOMAINS_LABEL = ALLOWED_DOMAINS.join(" or ");
+const AUDIT_ADMIN_EMAIL     = "kelvin@impactoutsourcing.co.ke";
 const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 const STORAGE_PUBLIC = `${SUPABASE_URL}/storage/v1/object/public/${SUPABASE_BUCKET}`;
 
@@ -1988,6 +2002,7 @@ const PAGES = [
   { id: "experts",        label: "Ownership Experts",        tag: null,   group: "People"     },
   { id: "weekly",         label: "Weekly Report",           tag: null,   group: "Reports"    },
   { id: "report_builder", label: "Report Builder",          tag: null,   group: "Reports"    },
+  { id: "useraudit",      label: "User Audit",               tag: null,   group: "Admin", adminOnly: true },
 ];
 
 // ============================================================================
@@ -2597,7 +2612,7 @@ function _supplyRunway() {
 function renderNav() {
   const ul = document.getElementById("navList");
   let lastGroup = null;
-  ul.innerHTML = PAGES.map(p => {
+  ul.innerHTML = PAGES.filter(p => !p.adminOnly || STATE.userEmail === AUDIT_ADMIN_EMAIL).map(p => {
     const tagHtml = p.tag === "stub" ? `<span class="tag stub">stub</span>`
                   : p.tag === "live" ? `<span class="tag live">live</span>` : "";
     const c = navCountFor(p.id);
@@ -2612,6 +2627,7 @@ function renderNav() {
 }
 
 function goto(pageId) {
+  if (PAGES.find(p => p.id === pageId)?.adminOnly && STATE.userEmail !== AUDIT_ADMIN_EMAIL) pageId = "overview";
   STATE.currentPage = pageId;
   localStorage.setItem("wqa.page", pageId);
   renderNav();
@@ -2663,6 +2679,95 @@ const KPI_ICONS = {
   activity: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>',
   layers:   '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/></svg>',
   users:    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>',
+};
+
+// -------- User Audit (private — admin only) --------
+async function loadAuditRows() {
+  const PAGE = 1000, MAX = 100, all = [];
+  for (let p = 0; p < MAX; p++) {
+    const from = p * PAGE, to = from + PAGE - 1;
+    const { data, error } = await sb.from("user_login_events")
+      .select("email,domain,event_at")
+      .order("event_at", { ascending: false })
+      .range(from, to);
+    if (error) throw error;
+    if (!data || !data.length) break;
+    all.push(...data);
+    if (data.length < PAGE) break;
+  }
+  return all;
+}
+
+PAGE_RENDERERS.useraudit = function () {
+  const root = document.getElementById("page-useraudit");
+  if (STATE.userEmail !== AUDIT_ADMIN_EMAIL) {
+    root.innerHTML = `<div class="page"><div class="empty-state"><div class="title">Not authorized</div>This page is restricted.</div></div>`;
+    return;
+  }
+  if (STATE._auditRows == null && !STATE._auditError) {
+    root.innerHTML = `<div class="page"><div class="empty"><span class="spinning-icon">↻</span> Loading audit log…</div></div>`;
+    if (!STATE._auditLoading) {
+      STATE._auditLoading = true;
+      loadAuditRows()
+        .then(rows => { STATE._auditRows = rows; STATE._auditError = null; })
+        .catch(err => { STATE._auditRows = []; STATE._auditError = err?.message || String(err); })
+        .finally(() => { STATE._auditLoading = false; PAGE_RENDERERS.useraudit(); });
+    }
+    return;
+  }
+  if (STATE._auditError) {
+    root.innerHTML = `<div class="page"><div class="empty-state"><div class="title">Couldn't load audit log</div>${esc(STATE._auditError)}</div></div>`;
+    return;
+  }
+  const rows = STATE._auditRows || [];
+  const byDomain = { impact: [], windward: [], other: [] };
+  rows.forEach(r => { (byDomain[r.domain] || byDomain.other).push(r); });
+  const distinct     = new Set(rows.map(r => r.email)).size;
+  const distImpact   = new Set(byDomain.impact.map(r => r.email)).size;
+  const distWindward = new Set(byDomain.windward.map(r => r.email)).size;
+
+  const fmt = (ts) => new Date(ts).toLocaleString();
+  const tab = STATE.auditTab === "windward" ? "windward" : "impact";
+  const tabRows = byDomain[tab] || [];
+
+  const users = {};
+  tabRows.forEach(r => {
+    const u = users[r.email] || (users[r.email] = { email: r.email, count: 0, first: r.event_at, last: r.event_at });
+    u.count++;
+    if (r.event_at > u.last)  u.last  = r.event_at;
+    if (r.event_at < u.first) u.first = r.event_at;
+  });
+  const userList = Object.values(users).sort((a, b) => (a.last < b.last ? 1 : -1));
+
+  const summaryRows = userList.map(u =>
+    `<tr><td>${esc(u.email)}</td><td class="num">${u.count}</td><td>${fmt(u.first)}</td><td>${fmt(u.last)}</td></tr>`
+  ).join("") || `<tr><td colspan="4" class="muted">No logins recorded yet.</td></tr>`;
+
+  const eventRows = tabRows.slice(0, 500).map(r =>
+    `<tr><td>${fmt(r.event_at)}</td><td>${esc(r.email)}</td></tr>`
+  ).join("") || `<tr><td colspan="2" class="muted">No events yet.</td></tr>`;
+
+  root.innerHTML = `
+  <div class="page">
+    <div class="ua-kpis">
+      <div class="ua-kpi"><div class="ua-kpi-n">${distinct}</div><div class="ua-kpi-l">Total users (active since logging began)</div></div>
+      <div class="ua-kpi"><div class="ua-kpi-n">${distImpact}</div><div class="ua-kpi-l">Impact Outsourcing users</div></div>
+      <div class="ua-kpi"><div class="ua-kpi-n">${distWindward}</div><div class="ua-kpi-l">Windward users</div></div>
+      <div class="ua-kpi"><div class="ua-kpi-n">${rows.length.toLocaleString()}</div><div class="ua-kpi-l">Total login events</div></div>
+    </div>
+    <div class="ua-tabs">
+      <button class="ua-tab ${tab === 'impact'   ? 'active' : ''}" data-uatab="impact">Impact Outsourcing (${distImpact})</button>
+      <button class="ua-tab ${tab === 'windward' ? 'active' : ''}" data-uatab="windward">Windward (${distWindward})</button>
+    </div>
+    <h3 class="ua-h">Users — ${tab === 'windward' ? 'Windward' : 'Impact Outsourcing'}</h3>
+    <table class="ua-table"><thead><tr><th>Email</th><th class="num">Logins</th><th>First seen</th><th>Last seen</th></tr></thead><tbody>${summaryRows}</tbody></table>
+    <h3 class="ua-h">Login history — most recent 500</h3>
+    <table class="ua-table"><thead><tr><th>When</th><th>Email</th></tr></thead><tbody>${eventRows}</tbody></table>
+  </div>`;
+
+  root.querySelectorAll("[data-uatab]").forEach(b =>
+    b.addEventListener("click", () => { STATE.auditTab = b.dataset.uatab; PAGE_RENDERERS.useraudit(); })
+  );
 };
 
 // -------- Overview --------
@@ -11548,6 +11653,16 @@ document.getElementById("signoutBtn").addEventListener("click", async () => {
 // window.location.reload(), so this flag resets naturally for the next session.
 let _appBooted = false;
 
+async function logLoginEvent(user) {
+  try {
+    const email = (user?.email || "").toLowerCase();
+    const domain = email.endsWith("@impactoutsourcing.co.ke") ? "impact"
+                 : email.endsWith("@wnwd.com")                ? "windward"
+                 : "other";
+    await sb.from("user_login_events").insert({ user_id: user.id, email, domain });
+  } catch (e) { console.warn("login-event log failed (non-fatal)", e); }
+}
+
 async function checkSessionAndBoot() {
   const { data: { session } } = await sb.auth.getSession();
   if (!session) {
@@ -11561,12 +11676,14 @@ async function checkSessionAndBoot() {
     return;
   }
   hideLogin();
+  STATE.userEmail = email;
   // Show the user pill in topbar
   document.getElementById("userPillEmail").textContent = email;
   document.getElementById("userPill").style.display = "inline-flex";
   // Boot the app exactly once; ignore repeat SIGNED_IN events (tab focus, token refresh).
   if (_appBooted) return;
   _appBooted = true;
+  logLoginEvent(session.user);   // fire-and-forget audit log of this active session
   await init();
 }
 
