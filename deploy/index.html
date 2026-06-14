@@ -10940,12 +10940,6 @@ async function loadCriticalErrors() {
     const changed = await page(
       "airtable_record_id,assignee,qa_assignee,reviewed_at,imo,role,source_table,task:raw_payload->>fldlPkvV6BiE7glLZ,reqby_io:raw_payload->>fldnkt2u2LGVTc0eY",
       (q) => q.eq("qa_status", "changed").gte("reviewed_at", startHist.toISOString()).lt("reviewed_at", endTom.toISOString()));
-    // 2) reviewed totals for THIS WEEK only (bounded ~≤6 days) → context rate. NO
-    //    raw_payload here (kept light — the rate doesn't need task/QA detail).
-    const reviewed = await page(
-      "airtable_record_id,assignee,qa_status,reviewed_at",
-      (q) => q.in("qa_status", ["approve", "changed"]).gte("reviewed_at", startWk.toISOString()).lt("reviewed_at", endTom.toISOString()));
-
     const errors = [];
     for (const r of changed.values()) {
       const agent = canonicalAgent((r.assignee || "").trim());
@@ -10957,11 +10951,26 @@ async function loadCriticalErrors() {
         reviewed_at: r.reviewed_at, eatDate: ceEatDate(r.reviewed_at),
         task, sanctions: ceTaskSanctions(task) });
     }
+    // Reviewed totals this week → per-agent error-rate context. One server-side count
+    // (ce_reviewed_by_agent) instead of downloading every reviewed row; falls back to a
+    // paginated tally if the function isn't deployed yet.
     const reviewedByAgent = {};
-    for (const r of reviewed.values()) {
+    let revRows = null;
+    try {
+      const { data, error } = await sb.rpc("ce_reviewed_by_agent", { since: startWk.toISOString(), until: endTom.toISOString() });
+      if (error) throw error;
+      revRows = data;
+    } catch (e) {
+      console.warn("ce_reviewed_by_agent RPC unavailable, falling back to row scan:", e?.message || e);
+      const reviewed = await page(
+        "airtable_record_id,assignee,qa_status,reviewed_at",
+        (q) => q.in("qa_status", ["approve", "changed"]).gte("reviewed_at", startWk.toISOString()).lt("reviewed_at", endTom.toISOString()));
+      revRows = [...reviewed.values()].map(r => ({ assignee: r.assignee, n: 1 }));
+    }
+    for (const r of (revRows || [])) {
       const agent = canonicalAgent((r.assignee || "").trim());
       if (!teamForAgent(agent)) continue;
-      reviewedByAgent[agent] = (reviewedByAgent[agent] || 0) + 1;
+      reviewedByAgent[agent] = (reviewedByAgent[agent] || 0) + (Number(r.n) || 0);
     }
     CE_STATE.errors = errors;
     CE_STATE.reviewedByAgent = reviewedByAgent;
