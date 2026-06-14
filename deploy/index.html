@@ -2904,7 +2904,9 @@ function buildOverviewWhatChanged(ce) {
       items.push(`<div class="wc-item ${cls}"><span class="wc-arrow">${arrow}</span><span class="wc-text">${label}: <b>${fmtV(cur)}</b> vs <b>${fmtV(prev)}</b> last week${tail}</span></div>`);
     };
     push("Records tagged", T.tagged || 0, L.tagged || 0);
-    push("Records completed", T.total_completions || 0, L.total_completions || 0);
+    const _thisDays = Math.max(1, w.thisR.days_with_data || 1);
+    const _lastDays = Math.max(1, w.lastR.days_with_data || 1);
+    push("Avg set to Valid / day", Math.round((T.valid || 0) / _thisDays), Math.round((L.valid || 0) / _lastDays));
     if ((T.qa_reviews || 0) > 0 && (L.qa_reviews || 0) > 0)
       push("QA change rate", (T.qa_changes || 0) / T.qa_reviews * 100, (L.qa_changes || 0) / L.qa_reviews * 100, { rate: true, higherGood: false });
     if (ce && ce.teamWeek != null && ce.teamLastWk != null)
@@ -9981,6 +9983,7 @@ function _rollupClientSide(dayList) {
       flow_b: tt.flow_b_today || 0,
       flow_c: tt.flow_c_today || 0,
       total_completions: (tt.flow_a_today || 0) + (tt.flow_c_today || 0),
+      valid: (tt.valid_today_support || 0) + (tt.valid_today_io || 0),
       active_agents: activeAgents,
       by_team: Object.fromEntries(Object.entries(aggs.by_team || {}).map(([t, m]) => [t, m.tagged_today || 0])),
     };
@@ -9992,6 +9995,7 @@ function _rollupClientSide(dayList) {
     flow_b:            perDay.reduce((s, d) => s + d.flow_b, 0),
     flow_c:            perDay.reduce((s, d) => s + d.flow_c, 0),
     total_completions: perDay.reduce((s, d) => s + d.total_completions, 0),
+    valid:             perDay.reduce((s, d) => s + d.valid, 0),
     unique_imos_sum: snaps.reduce((s, [_, a]) => s + (a.totals?.unique_imos || 0), 0),
     qa_reviews:        snaps.reduce((s, [_, a]) => s + (a.qa_reviewers || []).reduce((x, r) => x + (r.reviews || 0), 0), 0),
     qa_changes:        snaps.reduce((s, [_, a]) => s + (a.qa_reviewers || []).reduce((x, r) => x + (r.changes || 0), 0), 0),
