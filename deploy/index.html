@@ -9646,21 +9646,20 @@ async function renderWeeklyBody(startISO, endISO) {
   const teamCtx = document.getElementById("weekly-team-chart");
   if (teamCtx) {
     const teams = Object.keys(STATE.roster || {}).sort();
-    const colors = ["#1a7a55", "#9a6a12", "#bb4338", "#3d63dd", "#7c5cbf"];
     if (STATE.charts["weekly-team-chart"]) STATE.charts["weekly-team-chart"].destroy();
     STATE.charts["weekly-team-chart"] = new Chart(teamCtx, {
       type: "bar",
       data: {
         labels: rollup.per_day.map(d => d.date),
-        datasets: teams.map((tname, i) => ({
+        datasets: teams.map((tname) => ({
           label: tname,
           data: rollup.per_day.map(d => d.by_team[tname] || 0),
-          backgroundColor: colors[i % colors.length],
+          backgroundColor: TEAM_COLORS[tname]?.hex || "#8A93A2",
         })),
       },
       options: {
         responsive: true, maintainAspectRatio: false,
-        scales: { x: { stacked: true }, y: { stacked: true } },
+        scales: { x: { stacked: true }, y: { stacked: true, beginAtZero: true, title: { display: true, text: "records tagged" } } },
         plugins: { legend: { position: "right" } },
       },
     });
@@ -9674,14 +9673,19 @@ async function renderWeeklyBody(startISO, endISO) {
       data: {
         labels: rollup.per_day.map(d => d.date),
         datasets: [
-          { type: "bar", label: "Flow A — Completed w/o QA",  data: rollup.per_day.map(d => d.flow_a), backgroundColor: "#c98a3f", stack: "comp" },
-          { type: "bar", label: "Flow C — Completed after QA", data: rollup.per_day.map(d => d.flow_c), backgroundColor: "#1a7a55", stack: "comp" },
-          { type: "line", label: "Flow B — QA reviewed",        data: rollup.per_day.map(d => d.flow_b), borderColor: "#3d63dd", backgroundColor: "#3d63dd", tension: 0.3 },
+          { type: "bar",  label: "Flow A — Completed w/o QA",   data: rollup.per_day.map(d => d.flow_a), backgroundColor: "#7B68EE", stack: "comp", yAxisID: "yComp" },
+          { type: "bar",  label: "Flow C — Completed after QA",  data: rollup.per_day.map(d => d.flow_c), backgroundColor: "#0EA56C", stack: "comp", yAxisID: "yComp" },
+          { type: "line", label: "Flow B — QA reviewed",         data: rollup.per_day.map(d => d.flow_b), borderColor: "#0691B5", backgroundColor: "#0691B5", borderWidth: 2.5, tension: 0.3, pointRadius: 3, yAxisID: "yRev" },
         ],
       },
       options: {
         responsive: true, maintainAspectRatio: false,
-        scales: { x: { stacked: true }, y: { stacked: true } },
+        interaction: { mode: "index", intersect: false },
+        scales: {
+          x: { stacked: true },
+          yComp: { stacked: true, position: "left",  beginAtZero: true, title: { display: true, text: "records completed" } },
+          yRev:  { position: "right", beginAtZero: true, grid: { display: false }, title: { display: true, text: "QA reviewed" } },
+        },
         plugins: { legend: { position: "right" } },
       },
     });
