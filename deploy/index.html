@@ -3190,7 +3190,7 @@ PAGE_RENDERERS.overview = function () {
     STATE.charts["chart-tagged-by-team"] = new Chart(ctx, {
       type: "bar",
       data: { labels, datasets: [{ label: "Tagged today", data: tagged, backgroundColor: labels.map(tm => TEAM_COLORS[tm]?.hex || "#7B68EE") }] },
-      options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } }
+      options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false }, tooltip: { callbacks: { label: c => `${c.parsed.y.toLocaleString()} tagged today` } } }, scales: { x: { grid: { display: false } }, y: { beginAtZero: true, ticks: { precision: 0 }, title: { display: true, text: "records tagged today" } } } }
     });
   }
 
@@ -3851,8 +3851,8 @@ PAGE_RENDERERS.experts = function () {
       data: { labels, datasets: [{ label: "Records", data, backgroundColor: _expHex(e.name), borderRadius: 4 }] },
       options: {
         responsive: true, maintainAspectRatio: false,
-        plugins: { legend: { display: false } },
-        scales: { x: { grid: { display: false } }, y: { beginAtZero: true, ticks: { precision: 0 } } },
+        plugins: { legend: { display: false }, tooltip: { callbacks: { label: c => `${c.parsed.y.toLocaleString()} records` } } },
+        scales: { x: { grid: { display: false } }, y: { beginAtZero: true, ticks: { precision: 0 }, title: { display: true, text: "records / day" } } },
       },
     });
   });
@@ -4006,8 +4006,9 @@ async function renderExpertsWeekly() {
       },
       options: {
         responsive: true, maintainAspectRatio: false,
-        plugins: { legend: { display: false } },
-        scales: { x: { stacked: true, grid: { display: false } }, y: { stacked: true, beginAtZero: true, ticks: { precision: 0 } } },
+        interaction: { mode: "index", intersect: false },
+        plugins: { legend: { display: false }, tooltip: { callbacks: { label: c => `${c.dataset.label}: ${c.parsed.y.toLocaleString()} reviewed` } } },
+        scales: { x: { stacked: true, grid: { display: false } }, y: { stacked: true, beginAtZero: true, ticks: { precision: 0 }, title: { display: true, text: "records reviewed" } } },
       },
     });
   }
@@ -4403,6 +4404,7 @@ function _cmpDrawCharts(A, B){
   const line = (data, color, dash) => ({ data, borderColor: color, backgroundColor: color, borderWidth: 2, borderDash: dash || [], pointRadius: 0, spanGaps: true, tension: 0.25 });
   const flat = (val, color) => ({ data: labels.map(() => val), borderColor: color, borderWidth: 1, borderDash: [5, 4], pointRadius: 0 });
   const mkOpts = () => ({ responsive: true, maintainAspectRatio: false, interaction: { mode: "index", intersect: false }, plugins: { legend: { labels: { font: { size: 10 }, boxWidth: 10 } } }, scales: { x: { ticks: { font: { size: 9 }, maxRotation: 0, autoSkip: true } }, y: { beginAtZero: true, ticks: { font: { size: 9 } } } } });
+  const mkOptsPct = () => { const o = mkOpts(); o.scales.y.ticks.callback = v => v + "%"; o.plugins.tooltip = { callbacks: { label: c => `${c.dataset.label}: ${Number(c.parsed.y).toFixed(2)}%` } }; return o; };
   for (const id of ["cmpProdChart", "cmpRejectChart"]) if (STATE.charts[id]) { STATE.charts[id].destroy(); delete STATE.charts[id]; }
   const prod = document.getElementById("cmpProdChart");
   if (prod) STATE.charts.cmpProdChart = new Chart(prod, { type: "line", data: { labels, datasets: [
@@ -4415,7 +4417,7 @@ function _cmpDrawCharts(A, B){
     Object.assign({ label: A.label }, line(A.stats.dailyReject, CMP_A_COLOR)),
     Object.assign({ label: B.label }, line(B.stats.dailyReject, CMP_B_COLOR)),
     Object.assign({ label: "Target 2%" }, flat(2, "#C76512")),
-  ] }, options: mkOpts() });
+  ] }, options: mkOptsPct() });
 }
 
 function renderComparisonPicker(){
@@ -7020,7 +7022,14 @@ PAGE_RENDERERS.intake = function () {
         labels: monthDays.map(x => x.d),
         datasets: [{ label: "Records uploaded (whole table)", data: monthDays.map(x => x.n), backgroundColor: "#7B68EE" }],
       },
-      options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: { legend: { display: false }, tooltip: { callbacks: { title: items => items[0].label, label: c => `${c.parsed.y.toLocaleString()} records` } } },
+        scales: {
+          x: { grid: { display: false }, ticks: { autoSkip: true, maxRotation: 0, callback: function(v){ const d = this.getLabelForValue(v); return d ? d.slice(8) : d; } } },
+          y: { beginAtZero: true, ticks: { precision: 0 }, title: { display: true, text: "records uploaded" } },
+        },
+      },
     });
   })();
 
@@ -7045,7 +7054,15 @@ PAGE_RENDERERS.intake = function () {
           { label: "relations_io",      data: monthDays.map(x => x.io ?? 0), backgroundColor: "#0EA56C" },
         ],
       },
-      options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true } }, plugins: { legend: { display: true } } },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        interaction: { mode: "index", intersect: false },
+        plugins: { legend: { display: true }, tooltip: { callbacks: { label: c => `${c.dataset.label}: ${c.parsed.y.toLocaleString()}` } } },
+        scales: {
+          x: { ticks: { autoSkip: true, maxRotation: 0, callback: function(v){ const d = this.getLabelForValue(v); return d ? d.slice(8) : d; } } },
+          y: { beginAtZero: true, title: { display: true, text: "records set to Valid" } },
+        },
+      },
     });
   })();
 };
