@@ -10051,6 +10051,7 @@ function renderPlThroughput(){
   const slaY=(H-(36/lmax)*(H-20)).toFixed(1);
   const avgThru=(totalC/14).toFixed(1); const allTat=days.flatMap(d=>tats[d]); const avgLead=allTat.length?Math.round(median(allTat)):null;
   cont.innerHTML=`
+    <div style="display:flex;justify-content:space-between;font-size:9px;color:var(--muted);margin-bottom:3px"><span style="color:#7B68EE">peak ${bmax} completions/day</span><span style="color:#0691B5">median TAT axis 0–${Math.round(lmax)}h</span></div>
     <svg viewBox="0 0 ${W} ${H+14}" style="width:100%;height:130px" preserveAspectRatio="none">
       ${bars}
       <line x1="0" y1="${slaY}" x2="${W}" y2="${slaY}" stroke="var(--bad)" stroke-width="1" stroke-dasharray="4 3"/>
@@ -11122,7 +11123,8 @@ function ceRenderTrendChart(dayCounts) {
 
 function ceSparkHtml(spark) {
   const max = Math.max(1, ...spark);
-  return `<div class="ce-spark" title="last 7 days: ${spark.join(", ")}">${spark.map(v => v > 0 ? `<span class="b" style="height:${Math.max(3, Math.round(v / max * 22))}px"></span>` : `<span class="b z"></span>`).join("")}</div>`;
+  const realMax = Math.max(0, ...spark);
+  return `<span style="display:inline-flex;align-items:center;gap:5px"><span class="ce-spark" title="last 7 days: ${spark.join(", ")}">${spark.map(v => v > 0 ? `<span class="b" style="height:${Math.max(3, Math.round(v / max * 22))}px"></span>` : `<span class="b z"></span>`).join("")}</span><span style="font-size:9px;color:var(--muted);white-space:nowrap">7d · max ${realMax}</span></span>`;
 }
 
 function ceRenderBoard(rosterAgents) {
