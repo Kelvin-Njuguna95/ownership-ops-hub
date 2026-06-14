@@ -6646,6 +6646,8 @@ PAGE_RENDERERS.intake = function () {
   const cIo        = tasksAll.filter(x => x.source_table === "relations_io"      || x.source_table === "mixed").length;
   const cSupport   = tasksAll.filter(x => x.source_table === "relations_support" || x.source_table === "mixed").length;
   const cSanctions = tasksAll.filter(x => x.is_sanctions).length;
+  const ioRecords      = tasksAll.filter(x => x.source_table === "relations_io"      || x.source_table === "mixed").reduce((s, x) => s + (x.total_records_in_cache || 0), 0);
+  const supportRecords = tasksAll.filter(x => x.source_table === "relations_support" || x.source_table === "mixed").reduce((s, x) => s + (x.total_records_in_cache || 0), 0);
   const tabsHtml = `
     <div class="intake-tabs" id="intakeTabs">
       <button data-if="all"        class="${filter === "all" ? "active" : ""}">All tasks <span class="ct">${cAll}</span></button>
@@ -6670,14 +6672,14 @@ PAGE_RENDERERS.intake = function () {
         <div class="delta">In progress &middot; across <b>${activeTeams.size}</b> team${activeTeams.size === 1 ? "" : "s"}<br>Total work <b>${activeTotalRecords.toLocaleString()}</b> records</div>
       </div>
       <div class="kpi k-orange">
-        <div class="kpi-top"><div class="label">Add-new-company</div><span class="kpi-icon">${KPI_ICONS.alert}</span></div>
-        <div class="value-row"><span class="value">${newCompaniesOpen}</span></div>
-        <div class="delta">Need 100% QA &middot; open queue<br>From this week's intake</div>
+        <div class="kpi-top"><div class="label">Relations IO records</div><span class="kpi-icon">${KPI_ICONS.layers}</span></div>
+        <div class="value-row"><span class="value">${ioRecords.toLocaleString()}</span></div>
+        <div class="delta">Across <b>${cIo}</b> task${cIo === 1 ? "" : "s"} &middot; <code>relations_io</code><br>Total records in cache</div>
       </div>
       <div class="kpi k-green">
-        <div class="kpi-top"><div class="label">Cleared today</div><span class="kpi-icon">${KPI_ICONS.check}</span></div>
-        <div class="value-row"><span class="value">${validToday.toLocaleString()}</span></div>
-        <div class="delta">Properly <b>${properlyToday.toLocaleString()}</b> &middot; dead <b>${deadToday.toLocaleString()}</b><br>${properlyPct}% of records tagged today properly completed</div>
+        <div class="kpi-top"><div class="label">Relations Support records</div><span class="kpi-icon">${KPI_ICONS.inbox}</span></div>
+        <div class="value-row"><span class="value">${supportRecords.toLocaleString()}</span></div>
+        <div class="delta">Across <b>${cSupport}</b> task${cSupport === 1 ? "" : "s"} &middot; <code>relations_support</code><br>Total records in cache</div>
       </div>
     </div>`;
 
