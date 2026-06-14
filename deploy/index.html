@@ -2904,9 +2904,9 @@ function buildOverviewWhatChanged(ce) {
       items.push(`<div class="wc-item ${cls}"><span class="wc-arrow">${arrow}</span><span class="wc-text">${label}: <b>${fmtV(cur)}</b> vs <b>${fmtV(prev)}</b> last week${tail}</span></div>`);
     };
     push("Records tagged", T.tagged || 0, L.tagged || 0);
-    const _thisDays = Math.max(1, w.thisR.days_with_data || 1);
-    const _lastDays = Math.max(1, w.lastR.days_with_data || 1);
-    push("Avg set to Valid / day", Math.round((T.valid || 0) / _thisDays), Math.round((L.valid || 0) / _lastDays));
+    const _thisDays = Math.max(1, w.thisWeekdays || 5);
+    const _lastDays = Math.max(1, w.lastWeekdays || 5);
+    push("Avg set to Valid / working day", Math.round((T.valid || 0) / _thisDays), Math.round((L.valid || 0) / _lastDays));
     if ((T.qa_reviews || 0) > 0 && (L.qa_reviews || 0) > 0)
       push("QA change rate", (T.qa_changes || 0) / T.qa_reviews * 100, (L.qa_changes || 0) / L.qa_reviews * 100, { rate: true, higherGood: false });
     if (ce && ce.teamWeek != null && ce.teamLastWk != null)
@@ -3467,10 +3467,11 @@ PAGE_RENDERERS.overview = function () {
         const lastMon = addDays(thisMon, -7);
         const thisWeekDays = range(thisMon, todayISO);
         const lastWeekDays = range(lastMon, addDays(lastMon, offset));
+        const weekdayCount = (days) => days.filter(d => { const wd = new Date(d + "T00:00:00Z").getUTCDay(); return wd >= 1 && wd <= 5; }).length;
         await loadWeeklySnapshots(lastMon, todayISO);
         const thisR = _rollupClientSide(thisWeekDays);
         const lastR = _rollupClientSide(lastWeekDays);
-        STATE.ovWoW = (thisR.days_with_data >= 1 && lastR.days_with_data >= 1) ? { thisR, lastR } : { insufficient: true };
+        STATE.ovWoW = (thisR.days_with_data >= 1 && lastR.days_with_data >= 1) ? { thisR, lastR, thisWeekdays: weekdayCount(thisWeekDays), lastWeekdays: weekdayCount(lastWeekDays) } : { insufficient: true };
       } catch (e) { console.error("overview WoW:", e); STATE.ovWoW = { insufficient: true }; }
       if (STATE.currentPage === "overview") PAGE_RENDERERS.overview();
     })();
