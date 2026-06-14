@@ -716,6 +716,12 @@
   .ct-lb .who .s { font-size:10.5px; color:var(--muted); }
   .ct-heat { display:flex; flex-wrap:wrap; gap:3px; }
   .ct-heat span { width:9px; height:9px; border-radius:2px; }
+  .ct-batches { display:flex; align-items:center; gap:8px; min-width:0; }
+  .ct-batchnum { font-weight:600; min-width:20px; }
+  .ct-batchbar { display:flex; height:10px; flex:1; min-width:54px; border-radius:3px; overflow:hidden; background:var(--soft); }
+  .ct-batchbar > span { display:block; }
+  .ct-batchlegend { display:flex; flex-wrap:wrap; gap:14px; font-size:11px; color:var(--muted); margin:2px 2px 10px; }
+  .ct-batchlegend i { display:inline-block; width:10px; height:10px; border-radius:2px; margin-right:5px; vertical-align:middle; }
 
   /* ---- Task Supply / Runway (redesign — visual layout) ------------------ */
   /* Header chrome row 2: static VIEW/MONTH chips (left) + freshness chips (right). */
@@ -8993,12 +8999,13 @@ function renderCompletedLeaderboard(){
   let revs=Object.values(byRev).sort((a,b)=>b.reviewed-a.reviewed).slice(0,15);
   const totalReviewed=Object.values(byRev).reduce((s,o)=>s+o.reviewed,0);
   const avgCov=last30.length? last30.reduce((s,t)=>s+(t.latest.qa_coverage_pct||0),0)/last30.length:0;
-  const stColor={qamet:"#0EA56C",completed:"#16A34A",perfect:"#7B68EE",breach:"#F9943B",resub:"#F9943B"};
-  const lbRows=revs.map((r,i)=>{ const rate=r.reviewed>0?(r.changed/r.reviewed*100):0; const cov=r.batches.length?100*r.batches.filter(b=>b==="qamet"||b==="perfect").length/r.batches.length:0; const heat=r.batches.slice(0,24).map(b=>`<span style="background:${stColor[b]||'#8a93a3'}"></span>`).join("");
-    return `<div class="ct-lb"><span class="rk">${i+1}</span><span class="who"><span class="task-avatar" style="background:var(--accent)">${esc(ctInitials(r.name))}</span><span style="min-width:0"><span class="nm">${esc(r.name)}</span> <span class="s">&middot; BO QA reviewer</span></span></span><span><span class="ct-num">${r.reviewed.toLocaleString()}</span> <span class="small-mono">${(r.reviewed/Math.max(1,r.batches.length)).toFixed(0)} / batch</span></span><span class="ct-num" style="color:${rate>30?'var(--bad)':'var(--ink)'}">${rate.toFixed(1)}%</span><span class="ct-heat" title="${r.batches.length} batches">${heat}</span><span class="ct-num">${cov.toFixed(1)}%</span><span class="ct-num">—</span></div>`; }).join("")||'<div class="empty" style="padding:18px">No QA reviewer history in the last 30 days.</div>';
+  const BATCH_CATS=[["perfect","Perfect","#7B68EE"],["qamet","QA met","#0EA56C"],["completed","Low coverage","#8A93A2"],["breach","TAT breach","#F9943B"]];
+  const lbRows=revs.map((r,i)=>{ const rate=r.reviewed>0?(r.changed/r.reviewed*100):0; const cov=r.batches.length?100*r.batches.filter(b=>b==="qamet"||b==="perfect").length/r.batches.length:0; const n=r.batches.length; const counts={}; for(const b of r.batches) counts[b]=(counts[b]||0)+1; const seg=BATCH_CATS.map(([k,lab,col])=>{ const c=counts[k]||0; return c>0?`<span style="width:${(c/Math.max(1,n)*100).toFixed(1)}%;background:${col}" title="${lab}: ${c}"></span>`:""; }).join(""); const batchCell=n>0?`<span class="ct-batchnum">${n}</span><span class="ct-batchbar">${seg}</span>`:`<span class="small-mono" style="color:var(--muted)">—</span>`;
+    return `<div class="ct-lb"><span class="rk">${i+1}</span><span class="who"><span class="task-avatar" style="background:var(--accent)">${esc(ctInitials(r.name))}</span><span style="min-width:0"><span class="nm">${esc(r.name)}</span> <span class="s">&middot; BO QA reviewer</span></span></span><span><span class="ct-num">${r.reviewed.toLocaleString()}</span> <span class="small-mono">${(r.reviewed/Math.max(1,r.batches.length)).toFixed(0)} / batch</span></span><span class="ct-num" style="color:${rate>30?'var(--bad)':'var(--ink)'}">${rate.toFixed(1)}%</span><span class="ct-batches" title="${r.batches.length} batches touched">${batchCell}</span><span class="ct-num">${cov.toFixed(1)}%</span><span class="ct-num">—</span></div>`; }).join("")||'<div class="empty" style="padding:18px">No QA reviewer history in the last 30 days.</div>';
 
   document.getElementById("ctLeaderboard").innerHTML=`
     <div class="ct-section-head"><h2>QA reviewer <em>leaderboard</em> &middot; last 30 days</h2><span class="meta">${revs.length} reviewers &middot; ${totalReviewed.toLocaleString()} reviewed &middot; avg coverage ${avgCov.toFixed(1)}%</span></div>
+    <div class="ct-batchlegend"><span>Batches touched:</span><span><i style="background:#7B68EE"></i>Perfect (100% cov)</span><span><i style="background:#0EA56C"></i>QA met (≥60%)</span><span><i style="background:#8A93A2"></i>Low coverage (&lt;60%)</span><span><i style="background:#F9943B"></i>TAT breach</span></div>
     <div class="panel" style="padding:6px 10px 10px">
       <div class="ct-lb head"><span>#</span><span>Reviewer</span><span>Reviewed · 30d</span><span>Reject</span><span>Batches touched</span><span>Coverage</span><span>Median QA TAT</span></div>
       ${lbRows}
