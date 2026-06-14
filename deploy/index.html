@@ -708,7 +708,7 @@
   .ct-tatrow .bar > span { display:block; height:100%; border-radius:4px; }
   .ct-tatrow .v { text-align:right; font-weight:600; color:var(--ink); font-variant-numeric:tabular-nums; }
   /* leaderboard */
-  .ct-lb { display:grid; grid-template-columns:28px minmax(160px,2fr) 1.1fr 0.8fr 1.4fr 0.9fr 1fr; gap:12px; align-items:center; padding:9px 10px; border-bottom:1px solid var(--border); font-size:12px; }
+  .ct-lb { display:grid; grid-template-columns:28px minmax(160px,2fr) 1.1fr 0.8fr 1.4fr 0.9fr; gap:12px; align-items:center; padding:9px 10px; border-bottom:1px solid var(--border); font-size:12px; }
   .ct-lb.head { font-size:10.5px; text-transform:uppercase; letter-spacing:0.04em; color:var(--muted); font-weight:700; }
   .ct-lb .rk { font-weight:700; color:var(--muted); font-variant-numeric:tabular-nums; }
   .ct-lb .who { display:flex; align-items:center; gap:9px; min-width:0; }
@@ -1524,7 +1524,7 @@
   .controls-row { display: flex; gap: 8px; align-items: center; margin-bottom: 14px; flex-wrap: wrap; }
   select { font-family: inherit; font-size: 13px; padding: 7px 12px; border: 1px solid var(--border); background: var(--surface); border-radius: var(--radius-sm); color: var(--ink); cursor: pointer; box-shadow: var(--shadow-sm); transition: border-color 0.15s ease, box-shadow 0.15s ease; }
   select:hover { border-color: #d4d8e0; }
-  select:focus-visible, button.btn:focus-visible { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px rgba(61,99,221,0.18); }
+  select:focus-visible, button.btn:focus-visible { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px rgba(123,104,238,0.18); }
 
   .stub-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-md); padding: 28px 24px; text-align: center; box-shadow: var(--shadow-sm); }
   .stub-card h2 { margin: 0 0 8px; font-size: 18px; letter-spacing: -0.01em; }
@@ -1552,7 +1552,7 @@
   .login-card input[type=password] { width: 100%; font-family: inherit; font-size: 14px; padding: 10px 12px; border: 1px solid var(--border); border-radius: var(--radius-sm); margin-bottom: 10px; transition: border-color 0.15s ease, box-shadow 0.15s ease; }
   .login-card input[type=email]:focus,
   .login-card input[type=text]:focus,
-  .login-card input[type=password]:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px rgba(61,99,221,0.18); }
+  .login-card input[type=password]:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px rgba(123,104,238,0.18); }
   .login-card input#loginPin { letter-spacing: 0.4em; text-align: center; font-family: ui-monospace, Menlo, monospace; font-size: 18px; }
   .login-tabs { display: flex; gap: 0; margin-bottom: 16px; border-bottom: 1px solid var(--border); }
   .login-tab { flex: 1; background: none; border: 0; padding: 10px 12px; font-family: inherit; font-size: 14px; color: var(--muted); cursor: pointer; border-bottom: 2px solid transparent; margin-bottom: -1px; transition: color 0.15s ease, border-color 0.15s ease; }
@@ -1844,7 +1844,7 @@
         <input type="month" id="viewMonth" />
       </div>
       <div class="controls">
-        <span id="syncFreshness" class="pill" title="Last time sync_to_supabase.py uploaded data"><span class="dot"></span><span id="syncFreshnessText">no sync yet</span></span>
+        <span id="syncFreshness" class="pill" title="Last time the data was refreshed"><span class="dot"></span><span id="syncFreshnessText">no sync yet</span></span>
         <span id="freshness" class="pill"><span class="dot"></span><span id="freshnessText">loading…</span></span>
         <button class="btn" id="refreshBtn" title="Re-read JSON files (does not re-poll Airtable)">Refresh</button>
         <span id="userPill" class="user-pill" style="display:none"><span id="userPillEmail"></span><button class="signout" id="signoutBtn">Sign out</button></span>
@@ -1898,15 +1898,15 @@
 // ============================================================================
 if (window.Chart) { try {
   const CD = Chart.defaults;
-  CD.font.family = "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif";
+  CD.font.family = "'Geist', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif";
   CD.font.size = 12;
-  CD.color = "#69707d";                 /* --muted: ticks, legend, default text */
-  CD.borderColor = "#e7e9ef";           /* --border */
+  CD.color = "#8B92AB";                 /* --muted: ticks, legend, default text */
+  CD.borderColor = "#E5E8F0";           /* --border */
   CD.animation.duration = 320;
   CD.animation.easing = "easeOutQuart";
   CD.layout.padding = 8;
   /* Legend — refined, point-style markers, comfortable padding */
-  Object.assign(CD.plugins.legend.labels, { usePointStyle: true, pointStyle: "circle", boxWidth: 7, boxHeight: 7, padding: 14, color: "#1b2027", font: { size: 11 } });
+  Object.assign(CD.plugins.legend.labels, { usePointStyle: true, pointStyle: "circle", boxWidth: 7, boxHeight: 7, padding: 14, color: "#1B2240", font: { size: 11 } });
   /* Tooltip — modern dark, rounded, generous padding */
   Object.assign(CD.plugins.tooltip, { backgroundColor: "rgba(20,24,31,0.95)", titleColor: "#f4f6fa", bodyColor: "#cbd2dd", borderColor: "rgba(255,255,255,0.06)", borderWidth: 1, padding: 10, cornerRadius: 8, boxPadding: 5, usePointStyle: true, titleFont: { size: 12, weight: "600" }, bodyFont: { size: 12 } });
   /* Bars — rounded tops, sensible thickness/spacing */
@@ -1918,9 +1918,9 @@ if (window.Chart) { try {
   Object.assign(CD.elements.arc, { borderWidth: 2, borderColor: "#ffffff" });
   /* Axes & gridlines last — clean Stripe-analytics feel: faint horizontal guides, no
      heavy axis border line, tidy ticks. Defensive across Chart.js v4 scale-default paths. */
-  CD.scale.grid = Object.assign(CD.scale.grid || {}, { color: "rgba(27,32,39,0.06)", tickColor: "rgba(27,32,39,0.06)", drawTicks: false });
+  CD.scale.grid = Object.assign(CD.scale.grid || {}, { color: "rgba(27,34,64,0.06)", tickColor: "rgba(27,34,64,0.06)", drawTicks: false });
   CD.scale.border = Object.assign(CD.scale.border || {}, { display: false });
-  CD.scale.ticks = Object.assign(CD.scale.ticks || {}, { color: "#69707d", padding: 8, font: { size: 11 } });
+  CD.scale.ticks = Object.assign(CD.scale.ticks || {}, { color: "#8B92AB", padding: 8, font: { size: 11 } });
 } catch (e) { /* never let chart-default styling break the app */ } }
 
 // ============================================================================
@@ -2077,12 +2077,23 @@ function unwrapJson(r) {
 // MODE: deployed Supabase build — no Cowork in production.
 const HAS_COWORK = false;
 
-// Single source of truth for the agent daily productivity floor (tags/day).
-// Owner decision 2026-06-10: 420 for ALL agent surfaces (Overview, Hourly,
-// Daily Intake, Scorecard, Comparison). QAs have NO floor/KPI — never apply
-// this to QA reviewers. Deliberately NOT read from ww_audit_log.json config
-// (legacy, unmaintained, still says 280).
-const AGENT_FLOOR = 420;
+// Single source of truth for operational targets/thresholds. These are FIVE
+// DISTINCT metrics — do not merge them:
+//   rejectRatePct           — QA reject-rate target line (Comparison reject chart)
+//   changeRateAlarmPct      — QA change-rate alarm ceiling + Overview reject-threshold default
+//   qaCoveragePct           — QA coverage target (Completed Tasks)
+//   productivityFloorPerAgent — agent daily tag floor (QAs have NO floor — never apply)
+//   tatSlaHours             — turnaround SLA (P90, Completed Tasks)
+//   nsSamplingPct / sanctionsSamplingPct — sampling-rate target fallbacks
+// Where STATE.v2 carries the real value (reject_threshold, sampling targets),
+// that stays the primary source; TARGETS.* is only the fallback default.
+const TARGETS = { rejectRatePct: 2, changeRateAlarmPct: 30, qaCoveragePct: 60, productivityFloorPerAgent: 420, tatSlaHours: 120, nsSamplingPct: 25, sanctionsSamplingPct: 50 };
+
+// Agent daily productivity floor (tags/day). Owner decision 2026-06-10: 420 for
+// ALL agent surfaces (Overview, Hourly, Daily Intake, Scorecard, Comparison).
+// QAs have NO floor/KPI — never apply this to QA reviewers. Deliberately NOT read
+// from ww_audit_log.json config (legacy, unmaintained, still says 280).
+const AGENT_FLOOR = TARGETS.productivityFloorPerAgent;
 
 // Read a JSON file from Supabase Storage's public URL.
 // Bucket paths used:
@@ -2390,7 +2401,7 @@ async function loadAll() {
   STATE.legacy = STATE.agg ? { by_agent: STATE.agg.by_agent || {}, by_team: STATE.agg.by_team || {}, totals: STATE.agg.totals || {}, date: STATE.agg.date } : null;
 
   if (!STATE.v2) {
-    document.getElementById("pageContainer").innerHTML = `<div class="page"><div class="empty-state"><div class="title">No data loaded</div>Could not read <code>daily_aggregates.json</code> from Supabase Storage. Run <code>python3 sync_to_supabase.py</code> from the project root and refresh.</div></div>`;
+    document.getElementById("pageContainer").innerHTML = `<div class="page"><div class="empty-state"><div class="title">No data loaded</div>Live data isn't available right now. It will reappear at the next scheduled refresh.</div></div>`;
     return false;
   }
 
@@ -2781,7 +2792,7 @@ PAGE_RENDERERS.useraudit = function () {
 PAGE_RENDERERS.overview = function () {
   const root = document.getElementById("page-overview");
   const t = STATE.v2?.totals;
-  if (!t) { root.innerHTML = noDataHtml("aggregates_v2 not in daily_aggregates.json — run aggregate_v2.py"); return; }
+  if (!t) { root.innerHTML = noDataHtml("Live data isn.t available right now. It will reappear at the next scheduled refresh."); return; }
 
   const FLOOR = AGENT_FLOOR;
   const TEAM_FLOOR = FLOOR * 4;  // 1,680 — same team benchmark regardless of headcount (even 5-agent teams)
@@ -2837,11 +2848,11 @@ PAGE_RENDERERS.overview = function () {
 
   // KPI bar values
   const sampNsPct = t.sampling_non_sanctions_pct || 0;
-  const sampNsTgt = t.sampling_target_non_sanctions_pct || 25;
+  const sampNsTgt = t.sampling_target_non_sanctions_pct || TARGETS.nsSamplingPct;
   const sampNsRatio = Math.min(1, sampNsTgt > 0 ? sampNsPct / sampNsTgt : 0);
   const sampNsDelta = sampNsPct - sampNsTgt;
   const rejectRate = t.reject_rate || 0;
-  const rejectTh = t.reject_threshold || 30;
+  const rejectTh = t.reject_threshold || TARGETS.changeRateAlarmPct;
   const rejectRatio = Math.min(1, rejectTh > 0 ? rejectRate / rejectTh : 0);
 
   const kpiHeroHtml = `
@@ -2946,7 +2957,7 @@ PAGE_RENDERERS.overview = function () {
 
   // Verdict checklist
   const sampSPct = t.sampling_sanctions_pct || 0;
-  const sampSTgt = t.sampling_target_sanctions_pct || 50;
+  const sampSTgt = t.sampling_target_sanctions_pct || TARGETS.sanctionsSamplingPct;
   const sampSStatus = (t.tagged_today_sanctions || 0) === 0 ? "pass" : (sampSPct >= sampSTgt ? "pass" : "fail");
   const teamAlertsCount = (() => { try { return computeTeamAlerts().length; } catch { return 0; } })();
   const verdictChecks = [
@@ -3013,7 +3024,7 @@ PAGE_RENDERERS.overview = function () {
             </div>`).join("")}
         </div>
       `}
-      <div class="flags-foot"><span class="num">${totalChanged}</span> changed of <span class="num">${totalInspected}</span> reviewed today · per-agent counts from <code>by_agent.qa_changed_today</code> · changed-record list isn't emitted, so only the count is shown.</div>
+      <div class="flags-foot"><span class="num">${totalChanged}</span> changed of <span class="num">${totalInspected}</span> reviewed today · per-agent change counts shown; the individual changed records aren't itemized here.</div>
     </div>`;
 
   // Teams vs floor
@@ -3069,7 +3080,7 @@ PAGE_RENDERERS.overview = function () {
   const scorecardHtml = STATE.completions == null ? `
     <div class="panel scorecard-panel">
       <h3>Agent productivity <em>today</em> <span class="meta"><b>${agentCount}</b> agents</span></h3>
-      <div class="alert-row warn" style="margin:12px 0 4px"><span class="icon">!</span><div><strong>Per-agent completion data unavailable</strong> — the ownership_completions read failed or hasn't loaded, so agent counts and the above/at-risk split can't be shown (zeros here would be misleading). Check the console for the load error, then hit Refresh to retry.</div></div>
+      <div class="alert-row warn" style="margin:12px 0 4px"><span class="icon">!</span><div><strong>Per-agent completion data unavailable</strong> — per-agent completion data isn't available for this period, so agent counts and the above/at-risk split can't be shown. Hit Refresh to retry.</div></div>
     </div>` : `
     <div class="panel scorecard-panel">
       <h3>Agent productivity <em>today</em> <span class="meta"><b>${agentCount}</b> agents &middot; <b>${cAbove}</b> met ${FLOOR} &middot; <b>${cAtRisk}</b> at risk</span></h3>
@@ -3193,6 +3204,7 @@ PAGE_RENDERERS.overview = function () {
   const tagged = labels.map(tm => byTeam[tm]?.tagged_today || 0);
   const ctx = document.getElementById("chart-tagged-by-team");
   if (ctx) {
+    destroyChart("chart-tagged-by-team");   // overview re-renders in place (scorecard tabs, 8-day async) — avoid leaking the prior instance
     STATE.charts["chart-tagged-by-team"] = new Chart(ctx, {
       type: "bar",
       data: { labels, datasets: [{ label: "Tagged today", data: tagged, backgroundColor: labels.map(tm => TEAM_COLORS[tm]?.hex || "#7B68EE") }] },
@@ -3401,8 +3413,8 @@ function _agRecords(name){
 PAGE_RENDERERS.agent = function () {
   const root = document.getElementById("page-agent");
   const D = _agData();
-  if (!D.v2) { root.innerHTML = noDataHtml("aggregates_v2 not in daily_aggregates.json — run aggregate_v2.py"); return; }
-  if (!D.agents.length) { root.innerHTML = `<div class="page-head"><div><div class="page-eyebrow">People</div><h1 class="page-title">Agent <em>scorecard</em></h1></div></div><div class="empty-state"><div class="title">No agent data in aggregates_v2</div>No records have an ownership-team assignee in the current cache window.</div>`; return; }
+  if (!D.v2) { root.innerHTML = noDataHtml("Live data isn.t available right now. It will reappear at the next scheduled refresh."); return; }
+  if (!D.agents.length) { root.innerHTML = `<div class="page-head"><div><div class="page-eyebrow">People</div><h1 class="page-title">Agent <em>scorecard</em></h1></div></div><div class="empty-state"><div class="title">No agent data available</div>No records have an ownership-team assignee in the current cache window.</div>`; return; }
   if (!STATE.agentSelected || !D.byAgent[STATE.agentSelected]) STATE.agentSelected = D.agents[0].name;  // default: highest tagged
 
   const headDate = (() => { const d = D.v2.date; if (!d) return ""; const dt = new Date(d + "T00:00:00"); return isNaN(dt) ? d : dt.toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short", year: "numeric" }); })();
@@ -3570,9 +3582,9 @@ function renderAgentBody(name){
       <div class="panel"><h3>Hourly tagging <span class="meta">today${completionsReady ? ` &middot; ${hSum.toLocaleString()} observed` : ""}</span></h3>
         ${completionsReady
           ? `<div class="qh-hbars">${hourlyBars}</div>
-        <div class="tl-pfoot">Records this agent's batch first observed in BO QA per EAT hour (source: <code>ownership_completions</code>, bucketed by detector observation time — accurate to ≈5 min at the 5-min poll cadence; bursts at finalization shift the apparent peak slightly later than real tag time).</div>`
+        <div class="tl-pfoot">Records this agent's batch first observed in BO QA per EAT hour (observation time, accurate to ≈5 min at the 5-min refresh cadence; bursts at finalization shift the apparent peak slightly later than real tag time).</div>`
           : completionsFailed
-          ? `<div class="empty-state" style="margin:6px 0"><div class="title">Couldn't load completions</div>The <code>ownership_completions</code> table could not be read this session.</div>`
+          ? `<div class="empty-state" style="margin:6px 0"><div class="title">Couldn't load completions</div>Completion data isn't available for this period.</div>`
           : `<div class="empty-state" style="margin:6px 0"><div class="title">Loading hourly tagging activity…</div>Fetching per-record completions.</div>`}
       </div>
       <div class="panel"><h3>QA decisions · today <span class="meta">${sel.insp.toLocaleString()} reviewed</span></h3>
@@ -3589,25 +3601,25 @@ function renderAgentBody(name){
       <div class="panel"><h3>Sanctions split <span class="meta">today &middot; tagged</span></h3>
         <div class="tl-prow"><span class="who" style="flex:0 0 90px">Sanctions</span><span class="tl-barwrap"><span style="width:${(sanc / sTot * 100).toFixed(0)}%;background:var(--bad)"></span></span><span class="ct">${sanc.toLocaleString()}</span></div>
         <div class="tl-prow"><span class="who" style="flex:0 0 90px">Standard</span><span class="tl-barwrap"><span style="width:${(nonSanc / sTot * 100).toFixed(0)}%;background:var(--accent)"></span></span><span class="ct">${nonSanc.toLocaleString()}</span></div>
-        <div class="tl-pfoot">Substitutes TOP/MID/BOT stratum (not tracked) with the real sanctions/standard split.</div>
+        <div class="tl-pfoot">Shows the sanctions vs standard split.</div>
       </div>
     </div>
 
     <div class="tl-drow" style="grid-template-columns:1fr 1fr">
       <div class="panel"><h3>Reminder backlog <span class="meta">open ${remOpen} &middot; overdue ${remOver}</span></h3>
         ${(remOpen || remOver) ? `<div style="display:flex;gap:18px;margin:6px 0"><div><div class="tl-bigpct">${remOpen}</div><div class="small-mono">open reminders</div></div><div><div class="tl-bigpct" style="color:var(--bad)">${remOver}</div><div class="small-mono">overdue</div></div></div>` : '<div class="small-mono" style="padding:8px 0">No open reminders for this agent.</div>'}
-        <div class="tl-pfoot">Counts from <code>by_agent.reminder_open/overdue</code>. Per-record reminder rows (company / IMO / days-open) aren't emitted in <code>aggregates_v2</code> &middot; cleared last 30d —.</div>
+        <div class="tl-pfoot">Reminder counts shown; per-record reminder detail isn't itemized here.</div>
       </div>
       <div class="panel"><h3>Quality flags today <span class="meta">QA-changed</span></h3>
         <div style="display:flex;align-items:baseline;gap:10px;margin:6px 0"><span class="tl-bigpct" style="color:${sel.chg > 0 ? 'var(--bad)' : 'var(--good)'}">${sel.chg}</span><span class="small-mono">records QA marked changed today</span></div>
-        <div class="tl-pfoot">Real count from <code>by_agent.qa_changed_today</code> (${sel.chg} of ${sel.insp.toLocaleString()} reviewed). The per-record changed list isn't carried in the emitted cohort arrays, so only the count is shown.</div>
+        <div class="tl-pfoot">Change count: ${sel.chg} of ${sel.insp.toLocaleString()} reviewed. Individual changed records aren't itemized here.</div>
       </div>
     </div>
 
     <div class="panel">
       <div class="tl-list-head"><h2>Tagged records <span class="meta">emitted cohorts</span></h2><span class="meta">showing ${recs.length} of ${totalRecs} in add-new-company / case / pending cohorts</span></div>
       <table class="sortable ag-table"><thead><tr><th>When</th><th>IMO</th><th>Company</th><th>Scenario</th><th>Team</th><th>QA reviewer</th><th>Status</th></tr></thead><tbody>${recRows}</tbody></table>
-      <div class="tl-pfoot">${totalRecs.toLocaleString()} of this agent's records appear in the emitted record cohorts (not the full ${sel.tagged.toLocaleString()}-record tag log — <code>aggregates_v2</code> doesn't carry a full per-agent record list). Tag timestamps aren't emitted, so When is —.</div>
+      <div class="tl-pfoot">${totalRecs.toLocaleString()} of this agent's records appear in the available record detail (not the full ${sel.tagged.toLocaleString()}-record tag log — a full per-agent record list isn't itemized here). Tag timestamps aren't itemized, so When is —.</div>
     </div>`;
 
   document.getElementById("agSwitch").addEventListener("change", (e) => { STATE.agentSelected = e.target.value; localStorage.setItem("wqa.agent", e.target.value); renderAgentBody(e.target.value); });
@@ -4151,7 +4163,7 @@ function _cmpAgentUniverse(){
 
 PAGE_RENDERERS.comparison = function () {
   const root = document.getElementById("page-comparison");
-  if (!STATE.v2?.by_agent && !STATE.v2?.by_team){ root.innerHTML = noDataHtml("by_agent / by_team not in aggregates_v2 — run aggregate_v2.py"); return; }
+  if (!STATE.v2?.by_agent && !STATE.v2?.by_team){ root.innerHTML = noDataHtml("Live data isn.t available right now. It will reappear at the next scheduled refresh."); return; }
   const cs = COMPARISON_STATE;
   if (!["agent", "team", "period"].includes(cs.mode)) cs.mode = "agent";
   if (![7, 30, 90].includes(cs.range)) cs.range = 30;
@@ -4422,7 +4434,7 @@ function _cmpDrawCharts(A, B){
   if (rej) STATE.charts.cmpRejectChart = new Chart(rej, { type: "line", data: { labels, datasets: [
     Object.assign({ label: A.label }, line(A.stats.dailyReject, CMP_A_COLOR)),
     Object.assign({ label: B.label }, line(B.stats.dailyReject, CMP_B_COLOR)),
-    Object.assign({ label: "Target 2%" }, flat(2, "#C76512")),
+    Object.assign({ label: `Target ${TARGETS.rejectRatePct}%` }, flat(TARGETS.rejectRatePct, "#C76512")),
   ] }, options: mkOptsPct() });
 }
 
@@ -4495,8 +4507,8 @@ PAGE_RENDERERS.hourly = function () {
   const loadFailed = STATE.completions === null;
   if (noRows || loadFailed) {
     const msg = loadFailed
-      ? `Could not read <code>ownership_completions</code> from Supabase. Check that the table exists (run <code>db/migrations/001_ownership_completions.sql</code>) and that the anon role has SELECT access.`
-      : `No completions detected yet for <strong>${esc(date)}</strong> — first detector run pending. Each poll cycle of <code>completion_detector.py</code> stamps newly-complete records; the heatmap populates as those land.`;
+      ? `Completion data isn't available for this period.`
+      : `No completions detected yet for <strong>${esc(date)}</strong> — the heatmap populates as records are completed through the day.`;
     root.innerHTML = pageHeadHtml + `
       <div class="panel">
         <div class="empty-state">
@@ -4535,7 +4547,7 @@ PAGE_RENDERERS.hourly = function () {
       <h3>Per-agent &middot; per-hour heatmap <span class="pill-inline" style="background:var(--warn-bg);color:var(--warn);margin:0 6px" title="Cells are bucketed by detector observation time (completed_at), not the agent's real tag time. The detector bulk-stamps every record it first sees in a 5-min poll cycle, so a finalization burst can shift the apparent peak an hour later than when tagging actually happened.">ⓘ observation time</span><span class="meta">Observation time &middot; 06:00&ndash;23:00 EAT &middot; rows colour-coded by team &middot; bursts may shift the apparent peak later than real tag time</span><button id="hourlyRefreshBtn" class="btn" style="margin-left:auto;">↻ Refresh</button></h3>
       <div id="hourlyGrid"></div>
       <div id="hourlyLegend" class="hourly-legend"></div>
-      <div class="footer-note">Cells = records each agent moved waiting→tagged during that EAT hour (source: <code>ownership_completions</code>, bucketed by detector observation time — accurate to ≈5 min at the 5-min poll cadence). The Total covers all 24 hours; the grid shows the 06:00–23:00 business window (* = the agent also has rows tagged outside it, e.g. overnight). Data auto-refreshes when the browser tab regains focus; tap Refresh to fetch immediately.</div>
+      <div class="footer-note">Cells = records each agent moved waiting→tagged during that EAT hour (observation time, accurate to ≈5 min at the 5-min refresh cadence). The Total covers all 24 hours; the grid shows the 06:00–23:00 business window (* = the agent also has rows tagged outside it, e.g. overnight). Data auto-refreshes when the browser tab regains focus; tap Refresh to fetch immediately.</div>
     </div>
     <div id="hourlyInsights" class="insights-row"></div>`;
 
@@ -4901,7 +4913,7 @@ PAGE_RENDERERS.qa_hourly = function () {
   if(STATE.qhSelectedReviewer===undefined) STATE.qhSelectedReviewer = null;
   const D = _qhCompute();
   const v2 = D.v2;
-  if(!v2){ root.innerHTML = noDataHtml("aggregates_v2 not in daily_aggregates.json — run aggregate_v2.py"); return; }
+  if(!v2){ root.innerHTML = noDataHtml("Live data isn.t available right now. It will reappear at the next scheduled refresh."); return; }
 
   const hasHourly = D.reviewers.length>0;
   // "Reviews today" is now the observation-time grand total (sum of observed
@@ -5006,12 +5018,12 @@ PAGE_RENDERERS.qa_hourly = function () {
     <div class="panel">
       <div class="tl-list-head"><h2>Reviewer &times; hour heatmap <span class="meta">today</span></h2><span class="meta"><b>${reviewedStr}</b> reviews &middot; ${totalRev} reviewers${peakHour!=null?` &middot; peak ${String(peakHour).padStart(2,'0')}:00 (${peakRate})`:""} &middot; now ${curRate}/h</span></div>
       <div id="qhHeatmap"></div>
-      <div class="footer-note">Cells = reviews each QA was first observed completing that EAT hour — observation time from <code>ownership_qa_sampling.reviewed_at</code> (append-only, first-seen), NOT the re-stampable Airtable <code>qa_status_ts</code>. Counts are floored to the first successful poll cycle after a gap (≈5-min cadence), so a burst during a failed-poll stretch lands at the next cycle. Tinted per reviewer (shaded by volume) — QA reviewers aren't team-mapped in <code>aggregates_v2</code>. Bordered = peak hour; dashed = idle this hour; striped = future. Window 06:00–23:00 EAT (* = reviews outside it).</div>
+      <div class="footer-note">Cells = reviews each QA was first observed completing that EAT hour (observation time, first-seen). Counts are floored to the first refresh cycle after a gap (≈5-min cadence), so a burst during an interrupted stretch lands at the next cycle. Tinted per reviewer (shaded by volume). Bordered = peak hour; dashed = idle this hour; striped = future. Window 06:00–23:00 EAT (* = reviews outside it).</div>
     </div>
     <div class="panel">
       <h3>QA hourly tagging <span class="meta">team QAs &middot; today</span></h3>
       <div id="qaTaggingGrid"></div>
-      <div class="footer-note">Tagging by team QAs (from <code>ownership_completions</code>, same source as Agent Hourly Output) — shown here because QAs aren't in the per-agent tagging views. Observation time, EAT hours.</div>
+      <div class="footer-note">Tagging by team QAs (same source as Agent Hourly Output) — shown here because QAs aren't in the per-agent tagging views. Observation time, EAT hours.</div>
     </div>
     <div class="tl-drow" style="grid-template-columns:1fr 1fr">
       <div class="panel"><h3>Idle reviewers <span class="meta">${idleN} idle &middot; threshold 60m</span></h3>
@@ -5083,7 +5095,7 @@ function renderQaTaggingHeatmap() {
   const failed = !ready && STATE.completionsDate === (STATE.v2?.date || null);
   if (!ready) {
     host.innerHTML = failed
-      ? `<div class="empty-state"><div class="title">Couldn't load tagging data</div>The <code>ownership_completions</code> table could not be read this session.</div>`
+      ? `<div class="empty-state"><div class="title">Couldn't load tagging data</div>Tagging data isn't available for this period.</div>`
       : `<div class="empty"><span class="spinning-icon">↻</span> Loading tagging data…</div>`;
     return;
   }
@@ -5173,7 +5185,7 @@ function renderQaHeatmap(){
     return;
   }
   if(D.reviewFailed){
-    host.innerHTML = `<div class="empty-state"><div class="title">Couldn't load reviewer activity</div>The <code>ownership_qa_sampling</code> table could not be read this session.</div>`;
+    host.innerHTML = `<div class="empty-state"><div class="title">Couldn't load reviewer activity</div>Reviewer activity isn't available for this period.</div>`;
     return;
   }
   // Loaded but no observed reviews today (or no reviewers at all).
@@ -5278,12 +5290,12 @@ function renderQaReviewerDetail(){
       </div>
       <div class="panel"><h3>Reviews by source team <span class="meta">today &middot; ${teamRows.length} teams</span></h3>
         ${teamHtml}
-        <div class="tl-pfoot">Global tagging-team QA distribution — per-reviewer source-team breakdown isn't emitted in <code>aggregates_v2</code>.</div>
+        <div class="tl-pfoot">Global tagging-team QA distribution — a per-reviewer source-team breakdown isn't itemized here.</div>
         <div class="qh-cohort">
           <div class="qh-cohort-h">Cohort split &middot; this reviewer, today</div>
           <div class="tl-prow"><span class="who" style="flex:0 0 90px">Sanctions</span><span class="tl-barwrap"><span style="width:${(sanc/cohTot*100).toFixed(0)}%;background:var(--bad)"></span></span><span class="ct">${sanc.toLocaleString()}</span></div>
           <div class="tl-prow"><span class="who" style="flex:0 0 90px">Standard</span><span class="tl-barwrap"><span style="width:${(nonSanc/cohTot*100).toFixed(0)}%;background:var(--accent)"></span></span><span class="ct">${nonSanc.toLocaleString()}</span></div>
-          <div class="tl-pfoot" style="border:0;padding:6px 0 0">Substitutes TOP/MID/BOT stratum (not tracked). <code>add_new_company</code> is a global-only metric (${(D.v2.totals?.add_new_company_today??0).toLocaleString()} today), not per-reviewer.</div>
+          <div class="tl-pfoot" style="border:0;padding:6px 0 0">Shows the sanctions vs standard split. Add-new-company is a global-only metric (${(D.v2.totals?.add_new_company_today??0).toLocaleString()} today), not per-reviewer.</div>
         </div>
       </div>
     </div>`;
@@ -5385,7 +5397,7 @@ function _qpCompute(){
     r.target = (typeof r.sampling_target_pct === "number") ? r.sampling_target_pct : 25;
     r.isExpert = (r.assigned_team == null) && (r.sampling_target_pct === 100);
     // Signal: green = meets sampling target AND change<30; red = sampling<half target OR change>30; else orange.
-    if (r.changeRate > 30 || (r.hasSampling && r.sampling_pct_today < r.target*0.5)) r.signal = "bad";
+    if (r.changeRate > TARGETS.changeRateAlarmPct || (r.hasSampling && r.sampling_pct_today < r.target*0.5)) r.signal = "bad";
     else if ((r.hasSampling && r.sampling_pct_today < r.target) || r.changeRate >= 10) r.signal = "warn";
     else r.signal = "good";
   });
@@ -5399,7 +5411,7 @@ PAGE_RENDERERS.qa_performance = function () {
   if(STATE.qpSelectedReviewer===undefined) STATE.qpSelectedReviewer = null;
   const D = _qpCompute();
   const v2 = D.v2;
-  if(!v2){ root.innerHTML = noDataHtml("aggregates_v2 not in daily_aggregates.json — run aggregate_v2.py"); return; }
+  if(!v2){ root.innerHTML = noDataHtml("Live data isn.t available right now. It will reappear at the next scheduled refresh."); return; }
   const list = D.list;
 
   const anySampling = list.some(r => r.hasSampling);
@@ -5426,7 +5438,7 @@ PAGE_RENDERERS.qa_performance = function () {
   // median TAT across reviewers
   const medTat = median(list.map(r=>r.median_review_time_hours).filter(x=>x!=null));
   // at-risk: below sampling target OR change>30
-  const atRisk = list.filter(r => (r.hasSampling && r.sampling_pct_today < r.target) || r.changeRate > 30);
+  const atRisk = list.filter(r => (r.hasSampling && r.sampling_pct_today < r.target) || r.changeRate > TARGETS.changeRateAlarmPct);
   const worstRisk = atRisk.slice().sort((a,b)=> (b.changeRate - a.changeRate) || ((a.sampling_pct_today??999)-(b.sampling_pct_today??999)))[0];
 
   const headDate = (()=>{ const d=v2.date; if(!d) return ""; const dt=new Date(d+"T00:00:00"); return isNaN(dt)?d:dt.toLocaleDateString("en-GB",{weekday:"short",day:"numeric",month:"short",year:"numeric"}); })();
@@ -5485,7 +5497,7 @@ PAGE_RENDERERS.qa_performance = function () {
       </div>
       <div class="kpi k-cyan">
         <div class="kpi-top"><div class="label">Avg change rate</div><span class="kpi-icon">${KPI_ICONS.activity}</span></div>
-        <div class="value-row"><span class="value">${poolChange.toFixed(1)}<span class="unit">%</span></span><span class="kpi-dod-light ${poolChange<=30?'up':'down'}">ceiling 30%</span></div>
+        <div class="value-row"><span class="value">${poolChange.toFixed(1)}<span class="unit">%</span></span><span class="kpi-dod-light ${poolChange<=TARGETS.changeRateAlarmPct?'up':'down'}">ceiling ${TARGETS.changeRateAlarmPct}%</span></div>
         <div class="kpi-bar"><span class="fill ${poolChange>30?'red':'green'}" style="width:${Math.min(100,poolChange/30*100).toFixed(0)}%"></span></div>
         <div class="ct-sub">${sumChanges.toLocaleString()} changed of ${sumReviews.toLocaleString()} reviewed (all-time)</div>
       </div>
@@ -5498,7 +5510,7 @@ PAGE_RENDERERS.qa_performance = function () {
       <div class="kpi k-orange">
         <div class="kpi-top"><div class="label">At-risk reviewers</div><span class="kpi-icon">${KPI_ICONS.alert}</span></div>
         <div class="value-row"><span class="value">${atRisk.length}</span><span class="kpi-dod-light ${atRisk.length?'down':'up'}">${atRisk.length?'attention':'all clear'}</span></div>
-        <div class="ct-foot">${worstRisk?`worst &middot; <b>${esc(worstRisk.name.split(' ')[0])}</b> &middot; ${worstRisk.hasSampling?worstRisk.sampling_pct_today.toFixed(0)+'% samp':''}${worstRisk.changeRate>30?` &middot; ${worstRisk.changeRate.toFixed(0)}% chg`:''}`:'below 25% sampling OR change > 30%'}</div>
+        <div class="ct-foot">${worstRisk?`worst &middot; <b>${esc(worstRisk.name.split(' ')[0])}</b> &middot; ${worstRisk.hasSampling?worstRisk.sampling_pct_today.toFixed(0)+'% samp':''}${worstRisk.changeRate>TARGETS.changeRateAlarmPct?` &middot; ${worstRisk.changeRate.toFixed(0)}% chg`:''}`:`below ${TARGETS.nsSamplingPct}% sampling OR change > ${TARGETS.changeRateAlarmPct}%`}</div>
       </div>
     </div>
     <div class="panel">
@@ -5515,13 +5527,13 @@ PAGE_RENDERERS.qa_performance = function () {
       <div class="panel"><h3>Sampling distribution <span class="meta">per reviewer &middot; today</span></h3><div id="qpSampDist"></div>
         <div class="tl-pfoot">Bar vs each reviewer's target (25% team floor, 100% expert sanctions). ${anySampling?'':'<b>'+pend+'</b> — re-aggregate the cache to populate.'}</div>
       </div>
-      <div class="panel"><h3>Change % <span class="meta">per reviewer &middot; all-time</span></h3>${list.map(r=>{const mx=Math.max(1,...list.map(x=>x.changeRate));return `<div class="tl-prow"><span class="task-avatar sm" style="background:rgba(${QH_RGB[r.idx%QH_RGB.length]},0.85)">${esc(tlInitials(r.name))}</span><span class="who" style="flex:0 0 120px;overflow:hidden;text-overflow:ellipsis">${esc(r.name)}</span><span class="tl-barwrap"><span style="width:${(r.changeRate/mx*100).toFixed(0)}%;background:${r.changeRate>30?'var(--bad)':'var(--warn)'}"></span></span><span class="ct">${r.changeRate.toFixed(1)}%</span></div>`;}).join("")}
-        <div class="tl-pfoot">Ceiling 30% &middot; ${list.filter(r=>r.changeRate>30).length} over.</div>
+      <div class="panel"><h3>Change % <span class="meta">per reviewer &middot; all-time</span></h3>${list.map(r=>{const mx=Math.max(1,...list.map(x=>x.changeRate));return `<div class="tl-prow"><span class="task-avatar sm" style="background:rgba(${QH_RGB[r.idx%QH_RGB.length]},0.85)">${esc(tlInitials(r.name))}</span><span class="who" style="flex:0 0 120px;overflow:hidden;text-overflow:ellipsis">${esc(r.name)}</span><span class="tl-barwrap"><span style="width:${(r.changeRate/mx*100).toFixed(0)}%;background:${r.changeRate>TARGETS.changeRateAlarmPct?'var(--bad)':'var(--warn)'}"></span></span><span class="ct">${r.changeRate.toFixed(1)}%</span></div>`;}).join("")}
+        <div class="tl-pfoot">Ceiling ${TARGETS.changeRateAlarmPct}% &middot; ${list.filter(r=>r.changeRate>TARGETS.changeRateAlarmPct).length} over.</div>
       </div>
       <div class="panel"><h3>Pool summary <span class="meta">today</span></h3>
         <div class="qp-pool">
           <div class="qp-pcard"><div class="l">Avg sampling %</div><div class="v">${pooledSampling!=null?pooledSampling.toFixed(1)+"%":"—"}</div><div class="s">${pooledSampling!=null?`vs ${list[0]?.target||25}% floor &middot; ${(pooledSampling-(list[0]?.target||25))>=0?'+':''}${(pooledSampling-(list[0]?.target||25)).toFixed(1)}pp`:pend}</div></div>
-          <div class="qp-pcard"><div class="l">Change %</div><div class="v">${poolChange.toFixed(1)}%</div><div class="s">vs ceiling 30% &middot; ${(poolChange-30)>=0?'+':''}${(poolChange-30).toFixed(1)}pp</div></div>
+          <div class="qp-pcard"><div class="l">Change %</div><div class="v">${poolChange.toFixed(1)}%</div><div class="s">vs ceiling ${TARGETS.changeRateAlarmPct}% &middot; ${(poolChange-TARGETS.changeRateAlarmPct)>=0?'+':''}${(poolChange-TARGETS.changeRateAlarmPct).toFixed(1)}pp</div></div>
           <div class="qp-pcard"><div class="l">Median TAT</div><div class="v">${medTat!=null?formatDuration(medTat):"—"}</div><div class="s">per-record review turnaround</div></div>
           <div class="qp-pcard"><div class="l">Reviewed today</div><div class="v">${reviewedStr}</div><div class="s">${totalRev} reviewers &middot; observed</div></div>
         </div>
@@ -5569,7 +5581,7 @@ function renderQaPerfScorecards(){
   const D=_qpCompute(); let list=D.list;
   const view=STATE.qpFilters?.view||"all";
   if(view==="below") list=D.list.filter(r=>r.hasSampling && r.sampling_pct_today<r.target);
-  else if(view==="atrisk") list=D.list.filter(r=>(r.hasSampling && r.sampling_pct_today<r.target)||r.changeRate>30);
+  else if(view==="atrisk") list=D.list.filter(r=>(r.hasSampling && r.sampling_pct_today<r.target)||r.changeRate>TARGETS.changeRateAlarmPct);
   if(!list.length){ host.innerHTML = D.list.length? `<div class="empty" style="padding:18px">No reviewers match this filter.</div>` : `<div class="empty-state"><div class="title">No QA activity in cache</div>No records have <code>qa_assignee + qa_status</code> in the current window.</div>`; return; }
   const maxH=Math.max(1,...D.list.flatMap(r=>r.hourly));
   host.innerHTML = `<div class="qp-cards">${list.map(r=>{
@@ -5583,7 +5595,7 @@ function renderQaPerfScorecards(){
       <div class="qp-chead"><span class="task-avatar" style="background:rgba(${rgb},1)">${esc(tlInitials(r.name))}</span><div style="min-width:0"><div class="qp-nm">${esc(r.name)}</div><div class="qp-sub">${teamChip}</div></div></div>
       ${row("Sampling", sampVal)}
       ${row("Approval", (r.approval_pct||0).toFixed(1)+"%")}
-      ${row("Change", r.changeRate.toFixed(1)+"%", r.changeRate>30?'bad':'')}
+      ${row("Change", r.changeRate.toFixed(1)+"%", r.changeRate>TARGETS.changeRateAlarmPct?'bad':'')}
       ${row("TAT", r.median_review_time_hours!=null?formatDuration(r.median_review_time_hours):"—")}
       <div class="qp-hbars" title="today by hour">${bars}</div>
     </div>`;
@@ -5602,7 +5614,7 @@ function renderQaPerfComparison(){
     return `<div class="qp-crow">
       <span class="qp-cnm"><span class="task-avatar sm" style="background:rgba(${rgb},0.85)">${esc(tlInitials(r.name))}</span>${esc(r.name)}${tgtNote}</span>
       ${_qpSampBar(r)}
-      <span class="qp-cbar"><span class="qp-cfill" style="width:${(r.changeRate/maxChg*100).toFixed(0)}%;background:${r.changeRate>30?'var(--bad)':'var(--warn)'}"></span></span>
+      <span class="qp-cbar"><span class="qp-cfill" style="width:${(r.changeRate/maxChg*100).toFixed(0)}%;background:${r.changeRate>TARGETS.changeRateAlarmPct?'var(--bad)':'var(--warn)'}"></span></span>
       <span class="qp-cbar"><span class="qp-cfill" style="width:${((r.reviews||0)/maxRev*100).toFixed(0)}%;background:#0691B5"></span><b>${(r.reviews||0).toLocaleString()}</b></span>
       <span class="qp-ctat">${r.median_review_time_hours!=null?formatDuration(r.median_review_time_hours):"—"}<span class="s"> · p90 ${r.p90_review_time_hours!=null?formatDuration(r.p90_review_time_hours):"—"}</span></span>
     </div>`;
@@ -5649,7 +5661,7 @@ function renderQaPerfDetail(){
     </div>
     <div class="tl-drow">
       <div class="panel"><h3>Today hourly <span class="meta">${r.todayCount.toLocaleString()} reviews</span></h3><div class="qh-hbars">${hb}</div>
-        <div class="tl-pfoot">Reviews stamped per EAT hour today (observation-time <code>ownership_qa_sampling.reviewed_at</code> via STATE.qaReviewHours).</div>
+        <div class="tl-pfoot">Reviews stamped per EAT hour today (observation time).</div>
       </div>
       <div class="panel"><h3>Decisions <span class="meta">all-time &middot; ${(r.reviews||0).toLocaleString()}</span></h3>
         <div class="tl-donut" style="background:${donut}"><div class="hole"><b>${(r.reviews||0).toLocaleString()}</b><span>reviews</span></div></div>
@@ -5860,7 +5872,7 @@ PAGE_RENDERERS.supply = function () {
         <h1 class="page-title">Task <em>supply</em></h1>
       </div></div>
       <div class="empty-state"><div class="title">Supply data not yet available</div>
-        The unassigned-backlog metrics will populate on the next poll (aggregates_v2.supply).</div>`;
+        The unassigned-backlog metrics will populate on the next scheduled refresh.</div>`;
     return;
   }
 
@@ -6097,7 +6109,7 @@ PAGE_RENDERERS.supply = function () {
       action: async () => {
         const fresh = await readJson("daily_aggregates.json");
         const v2 = fresh && fresh.aggregates_v2;
-        if (!v2) throw new Error("could not re-read daily_aggregates.json");
+        if (!v2) throw new Error("could not refresh live data");
         STATE.agg = fresh;
         STATE.v2 = v2;
         STATE.todayV2 = v2;                       // keep the "back to today" anchor in sync
@@ -6257,7 +6269,7 @@ function bqComments(){ const cd={}; for(const x of (STATE.v2?.tasks_all||[])){ f
 function _renderBoqaPage(){
   const root=document.getElementById("page-boqa");
   const v2=STATE.v2||{}, t=v2.totals||{};
-  if(!t || !v2.tasks_all){ root.innerHTML=noDataHtml("aggregates_v2 not in daily_aggregates.json — run aggregate_v2.py"); return; }
+  if(!t || !v2.tasks_all){ root.innerHTML=noDataHtml("Live data isn.t available right now. It will reappear at the next scheduled refresh."); return; }
   const f=STATE.bqFilters;
   const recs=_bqRecords();
   const reviewers=(v2.qa_reviewers||[]).slice().sort((a,b)=>(b.reviews||0)-(a.reviews||0));
@@ -6362,7 +6374,7 @@ function _renderBoqaPage(){
         <div class="kpi-top"><div class="label">Reject rate</div><span class="kpi-icon">${KPI_ICONS.octagon}</span></div>
         <div class="value-row"><span class="value">${rejectToday!=null?rejectToday.toFixed(1)+"%":(allTimeReject!=null?allTimeReject.toFixed(1)+"%":"—")}</span></div>
         <div class="kpi-bar"><span class="fill ${(rejectToday??allTimeReject??0)>30?'red':'green'}" style="width:${Math.min(100,(rejectToday??allTimeReject??0)/30*100).toFixed(0)}%"></span></div>
-        <div class="bq-foot">${rejectToday!=null?`${changedToday} changed of ${reviewedToday} today`:`${totChanges} changed of ${totReviews.toLocaleString()} (all-time)`} · target 30%</div>
+        <div class="bq-foot">${rejectToday!=null?`${changedToday} changed of ${reviewedToday} today`:`${totChanges} changed of ${totReviews.toLocaleString()} (all-time)`} · target ${TARGETS.changeRateAlarmPct}%</div>
       </div>
     </div>
 
@@ -6370,7 +6382,7 @@ function _renderBoqaPage(){
     <div class="bq-reviewers">${reviewerCards}</div>
 
     <div class="bq-section-head"><h2>QA <em>worklist</em></h2><span class="meta">${totReviews.toLocaleString()} reviewed all-time · ${pendingN} pending · ${needsUpdateN} flagged for update</span></div>
-    <div class="bq-subhead">Records by QA disposition. Approval rate ${approvalRate!=null?approvalRate.toFixed(1)+"%":"—"} — when QAs flag changes, they're not currently recorded as such in the source data.</div>
+    <div class="bq-subhead">Records by QA disposition. Approval rate ${approvalRate!=null?approvalRate.toFixed(1)+"%":"—"}. Change/rework decisions are tracked in aggregate; per-record rework reasons aren't itemized here.</div>
     <div class="bq-cohorts">
       <div class="bq-cohort"><div class="l">Add-new-company</div><div class="v">${cohorts.add}</div><div class="sub">100% QA mandatory</div></div>
       <div class="bq-cohort"><div class="l">Company-gap</div><div class="v">${cohorts.gap}</div><div class="sub">done without company link</div></div>
@@ -6601,7 +6613,9 @@ PAGE_RENDERERS.intake = function () {
   const activeTasks = tasksAll.filter(x => !x.is_completed);
   const activeTotalRecords = activeTasks.reduce((s, x) => s + (x.total_records_in_cache || 0), 0);
   const activeTeams = new Set();
-  for (const x of activeTasks) for (const tm of (x.teams_worked || [])) activeTeams.add(tm);
+  // teams_worked entries are objects {team, records} — key off .team (string) so the
+  // Set dedupes by team name, not by object identity (which never dedupes → inflated count).
+  for (const x of activeTasks) for (const tw of (x.teams_worked || [])) { const nm = (tw && typeof tw === "object") ? tw.team : tw; if (nm) activeTeams.add(nm); }
   const cacheTotal = tasksAll.reduce((s, x) => s + (x.total_records_in_cache || 0), 0);
   const uniqueImos = t.unique_imos || 0;
   const newCompaniesOpen = (STATE.v2.add_new_company_records || []).length;
@@ -7528,7 +7542,7 @@ function renderTaskDetail(){
   // 2a — turnaround per task (active, top 6 by records); status-share bar scaled to age on a 0–120h axis
   const activeTT=_tlBase().filter(x=>!x.is_completed).slice().sort((a,b)=>(b.total_records_in_cache||0)-(a.total_records_in_cache||0)).slice(0,6);
   const ttRows = activeTT.map(x=>{
-    const a=ageHours(x.date_first_seen)||0; const barW=Math.min(100, a/120*100);
+    const a=ageHours(x.date_first_seen)||0; const barW=Math.min(100, a/TARGETS.tatSlaHours*100);
     const xsd=x.status_distribution||{}; const xtot=Math.max(1,TL_STATUS.reduce((s,st)=>s+(xsd[st.key]||0),0));
     const segs=TL_STATUS.map(st=>{const v=xsd[st.key]||0; return v>0?`<span style="width:${(v/xtot*100).toFixed(1)}%;background:${st.color}"></span>`:"";}).join("");
     const pp=(x.total_records_in_cache? x.properly_completed/x.total_records_in_cache*100:0);
@@ -7581,11 +7595,11 @@ function renderTaskDetail(){
       </div>
     </div>
     <div class="tl-drow">
-      <div class="panel"><h3>Turnaround per task <span class="meta">Created → Valid &middot; status mix on a 0–120h age axis</span></h3>
+      <div class="panel"><h3>Turnaround per task <span class="meta">Created → Valid &middot; status mix on a 0–${TARGETS.tatSlaHours}h age axis</span></h3>
         ${ttRows||'<div class="small-mono" style="padding:8px 0">No active tasks.</div>'}
         <div class="tl-axis"><span>0h</span><span>24h</span><span>48h</span><span>72h</span><span>96h</span><span>120h</span></div>
         <div class="tl-legend" style="flex-direction:row;flex-wrap:wrap;gap:12px;margin-top:8px">${TL_STATUS.slice(0,5).map(st=>`<span class="li" style="gap:5px"><span class="d" style="background:${st.color}"></span>${st.label}</span>`).join("")}</div>
-        <div class="tl-pfoot">Segment widths reflect each task's current record distribution across stages — true per-stage transit durations aren't emitted in <code>aggregates_v2</code>.</div>
+        <div class="tl-pfoot">Segment widths reflect each task's current record distribution across stages — true per-stage transit durations aren't tracked here.</div>
       </div>
       <div class="panel"><h3>Flag breakdown <span class="meta">${openFlags} open &middot; ${blocking} task-blocking</span></h3>${flagRows}${noFlagRow}</div>
       <div class="panel"><h3>Dead vessel ratio <span class="meta">across active tasks</span></h3>
@@ -8059,7 +8073,7 @@ PAGE_RENDERERS.wwqa = function () {
   const root = document.getElementById("page-wwqa");
   const v2 = STATE.v2 || {};
   const t = v2.totals || {};
-  if (!t) { root.innerHTML = noDataHtml("aggregates_v2 not in daily_aggregates.json — run aggregate_v2.py"); return; }
+  if (!t) { root.innerHTML = noDataHtml("Live data isn.t available right now. It will reappear at the next scheduled refresh."); return; }
 
   // ----- Real-data inputs ------------------------------------------------
   const backlog       = t.ww_qa_backlog || 0;
@@ -8366,7 +8380,7 @@ PAGE_RENDERERS.wwqa = function () {
       <div class="kpi k-red">
         <div class="kpi-top"><div class="label">WW change rate</div><span class="kpi-icon">${KPI_ICONS.percent}</span></div>
         <div class="value-row"><span class="value">${changeRate.toFixed(1)}%</span>${crPpPill}</div>
-        <div class="kpi-bar"><span class="fill ${changeRate > 30 ? "red" : "green"}" style="width:${Math.min(100, changeRate/30*100).toFixed(0)}%"></span></div>
+        <div class="kpi-bar"><span class="fill ${changeRate > TARGETS.changeRateAlarmPct ? "red" : "green"}" style="width:${Math.min(100, changeRate/TARGETS.changeRateAlarmPct*100).toFixed(0)}%"></span></div>
         <div class="bq-foot">${changedToday} of ${reviewedToday} reviewed today · cache window ${throughputWin}</div>
       </div>
       <div class="kpi k-neutral">
@@ -8748,7 +8762,7 @@ function _renderCompletedPage(){
         <div class="kpi-top"><div class="label">Avg QA coverage</div><span class="kpi-icon">${KPI_ICONS.percent}</span></div>
         <div class="value-row"><span class="value">${avgCov.toFixed(1)}<span class="unit">%</span></span>${covDoD!=null?`<span class="kpi-dod-light ${covDoD>=0?'up':'down'}">${covDoD>=0?"+":""}${covDoD.toFixed(1)}</span>`:`<span class="kpi-dod-light">—</span>`}</div>
         <div class="kpi-bar"><span class="fill" style="width:${Math.min(100,avgCov).toFixed(0)}%;background:var(--accent)"></span></div>
-        <div class="ct-sub">Target 60% &middot; sanctions 100%</div>
+        <div class="ct-sub">Target ${TARGETS.qaCoveragePct}% &middot; sanctions 100%</div>
       </div>
       <div class="kpi k-red">
         <div class="kpi-top"><div class="label">Avg reject rate</div><span class="kpi-icon">${KPI_ICONS.octagon}</span></div>
@@ -8942,7 +8956,7 @@ function renderCompletedThroughput(){
   const bcount=buckets.map(([l,lo,hi])=>tats.filter(v=>v>=lo&&v<hi).length);
   const bmax=Math.max(1,...bcount);
   const p50=ctPercentile(tats,50), p90=ctPercentile(tats,90);
-  const slaDelta = p90!=null? 120-p90 : null;
+  const slaDelta = p90!=null? TARGETS.tatSlaHours-p90 : null;
 
   document.getElementById("ctThroughput").innerHTML=`
     <div class="ct-section-head"><h2>Throughput &amp; <em>turnaround</em></h2><span class="meta">last 8 weeks &middot; all teams</span></div>
@@ -8953,7 +8967,7 @@ function renderCompletedThroughput(){
       </div>
       <div class="panel"><h3>TAT distribution <span class="meta">${tats.length} batches &middot; last 30d</span></h3>
         ${buckets.map(([l,lo,hi,col],i)=>`<div class="ct-tatrow"><span class="lab">${l}</span><span class="bar"><span style="width:${(bcount[i]/bmax*100).toFixed(0)}%;background:${col}"></span></span><span class="v">${bcount[i]}</span></div>`).join("")}
-        <div class="ct-pfoot"><span class="pill-inline ${slaDelta!=null&&slaDelta>=0?'good':'bad'}">🎯 P50 ${p50!=null?Math.round(p50)+"h":"—"} &middot; P90 ${p90!=null?Math.round(p90)+"h":"—"}</span> ${slaDelta!=null? (slaDelta>=0?`beats`:`misses`)+` SLA target of 120h P90 by ${Math.abs(Math.round(slaDelta))}h`:"— SLA target 120h P90"}</div>
+        <div class="ct-pfoot"><span class="pill-inline ${slaDelta!=null&&slaDelta>=0?'good':'bad'}">🎯 P50 ${p50!=null?Math.round(p50)+"h":"—"} &middot; P90 ${p90!=null?Math.round(p90)+"h":"—"}</span> ${slaDelta!=null? (slaDelta>=0?`beats`:`misses`)+` SLA target of ${TARGETS.tatSlaHours}h P90 by ${Math.abs(Math.round(slaDelta))}h`:`— SLA target ${TARGETS.tatSlaHours}h P90`}</div>
       </div>
     </div>`;
   ctRenderThroughputChart(weeks, bVals, rVals);
@@ -9001,13 +9015,13 @@ function renderCompletedLeaderboard(){
   const avgCov=last30.length? last30.reduce((s,t)=>s+(t.latest.qa_coverage_pct||0),0)/last30.length:0;
   const BATCH_CATS=[["perfect","Perfect","#7B68EE"],["qamet","QA met","#0EA56C"],["completed","Low coverage","#8A93A2"],["breach","TAT breach","#F9943B"]];
   const lbRows=revs.map((r,i)=>{ const rate=r.reviewed>0?(r.changed/r.reviewed*100):0; const cov=r.batches.length?100*r.batches.filter(b=>b==="qamet"||b==="perfect").length/r.batches.length:0; const n=r.batches.length; const counts={}; for(const b of r.batches) counts[b]=(counts[b]||0)+1; const seg=BATCH_CATS.map(([k,lab,col])=>{ const c=counts[k]||0; return c>0?`<span style="width:${(c/Math.max(1,n)*100).toFixed(1)}%;background:${col}" title="${lab}: ${c}"></span>`:""; }).join(""); const batchCell=n>0?`<span class="ct-batchnum">${n}</span><span class="ct-batchbar">${seg}</span>`:`<span class="small-mono" style="color:var(--muted)">—</span>`;
-    return `<div class="ct-lb"><span class="rk">${i+1}</span><span class="who"><span class="task-avatar" style="background:var(--accent)">${esc(ctInitials(r.name))}</span><span style="min-width:0"><span class="nm">${esc(r.name)}</span> <span class="s">&middot; BO QA reviewer</span></span></span><span><span class="ct-num">${r.reviewed.toLocaleString()}</span> <span class="small-mono">${(r.reviewed/Math.max(1,r.batches.length)).toFixed(0)} / batch</span></span><span class="ct-num" style="color:${rate>30?'var(--bad)':'var(--ink)'}">${rate.toFixed(1)}%</span><span class="ct-batches" title="${r.batches.length} batches touched">${batchCell}</span><span class="ct-num">${cov.toFixed(1)}%</span><span class="ct-num">—</span></div>`; }).join("")||'<div class="empty" style="padding:18px">No QA reviewer history in the last 30 days.</div>';
+    return `<div class="ct-lb"><span class="rk">${i+1}</span><span class="who"><span class="task-avatar" style="background:var(--accent)">${esc(ctInitials(r.name))}</span><span style="min-width:0"><span class="nm">${esc(r.name)}</span> <span class="s">&middot; BO QA reviewer</span></span></span><span><span class="ct-num">${r.reviewed.toLocaleString()}</span> <span class="small-mono">${(r.reviewed/Math.max(1,r.batches.length)).toFixed(0)} / batch</span></span><span class="ct-num" style="color:${rate>30?'var(--bad)':'var(--ink)'}">${rate.toFixed(1)}%</span><span class="ct-batches" title="${r.batches.length} batches touched">${batchCell}</span><span class="ct-num">${cov.toFixed(1)}%</span></div>`; }).join("")||'<div class="empty" style="padding:18px">No QA reviewer history in the last 30 days.</div>';
 
   document.getElementById("ctLeaderboard").innerHTML=`
     <div class="ct-section-head"><h2>QA reviewer <em>leaderboard</em> &middot; last 30 days</h2><span class="meta">${revs.length} reviewers &middot; ${totalReviewed.toLocaleString()} reviewed &middot; avg coverage ${avgCov.toFixed(1)}%</span></div>
     <div class="ct-batchlegend"><span>Batches touched:</span><span><i style="background:#7B68EE"></i>Perfect (100% cov)</span><span><i style="background:#0EA56C"></i>QA met (≥60%)</span><span><i style="background:#8A93A2"></i>Low coverage (&lt;60%)</span><span><i style="background:#F9943B"></i>TAT breach</span></div>
     <div class="panel" style="padding:6px 10px 10px">
-      <div class="ct-lb head"><span>#</span><span>Reviewer</span><span>Reviewed · 30d</span><span>Reject</span><span>Batches touched</span><span>Coverage</span><span>Median QA TAT</span></div>
+      <div class="ct-lb head"><span>#</span><span>Reviewer</span><span>Reviewed · 30d</span><span>Reject</span><span>Batches touched</span><span>Coverage</span></div>
       ${lbRows}
     </div>`;
 }
@@ -9956,7 +9970,7 @@ function _renderPipelinePage(){
 
     <div class="pl-summary">
       <div class="pl-scard"><div class="l">Records in pipeline</div><div class="v">${wip.toLocaleString()}</div><div class="sub">W ${stageTot.S1} · T ${stageTot.S2} · BQ ${stageTot.S3} · WQ ${stageTot.S4}</div></div>
-      <div class="pl-scard"><div class="l">24h throughput</div><div class="v">${completedToday.toLocaleString()}</div><div class="sub">completed today · DoD —</div></div>
+      <div class="pl-scard"><div class="l">24h throughput</div><div class="v">${completedToday.toLocaleString()}</div><div class="sub">completed today</div></div>
       <div class="pl-scard"><div class="l">Flow efficiency</div><div class="v">${wip>0?(completedToday/(completedToday+wip)*100).toFixed(1)+"%":"—"}</div><div class="sub">completed ÷ (completed+WIP) proxy</div></div>
       <div class="pl-scard"><div class="l">Stuck &gt; SLA</div><div class="v" style="color:var(--bad)">${stuck.length}</div><div class="sub">oldest ${oldestStuck!=null?oldestStuck.toFixed(1)+"d":"—"}</div></div>
     </div>
@@ -10849,7 +10863,7 @@ function ceRenderBody() {
     host.innerHTML = `<div class="empty-state"><div class="title"><span class="spinning-icon">↻</span> Loading critical errors…</div>Reading the QA sampling table (since ${CE_HISTORY_START}).</div>`; return;
   }
   if (CE_STATE.status === "error") {
-    host.innerHTML = `<div class="empty-state"><div class="title">Couldn't load critical errors</div>The <code>ownership_qa_sampling</code> table could not be read (${esc(CE_STATE.errMsg || "unknown error")}). <button class="btn" id="ceRetry" style="margin-top:10px">Retry</button></div>`;
+    host.innerHTML = `<div class="empty-state"><div class="title">Couldn't load critical errors</div>Critical-error data isn't available right now (${esc(CE_STATE.errMsg || "unknown error")}). <button class="btn" id="ceRetry" style="margin-top:10px">Retry</button></div>`;
     const r = document.getElementById("ceRetry"); if (r) r.addEventListener("click", () => { CE_STATE.status = "idle"; PAGE_RENDERERS.errors(); });
     return;
   }
@@ -10857,7 +10871,7 @@ function ceRenderBody() {
   else ceRenderLeaderboard(host);
 }
 
-const CE_FOOTNOTE = `<div class="ce-note" style="margin-top:16px">⚠️ <b>Data honesty.</b> All <code>changed</code> rows are fetched <b>since ${CE_HISTORY_START}</b> (the full QA history), so any day/week/month scope back to then is exact-as-recorded. But error history is only <b>complete from ${CE_COMPLETE_FROM}</b> onward (the Flow-C fix); <b>${CE_HISTORY_START}–2026-06-09 undercount</b>, and there is <b>no QA history before ${CE_HISTORY_START}</b> (those days are omitted, never fabricated zeros). Error <b>rate</b> stays computed over <b>this week (Mon–Sat to date)</b> — the bounded window fetched for reviewed totals; today's rate uses <code>by_agent.qa_inspected_today</code>.</div>`;
+const CE_FOOTNOTE = `<div class="ce-note" style="margin-top:16px">⚠️ <b>Data honesty.</b> All <code>changed</code> rows are fetched <b>since ${CE_HISTORY_START}</b> (the full QA history), so any day/week/month scope back to then is exact-as-recorded. But error history is only <b>complete from ${CE_COMPLETE_FROM}</b> onward (the Flow-C fix); <b>${CE_HISTORY_START}–2026-06-09 undercount</b>, and there is <b>no QA history before ${CE_HISTORY_START}</b> (those days are omitted, never fabricated zeros). Error <b>rate</b> stays computed over <b>this week (Mon–Sat to date)</b> — the bounded window fetched for reviewed totals; today's rate uses today's reviewed totals.</div>`;
 
 // Delta pill: positive delta = MORE errors = worse (red, ↑); negative = better (green, ↓).
 function ceDeltaPill(delta, suffix, onHero) {
