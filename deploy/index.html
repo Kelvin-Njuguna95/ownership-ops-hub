@@ -9385,7 +9385,11 @@ async function _loadReportData(start, end) {
         .lt(tsCol, endUtc)
         .order("airtable_record_id", { ascending: true })
         .range(page * 1000, page * 1000 + 999);
-      if (error) { console.error(`report load ${table}:`, error); return null; }
+      if (error) {
+        console.error(`report load ${table} — page ${page} failed after ${out.length} rows:`, error?.message || error, error?.code || "");
+        out.partial = true;   // safety net: keep what already loaded instead of wiping the report
+        break;
+      }
       if (!data || !data.length) break;
       out.push(...data);
       if (data.length < 1000) break;
@@ -9404,6 +9408,8 @@ async function _loadReportData(start, end) {
     tasks,
     completions: completions || [],
     sampling: sampling || [],
+    completionsPartial: !!(completions && completions.partial),
+    samplingPartial: !!(sampling && sampling.partial),
   };
   REPORT_STATE.cache[cacheKey] = data;
   return data;
@@ -9651,10 +9657,10 @@ function _renderAgentsCard(data) {
   const el = document.getElementById("rbCardAgents"); if (!el) return;
   const { agents } = _agentAggregate(data);
   const names = Object.keys(agents);
-  if (!names.length) { el.innerHTML = `<h3>Agents Report</h3><div class="empty">No data in this range</div><button class="btn" disabled>⤓ Download Excel</button>`; return; }
+  if (!names.length) { el.innerHTML = `<h3>Agents Report</h3><div class="empty">${data.completionsPartial ? "Couldn’t load this range — hit Refresh." : "No data in this range"}</div><button class="btn" disabled>⤓ Download Excel</button>`; return; }
   const total = names.reduce((s, n) => s + agents[n].total, 0);
   const top = [...names].sort((a, b) => agents[b].total - agents[a].total).slice(0, 8);
-  el.innerHTML = `<h3>Agents Report</h3>
+  el.innerHTML = `<h3>Agents Report</h3>${data.completionsPartial ? `<div class="footer-note" style="color:var(--warn)">⚠ Partial — some rows didn’t load; totals may be understated. Hit Refresh.</div>` : ""}
     <div class="kpis"><div class="kpi"><div class="label">Active agents</div><div class="value">${names.length}</div></div>
       <div class="kpi"><div class="label">Records tagged</div><div class="value">${total.toLocaleString()}</div></div></div>
     <table><thead><tr><th>Agent</th><th>Team</th><th class="right">Tagged</th></tr></thead><tbody>
@@ -9667,10 +9673,10 @@ function _renderQACard(data) {
   const el = document.getElementById("rbCardQA"); if (!el) return;
   const { qas } = _qaAggregate(data);
   const names = Object.keys(qas);
-  if (!names.length) { el.innerHTML = `<h3>QA Report</h3><div class="empty">No data in this range</div><button class="btn" disabled>⤓ Download Excel</button>`; return; }
+  if (!names.length) { el.innerHTML = `<h3>QA Report</h3><div class="empty">${data.samplingPartial ? "Couldn’t load this range — hit Refresh." : "No data in this range"}</div><button class="btn" disabled>⤓ Download Excel</button>`; return; }
   const total = names.reduce((s, n) => s + qas[n].total, 0);
   const top = [...names].sort((a, b) => qas[b].total - qas[a].total).slice(0, 8);
-  el.innerHTML = `<h3>QA Report</h3>
+  el.innerHTML = `<h3>QA Report</h3>${data.samplingPartial ? `<div class="footer-note" style="color:var(--warn)">⚠ Partial — some rows didn’t load; totals may be understated. Hit Refresh.</div>` : ""}
     <div class="kpis"><div class="kpi"><div class="label">Active QAs</div><div class="value">${names.length}</div></div>
       <div class="kpi"><div class="label">Records sampled</div><div class="value">${total.toLocaleString()}</div></div></div>
     <table><thead><tr><th>QA</th><th class="right">Sampled</th></tr></thead><tbody>
