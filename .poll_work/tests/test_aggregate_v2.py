@@ -2299,9 +2299,9 @@ class TestFlowFrameworkV3Counts(unittest.TestCase):
         self.assertEqual(result["total_completions_today"], 4)
 
     def test_flow_d_catches_pre_flow_records(self):
-        """Records still in tagged / need-to-be-update (with the underlying
-        completion rule met) → classify returns ('pre_flow', None) → Flow D.
-        Must NOT count toward A or C."""
+        """A 'tagged' record (classify → ('pre_flow', None)) lands in Flow D and
+        must NOT count toward A or C. A 'need to be update' record is rework in
+        the QA loop and counts toward Flow B (per PR #224), NOT Flow D."""
         import tempfile
         from pathlib import Path
         from aggregate_v2 import _compute_flow_framework_counts
@@ -2315,9 +2315,9 @@ class TestFlowFrameworkV3Counts(unittest.TestCase):
             ])
             r = _compute_flow_framework_counts(work, self._roster())
         self.assertEqual(r["flow_a_today"], 0)
-        self.assertEqual(r["flow_b_today"], 0)
+        self.assertEqual(r["flow_b_today"], 1)   # r2: need-to-be-update → Flow B (rework)
         self.assertEqual(r["flow_c_today"], 0)
-        self.assertEqual(r["flow_d_today"], 2)
+        self.assertEqual(r["flow_d_today"], 1)   # r1: tagged → Flow D (pre_flow)
 
     def test_flow_d_catches_alert_records(self):
         """Records in shape-mismatch states (Done+qa_assignee-missing-status,
