@@ -9590,6 +9590,7 @@ function _buildTasksWorkbook(data) {
     ["Total dead vessels (task lifetime)", sum(t => t.peak.dead_vessels)],
     ["Total with reminder (task lifetime)", sum(t => t.peak.with_reminder)],
     ["Completed records (task lifetime)", totalCompletedRecs],
+    ["New companies created (task lifetime)", sum(t => t.peak.new_companies_created)],
     ["QA reviewed (task lifetime)", totalReviewedLifetime],
     ["QA changed (task lifetime)", sum(t => t.peak.qa_changed)],
     ["Median turn-around (hrs)", median(tats) ?? 0],
@@ -9599,7 +9600,8 @@ function _buildTasksWorkbook(data) {
 
   const taskHeader = ["Task name", "Sanctions?", "First seen", "Last activity", "Status", "Valid %",
     "Total records (task lifetime)", "Dead vessels (task lifetime)", "With reminder (task lifetime)",
-    "Completed records (task lifetime)", "QA reviewed (task lifetime)", "QA changed (task lifetime)",
+    "Completed records (task lifetime)", "New companies created (task lifetime)",
+    "QA reviewed (task lifetime)", "QA changed (task lifetime)",
     "QA coverage % (task lifetime)", "TAT (hrs)", "Flags", ...REPORT_STATUS_COLS.map(c => c[1])];
   const taskRows = tasks.map(t => {
     const p = t.peak, sd = p.status_distribution || {};
@@ -9614,6 +9616,7 @@ function _buildTasksWorkbook(data) {
       Number(p.dead_vessels) || 0,
       Number(p.with_reminder) || 0,
       Number(p.completed) || 0,
+      Number(p.new_companies_created) || 0,
       Number(p.qa_reviewed) || 0,
       Number(p.qa_changed) || 0,
       Number(p.qa_coverage_pct) || 0,
@@ -9794,7 +9797,8 @@ function _renderTasksCard(data) {
   const top = [...tasks].sort((a, b) => (b.peak.total_records || 0) - (a.peak.total_records || 0)).slice(0, 8);
   el.innerHTML = `<h3>Tasks Report</h3>${data.metricMismatch ? `<div class="footer-note" style="color:var(--warn)">⚠ Metric mismatch — QA totals didn’t reconcile across sheets; see console.</div>` : ""}
     <div class="kpis"><div class="kpi"><div class="label">Tasks active</div><div class="value">${tasks.length}</div></div>
-      <div class="kpi"><div class="label">Completed</div><div class="value">${done}</div></div></div>
+      <div class="kpi"><div class="label">Completed</div><div class="value">${done}</div></div>
+      <div class="kpi"><div class="label">New companies</div><div class="value">${tasks.reduce((s, t) => s + (Number(t.peak.new_companies_created) || 0), 0).toLocaleString()}</div></div></div>
     <table><thead><tr><th>Task</th><th class="right">Records</th><th>Status</th></tr></thead><tbody>
       ${top.map(t => `<tr><td>${esc(t.name)}</td><td class="right">${(t.peak.total_records || 0).toLocaleString()}</td><td>${t.isCompleted ? "Completed" : "Open"}</td></tr>`).join("")}
     </tbody></table>
