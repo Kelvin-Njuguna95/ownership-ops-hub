@@ -11093,7 +11093,7 @@ async function loadCriticalErrors() {
     //    support id works for both tables (proven by loadQaReviewHours). Projected
     //    via JSON-arrows — lighter than pulling the whole raw_payload.
     const changed = await page(
-      "airtable_record_id,assignee,qa_assignee,reviewed_at,imo,role,source_table,task:raw_payload->>fldlPkvV6BiE7glLZ,reqby_io:raw_payload->>fldnkt2u2LGVTc0eY",
+      "airtable_record_id,assignee,qa_assignee,reviewed_at,imo,role,source_table,error_type,task:raw_payload->>fldlPkvV6BiE7glLZ,reqby_io:raw_payload->>fldnkt2u2LGVTc0eY",
       (q) => q.eq("qa_status", "changed").gte("reviewed_at", startHist.toISOString()).lt("reviewed_at", endTom.toISOString()));
     const errors = [];
     for (const r of changed.values()) {
@@ -11102,6 +11102,7 @@ async function loadCriticalErrors() {
       const task = ((r.task || r.reqby_io || "").trim()) || "(no task)";
       errors.push({ rec: r.airtable_record_id, agent: agent || "(unattributed)", team, isRoster: !!team,
         imo: r.imo, role: r.role, source_table: r.source_table,
+        errorType: (r.error_type || "").trim() || "Unspecified",
         qa: (r.qa_assignee || "").trim() || "(unattributed)",
         reviewed_at: r.reviewed_at, eatDate: ceEatDate(r.reviewed_at),
         task, sanctions: ceTaskSanctions(task) });
@@ -11171,6 +11172,7 @@ function ceAgg() {
   let worst = null; for (const d in scopeDay) if (!worst || scopeDay[d] > worst.n) worst = { date: d, n: scopeDay[d] };
   // QA-catcher (scoped, ALL in-scope errors — roster + non-roster).
   const byQa = {}; for (const e of inScope) byQa[e.qa] = (byQa[e.qa] || 0) + 1;
+  const byType = {}; for (const e of inScope) byType[e.errorType] = (byType[e.errorType] || 0) + 1;
   const pairMap = {}; for (const e of inScope) { const k = e.qa + "§" + e.agent; (pairMap[k] = pairMap[k] || { qa: e.qa, agent: e.agent, n: 0 }).n++; }
   const pairs = Object.values(pairMap).sort((p, q) => q.n - p.n || p.qa.localeCompare(q.qa) || p.agent.localeCompare(q.agent));
   // Tasks (scoped).
@@ -11196,7 +11198,7 @@ function ceAgg() {
   const weekDaily = []; for (let i = 0; i < 6; i++) { const d = _isoAddDays(curMon, i); weekDaily.push({ date: d, n: errors.filter(e => e.isRoster && e.eatDate === d).length, future: d > today }); }
 
   return {
-    rosterAgents, nonRoster, dayCounts, worst, inScope, byQa, pairs, tasks,
+    rosterAgents, nonRoster, dayCounts, worst, inScope, byQa, byType, pairs, tasks,
     agentsInScope, sancTaskCount, sancTopTask,
     teamScope:     rosterAgents.reduce((s, a) => s + a.scope, 0),
     teamScopeSanc: rosterAgents.reduce((s, a) => s + a.sancScope, 0),
@@ -11337,6 +11339,7 @@ function ceRenderLeaderboard(host) {
         ${sec("agents", "Agent leaderboard", a.rosterAgents.filter(x => x.scope > 0).length)}
         ${sec("tasks", "Errors by task", a.scopeTotal)}
         ${sec("qa", "QA reviewers", Object.keys(a.byQa).length)}
+        ${sec("types", "Errors by type", Object.keys(a.byType).length)}
         <button class="ce-sectab${CE_STATE.section === "trend" ? " active" : ""}" data-cesec="trend">Daily trend</button>
       </div>
       <div class="ce-seccap">${esc(ceScopeLabel())} · click a row for the records</div>
@@ -11372,6 +11375,10 @@ function ceRenderSection(a) {
       </div>`;
     ceRenderQaCatcher(a.byQa);
     ceRenderPairs(a.pairs);
+  } else if (CE_STATE.section === "types") {
+    host.innerHTML = `<div class="panel"><h3>Errors by type <span class="meta">${esc(ceScopeLabel())} · the mistake category QA recorded on each change</span></h3><div id="ceTypeDist"></div>
+      <div class="footer-note" style="margin-top:8px">From the Airtable Error_type field on changed records (captured 2026-06-15 onward); earlier changes show as “Unspecified”.</div></div>`;
+    ceRenderTypeDist(a.byType);
   } else if (CE_STATE.section === "trend") {
     host.innerHTML = `<div class="panel"><h3>Daily team errors <span class="meta">last 30 available days</span></h3>
       <div class="ce-trendchart" style="position:relative;height:300px"><canvas id="ceTrendCanvas"></canvas></div>
@@ -11423,6 +11430,18 @@ function ceRenderQaCatcher(byQa) {
   host.innerHTML = `<div class="ce-dist">${rows.map(x => {
     const hex = x.qa === "(unattributed)" ? "var(--warn)" : "#5b6472";
     return `<div class="ce-distrow"><div class="ce-distname" title="${esc(x.qa)}"><span class="dot" style="background:${hex}"></span>${esc(x.qa)}</div><div class="ce-disttrack"><div class="ce-distfill" style="width:${(x.n / max * 100).toFixed(1)}%;background:${hex}"></div></div><div class="ce-distcount">${x.n.toLocaleString()}</div></div>`;
+  }).join("")}</div>`;
+}
+
+function ceRenderTypeDist(byType) {
+  const host = document.getElementById("ceTypeDist"); if (!host) return;
+  const rows = Object.entries(byType).map(([type, n]) => ({ type, n })).sort((p, q) => q.n - p.n || p.type.localeCompare(q.type));
+  if (!rows.length) { host.innerHTML = `<div class="empty" style="padding:18px;color:var(--muted)">No changed records ${esc(ceScopeLabel())} 🎉</div>`; return; }
+  const max = rows[0].n;
+  const PALETTE = { "Wrong Company Input": "#7B68EE", "Incorrect Start Date": "#0691B5", "Company already exists": "#F9943B", "Unspecified": "#8A93A2" };
+  host.innerHTML = `<div class="ce-dist">${rows.map(x => {
+    const hex = PALETTE[x.type] || "#5b6472";
+    return `<div class="ce-distrow"><div class="ce-distname" title="${esc(x.type)}"><span class="dot" style="background:${hex}"></span>${esc(x.type)}</div><div class="ce-disttrack"><div class="ce-distfill" style="width:${(x.n / max * 100).toFixed(1)}%;background:${hex}"></div></div><div class="ce-distcount">${x.n.toLocaleString()}</div></div>`;
   }).join("")}</div>`;
 }
 
