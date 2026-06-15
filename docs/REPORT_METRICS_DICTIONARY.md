@@ -87,13 +87,13 @@ tagging-output count; `flow A/C` mark which of those reached done.
 Add `_reportMetrics(data)` (memoised on `data`) computing the shared QA numbers
 **one way only**, all event-in-range, record grain:
 
-| Canonical metric | Definition (proposed) | Event table / basis |
+| Canonical metric | Definition (as shipped) | Event table / basis |
 |---|---|---|
 | `completedInRange` | count of `ownership_completions` rows with `flow ∈ {A,C}` (i.e. actually done) | `completed_at` in range |
-| `qaReviewedInRange` | count of `ownership_qa_sampling` rows with a verdict (`qa_status ∈ {approve,changed}`) | `reviewed_at` in range |
-| `qaChangedInRange` | count of `ownership_qa_sampling` rows with `qa_status = changed` | `reviewed_at` in range |
+| `qaReviewedInRange` | count of **genuine** `ownership_qa_sampling` verdicts — `qa_status ∈ {approve,changed}` **AND `reviewed_at > sampled_at`** (excludes Flow-C auto-closures, where `sampled_at == reviewed_at`) | `reviewed_at` in range |
+| `qaChangedInRange` | genuine verdicts with `qa_status = changed` | `reviewed_at` in range |
 | `recordsSampledInRange` | count of `ownership_qa_sampling` rows | `sampled_at` in range |
-| `qaCoveragePct` | `_pct(qaReviewedInRange, completedInRange − deadAdj)` | derived |
+| `qaThroughputPct` | `_pct(qaReviewedInRange, completedInRange)` — **throughput ratio, can exceed 100%** (cross-cohort: reviewed by `reviewed_at` vs completed by `completed_at`); no dead-vessel adjustment | derived |
 
 **All three workbooks' headline "reviewed" cells** (QAs "Total reviewed", Tasks
 "Total QA reviewed", and the Agents scorecard QA total) read
@@ -144,6 +144,34 @@ on the report cards (mirrors the existing `completionsPartial` pattern).
    labelled "(task lifetime)" columns. Confirm.
 
 ---
+
+## Live validation & post-review refinements — 2026-06-15
+
+Validated against live Supabase (anon REST) for last week (`2026-06-08 → 14`;
+`recordsSampledInRange = 14,036` matched the figure in the original bug report,
+confirming the same week).
+
+- **`qa_status` enum (hard gate — PASSED).** Real values: `approve` (36,409),
+  `<null>` = unreviewed (4,980), `changed` (116), and 3 junk rows where a name
+  (`"Simon Francis"`) leaked into the column. The filter `{approve, changed}`
+  matches exactly — no `"approved"` / `"Changed"` / `"pending"` casing traps.
+  The 3 junk rows are correctly excluded (worth a one-off data cleanup).
+- **Auto-closure exclusion (decision).** The raw verdict count was 13,596, but
+  the approve:changed ratio was 99.7%:0.3% — `qa_status='approve'` is effectively
+  stamped when a record reaches Done/Valid, not only on a human verdict. Of the
+  13,596: **1,736 were instant auto-closures** (`sampled_at == reviewed_at`,
+  often the tagger as "QA") and 11,860 were genuine (real sampling→review gap,
+  all independent reviewers). `qaReviewedInRange` now **excludes the 1,736**
+  → **11,860** for the week (vs the old inflated 18,713 / 11,525 figures).
+  *Caveat:* even gated, the 0.3% change rate means "reviewed" still tracks
+  "records that reached a verdict state" more than "records a human scrutinised";
+  if the client report wants a narrower human-review figure, that needs a
+  distinguishing field the event tables don't yet carry — flagged for follow-up.
+- **Coverage → throughput ratio (decision).** Renamed `qaCoveragePct` →
+  `qaThroughputPct` and relabelled "QA throughput ratio % (reviewed ÷ completed,
+  may exceed 100%)". For last week it was 30.8% (completions ≫ reviews), but it
+  can exceed 100% in a low-completion / late-verdict week — never shipped as a
+  bare "coverage %".
 
 ## Label renames (so every column states its basis)
 

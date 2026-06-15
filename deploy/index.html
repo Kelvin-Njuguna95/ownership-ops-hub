@@ -9404,7 +9404,7 @@ async function _loadReportData(start, end) {
     // = a verdict (qa_status approve|changed), mirroring loadQaReviewHours. This
     // is intentionally a DIFFERENT cohort from `sampling` (sampled_at): a record
     // sampled one week and reviewed the next lands in each week's own metric.
-    pageFetch("ownership_qa_sampling", "airtable_record_id,qa_assignee,reviewed_at,qa_status", "reviewed_at"),
+    pageFetch("ownership_qa_sampling", "airtable_record_id,qa_assignee,reviewed_at,sampled_at,qa_status", "reviewed_at"),
   ]);
 
   const data = {
@@ -9460,7 +9460,7 @@ function _qaAggregate(data) {
   // time). These feed the headline numbers and tie out to _reportMetrics.
   const reviewedInRange = {}, changedInRange = {};
   for (const r of (data.reviews || [])) {
-    if (r.qa_status !== "approve" && r.qa_status !== "changed") continue;
+    if (!_isGenuineReview(r)) continue;   // excludes Flow-C auto-closures
     const canon = canonicalAgent(r.qa_assignee); if (!canon) continue;
     reviewedInRange[canon] = (reviewedInRange[canon] || 0) + 1;
     if (r.qa_status === "changed") changedInRange[canon] = (changedInRange[canon] || 0) + 1;
@@ -9484,16 +9484,30 @@ function _qaAggregate(data) {
 // All event-in-range, record grain (see docs/REPORT_METRICS_DICTIONARY.md). The
 // three workbooks + preview cards read these for their headline figures so they
 // tie out by construction; task-lifetime peaks survive only as separate columns.
+
+// A GENUINE BO QA review = a verdict (approve|changed) with a real
+// sampling→review time gap. Flow-C auto-closures (a record first observed
+// already Done/Valid) stamp sampled_at == reviewed_at in the same poll cycle —
+// usually qa_status='approve' with the tagger as "QA" — and are NOT human
+// reviews, so they're excluded (Kelvin decision 2026-06-15; live last-week
+// audit: 1,736 of 13,596 verdicts were instant auto-closures). reviewed_at is
+// the verdict clock; both timestamps are UTC timestamptz.
+function _isGenuineReview(r) {
+  if (r.qa_status !== "approve" && r.qa_status !== "changed") return false;
+  if (!r.reviewed_at || !r.sampled_at) return false;
+  return new Date(r.reviewed_at).getTime() > new Date(r.sampled_at).getTime();
+}
+
 function _reportMetrics(data) {
   if (data._reportMetrics) return data._reportMetrics;
   // completedInRange = actually-done records (flow A=done no-QA, C=done after-QA);
   // flow NULL is tagged-not-yet-done and is excluded from the coverage denom.
   let completedInRange = 0;
   for (const r of data.completions) if (r.flow === "A" || r.flow === "C") completedInRange++;
-  // A review = a verdict; changed ⊂ reviewed.
+  // A review = a GENUINE verdict (excl. auto-closure); changed ⊂ reviewed.
   let qaReviewedInRange = 0, qaChangedInRange = 0;
   for (const r of (data.reviews || [])) {
-    if (r.qa_status !== "approve" && r.qa_status !== "changed") continue;
+    if (!_isGenuineReview(r)) continue;
     qaReviewedInRange++;
     if (r.qa_status === "changed") qaChangedInRange++;
   }
@@ -9502,10 +9516,12 @@ function _reportMetrics(data) {
     recordsSampledInRange: data.sampling.length,
     qaReviewedInRange,
     qaChangedInRange,
-    // No dead-vessel exclusion: that flag does not exist at record grain in
-    // ownership_completions (only at task-lifetime grain). See the footnote
-    // emitted on every workbook + docs/REPORT_METRICS_DICTIONARY.md §decision 3.
-    qaCoveragePct: _pct(qaReviewedInRange, completedInRange),
+    // Cross-cohort throughput ratio (reviewed by reviewed_at ÷ completed by
+    // completed_at) — CAN exceed 100% in a low-completion / late-verdict week;
+    // surfaced as a "throughput ratio", never a bare coverage %. No dead-vessel
+    // exclusion: that flag does not exist at record grain (only task-lifetime).
+    // See docs/REPORT_METRICS_DICTIONARY.md §decisions.
+    qaThroughputPct: _pct(qaReviewedInRange, completedInRange),
   };
   data._reportMetrics = m;
   return m;
@@ -9537,7 +9553,7 @@ function _reportTieOut(data) {
 }
 
 // Footnote emitted on every workbook Summary so the coverage basis is explicit.
-const REPORT_COVERAGE_NOTE = "QA coverage % = QA reviewed (records, in-range) ÷ completed records (flow A+C, in-range). No dead-vessel exclusion — that flag is not available at record grain (see docs/REPORT_METRICS_DICTIONARY.md).";
+const REPORT_COVERAGE_NOTE = "QA reviewed (records, in-range) = genuine BO QA verdicts (approve/changed) with a real sampling→review gap; Flow-C auto-closures (sampled_at == reviewed_at) are excluded. QA throughput ratio % = reviewed (by reviewed_at) ÷ completed records (flow A+C, by completed_at) — different cohorts, so it CAN exceed 100%; it is a throughput ratio, not a coverage %. No dead-vessel exclusion — that flag is not available at record grain (see docs/REPORT_METRICS_DICTIONARY.md).";
 
 // ---- Part 5: Tasks workbook ----
 function _buildTasksWorkbook(data) {
@@ -9560,7 +9576,7 @@ function _buildTasksWorkbook(data) {
     ["Completed records (in-range, flow A+C)", m.completedInRange],
     ["QA reviewed (records, in-range)", m.qaReviewedInRange],
     ["QA changed (records, in-range)", m.qaChangedInRange],
-    ["QA coverage % (in-range)", m.qaCoveragePct],
+    ["QA throughput ratio % (reviewed ÷ completed, may exceed 100%)", m.qaThroughputPct],
     ["Records sampled (in-range)", m.recordsSampledInRange],
     // ---- Task-lifetime peak figures (NOT clipped to the window) ----
     ["Total records (task lifetime)", sum(t => t.peak.total_records)],
@@ -9642,7 +9658,7 @@ function _buildAgentsWorkbook(data) {
     // ---- Canonical, range-scoped QA headline (ties out with Tasks & QAs) ----
     ["QA reviewed (records, in-range)", m.qaReviewedInRange],
     ["QA changed (records, in-range)", m.qaChangedInRange],
-    ["QA coverage % (in-range)", m.qaCoveragePct],
+    ["QA throughput ratio % (reviewed ÷ completed, may exceed 100%)", m.qaThroughputPct],
     [data.metricMismatch ? "⚠ METRIC MISMATCH — QA totals did not reconcile; see console" : "", ""],
     [REPORT_COVERAGE_NOTE, ""],
   ];
@@ -9708,7 +9724,7 @@ function _buildQAsWorkbook(data) {
     ["QA reviewed (records, in-range)", m.qaReviewedInRange],
     ["QA changed (records, in-range)", m.qaChangedInRange],
     ["Overall reject rate % (in-range)", _pct(m.qaChangedInRange, m.qaReviewedInRange)],
-    ["QA coverage % (reviewed/completed, in-range)", m.qaCoveragePct],
+    ["QA throughput ratio % (reviewed ÷ completed, may exceed 100%)", m.qaThroughputPct],
     // ---- Task-lifetime peak figures (NOT clipped to the window) ----
     ["QA reviewed (task lifetime)", totalReviewedLifetime],
     ["QA changed (task lifetime)", totalChangedLifetime],

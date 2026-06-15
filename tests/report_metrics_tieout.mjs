@@ -14,6 +14,27 @@ import { dirname, join } from "node:path";
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const html = readFileSync(join(__dirname, "..", "deploy", "index.html"), "utf8");
 
+// ---- string/template/comment-aware scanner: calls onDone(c, i) only for real
+// code chars (skips ' " ` literals with escapes, // line + /* */ block comments,
+// so braces/semicolons inside strings or prose like "wouldn't" don't miscount). ----
+function scanCode(from, onDone) {
+  let str = null;                       // current string delimiter or null
+  for (let i = from; i < html.length; i++) {
+    const c = html[i], n = html[i + 1];
+    if (str) {
+      if (c === "\\") { i++; continue; }            // skip escaped char
+      if (c === str) str = null;
+      continue;
+    }
+    if (c === "/" && n === "/") { i = html.indexOf("\n", i); if (i < 0) break; continue; }
+    if (c === "/" && n === "*") { i = html.indexOf("*/", i + 2) + 1; continue; }
+    if (c === '"' || c === "'" || c === "`") { str = c; continue; }
+    const r = onDone(c, i);
+    if (r !== undefined) return r;
+  }
+  throw new Error("scanCode: unterminated");
+}
+
 // ---- extract a top-level `function NAME(...) { ... }` (last occurrence) ----
 function extractFn(name) {
   const re = new RegExp(`function ${name}\\s*\\(`, "g");
@@ -22,12 +43,10 @@ function extractFn(name) {
   if (start < 0) throw new Error(`fn not found: ${name}`);
   const open = html.indexOf("{", start);
   let depth = 0;
-  for (let i = open; i < html.length; i++) {
-    const c = html[i];
+  return scanCode(open, (c, i) => {
     if (c === "{") depth++;
     else if (c === "}") { depth--; if (depth === 0) return html.slice(start, i + 1); }
-  }
-  throw new Error(`unbalanced fn: ${name}`);
+  });
 }
 
 // ---- extract a top-level `const NAME = ...;` (to the depth-0 semicolon) ----
@@ -35,20 +54,18 @@ function extractConst(name) {
   const start = html.indexOf(`const ${name}`);
   if (start < 0) throw new Error(`const not found: ${name}`);
   let depth = 0;
-  for (let i = start; i < html.length; i++) {
-    const c = html[i];
+  return scanCode(start, (c, i) => {
     if ("([{".includes(c)) depth++;
     else if (")]}".includes(c)) depth--;
     else if (c === ";" && depth === 0) return html.slice(start, i + 1);
-  }
-  throw new Error(`unterminated const: ${name}`);
+  });
 }
 
 const consts = ["REPORT_HOURS", "REPORT_STATUS_COLS", "REPORT_COMMENT_VALUES", "REPORT_COVERAGE_NOTE"];
 const fns = [
   "eatDate", "eatHour", "median", "_enumerateDays", "_isoAddDays", "_isWeekendEat",
   "_round", "_pct", "canonicalAgent", "teamForAgent",
-  "_agentAggregate", "_qaAggregate", "_reportMetrics", "_reportTieOut",
+  "_isGenuineReview", "_agentAggregate", "_qaAggregate", "_reportMetrics", "_reportTieOut",
   "_buildTasksWorkbook", "_buildAgentsWorkbook", "_buildQAsWorkbook",
 ];
 
@@ -101,15 +118,17 @@ const data = {
     ...rep(5, { qa_assignee: "Alice", sampled_at: ts(8, 9) }),
     ...rep(3, { qa_assignee: "Bob",   sampled_at: ts(9, 10) }),
   ],
-  // reviews (verdict-time): Alice 5 approve + 3 changed, Bob 2 approve + 1 changed,
-  // plus 1 non-verdict row that must be ignored.
-  // → qaReviewedInRange = 11, qaChangedInRange = 4
+  // reviews (verdict-time). GENUINE = sampled earlier, reviewed later:
+  // Alice 5 approve + 3 changed, Bob 2 approve + 1 changed → reviewed 11, changed 4.
+  // Plus a non-verdict row (ignored) and 4 Flow-C auto-closures
+  // (sampled_at == reviewed_at) that MUST be excluded.
   reviews: [
-    ...rep(5, { qa_assignee: "Alice", reviewed_at: ts(8, 9), qa_status: "approve" }),
-    ...rep(3, { qa_assignee: "Alice", reviewed_at: ts(8, 9), qa_status: "changed" }),
-    ...rep(2, { qa_assignee: "Bob",   reviewed_at: ts(9, 10), qa_status: "approve" }),
-    ...rep(1, { qa_assignee: "Bob",   reviewed_at: ts(9, 10), qa_status: "changed" }),
-    ...rep(1, { qa_assignee: "Dan",   reviewed_at: ts(9, 10), qa_status: null }),
+    ...rep(5, { qa_assignee: "Alice", sampled_at: ts(8, 9),  reviewed_at: ts(9, 9),  qa_status: "approve" }),
+    ...rep(3, { qa_assignee: "Alice", sampled_at: ts(8, 9),  reviewed_at: ts(9, 9),  qa_status: "changed" }),
+    ...rep(2, { qa_assignee: "Bob",   sampled_at: ts(8, 10), reviewed_at: ts(9, 10), qa_status: "approve" }),
+    ...rep(1, { qa_assignee: "Bob",   sampled_at: ts(8, 10), reviewed_at: ts(9, 10), qa_status: "changed" }),
+    ...rep(1, { qa_assignee: "Dan",   sampled_at: ts(8, 10), reviewed_at: ts(9, 10), qa_status: null }),
+    ...rep(4, { qa_assignee: "Carol", sampled_at: ts(9, 11), reviewed_at: ts(9, 11), qa_status: "approve" }), // auto-closure → excluded
   ],
   completionsPartial: false, samplingPartial: false, reviewsPartial: false,
 };
@@ -136,7 +155,8 @@ check("_reportMetrics.qaReviewedInRange", m.qaReviewedInRange, EXPECT.reviewed);
 check("_reportMetrics.qaChangedInRange", m.qaChangedInRange, EXPECT.changed);
 check("_reportMetrics.completedInRange", m.completedInRange, EXPECT.completed);
 check("_reportMetrics.recordsSampledInRange", m.recordsSampledInRange, EXPECT.sampled);
-check("_reportMetrics.qaCoveragePct (= reviewed/completed)", m.qaCoveragePct, EXPECT.coverage);
+check("_reportMetrics.qaThroughputPct (= reviewed/completed)", m.qaThroughputPct, EXPECT.coverage);
+check("auto-closures excluded (4 instant approves dropped)", m.qaReviewedInRange, EXPECT.reviewed);
 
 const wbTasks = M._buildTasksWorkbook(data);
 const wbAgents = M._buildAgentsWorkbook(data);
@@ -149,8 +169,8 @@ check("Agents headline QA reviewed", aRev, EXPECT.reviewed);
 check("QAs headline QA reviewed", qRev, EXPECT.reviewed);
 check("headlines identical across all 3 workbooks", (tRev === aRev && aRev === qRev), true);
 
-check("QAs coverage % = reviewed/completed",
-  summaryVal(wbQAs, "QA coverage % (reviewed/completed, in-range)"), EXPECT.coverage);
+check("QAs throughput ratio % = reviewed/completed",
+  summaryVal(wbQAs, "QA throughput ratio % (reviewed ÷ completed, may exceed 100%)"), EXPECT.coverage);
 
 check("tie-out passes (no mismatch)", M._reportTieOut(data), true);
 check("data.metricMismatch is false", data.metricMismatch, false);
@@ -159,7 +179,7 @@ check("data.metricMismatch is false", data.metricMismatch, false);
 check("Tasks lifetime kept separate", summaryVal(wbTasks, "QA reviewed (task lifetime)"), 999);
 
 // negative case: corrupt the per-QA breakdown and confirm the tie-out fires
-const bad = { ...data, reviews: data.reviews.concat([{ qa_assignee: "", reviewed_at: ts(9, 10), qa_status: "approve" }]) };
+const bad = { ...data, reviews: data.reviews.concat([{ qa_assignee: "", sampled_at: ts(8, 10), reviewed_at: ts(9, 10), qa_status: "approve" }]) };
 delete bad._reportMetrics; delete bad._qaAgg; delete bad._tieOut; bad.metricMismatch = undefined;
 check("tie-out FIRES on empty-assignee verdict", M._reportTieOut(bad), false);
 
