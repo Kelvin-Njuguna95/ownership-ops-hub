@@ -118,17 +118,17 @@ const data = {
     ...rep(5, { qa_assignee: "Alice", sampled_at: ts(8, 9) }),
     ...rep(3, { qa_assignee: "Bob",   sampled_at: ts(9, 10) }),
   ],
-  // reviews (verdict-time). GENUINE = sampled earlier, reviewed later:
-  // Alice 5 approve + 3 changed, Bob 2 approve + 1 changed → reviewed 11, changed 4.
-  // Plus a non-verdict row (ignored) and 4 Flow-C auto-closures
-  // (sampled_at == reviewed_at) that MUST be excluded.
+  // reviews (verdict-time). COUNTED = verdict by an INDEPENDENT QA
+  // (qa_assignee != tagger): Alice 5 approve + 3 changed, Bob 2 approve + 1 changed
+  // → reviewed 11, changed 4. Plus a non-verdict row (ignored) and 4 tagger
+  // self-approvals (qa_assignee == assignee) that MUST be excluded.
   reviews: [
-    ...rep(5, { qa_assignee: "Alice", sampled_at: ts(8, 9),  reviewed_at: ts(9, 9),  qa_status: "approve" }),
-    ...rep(3, { qa_assignee: "Alice", sampled_at: ts(8, 9),  reviewed_at: ts(9, 9),  qa_status: "changed" }),
-    ...rep(2, { qa_assignee: "Bob",   sampled_at: ts(8, 10), reviewed_at: ts(9, 10), qa_status: "approve" }),
-    ...rep(1, { qa_assignee: "Bob",   sampled_at: ts(8, 10), reviewed_at: ts(9, 10), qa_status: "changed" }),
-    ...rep(1, { qa_assignee: "Dan",   sampled_at: ts(8, 10), reviewed_at: ts(9, 10), qa_status: null }),
-    ...rep(4, { qa_assignee: "Carol", sampled_at: ts(9, 11), reviewed_at: ts(9, 11), qa_status: "approve" }), // auto-closure → excluded
+    ...rep(5, { qa_assignee: "Alice", assignee: "Tagger1", reviewed_at: ts(9, 9),  qa_status: "approve" }),
+    ...rep(3, { qa_assignee: "Alice", assignee: "Tagger1", reviewed_at: ts(9, 9),  qa_status: "changed" }),
+    ...rep(2, { qa_assignee: "Bob",   assignee: "Tagger2", reviewed_at: ts(9, 10), qa_status: "approve" }),
+    ...rep(1, { qa_assignee: "Bob",   assignee: "Tagger2", reviewed_at: ts(9, 10), qa_status: "changed" }),
+    ...rep(1, { qa_assignee: "Dan",   assignee: "Tagger3", reviewed_at: ts(9, 10), qa_status: null }),
+    ...rep(4, { qa_assignee: "Carol", assignee: "Carol",   reviewed_at: ts(9, 11), qa_status: "approve" }), // self-approval → excluded
   ],
   completionsPartial: false, samplingPartial: false, reviewsPartial: false,
 };
@@ -156,13 +156,13 @@ check("_reportMetrics.qaChangedInRange", m.qaChangedInRange, EXPECT.changed);
 check("_reportMetrics.completedInRange", m.completedInRange, EXPECT.completed);
 check("_reportMetrics.recordsSampledInRange", m.recordsSampledInRange, EXPECT.sampled);
 check("_reportMetrics.qaThroughputPct (= reviewed/completed)", m.qaThroughputPct, EXPECT.coverage);
-check("auto-closures excluded (4 instant approves dropped)", m.qaReviewedInRange, EXPECT.reviewed);
+check("self-approvals excluded (4 tagger==QA approves dropped)", m.qaReviewedInRange, EXPECT.reviewed);
 
 const wbTasks = M._buildTasksWorkbook(data);
 const wbAgents = M._buildAgentsWorkbook(data);
 const wbQAs = M._buildQAsWorkbook(data);
 
-const HL = "QA reviewed (records, in-range)";
+const HL = "QA reviewed (independent)";
 const tRev = summaryVal(wbTasks, HL), aRev = summaryVal(wbAgents, HL), qRev = summaryVal(wbQAs, HL);
 check("Tasks headline QA reviewed", tRev, EXPECT.reviewed);
 check("Agents headline QA reviewed", aRev, EXPECT.reviewed);
@@ -178,10 +178,15 @@ check("data.metricMismatch is false", data.metricMismatch, false);
 // lifetime peaks must NOT leak into the headline (peak qa_reviewed was 999)
 check("Tasks lifetime kept separate", summaryVal(wbTasks, "QA reviewed (task lifetime)"), 999);
 
-// negative case: corrupt the per-QA breakdown and confirm the tie-out fires
-const bad = { ...data, reviews: data.reviews.concat([{ qa_assignee: "", sampled_at: ts(8, 10), reviewed_at: ts(9, 10), qa_status: "approve" }]) };
-delete bad._reportMetrics; delete bad._qaAgg; delete bad._tieOut; bad.metricMismatch = undefined;
-check("tie-out FIRES on empty-assignee verdict", M._reportTieOut(bad), false);
+// negative case: with the independent-QA gate, _reportMetrics and _qaAggregate
+// share identical inclusion, so a data-only divergence can't arise — instead
+// exercise the check logic directly by pre-seeding a contradictory cache
+// (headline says 99 reviewed, per-QA breakdown sums to 11) and confirm it fires.
+const bad = { ...data,
+  _reportMetrics: { qaReviewedInRange: 99, qaChangedInRange: 4, completedInRange: 10, recordsSampledInRange: 8, qaThroughputPct: 990 },
+  _qaAgg: { qas: {}, reviewedInRange: { Alice: 11 }, changedInRange: { Alice: 4 }, reviewedLifetime: {}, changedLifetime: {} },
+  _tieOut: undefined, metricMismatch: undefined };
+check("tie-out FIRES when per-QA sum != headline", M._reportTieOut(bad), false);
 
 console.log(failures ? `\n${failures} FAILED` : "\nALL PASSED");
 process.exit(failures ? 1 : 0);

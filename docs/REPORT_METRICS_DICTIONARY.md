@@ -90,8 +90,8 @@ Add `_reportMetrics(data)` (memoised on `data`) computing the shared QA numbers
 | Canonical metric | Definition (as shipped) | Event table / basis |
 |---|---|---|
 | `completedInRange` | count of `ownership_completions` rows with `flow ∈ {A,C}` (i.e. actually done) | `completed_at` in range |
-| `qaReviewedInRange` | count of **genuine** `ownership_qa_sampling` verdicts — `qa_status ∈ {approve,changed}` **AND `reviewed_at > sampled_at`** (excludes Flow-C auto-closures, where `sampled_at == reviewed_at`) | `reviewed_at` in range |
-| `qaChangedInRange` | genuine verdicts with `qa_status = changed` | `reviewed_at` in range |
+| `qaReviewedInRange` | count of **independent** `ownership_qa_sampling` verdicts — `qa_status ∈ {approve,changed}` **AND `qa_assignee != assignee`** (the reviewer is not the tagger; excludes tagger self-approvals). `approve`/`changed` is always a human QA decision by one of the 7 Windward QAs. | `reviewed_at` in range |
+| `qaChangedInRange` | independent verdicts with `qa_status = changed` | `reviewed_at` in range |
 | `recordsSampledInRange` | count of `ownership_qa_sampling` rows | `sampled_at` in range |
 | `qaThroughputPct` | `_pct(qaReviewedInRange, completedInRange)` — **throughput ratio, can exceed 100%** (cross-cohort: reviewed by `reviewed_at` vs completed by `completed_at`); no dead-vessel adjustment | derived |
 
@@ -156,17 +156,17 @@ confirming the same week).
   (`"Simon Francis"`) leaked into the column. The filter `{approve, changed}`
   matches exactly — no `"approved"` / `"Changed"` / `"pending"` casing traps.
   The 3 junk rows are correctly excluded (worth a one-off data cleanup).
-- **Auto-closure exclusion (decision).** The raw verdict count was 13,596, but
-  the approve:changed ratio was 99.7%:0.3% — `qa_status='approve'` is effectively
-  stamped when a record reaches Done/Valid, not only on a human verdict. Of the
-  13,596: **1,736 were instant auto-closures** (`sampled_at == reviewed_at`,
-  often the tagger as "QA") and 11,860 were genuine (real sampling→review gap,
-  all independent reviewers). `qaReviewedInRange` now **excludes the 1,736**
-  → **11,860** for the week (vs the old inflated 18,713 / 11,525 figures).
-  *Caveat:* even gated, the 0.3% change rate means "reviewed" still tracks
-  "records that reached a verdict state" more than "records a human scrutinised";
-  if the client report wants a narrower human-review figure, that needs a
-  distinguishing field the event tables don't yet carry — flagged for follow-up.
+- **Independent-QA definition (final, confirmed 2026-06-15).** Every
+  `approve`/`changed` is a human QA decision — there is no auto-stamping. The
+  only rows to drop are **tagger self-approvals** (`qa_assignee == assignee`).
+  The gate is therefore `qa_assignee != tagger`, with **no timestamp
+  dependency** (a missing `sampled_at` no longer drops a real review). This
+  replaced the earlier `reviewed_at > sampled_at` timestamp proxy.
+  - Live last week `2026-06-08→14`: 13,596 verdicts − **815 self-approvals**
+    = **12,781** independent reviews. The earlier timestamp proxy gave 11,860;
+    the old inflated figures were 18,713 / 11,525.
+  - **Distinct independent QAs = 7** — matches the 7 Windward QAs exactly,
+    confirming the gate. (reject rate 0.3%, throughput ratio 33.2%.)
 - **Coverage → throughput ratio (decision).** Renamed `qaCoveragePct` →
   `qaThroughputPct` and relabelled "QA throughput ratio % (reviewed ÷ completed,
   may exceed 100%)". For last week it was 30.8% (completions ≫ reviews), but it
@@ -175,9 +175,11 @@ confirming the same week).
 
 ## Label renames (so every column states its basis)
 
-- "Total QA reviewed" → **"QA reviewed (records, in-range)"** (headline) +
+- "Total QA reviewed" → **"QA reviewed (independent)"** (headline) +
   separate **"QA reviewed (task lifetime)"** where the peak figure is still shown.
-- "Total reviewed" (QAs) → **"QA reviewed (records, in-range)"**.
+  Footnote on every Summary: "Independent QA only — excludes tagger
+  self-approvals; each verdict is a decision by one of the 7 QAs."
+- "Total reviewed" (QAs) → **"QA reviewed (independent)"**.
 - Agents scorecard "QA-checked" → keep as **"QA-checked (task lifetime)"** for
   the per-agent peak column; headline QA total uses the in-range value.
 - Coverage cells annotated with the denominator basis and the dead-vessel
