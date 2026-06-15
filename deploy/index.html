@@ -9125,7 +9125,7 @@ function renderCompletedArchive(){
     </div>
     <div class="ct-fchips" id="ctFchips">${fchips.join("")}</div>
     <div class="panel" style="padding:6px 10px 10px">
-      <div class="ct-row head"><div>Task &middot; batch</div><div>Completed</div><div>Duration TAT</div><div>Teams</div><div>Status</div><div>Records</div><div>QA cov.</div><div>New cos.</div></div>
+      <div class="ct-row head"><div>Task &middot; batch</div><div>Completed</div><div>Duration TAT</div><div>Teams</div><div>Status</div><div>Records</div><div>QA cov.</div><div>New companies created</div></div>
       ${rows.map(rowHtml).join("")||'<div class="empty" style="padding:18px">No completed batches match this filter.</div>'}
     </div>
     <div class="ct-pag"><span>Showing ${total?start+1:0}–${end} of ${total} &middot; <span class="ct-num">${recsVisible.toLocaleString()}</span> records</span><span class="pages">${pagesHtml}</span></div>`;
