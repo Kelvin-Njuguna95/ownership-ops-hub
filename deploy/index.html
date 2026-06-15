@@ -11644,8 +11644,8 @@ function ceOpenAgentPanel(agent, range, label, pageN) {
     <div class="footer-note" style="margin-bottom:4px">The records BO QA changed — the receipts for a feedback conversation.</div>
     ${ceCaughtByLine(rows)}
     <div style="overflow-x:auto"><table class="ce-tbl">
-      <thead><tr><th>IMO</th><th>Role</th><th>Table</th><th>Task</th><th>QA reviewer</th><th>When (EAT)</th></tr></thead>
-      <tbody>${slice.map(e => `<tr class="ce-panelrow"><td class="mono">${esc(e.imo || "—")}</td><td>${esc((e.role || "—").replace(/_/g, " "))}</td><td>${csTableBadge(e.source_table)}</td><td>${ceTaskCell(e)}</td><td>${esc(e.qa)}</td><td class="small-mono">${esc(ceEatDateTime(e.reviewed_at))}</td></tr>`).join("")}</tbody>
+      <thead><tr><th>IMO</th><th>Role</th><th>Table</th><th>Task</th><th>QA reviewer</th><th>Error type</th><th>When (EAT)</th></tr></thead>
+      <tbody>${slice.map(e => `<tr class="ce-panelrow"><td class="mono">${esc(e.imo || "—")}</td><td>${esc((e.role || "—").replace(/_/g, " "))}</td><td>${csTableBadge(e.source_table)}</td><td>${ceTaskCell(e)}</td><td>${esc(e.qa)}</td><td>${esc(e.errorType)}</td><td class="small-mono">${esc(ceEatDateTime(e.reviewed_at))}</td></tr>`).join("")}</tbody>
     </table></div>${pager}`;
   const pv = document.getElementById("cePanPrev"); if (pv) pv.addEventListener("click", () => ceOpenAgentPanel(agent, range, label, pageN - 1));
   const nx = document.getElementById("cePanNext"); if (nx) nx.addEventListener("click", () => ceOpenAgentPanel(agent, range, label, pageN + 1));
@@ -11662,8 +11662,8 @@ function ceOpenPairPanel(qa, agent) {
   body.innerHTML = `
     <div class="footer-note" style="margin-bottom:8px">Records <b>${esc(qa)}</b> changed for <b>${esc(agent)}</b> — both sides of the conversation.</div>
     <div style="overflow-x:auto"><table class="ce-tbl">
-      <thead><tr><th>IMO</th><th>Role</th><th>Table</th><th>Task</th><th>When (EAT)</th></tr></thead>
-      <tbody>${rows.map(e => `<tr class="ce-panelrow"><td class="mono">${esc(e.imo || "—")}</td><td>${esc((e.role || "—").replace(/_/g, " "))}</td><td>${csTableBadge(e.source_table)}</td><td>${ceTaskCell(e)}</td><td class="small-mono">${esc(ceEatDateTime(e.reviewed_at))}</td></tr>`).join("")}</tbody>
+      <thead><tr><th>IMO</th><th>Role</th><th>Table</th><th>Task</th><th>Error type</th><th>When (EAT)</th></tr></thead>
+      <tbody>${rows.map(e => `<tr class="ce-panelrow"><td class="mono">${esc(e.imo || "—")}</td><td>${esc((e.role || "—").replace(/_/g, " "))}</td><td>${csTableBadge(e.source_table)}</td><td>${ceTaskCell(e)}</td><td>${esc(e.errorType)}</td><td class="small-mono">${esc(ceEatDateTime(e.reviewed_at))}</td></tr>`).join("")}</tbody>
     </table></div>`;
 }
 
@@ -11679,8 +11679,8 @@ function ceOpenTaskPanel(task) {
   body.innerHTML = `
     <div class="footer-note" style="margin-bottom:8px">${sanc ? ceSancPill(true) + " " : ""}Errors made on this task.</div>
     <div style="overflow-x:auto"><table class="ce-tbl">
-      <thead><tr><th>IMO</th><th>Agent</th><th>QA reviewer</th><th>When (EAT)</th></tr></thead>
-      <tbody>${rows.map(e => `<tr class="ce-panelrow"><td class="mono">${esc(e.imo || "—")}</td><td class="agent">${esc(e.agent)}</td><td>${esc(e.qa)}</td><td class="small-mono">${esc(ceEatDateTime(e.reviewed_at))}</td></tr>`).join("")}</tbody>
+      <thead><tr><th>IMO</th><th>Agent</th><th>QA reviewer</th><th>Error type</th><th>When (EAT)</th></tr></thead>
+      <tbody>${rows.map(e => `<tr class="ce-panelrow"><td class="mono">${esc(e.imo || "—")}</td><td class="agent">${esc(e.agent)}</td><td>${esc(e.qa)}</td><td>${esc(e.errorType)}</td><td class="small-mono">${esc(ceEatDateTime(e.reviewed_at))}</td></tr>`).join("")}</tbody>
     </table></div>`;
 }
 
