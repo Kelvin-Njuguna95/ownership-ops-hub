@@ -2949,6 +2949,10 @@ PAGE_RENDERERS.overview = function () {
     teamTagged[_tm] = _complsReadyOv ? _sum : ((byTeam[_tm]?.tagged_today) || 0);
   }
   const teamsMet = teams.filter(_tm => (teamTagged[_tm] || 0) >= TEAM_FLOOR).length;
+  // Productivity-facing "tagged today" total = real completions (ties out with the
+  // team panel + agent list). The Flow Framework keeps its own taggedTotal (snapshot)
+  // for the A+B+C+D reconciliation — do NOT switch that.
+  const taggedTotalCompletions = teams.reduce((s, _tm) => s + (teamTagged[_tm] || 0), 0);
   const newCompaniesOpen = (STATE.v2.add_new_company_records || []).length;
 
   // Page head with Export + Open BO QA buttons
@@ -2970,7 +2974,7 @@ PAGE_RENDERERS.overview = function () {
           <span class="dot-sep">&middot;</span>
           <span class="num">${(t.relations_support_intake_today || 0).toLocaleString()}</span> records intake today
           <span class="dot-sep">&middot;</span>
-          <span class="num">${(t.tagged_today || 0).toLocaleString()}</span> tagged
+          <span class="num">${taggedTotalCompletions.toLocaleString()}</span> tagged
         </div>
       </div>
       <div class="page-head-actions">
@@ -3010,7 +3014,7 @@ PAGE_RENDERERS.overview = function () {
       </div>
       <div class="kpi k-cyan">
         <div class="kpi-top"><div class="label">Tagged today</div><span class="kpi-icon">${KPI_ICONS.tag}</span></div>
-        <div class="value-row"><span class="value">${(t.tagged_today || 0).toLocaleString()}</span>${tgDoD == null ? "" : `<span class="kpi-dod-light ${tgDoD >= 0 ? "up" : "down"}">${tgDoD >= 0 ? "+" : ""}${tgDoD.toFixed(1)}%</span>`}</div>
+        <div class="value-row"><span class="value">${taggedTotalCompletions.toLocaleString()}</span></div>
         <div class="delta">Floor ${TEAM_FLOOR.toLocaleString()} &middot; <b>${teamsMet}/${teams.length}</b> teams met</div>
       </div>
       <div class="kpi k-orange ${sampNsClass}">
@@ -3074,16 +3078,16 @@ PAGE_RENDERERS.overview = function () {
       ${taggedTotal > 0 ? `
       <div class="flow-bar-wrap">
         <div class="flow-bar">
-          <div class="flow-seg a" style="width:${flowPct(flowA)}%" title="Flow A — done, no QA: ${flowA}"></div>
-          <div class="flow-seg b" style="width:${flowPct(flowB)}%" title="Flow B — in BO QA: ${flowB}"></div>
-          <div class="flow-seg c" style="width:${flowPct(flowC)}%" title="Flow C — done after QA: ${flowC}"></div>
-          <div class="flow-seg d" style="width:${flowPct(flowD)}%" title="Flow D — in flight: ${flowD}"></div>
+          <div class="flow-seg a" style="width:${flowPct(flowA)}%" title="Completed · not QA-sampled: ${flowA}"></div>
+          <div class="flow-seg b" style="width:${flowPct(flowB)}%" title="In QA review: ${flowB}"></div>
+          <div class="flow-seg c" style="width:${flowPct(flowC)}%" title="Completed · QA-checked: ${flowC}"></div>
+          <div class="flow-seg d" style="width:${flowPct(flowD)}%" title="In progress (tagged, not yet finalised): ${flowD}"></div>
         </div>
         <div class="flow-legend">
-          <div class="item"><span class="swatch a"></span><span class="lname">Flow A &middot; done, no QA</span> <span class="lcount">${flowA}</span></div>
-          <div class="item"><span class="swatch b"></span><span class="lname">Flow B &middot; in BO QA</span> <span class="lcount">${flowB}</span></div>
-          <div class="item"><span class="swatch c"></span><span class="lname">Flow C &middot; done after QA</span> <span class="lcount">${flowC}</span></div>
-          <div class="item"><span class="swatch d"></span><span class="lname">Flow D &middot; in flight</span> <span class="lcount">${flowD}</span></div>
+          <div class="item"><span class="swatch a"></span><span class="lname">Completed &middot; not QA-sampled</span> <span class="lcount">${flowA}</span></div>
+          <div class="item"><span class="swatch b"></span><span class="lname">In QA review</span> <span class="lcount">${flowB}</span></div>
+          <div class="item"><span class="swatch c"></span><span class="lname">Completed &middot; QA-checked</span> <span class="lcount">${flowC}</span></div>
+          <div class="item"><span class="swatch d"></span><span class="lname">In progress</span> <span class="lcount">${flowD}</span></div>
         </div>
       </div>` : `<div class="empty" style="margin-top:14px;">No work tagged today yet — the flow fills in as the 5 teams tag records.</div>`}
       <div class="lifecycle-foot">
@@ -3293,7 +3297,7 @@ PAGE_RENDERERS.overview = function () {
   const _cs = ovCompletedSummary();
   const _ce = (typeof CE_STATE !== "undefined" && CE_STATE.status === "ready") ? ceAgg() : null;
   const _floorTotal = AGENT_FLOOR * agentCount;
-  const _prodPct = _floorTotal > 0 ? (taggedTotal / _floorTotal * 100) : null;
+  const _prodPct = _floorTotal > 0 ? (taggedTotalCompletions / _floorTotal * 100) : null;
   const _sanc = t.tagged_today_sanctions || 0;
 
   // Status — real inputs only; conservative so it doesn't cry wolf intra-day.
@@ -3331,7 +3335,7 @@ PAGE_RENDERERS.overview = function () {
       `corrected before delivery &middot; <b>${_ce.teamWeek.toLocaleString()}</b> this week &middot; last 30 days`, "", true));
   if (_prodPct != null)
     _cards.push(_vcard("Productivity vs floor", `${_prodPct.toFixed(0)}<span class="unit">%</span>`,
-      `<b>${taggedTotal.toLocaleString()}</b> tagged vs <b>${_floorTotal.toLocaleString()}</b> floor (${AGENT_FLOOR}/agent × ${agentCount}) &middot; today`,
+      `<b>${taggedTotalCompletions.toLocaleString()}</b> tagged vs <b>${_floorTotal.toLocaleString()}</b> floor (${AGENT_FLOOR}/agent × ${agentCount}) &middot; today`,
       _prodPct >= 100 ? "good" : ""));
   if (_sanc > 0)
     _cards.push(_vcard("Sanctions handling", `${sampSPct.toFixed(1)}<span class="unit">%</span>`,
