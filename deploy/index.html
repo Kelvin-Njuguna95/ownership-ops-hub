@@ -645,7 +645,7 @@
   .ct-fchip .x { cursor:pointer; color:var(--muted); font-weight:700; }
   .ct-fchip .x:hover { color:var(--ink); }
   .ct-clear { color:var(--accent); cursor:pointer; font-weight:600; }
-  .ct-row { display:grid; grid-template-columns: minmax(200px,2fr) 1.1fr 1.2fr 1.1fr 1.1fr 1fr 1.1fr; gap:12px; align-items:center; padding:11px 10px; border-bottom:1px solid var(--border); cursor:pointer; transition:background .12s ease; font-size:12px; }
+  .ct-row { display:grid; grid-template-columns: minmax(200px,2fr) 1.1fr 1.2fr 1.1fr 1.1fr 1fr 1.1fr 0.9fr; gap:12px; align-items:center; padding:11px 10px; border-bottom:1px solid var(--border); cursor:pointer; transition:background .12s ease; font-size:12px; }
   .ct-row:hover { background:var(--soft); }
   .ct-row.selected { background:var(--accent-soft); }
   .ct-row.head { font-size:10.5px; text-transform:uppercase; letter-spacing:0.04em; color:var(--muted); font-weight:700; cursor:default; padding-bottom:8px; }
@@ -2382,6 +2382,7 @@ function groupTaskHistory(rows) {
       peak,                                // fullest day — scorecard & agent breakdown source
       qaPeak,                              // day QA review peaked — QA reviewers source
       trueTotal,                           // MAX records ever seen = real size
+      newCompaniesCreated: (peak && peak.new_companies_created) || 0,  // created on the fullest day (durable; 0 if pre-dates this field)
       isCompleted: !!latest.is_completed,
       firstSeen: hist[0].snapshot_date,
       lastRecorded: latest.snapshot_date,
@@ -9107,6 +9108,7 @@ function renderCompletedArchive(){
       <div><span class="ct-pill ${sc}">${slabel}</span></div>
       <div><span class="ct-num">${total.toLocaleString()}</span><div class="small-mono">${(L.properly_completed||0).toLocaleString()} properly</div></div>
       <div><span class="ct-num">${cov.toFixed(1)}%</span><div class="small-mono">${qas} QA${qas===1?"":"s"}</div></div>
+      <div><span class="ct-num">${(t.newCompaniesCreated||0).toLocaleString()}</span><div class="small-mono">created</div></div>
     </div>`;
   };
   // pagination buttons (compact)
@@ -9123,7 +9125,7 @@ function renderCompletedArchive(){
     </div>
     <div class="ct-fchips" id="ctFchips">${fchips.join("")}</div>
     <div class="panel" style="padding:6px 10px 10px">
-      <div class="ct-row head"><div>Task &middot; batch</div><div>Completed</div><div>Duration TAT</div><div>Teams</div><div>Status</div><div>Records</div><div>QA cov.</div></div>
+      <div class="ct-row head"><div>Task &middot; batch</div><div>Completed</div><div>Duration TAT</div><div>Teams</div><div>Status</div><div>Records</div><div>QA cov.</div><div>New cos.</div></div>
       ${rows.map(rowHtml).join("")||'<div class="empty" style="padding:18px">No completed batches match this filter.</div>'}
     </div>
     <div class="ct-pag"><span>Showing ${total?start+1:0}–${end} of ${total} &middot; <span class="ct-num">${recsVisible.toLocaleString()}</span> records</span><span class="pages">${pagesHtml}</span></div>`;

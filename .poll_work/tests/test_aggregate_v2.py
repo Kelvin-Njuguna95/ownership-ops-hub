@@ -810,6 +810,24 @@ class TestComputeTaskBreakdowns(unittest.TestCase):
         self.assertEqual(d["Done"], 1)
         self.assertEqual(d["waiting"], 0)
 
+    def test_new_companies_created_counts_distinct_done_valid(self):
+        # Two Done/Valid records share ONE add_new_company name → 1 distinct;
+        # a Valid record with a different name → +1; a pending (non-Done/Valid)
+        # add_new_company record must NOT count. Expected: 2.
+        recs = [
+            _info(requested_by="NC", assignees=["Alice"], verification_status="Done",
+                  add_new_company="Acme Holdings"),
+            _info(requested_by="NC", assignees=["Bob"], verification_status="Valid",
+                  add_new_company="Acme Holdings"),
+            _info(requested_by="NC", assignees=["Alice"], verification_status="Valid",
+                  add_new_company="Globex Ltd"),
+            _info(requested_by="NC", assignees=["Carol"], verification_status=SELECTED_FOR_BO_QA,
+                  add_new_company="Initech (pending)"),
+        ]
+        tasks = compute_task_breakdowns(recs, TODAY, self._build_norm_ownership())
+        t = next(x for x in tasks if x["name"] == "NC")
+        self.assertEqual(t["new_companies_created"], 2)
+
     def test_blank_requested_by_collapses_to_no_task_name(self):
         recs = [
             _info(requested_by=None,  assignees=["Alice"]),
