@@ -9397,9 +9397,14 @@ async function _loadReportData(start, end) {
     return out;
   };
 
-  const [completions, sampling] = await Promise.all([
+  const [completions, sampling, reviews] = await Promise.all([
     pageFetch("ownership_completions", "airtable_record_id,completed_by,completed_at,flow", "completed_at"),
     pageFetch("ownership_qa_sampling", "airtable_record_id,qa_assignee,sampled_at", "sampled_at"),
+    // Canonical QA-reviewed cohort: verdict-time (reviewed_at) in range, a review
+    // = a verdict (qa_status approve|changed), mirroring loadQaReviewHours. This
+    // is intentionally a DIFFERENT cohort from `sampling` (sampled_at): a record
+    // sampled one week and reviewed the next lands in each week's own metric.
+    pageFetch("ownership_qa_sampling", "airtable_record_id,qa_assignee,reviewed_at,qa_status", "reviewed_at"),
   ]);
 
   const data = {
@@ -9408,8 +9413,10 @@ async function _loadReportData(start, end) {
     tasks,
     completions: completions || [],
     sampling: sampling || [],
+    reviews: reviews || [],
     completionsPartial: !!(completions && completions.partial),
     samplingPartial: !!(sampling && sampling.partial),
+    reviewsPartial: !!(reviews && reviews.partial),
   };
   REPORT_STATE.cache[cacheKey] = data;
   return data;
@@ -9449,22 +9456,97 @@ function _qaAggregate(data) {
     if (d) { q.daily[d] = (q.daily[d] || 0) + 1; q.days.add(d); }
     if (h != null && h >= 6 && h <= 23) q.hourly[h] = (q.hourly[h] || 0) + 1; else q.outside++;
   }
-  const reviewed = {}, changed = {};
+  // Canonical, range-scoped per-QA reviewed/changed (event-in-range, verdict
+  // time). These feed the headline numbers and tie out to _reportMetrics.
+  const reviewedInRange = {}, changedInRange = {};
+  for (const r of (data.reviews || [])) {
+    if (r.qa_status !== "approve" && r.qa_status !== "changed") continue;
+    const canon = canonicalAgent(r.qa_assignee); if (!canon) continue;
+    reviewedInRange[canon] = (reviewedInRange[canon] || 0) + 1;
+    if (r.qa_status === "changed") changedInRange[canon] = (changedInRange[canon] || 0) + 1;
+    // A reviewer who reviewed in-range but sampled nothing in-range still needs a
+    // scorecard row, else the per-QA reviewed column wouldn't sum to the headline.
+    if (!qas[canon]) qas[canon] = { name: canon, total: 0, daily: {}, hourly: {}, outside: 0, days: new Set() };
+  }
+  // Task-LIFETIME peak figures — kept ONLY for the explicitly-labelled
+  // "(task lifetime)" columns; they must never feed a headline.
+  const reviewedLifetime = {}, changedLifetime = {};
   for (const t of data.tasks) for (const qr of (t.qaPeak.qa_reviewers || [])) {
     const canon = canonicalAgent(qr.name); if (!canon) continue;
-    reviewed[canon] = (reviewed[canon] || 0) + (qr.reviewed || 0);
-    changed[canon] = (changed[canon] || 0) + (qr.changed || 0);
+    reviewedLifetime[canon] = (reviewedLifetime[canon] || 0) + (qr.reviewed || 0);
+    changedLifetime[canon] = (changedLifetime[canon] || 0) + (qr.changed || 0);
   }
-  data._qaAgg = { qas, reviewed, changed };
+  data._qaAgg = { qas, reviewedInRange, changedInRange, reviewedLifetime, changedLifetime };
   return data._qaAgg;
 }
+
+// ---- Part 4.5: ONE canonical definition of the shared QA numbers -------------
+// All event-in-range, record grain (see docs/REPORT_METRICS_DICTIONARY.md). The
+// three workbooks + preview cards read these for their headline figures so they
+// tie out by construction; task-lifetime peaks survive only as separate columns.
+function _reportMetrics(data) {
+  if (data._reportMetrics) return data._reportMetrics;
+  // completedInRange = actually-done records (flow A=done no-QA, C=done after-QA);
+  // flow NULL is tagged-not-yet-done and is excluded from the coverage denom.
+  let completedInRange = 0;
+  for (const r of data.completions) if (r.flow === "A" || r.flow === "C") completedInRange++;
+  // A review = a verdict; changed ⊂ reviewed.
+  let qaReviewedInRange = 0, qaChangedInRange = 0;
+  for (const r of (data.reviews || [])) {
+    if (r.qa_status !== "approve" && r.qa_status !== "changed") continue;
+    qaReviewedInRange++;
+    if (r.qa_status === "changed") qaChangedInRange++;
+  }
+  const m = {
+    completedInRange,
+    recordsSampledInRange: data.sampling.length,
+    qaReviewedInRange,
+    qaChangedInRange,
+    // No dead-vessel exclusion: that flag does not exist at record grain in
+    // ownership_completions (only at task-lifetime grain). See the footnote
+    // emitted on every workbook + docs/REPORT_METRICS_DICTIONARY.md §decision 3.
+    qaCoveragePct: _pct(qaReviewedInRange, completedInRange),
+  };
+  data._reportMetrics = m;
+  return m;
+}
+
+// Build-time tie-out self-check. Recomputes the reviewed/changed headline an
+// independent way (grouped per QA) and asserts it equals the flat canonical
+// count, plus changed ⊆ reviewed. On divergence: console.warn + set
+// data.metricMismatch so the preview cards surface a visible "⚠" note
+// (mirrors the completionsPartial pattern). Returns true when consistent.
+function _reportTieOut(data) {
+  if (data._tieOut !== undefined) return data._tieOut;
+  const m = _reportMetrics(data);
+  // The per-QA breakdown the scorecards actually display must sum to the
+  // canonical headline. A gap here means some verdict rows have an unresolvable
+  // (or empty) qa_assignee — worth surfacing rather than silently dropping.
+  const { reviewedInRange, changedInRange } = _qaAggregate(data);
+  const sum = (o) => Object.values(o).reduce((s, v) => s + v, 0);
+  const perQaReviewed = sum(reviewedInRange), perQaChanged = sum(changedInRange);
+  const ok = perQaReviewed === m.qaReviewedInRange
+          && perQaChanged === m.qaChangedInRange
+          && m.qaChangedInRange <= m.qaReviewedInRange;
+  if (!ok) console.warn("⚠ report metric mismatch:", {
+    qaReviewedInRange: m.qaReviewedInRange, perQaReviewed,
+    qaChangedInRange: m.qaChangedInRange, perQaChanged });
+  data._tieOut = ok;
+  data.metricMismatch = !ok;
+  return ok;
+}
+
+// Footnote emitted on every workbook Summary so the coverage basis is explicit.
+const REPORT_COVERAGE_NOTE = "QA coverage % = QA reviewed (records, in-range) ÷ completed records (flow A+C, in-range). No dead-vessel exclusion — that flag is not available at record grain (see docs/REPORT_METRICS_DICTIONARY.md).";
 
 // ---- Part 5: Tasks workbook ----
 function _buildTasksWorkbook(data) {
   const tasks = data.tasks;
+  const m = _reportMetrics(data);
+  _reportTieOut(data);
   const sum = (f) => tasks.reduce((s, t) => s + (Number(f(t)) || 0), 0);
   const completed = tasks.filter(t => t.isCompleted);
-  const totalReviewed = sum(t => t.peak.qa_reviewed);
+  const totalReviewedLifetime = sum(t => t.peak.qa_reviewed);
   const totalCompletedRecs = sum(t => t.peak.completed);
   const tats = completed.map(t => t.latest.tat_hours).filter(v => v != null).map(Number);
 
@@ -9474,19 +9556,28 @@ function _buildTasksWorkbook(data) {
     ["Tasks active", tasks.length],
     ["Tasks completed", completed.length],
     ["Tasks open", tasks.length - completed.length],
-    ["Total records", sum(t => t.peak.total_records)],
-    ["Total dead vessels", sum(t => t.peak.dead_vessels)],
-    ["Total with reminder", sum(t => t.peak.with_reminder)],
-    ["Total completed records", totalCompletedRecs],
-    ["Total QA reviewed", totalReviewed],
-    ["Total QA changed", sum(t => t.peak.qa_changed)],
-    ["Overall QA coverage %", _pct(totalReviewed, totalCompletedRecs)],
+    // ---- Canonical, range-scoped headline (ties out with Agents & QAs) ----
+    ["Completed records (in-range, flow A+C)", m.completedInRange],
+    ["QA reviewed (records, in-range)", m.qaReviewedInRange],
+    ["QA changed (records, in-range)", m.qaChangedInRange],
+    ["QA coverage % (in-range)", m.qaCoveragePct],
+    ["Records sampled (in-range)", m.recordsSampledInRange],
+    // ---- Task-lifetime peak figures (NOT clipped to the window) ----
+    ["Total records (task lifetime)", sum(t => t.peak.total_records)],
+    ["Total dead vessels (task lifetime)", sum(t => t.peak.dead_vessels)],
+    ["Total with reminder (task lifetime)", sum(t => t.peak.with_reminder)],
+    ["Completed records (task lifetime)", totalCompletedRecs],
+    ["QA reviewed (task lifetime)", totalReviewedLifetime],
+    ["QA changed (task lifetime)", sum(t => t.peak.qa_changed)],
     ["Median turn-around (hrs)", median(tats) ?? 0],
+    [data.metricMismatch ? "⚠ METRIC MISMATCH — QA totals did not reconcile; see console" : "", ""],
+    [REPORT_COVERAGE_NOTE, ""],
   ];
 
   const taskHeader = ["Task name", "Sanctions?", "First seen", "Last activity", "Status", "Valid %",
-    "Total records", "Dead vessels", "With reminder", "Completed records", "QA reviewed", "QA changed",
-    "QA coverage %", "TAT (hrs)", "Flags", ...REPORT_STATUS_COLS.map(c => c[1])];
+    "Total records (task lifetime)", "Dead vessels (task lifetime)", "With reminder (task lifetime)",
+    "Completed records (task lifetime)", "QA reviewed (task lifetime)", "QA changed (task lifetime)",
+    "QA coverage % (task lifetime)", "TAT (hrs)", "Flags", ...REPORT_STATUS_COLS.map(c => c[1])];
   const taskRows = tasks.map(t => {
     const p = t.peak, sd = p.status_distribution || {};
     return [
@@ -9526,6 +9617,8 @@ function _buildTasksWorkbook(data) {
 // ---- Part 6: Agents workbook ----
 function _buildAgentsWorkbook(data) {
   const { agents, qaChecked, qaChanged } = _agentAggregate(data);
+  const m = _reportMetrics(data);
+  _reportTieOut(data);
   const dates = data.dates, hours = REPORT_HOURS;
   const names = Object.keys(agents).sort((a, b) => agents[b].total - agents[a].total || a.localeCompare(b));
   const grandTotal = names.reduce((s, n) => s + agents[n].total, 0);
@@ -9546,6 +9639,12 @@ function _buildAgentsWorkbook(data) {
     ["Daily average", dates.length ? _round(grandTotal / dates.length, 2) : 0],
     ["Busiest day", busiestDay ? `${busiestDay} (${dayTot[busiestDay] || 0})` : "—"],
     ["Busiest hour", names.length ? `${String(busiestHour).padStart(2, "0")}:00 (${hourTot[busiestHour] || 0})` : "—"],
+    // ---- Canonical, range-scoped QA headline (ties out with Tasks & QAs) ----
+    ["QA reviewed (records, in-range)", m.qaReviewedInRange],
+    ["QA changed (records, in-range)", m.qaChangedInRange],
+    ["QA coverage % (in-range)", m.qaCoveragePct],
+    [data.metricMismatch ? "⚠ METRIC MISMATCH — QA totals did not reconcile; see console" : "", ""],
+    [REPORT_COVERAGE_NOTE, ""],
   ];
 
   const dailyHeader = ["Agent", "Team", ...dates, "Total", "Avg/Day"];
@@ -9565,7 +9664,8 @@ function _buildAgentsWorkbook(data) {
   // (special working weekend). dayTot[d] is that day's total tagging.
   const agentWorkDays = dates.filter(d => !_isWeekendEat(d) || (dayTot[d] || 0) > 0).length;
   const scHeader = ["Agent", "Team", "Total tagged", "Days worked", "Days absent", "Avg/day",
-    "Peak day", "Peak hour", "Flow A", "Flow C", "QA-checked", "QA-changed", "Reject rate %"];
+    "Peak day", "Peak hour", "Flow A", "Flow C",
+    "QA-checked (task lifetime)", "QA-changed (task lifetime)", "Reject rate % (task lifetime)"];
   const scRows = names.map(n => {
     const a = agents[n];
     const dw = a.days.size;
@@ -9590,21 +9690,30 @@ function _buildAgentsWorkbook(data) {
 
 // ---- Part 7: QAs workbook ----
 function _buildQAsWorkbook(data) {
-  const { qas, reviewed, changed } = _qaAggregate(data);
+  const { qas, reviewedInRange, changedInRange, reviewedLifetime, changedLifetime } = _qaAggregate(data);
+  const m = _reportMetrics(data);
+  _reportTieOut(data);
   const dates = data.dates, hours = REPORT_HOURS;
   const names = Object.keys(qas).sort((a, b) => qas[b].total - qas[a].total || a.localeCompare(b));
   const totalSampled = names.reduce((s, n) => s + qas[n].total, 0);
-  const totalReviewed = names.reduce((s, n) => s + (reviewed[n] || 0), 0);
-  const totalChanged = names.reduce((s, n) => s + (changed[n] || 0), 0);
+  const totalReviewedLifetime = names.reduce((s, n) => s + (reviewedLifetime[n] || 0), 0);
+  const totalChangedLifetime = names.reduce((s, n) => s + (changedLifetime[n] || 0), 0);
 
   const summary = [
     ["QA Report", ""],
     ["Period", `${data.start} → ${data.end}`],
     ["Active QAs", names.length],
-    ["Total records sampled", totalSampled],
-    ["Total reviewed", totalReviewed],
-    ["Total changed", totalChanged],
-    ["Overall reject rate %", _pct(totalChanged, totalReviewed)],
+    // ---- Canonical, range-scoped headline (ties out with Tasks & Agents) ----
+    ["Records sampled (in-range)", m.recordsSampledInRange],
+    ["QA reviewed (records, in-range)", m.qaReviewedInRange],
+    ["QA changed (records, in-range)", m.qaChangedInRange],
+    ["Overall reject rate % (in-range)", _pct(m.qaChangedInRange, m.qaReviewedInRange)],
+    ["QA coverage % (reviewed/completed, in-range)", m.qaCoveragePct],
+    // ---- Task-lifetime peak figures (NOT clipped to the window) ----
+    ["QA reviewed (task lifetime)", totalReviewedLifetime],
+    ["QA changed (task lifetime)", totalChangedLifetime],
+    [data.metricMismatch ? "⚠ METRIC MISMATCH — QA totals did not reconcile; see console" : "", ""],
+    [REPORT_COVERAGE_NOTE, ""],
   ];
 
   const dayTot = {};
@@ -9622,11 +9731,17 @@ function _buildQAsWorkbook(data) {
     return [n, ...hours.map(h => q.hourly[h] || 0), q.outside, q.total];
   });
 
-  const scNote = ["Reviewed / Approved / Changed are task-lifetime figures rolled up from the task ledger."];
-  const scHeader = ["QA", "Records sampled", "Records reviewed", "Approved", "Changed", "Reject rate %", "Days worked", "Avg/day"];
+  // In-range columns sum to the canonical headline (QA reviewed/changed,
+  // in-range). The "(task lifetime)" columns are the old qaPeak rollups, kept
+  // for reference only — they do NOT tie to the headline.
+  const scNote = ["'(in-range)' columns are event-scoped (reviewed_at in period) and sum to the Summary headline. '(task lifetime)' columns are qaPeak rollups from the task ledger and are not clipped to the period."];
+  const scHeader = ["QA", "Records sampled (in-range)", "QA reviewed (in-range)", "Approved (in-range)",
+    "Changed (in-range)", "Reject rate % (in-range)", "QA reviewed (task lifetime)", "QA changed (task lifetime)",
+    "Days worked", "Avg/day"];
   const scRows = names.map(n => {
-    const q = qas[n], rev = reviewed[n] || 0, ch = changed[n] || 0, dw = q.days.size;
-    return [n, q.total, rev, rev - ch, ch, _pct(ch, rev), dw, dw ? _round(q.total / dw, 2) : 0];
+    const q = qas[n], rev = reviewedInRange[n] || 0, ch = changedInRange[n] || 0;
+    const revL = reviewedLifetime[n] || 0, chL = changedLifetime[n] || 0, dw = q.days.size;
+    return [n, q.total, rev, rev - ch, ch, _pct(ch, rev), revL, chL, dw, dw ? _round(q.total / dw, 2) : 0];
   });
 
   const wb = XLSX.utils.book_new();
@@ -9644,7 +9759,7 @@ function _renderTasksCard(data) {
   if (!tasks.length) { el.innerHTML = `<h3>Tasks Report</h3><div class="empty">No data in this range</div><button class="btn" disabled>⤓ Download Excel</button>`; return; }
   const done = tasks.filter(t => t.isCompleted).length;
   const top = [...tasks].sort((a, b) => (b.peak.total_records || 0) - (a.peak.total_records || 0)).slice(0, 8);
-  el.innerHTML = `<h3>Tasks Report</h3>
+  el.innerHTML = `<h3>Tasks Report</h3>${data.metricMismatch ? `<div class="footer-note" style="color:var(--warn)">⚠ Metric mismatch — QA totals didn’t reconcile across sheets; see console.</div>` : ""}
     <div class="kpis"><div class="kpi"><div class="label">Tasks active</div><div class="value">${tasks.length}</div></div>
       <div class="kpi"><div class="label">Completed</div><div class="value">${done}</div></div></div>
     <table><thead><tr><th>Task</th><th class="right">Records</th><th>Status</th></tr></thead><tbody>
@@ -9660,7 +9775,7 @@ function _renderAgentsCard(data) {
   if (!names.length) { el.innerHTML = `<h3>Agents Report</h3><div class="empty">${data.completionsPartial ? "Couldn’t load this range — hit Refresh." : "No data in this range"}</div><button class="btn" disabled>⤓ Download Excel</button>`; return; }
   const total = names.reduce((s, n) => s + agents[n].total, 0);
   const top = [...names].sort((a, b) => agents[b].total - agents[a].total).slice(0, 8);
-  el.innerHTML = `<h3>Agents Report</h3>${data.completionsPartial ? `<div class="footer-note" style="color:var(--warn)">⚠ Partial — some rows didn’t load; totals may be understated. Hit Refresh.</div>` : ""}
+  el.innerHTML = `<h3>Agents Report</h3>${data.completionsPartial ? `<div class="footer-note" style="color:var(--warn)">⚠ Partial — some rows didn’t load; totals may be understated. Hit Refresh.</div>` : ""}${data.metricMismatch ? `<div class="footer-note" style="color:var(--warn)">⚠ Metric mismatch — QA totals didn’t reconcile across sheets; see console.</div>` : ""}
     <div class="kpis"><div class="kpi"><div class="label">Active agents</div><div class="value">${names.length}</div></div>
       <div class="kpi"><div class="label">Records tagged</div><div class="value">${total.toLocaleString()}</div></div></div>
     <table><thead><tr><th>Agent</th><th>Team</th><th class="right">Tagged</th></tr></thead><tbody>
@@ -9676,7 +9791,7 @@ function _renderQACard(data) {
   if (!names.length) { el.innerHTML = `<h3>QA Report</h3><div class="empty">${data.samplingPartial ? "Couldn’t load this range — hit Refresh." : "No data in this range"}</div><button class="btn" disabled>⤓ Download Excel</button>`; return; }
   const total = names.reduce((s, n) => s + qas[n].total, 0);
   const top = [...names].sort((a, b) => qas[b].total - qas[a].total).slice(0, 8);
-  el.innerHTML = `<h3>QA Report</h3>${data.samplingPartial ? `<div class="footer-note" style="color:var(--warn)">⚠ Partial — some rows didn’t load; totals may be understated. Hit Refresh.</div>` : ""}
+  el.innerHTML = `<h3>QA Report</h3>${(data.samplingPartial || data.reviewsPartial) ? `<div class="footer-note" style="color:var(--warn)">⚠ Partial — some rows didn’t load; totals may be understated. Hit Refresh.</div>` : ""}${data.metricMismatch ? `<div class="footer-note" style="color:var(--warn)">⚠ Metric mismatch — QA totals didn’t reconcile across sheets; see console.</div>` : ""}
     <div class="kpis"><div class="kpi"><div class="label">Active QAs</div><div class="value">${names.length}</div></div>
       <div class="kpi"><div class="label">Records sampled</div><div class="value">${total.toLocaleString()}</div></div></div>
     <table><thead><tr><th>QA</th><th class="right">Sampled</th></tr></thead><tbody>
@@ -9708,6 +9823,7 @@ async function _reportRefresh() {
   if (reqId !== REPORT_STATE.reqId) return;                 // superseded by a newer refresh
   if (!document.getElementById("page-report_builder")) return;
   REPORT_STATE.current = data;
+  _reportTieOut(data);   // sets data.metricMismatch for the cards to surface
   _renderTasksCard(data);
   _renderAgentsCard(data);
   _renderQACard(data);
