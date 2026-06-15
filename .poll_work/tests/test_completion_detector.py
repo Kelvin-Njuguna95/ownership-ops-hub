@@ -459,6 +459,67 @@ class TestSupabaseInsertCompletions(unittest.TestCase):
             mock_req.patch.assert_not_called()
 
 
+class TestSupabaseStampReviewed(unittest.TestCase):
+    """reviewed_updates maps airtable_record_id -> (verdict, error_type)."""
+    NOW = datetime(2026, 6, 15, 12, 0, 0, tzinfo=timezone.utc)
+
+    def _run(self, reviewed_updates):
+        """Run the stamp against a mocked PostgREST, return the list of
+        (url, body_dict) for every PATCH issued."""
+        with patch.object(det, "requests") as mock_req:
+            mock_req.patch.return_value = MagicMock(
+                status_code=200, json=lambda: [{"id": "u"}], text="[...]")
+            det.supabase_stamp_reviewed("https://x.supabase.co", "key",
+                                        reviewed_updates, self.NOW)
+            calls = []
+            for c in mock_req.patch.call_args_list:
+                url = c.args[0] if c.args else c.kwargs["url"]
+                body = json.loads(c.kwargs.get("data") or c.args[2])
+                calls.append((url, body))
+            return calls
+
+    def test_changed_verdict_writes_error_type(self):
+        calls = self._run({"rec1": ("changed", "Company already exists")})
+        self.assertEqual(len(calls), 1)
+        url, body = calls[0]
+        self.assertEqual(body["qa_status"], "changed")
+        self.assertEqual(body["error_type"], "Company already exists")
+        self.assertIn("reviewed_at", body)
+        self.assertIn("reviewed_at=is.null", url)   # first-write-wins preserved
+
+    def test_approve_verdict_omits_error_type(self):
+        calls = self._run({"rec2": ("approve", None)})
+        self.assertEqual(len(calls), 1)
+        _, body = calls[0]
+        self.assertEqual(body["qa_status"], "approve")
+        self.assertNotIn("error_type", body)
+
+    def test_backward_compatible_bare_string(self):
+        """A legacy bare verdict string is treated as (verdict, None)."""
+        calls = self._run({"rec3": "approve"})
+        self.assertEqual(len(calls), 1)
+        _, body = calls[0]
+        self.assertEqual(body["qa_status"], "approve")
+        self.assertNotIn("error_type", body)
+
+    def test_grouped_by_verdict_and_error_type(self):
+        """Distinct (verdict, error_type) groups each get their own PATCH;
+        same group is batched into one call."""
+        calls = self._run({
+            "a": ("changed", "Company already exists"),
+            "b": ("changed", "Company already exists"),
+            "c": ("changed", "Incorrect Start Date"),
+            "d": ("approve", None),
+        })
+        groups = {(b["qa_status"], b.get("error_type")) for _, b in calls}
+        self.assertEqual(groups, {
+            ("changed", "Company already exists"),
+            ("changed", "Incorrect Start Date"),
+            ("approve", None),
+        })
+        self.assertEqual(len(calls), 3)   # the two matching 'changed' rows share one PATCH
+
+
 class TestStuckInSamplingDetection(unittest.TestCase):
     def test_stuck_in_sampling_threshold_24h(self):
         """Records sampled > STUCK_HOURS ago AND not yet completed should
