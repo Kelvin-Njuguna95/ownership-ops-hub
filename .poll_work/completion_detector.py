@@ -723,6 +723,42 @@ def supabase_stamp_reviewed(supabase_url, service_key, reviewed_updates, now_utc
     return stamped
 
 
+def supabase_backfill_error_type(supabase_url, service_key, reviewed_updates):
+    """Fill error_type on CHANGED records whose verdict was stamped in an earlier
+    cycle. stamp_reviewed() is first-write-wins on reviewed_at, so a record
+    verdicted before this column existed (or before the QA picked a type) never
+    got error_type written. This PATCHes error_type ONLY where it is still null —
+    it never touches reviewed_at or qa_status — so records still in the Airtable
+    fetch get their type on the next cycle. Records Airtable has already absorbed
+    can't be reached and stay null. Returns rows newly filled.
+    """
+    from collections import defaultdict as _defaultdict
+    by_err = _defaultdict(list)
+    for rid, val in reviewed_updates.items():
+        verdict, err = val if isinstance(val, tuple) else (val, None)
+        if verdict == "changed" and err:
+            by_err[err].append(rid)
+    if not by_err:
+        return 0
+    base = supabase_url.rstrip("/")
+    filled = 0
+    CHUNK = 100
+    for err, rec_ids in by_err.items():
+        for i in range(0, len(rec_ids), CHUNK):
+            chunk = rec_ids[i:i + CHUNK]
+            ids_clause = ",".join(chunk)
+            patch_url = (f"{base}/rest/v1/ownership_qa_sampling"
+                         f"?airtable_record_id=in.({ids_clause})"
+                         f"&error_type=is.null")
+            result = _sb_patch(
+                patch_url,
+                _sb_headers(service_key, {"Prefer": "return=representation"}),
+                {"error_type": err},
+            )
+            filled += len(result)
+    return filled
+
+
 def supabase_upsert_alerts(supabase_url, service_key, rows):
     """INSERT alerts (first-write-wins on first_seen_at) AND clear resolved_at
     on any existing alert that's still firing (was resolved, condition came back).
@@ -908,6 +944,7 @@ def main():
     comp_result = supabase_insert_completions(supabase_url, service_key, completion_rows)
     samp_new    = supabase_insert_samplings(supabase_url, service_key, sampling_rows)
     reviewed_stamped = supabase_stamp_reviewed(supabase_url, service_key, reviewed_updates, now_utc)
+    error_type_filled = supabase_backfill_error_type(supabase_url, service_key, reviewed_updates)
     alert_new, alert_reopened = supabase_upsert_alerts(supabase_url, service_key, alert_rows)
 
     # Resolve open alerts whose condition no longer applies.
@@ -922,7 +959,7 @@ def main():
           f"flow_upserted={comp_result['flow_upserted']} "
           f"dup_no_flow={comp_result['duplicates_no_flow']} "
           f"tagging_fill={tagging_fill}")
-    print(f"  qa_sampling:       new={samp_new} reviewed_stamped={reviewed_stamped}")
+    print(f"  qa_sampling:       new={samp_new} reviewed_stamped={reviewed_stamped} error_type_filled={error_type_filled}")
     print(f"  alerts:            "
           f"missing_qa_assignee={by_class['missing_qa_assignee']} "
           f"missing_qa_status={by_class['missing_qa_status']} "

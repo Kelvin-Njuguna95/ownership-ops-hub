@@ -520,6 +520,57 @@ class TestSupabaseStampReviewed(unittest.TestCase):
         self.assertEqual(len(calls), 3)   # the two matching 'changed' rows share one PATCH
 
 
+class TestSupabaseBackfillErrorType(unittest.TestCase):
+    """Backfills error_type on previously-stamped CHANGED records, only where
+    it's still null, never touching reviewed_at / qa_status."""
+    def _run(self, reviewed_updates):
+        with patch.object(det, "requests") as mock_req:
+            mock_req.patch.return_value = MagicMock(
+                status_code=200, json=lambda: [{"id": "u"}], text="[...]")
+            filled = det.supabase_backfill_error_type("https://x.supabase.co", "key", reviewed_updates)
+            calls = []
+            for c in mock_req.patch.call_args_list:
+                url = c.args[0] if c.args else c.kwargs["url"]
+                body = json.loads(c.kwargs.get("data") or c.args[2])
+                calls.append((url, body))
+            return filled, calls
+
+    def test_only_changed_with_error_type_is_backfilled(self):
+        filled, calls = self._run({
+            "a": ("changed", "Company already exists"),
+            "b": ("approve", None),            # not a change → skip
+            "c": ("changed", None),            # changed but no type yet → skip
+        })
+        self.assertEqual(len(calls), 1)
+        url, body = calls[0]
+        self.assertEqual(body, {"error_type": "Company already exists"})
+        self.assertIn("error_type=is.null", url)   # only fills nulls
+        self.assertNotIn("reviewed_at", body)      # never touches reviewed_at
+        self.assertNotIn("qa_status", body)        # never touches qa_status
+        self.assertEqual(filled, 1)
+
+    def test_noop_when_no_changed_with_type(self):
+        filled, calls = self._run({"a": ("approve", None), "b": ("changed", None)})
+        self.assertEqual(filled, 0)
+        self.assertEqual(calls, [])
+
+    def test_grouped_by_error_type(self):
+        _, calls = self._run({
+            "a": ("changed", "Company already exists"),
+            "b": ("changed", "Company already exists"),
+            "c": ("changed", "Incorrect Start Date"),
+        })
+        self.assertEqual({b["error_type"] for _, b in calls},
+                         {"Company already exists", "Incorrect Start Date"})
+        self.assertEqual(len(calls), 2)   # same-type rows share one PATCH
+
+    def test_backward_compatible_bare_string_skipped(self):
+        """A legacy bare verdict string carries no error_type → nothing to fill."""
+        filled, calls = self._run({"a": "changed", "b": "approve"})
+        self.assertEqual(filled, 0)
+        self.assertEqual(calls, [])
+
+
 class TestStuckInSamplingDetection(unittest.TestCase):
     def test_stuck_in_sampling_threshold_24h(self):
         """Records sampled > STUCK_HOURS ago AND not yet completed should
