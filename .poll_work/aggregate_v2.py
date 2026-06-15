@@ -598,6 +598,16 @@ def compute_task_breakdowns(records, today_eat, ownership_assignees):
         properly_completed = sum(1 for info in recs if is_properly_completed(info))
         with_company       = sum(1 for info in recs if info.get("company_id"))
         without_company    = total - with_company
+        # New companies actually CREATED by this task = distinct add_new_company
+        # names on records that reached Done/Valid. (The New Companies page list is
+        # pending-only; this is the created side. Persisted per-day into the ledger
+        # below so it survives records ageing out of the cache.)
+        new_companies_created = len({
+            (info.get("add_new_company") or "").strip()
+            for info in recs
+            if (info.get("add_new_company") or "").strip()
+            and info.get("verification_status") in DONE_LIKE
+        })
         dead_vessels       = sum(1 for info in recs if info.get("dead_vessel") is True)
         with_reminder      = sum(1 for info in recs if info.get("reminder"))
         # Per-task Airtable-Comment breakdown — counts of each of the 11 SOP
@@ -768,6 +778,7 @@ def compute_task_breakdowns(records, today_eat, ownership_assignees):
             "properly_completed": properly_completed,
             "with_company": with_company,
             "without_company": without_company,
+            "new_companies_created": new_companies_created,
             "dead_vessels": dead_vessels,
             "with_reminder": with_reminder,
             "comment_distribution": task_comment_counts,
@@ -2203,6 +2214,7 @@ def _write_task_history(aggs):
             "properly_completed":  t.get("properly_completed"),
             "with_company":        t.get("with_company"),
             "without_company":     t.get("without_company"),
+            "new_companies_created": t.get("new_companies_created"),
             "dead_vessels":        t.get("dead_vessels"),
             "with_reminder":       t.get("with_reminder"),
             "comment_distribution": t.get("comment_distribution"),
