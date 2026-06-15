@@ -9404,7 +9404,7 @@ async function _loadReportData(start, end) {
     // = a verdict (qa_status approve|changed), mirroring loadQaReviewHours. This
     // is intentionally a DIFFERENT cohort from `sampling` (sampled_at): a record
     // sampled one week and reviewed the next lands in each week's own metric.
-    pageFetch("ownership_qa_sampling", "airtable_record_id,qa_assignee,assignee,reviewed_at,sampled_at,qa_status", "reviewed_at"),
+    pageFetch("ownership_qa_sampling", "airtable_record_id,qa_assignee,assignee,reviewed_at,sampled_at,qa_status,error_type", "reviewed_at"),
   ]);
 
   const data = {
@@ -9458,12 +9458,16 @@ function _qaAggregate(data) {
   }
   // Canonical, range-scoped per-QA reviewed/changed (event-in-range, verdict
   // time). These feed the headline numbers and tie out to _reportMetrics.
-  const reviewedInRange = {}, changedInRange = {};
+  const reviewedInRange = {}, changedInRange = {}, errorTypes = {};
   for (const r of (data.reviews || [])) {
     if (!_isGenuineReview(r)) continue;   // excludes tagger self-approvals (independent QA only)
     const canon = canonicalAgent(r.qa_assignee); if (!canon) continue;
     reviewedInRange[canon] = (reviewedInRange[canon] || 0) + 1;
-    if (r.qa_status === "changed") changedInRange[canon] = (changedInRange[canon] || 0) + 1;
+    if (r.qa_status === "changed") {
+      changedInRange[canon] = (changedInRange[canon] || 0) + 1;
+      const et = (r.error_type || "").trim() || "Unspecified";
+      errorTypes[et] = (errorTypes[et] || 0) + 1;
+    }
     // A reviewer who reviewed in-range but sampled nothing in-range still needs a
     // scorecard row, else the per-QA reviewed column wouldn't sum to the headline.
     if (!qas[canon]) qas[canon] = { name: canon, total: 0, daily: {}, hourly: {}, outside: 0, days: new Set() };
@@ -9476,7 +9480,7 @@ function _qaAggregate(data) {
     reviewedLifetime[canon] = (reviewedLifetime[canon] || 0) + (qr.reviewed || 0);
     changedLifetime[canon] = (changedLifetime[canon] || 0) + (qr.changed || 0);
   }
-  data._qaAgg = { qas, reviewedInRange, changedInRange, reviewedLifetime, changedLifetime };
+  data._qaAgg = { qas, reviewedInRange, changedInRange, reviewedLifetime, changedLifetime, errorTypes };
   return data._qaAgg;
 }
 
@@ -9707,7 +9711,7 @@ function _buildAgentsWorkbook(data) {
 
 // ---- Part 7: QAs workbook ----
 function _buildQAsWorkbook(data) {
-  const { qas, reviewedInRange, changedInRange, reviewedLifetime, changedLifetime } = _qaAggregate(data);
+  const { qas, reviewedInRange, changedInRange, reviewedLifetime, changedLifetime, errorTypes } = _qaAggregate(data);
   const m = _reportMetrics(data);
   _reportTieOut(data);
   const dates = data.dates, hours = REPORT_HOURS;
@@ -9766,6 +9770,16 @@ function _buildQAsWorkbook(data) {
   XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([dailyHeader, ...dailyRows, dailyTotalRow]), "Daily Output");
   XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([hourlyHeader, ...hourlyRows]), "Hourly Profile");
   XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([scNote, scHeader, ...scRows]), "QA Scorecard");
+  const etRows = Object.entries(errorTypes).sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]));
+  const etTotal = etRows.reduce((s, [, n]) => s + n, 0);
+  const errorTypeSheet = [
+    ["Error type", "Changed records", "Share %"],
+    ...etRows.map(([t, n]) => [t, n, _pct(n, etTotal)]),
+    ["Total", etTotal, etTotal ? 100 : 0],
+    [""],
+    ["Mistake category QA recorded on each change (Airtable Error_type), independent changed verdicts only. Captured from 2026-06-15; earlier changes show as 'Unspecified'."],
+  ];
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(errorTypeSheet), "Errors by Type");
   return wb;
 }
 
@@ -9803,7 +9817,7 @@ function _renderAgentsCard(data) {
 }
 function _renderQACard(data) {
   const el = document.getElementById("rbCardQA"); if (!el) return;
-  const { qas } = _qaAggregate(data);
+  const { qas, errorTypes } = _qaAggregate(data);
   const names = Object.keys(qas);
   if (!names.length) { el.innerHTML = `<h3>QA Report</h3><div class="empty">${data.samplingPartial ? "Couldn’t load this range — hit Refresh." : "No data in this range"}</div><button class="btn" disabled>⤓ Download Excel</button>`; return; }
   const total = names.reduce((s, n) => s + qas[n].total, 0);
@@ -9814,6 +9828,7 @@ function _renderQACard(data) {
     <table><thead><tr><th>QA</th><th class="right">Sampled</th></tr></thead><tbody>
       ${top.map(n => `<tr><td>${esc(n)}</td><td class="right">${qas[n].total.toLocaleString()}</td></tr>`).join("")}
     </tbody></table>
+    ${Object.keys(errorTypes || {}).length ? `<div class="footer-note" style="margin-top:6px"><b>Errors by type:</b> ${Object.entries(errorTypes).sort((a,b)=>b[1]-a[1]).map(([t,n])=>`${esc(t)} ${n}`).join(" · ")}</div>` : ""}
     <button class="btn primary" id="rbDlQA">⤓ Download Excel</button>`;
   el.querySelector("#rbDlQA").addEventListener("click", () => XLSX.writeFile(_buildQAsWorkbook(data), `QAs_Report_${data.start}_to_${data.end}.xlsx`));
 }
