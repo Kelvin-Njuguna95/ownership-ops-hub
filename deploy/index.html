@@ -2935,7 +2935,20 @@ PAGE_RENDERERS.overview = function () {
   const byTeam      = STATE.v2.by_team || {};
   const teams       = Object.keys(STATE.roster || {}).sort();
   const agentCount  = teams.reduce((s, tm) => s + ((STATE.roster?.[tm]?.members || []).length), 0);
-  const teamsMet    = Object.values(byTeam).filter(m => (m?.tagged_today || 0) >= TEAM_FLOOR).length;
+  // Per-team tagging from REAL per-record completions (same source as the agent
+  // scorecard) so the Teams-vs-floor panel and the agent list always tie out.
+  // Falls back to the snapshot's tagged_today only until completions finish loading.
+  const _complsReadyOv = STATE.completions != null;
+  const teamTagged = {};
+  for (const _tm of teams) {
+    let _sum = 0;
+    for (const _mm of (STATE.roster?.[_tm]?.members || [])) {
+      const _b = STATE.completions?.[_mm.name] || {};
+      _sum += Object.values(_b).reduce((a, c) => a + c, 0);
+    }
+    teamTagged[_tm] = _complsReadyOv ? _sum : ((byTeam[_tm]?.tagged_today) || 0);
+  }
+  const teamsMet = teams.filter(_tm => (teamTagged[_tm] || 0) >= TEAM_FLOOR).length;
   const newCompaniesOpen = (STATE.v2.add_new_company_records || []).length;
 
   // Page head with Export + Open BO QA buttons
@@ -3165,8 +3178,7 @@ PAGE_RENDERERS.overview = function () {
       <h3>Teams vs <em>${TEAM_FLOOR.toLocaleString()}</em> floor <span class="meta">tagged today</span></h3>
       <div class="teams-floor">
         ${teams.map(tm => {
-          const m = byTeam[tm] || {};
-          const tagged = m.tagged_today || 0;
+          const tagged = teamTagged[tm] || 0;
           const ratio = Math.min(1, TEAM_FLOOR > 0 ? tagged / TEAM_FLOOR : 0);
           const met = tagged >= TEAM_FLOOR;
           return `
