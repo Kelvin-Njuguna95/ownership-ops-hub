@@ -99,6 +99,7 @@ FLD_IMO                    = "fldqWGr2XDH9BRmtE"
 FLD_ASSIGNEE               = "fldT4xElSgcdnqTmy"
 FLD_QA_ASSIGNEE            = "fldtQ5HCuU45HOcg4"
 FLD_QA_STATUS              = "fldpTTs63XmNYNPww"
+FLD_ERROR_TYPE             = "fldLB2EMbQPdoWeQp"   # single-select: QA's mistake category on a CHANGE
 FLD_LAST_MODIFIED_BY       = "fldpz9XuDm5xRblSL"
 FLD_VERIFICATION_STATUS    = "fldYSXHGwZvxXK7s6"
 FLD_COMPANY_ID_AND_NAME    = "fldaMBqa6bEANUPpn"
@@ -674,9 +675,12 @@ def supabase_insert_samplings(supabase_url, service_key, rows):
 
 
 def supabase_stamp_reviewed(supabase_url, service_key, reviewed_updates, now_utc):
-    """Stamp reviewed_at + qa_status on ownership_qa_sampling rows whose record
-    now carries a QA verdict. ``reviewed_updates`` maps airtable_record_id ->
-    qa_status verdict ('approve' / 'changed').
+    """Stamp reviewed_at + qa_status (+ error_type on a CHANGE) on
+    ownership_qa_sampling rows whose record now carries a QA verdict.
+    ``reviewed_updates`` maps airtable_record_id -> (verdict, error_type), where
+    verdict is 'approve' / 'changed' and error_type is the QA's mistake category
+    (only set on a 'changed' verdict, else None). For backward compatibility a
+    bare verdict string is treated as (verdict, None).
 
     First-write-wins: the PostgREST filter ``&reviewed_at=is.null`` means a row
     already stamped is never re-stamped, so reviewed_at reflects the FIRST cycle
@@ -684,22 +688,26 @@ def supabase_stamp_reviewed(supabase_url, service_key, reviewed_updates, now_utc
     verdicted (Flow C) get a sampling row emitted by route_record() in the same
     cycle, inserted before this PATCH runs, so they are stamped here too.
 
-    Batched PATCH grouped by verdict, mirroring supabase_insert_completions'
-    flow-upsert: ~2 verdict groups x chunks of 100 ids = a handful of calls.
-    Returns the count of rows newly stamped.
+    Batched PATCH grouped by (verdict, error_type), mirroring
+    supabase_insert_completions' flow-upsert: a handful of groups x chunks of
+    100 ids = a handful of calls. Returns the count of rows newly stamped.
     """
     if not reviewed_updates:
         return 0
     from collections import defaultdict as _defaultdict
 
     base = supabase_url.rstrip("/")
-    by_verdict = _defaultdict(list)
-    for rid, verdict in reviewed_updates.items():
-        by_verdict[verdict].append(rid)
+    by_group = _defaultdict(list)
+    for rid, val in reviewed_updates.items():
+        verdict, err = val if isinstance(val, tuple) else (val, None)
+        by_group[(verdict, err)].append(rid)
 
     stamped = 0
     CHUNK = 100  # ~2KB URL with %2C-encoded commas; safely under PostgREST default
-    for verdict, rec_ids in by_verdict.items():
+    for (verdict, err), rec_ids in by_group.items():
+        body = {"reviewed_at": now_utc.isoformat(), "qa_status": verdict}
+        if err is not None:
+            body["error_type"] = err
         for i in range(0, len(rec_ids), CHUNK):
             chunk = rec_ids[i:i + CHUNK]
             ids_clause = ",".join(chunk)
@@ -709,7 +717,7 @@ def supabase_stamp_reviewed(supabase_url, service_key, reviewed_updates, now_utc
             result = _sb_patch(
                 patch_url,
                 _sb_headers(service_key, {"Prefer": "return=representation"}),
-                {"reviewed_at": now_utc.isoformat(), "qa_status": verdict},
+                body,
             )
             stamped += len(result)
     return stamped
@@ -846,7 +854,7 @@ def main():
     completion_rows = []
     sampling_rows   = []
     alert_rows      = []
-    reviewed_updates = {}   # airtable_record_id -> qa_status verdict, for sampling-row stamping
+    reviewed_updates = {}   # airtable_record_id -> (verdict, error_type), for sampling-row stamping
     skipped         = {"skip": 0, "no_attribution": 0}
     by_class        = {"A": 0, "B": 0, "C": 0, "pre_flow": 0,
                        "missing_qa_assignee": 0, "missing_qa_status": 0}
@@ -856,7 +864,8 @@ def main():
         fields = rec.get("fields") or rec.get("cellValuesByFieldId") or {}
         qa_status_now = _name(fields.get(FLD_QA_STATUS))
         if qa_status_now in QA_VERDICTS:
-            reviewed_updates[rec["id"]] = qa_status_now
+            err = _name(fields.get(FLD_ERROR_TYPE)) if qa_status_now == "changed" else None
+            reviewed_updates[rec["id"]] = (qa_status_now, err)
         elif qa_status_now:
             print(f"  WARN: ignoring non-verdict qa_status {qa_status_now!r} on {rec['id']}")
         target, detail, comp, samp, alert = route_record(rec, now_utc)
