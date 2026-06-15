@@ -76,6 +76,10 @@ VALID               = "Valid"
 # are exactly the states fetch_flow_records() pulls, so any fetched record is
 # tagged-or-beyond. (Selected for WW QA is NOT fetched — see module notes.)
 COMPLETIONS_STATES  = {TAGGED, NEED_TO_BE_UPDATE, SELECTED_FOR_BO_QA, DONE, VALID}
+# Only these two are real QA verdicts. Anything else in the Airtable qa_status
+# field (e.g. a name typed in by mistake) must NOT be stamped — see the
+# "Simon Francis" leak, 2026-06-15.
+QA_VERDICTS         = {"approve", "changed"}
 
 # Stuck-in-QA-sampling threshold per the v2 spec.
 STUCK_HOURS = 24
@@ -851,8 +855,10 @@ def main():
     for rec in records:
         fields = rec.get("fields") or rec.get("cellValuesByFieldId") or {}
         qa_status_now = _name(fields.get(FLD_QA_STATUS))
-        if qa_status_now:
+        if qa_status_now in QA_VERDICTS:
             reviewed_updates[rec["id"]] = qa_status_now
+        elif qa_status_now:
+            print(f"  WARN: ignoring non-verdict qa_status {qa_status_now!r} on {rec['id']}")
         target, detail, comp, samp, alert = route_record(rec, now_utc)
 
         # classify-target counters (unchanged semantics)
