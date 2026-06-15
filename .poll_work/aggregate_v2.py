@@ -2020,7 +2020,8 @@ def _compute_flow_framework_counts(work_dir, ownership_assignees):
     import sys as _sys
     from pathlib import Path as _Path
     _sys.path.insert(0, str(_Path(__file__).resolve().parent))
-    from completion_detector import classify as _classify, FLD_ASSIGNEE, IO_TO_SUPPORT_FIELD_IDS  # noqa: E402
+    from completion_detector import (classify as _classify, FLD_ASSIGNEE, IO_TO_SUPPORT_FIELD_IDS,  # noqa: E402
+                                     FLD_VERIFICATION_STATUS, NEED_TO_BE_UPDATE, _name as _vs_name)
 
     # Build a case-insensitive roster lookup (mirrors aggregate()'s
     # multi-assignee, alias-aware roster matching).
@@ -2066,17 +2067,19 @@ def _compute_flow_framework_counts(work_dir, ownership_assignees):
             if not in_roster:
                 continue
             in_scope += 1
+            _vs = _vs_name(fields.get(FLD_VERIFICATION_STATUS))
             target, detail = _classify(fields)
             if target == "completion" and detail == "A":
                 flow_a += 1
             elif target == "completion" and detail == "C":
                 flow_c += 1
-            elif target == "sampling":
+            elif target == "sampling" or _vs == NEED_TO_BE_UPDATE:
+                # Flow B = in the QA loop: Selected for BO QA, OR sent back as
+                # Need-to-be-update (rework). (Owner decision 2026-06-15.)
                 flow_b += 1
             else:
-                # alert, pre_flow, skip — the "in-flight / not yet
-                # classified" bucket. Flow D is the reconciliation slop
-                # that makes A+B+C+D == tagged_today.
+                # Flow D = genuine catch-all: still-tagged, data gaps (alert),
+                # pre_flow, skip. Keeps A+B+C+D == tagged_today.
                 flow_d += 1
 
     counts = {
