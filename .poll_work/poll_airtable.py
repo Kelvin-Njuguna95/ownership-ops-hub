@@ -56,7 +56,7 @@ FLD_DONE_SELECTED_TIME = "fldbcTW2CD2HjejGN"
 # above any historical day, and any cap-hit aborts the cycle (exit 2) so
 # truncation can never silently under-report metrics. Bumping the ceiling
 # higher in a real squeeze is preferable to letting bad data ship.
-RECENT_PAGE_CAP        = 400  # Fetch A: 24h team work + 7-day client uploads (~32k now after the 7-day window restore on 2026-05-20; bumped 100→200 on 2026-05-18 >10k; 200→300, then 300→400 today as window operational-fit took precedence over cache-fit)
+RECENT_PAGE_CAP        = 600  # Fetch A: 24h team work + 7-day client uploads (~32k now after the 7-day window restore on 2026-05-20; bumped 100→200 on 2026-05-18 >10k; 200→300, then 300→400; 400→600 on 2026-06-17 after crossing 40k caused TRUNCATION ERROR exit-2 on every poll for ~3h)
 INTAKE_PAGE_CAP        = 30   # Fetch B: today's whole-table intake (cache-only, header KPI uses metadata count)
 BOQA_PAGE_CAP          = 30   # Fetch C: current BO QA queue
 TAGGED_PAGE_CAP        = 100  # Fetch D: tagged today
