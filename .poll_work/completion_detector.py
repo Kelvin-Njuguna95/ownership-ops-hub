@@ -670,7 +670,16 @@ def supabase_insert_samplings(supabase_url, service_key, rows):
     headers = _sb_headers(service_key, {
         "Prefer": "resolution=ignore-duplicates,return=representation",
     })
-    inserted = _sb_post(url, headers, rows)
+    # FIX 2026-06-17 — chunk the upsert; a single POST over all rows hit Postgres
+    # statement_timeout (57014 "canceling statement due to statement timeout") as
+    # sampling volume grew, failing the whole detector step every cycle. Mirrors
+    # the same 500-row chunking already applied to supabase_insert_completions.
+    # First-write-wins on the UNIQUE constraint means a mid-batch retry is safe.
+    inserted = []
+    INSERT_CHUNK = 500
+    for i in range(0, len(rows), INSERT_CHUNK):
+        chunk = rows[i:i + INSERT_CHUNK]
+        inserted.extend(_sb_post(url, headers, chunk))
     return len(inserted)
 
 

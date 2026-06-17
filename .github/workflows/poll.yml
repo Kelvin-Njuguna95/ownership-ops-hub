@@ -35,11 +35,23 @@ name: Poll Airtable → Supabase
 # workflow has recent workflow_dispatch activity (which this one does).
 # Moving the trigger out of GitHub's queue eliminates the deprioritization.
 #
-# Why no `concurrency:` group: at 10-min cadence with 5-8 min runtime,
-# overlaps are very unlikely but still possible on slow runs. The pipeline
-# is idempotent (first-write-wins via UNIQUE constraint on the Supabase
-# inserts). A concurrency group would cancel the successor when a slow
-# run blocks it, which is worse than letting both finish.
+# Concurrency: SERIALIZE runs. This previously had NO concurrency group, on the
+# assumption of 5-8 min runtime where overlaps were unlikely. That assumption
+# broke on 2026-06-17: as the table grew, a full run reached ~26 min (Fetch A
+# alone is 430+ pages / 43k records), far exceeding the 10-min cron cadence.
+# With no concurrency, 2-3 runs overlapped and contended for Airtable's 5 req/sec
+# rate limit, slowing every one of them past the 30-min `timeout-minutes` ceiling
+# -> every run was cancelled and the dashboard cache went stale.
+# `cancel-in-progress: false` queues a newly-triggered run until the in-progress
+# one finishes (GitHub keeps only the latest pending run, cancelling older pending
+# ones), so runs serialize and each completes uncontended (~26-min effective
+# cadence) instead of starving each other. Safe because the pipeline is idempotent
+# (first-write-wins via UNIQUE constraints on the Supabase inserts).
+# Follow-up: cut runtime (narrow Fetch A window / incremental fetch) to restore
+# tighter freshness, after which this can be revisited.
+concurrency:
+  group: poll-airtable
+  cancel-in-progress: false
 
 on:
   workflow_dispatch:
