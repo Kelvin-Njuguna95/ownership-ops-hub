@@ -29,15 +29,46 @@ except ImportError:
 HERE   = Path(__file__).resolve().parent
 ROOT   = HERE.parent
 BUCKET = "dashboard-data"
+RETRIES = 5    # attempts per request before giving up
+TIMEOUT = 60   # per-request timeout (s)
+
+
+def _request_with_retry(session, method, url, **kwargs):
+    """HTTP call with exponential backoff on transient failures. The hydrate
+    step runs before the poll; a single transient Supabase Storage timeout used
+    to fail the entire cycle. Retries on network exceptions and on 429/5xx;
+    returns the Response for any other status (incl. 200/404) so callers keep
+    their existing 200/404 handling. Honours Retry-After on 429."""
+    import time
+    last = None
+    for attempt in range(RETRIES):
+        try:
+            r = session.request(method, url, timeout=TIMEOUT, **kwargs)
+        except requests.exceptions.RequestException as e:
+            last = e
+            wait = 2 ** attempt
+            print(f"  transient {type(e).__name__} on {method} {url.rsplit('/', 1)[-1]}; "
+                  f"retry in {wait}s (attempt {attempt + 1}/{RETRIES})", file=sys.stderr)
+            time.sleep(wait)
+            continue
+        if r.status_code == 429 or r.status_code >= 500:
+            wait = int(r.headers.get("Retry-After", 2 ** attempt))
+            print(f"  [{r.status_code}] on {method} {url.rsplit('/', 1)[-1]}; "
+                  f"retry in {wait}s (attempt {attempt + 1}/{RETRIES})", file=sys.stderr)
+            time.sleep(wait)
+            last = RuntimeError(f"{r.status_code}: {r.text[:160]}")
+            continue
+        return r            # 200, 404, etc. → hand back to caller unchanged
+    raise RuntimeError(f"{method} {url} failed after {RETRIES} attempts: {last}")
 
 
 def _get(session, url, key, remote_path, local_path):
     """Download a single object from the public-bucket URL to local_path.
     Returns (ok, size_bytes). 404 → silently skip (file may not exist yet)."""
     local_path.parent.mkdir(parents=True, exist_ok=True)
-    r = session.get(
+    r = _request_with_retry(
+        session, "GET",
         f"{url}/storage/v1/object/public/{BUCKET}/{remote_path}",
-        timeout=60,
     )
     if r.status_code == 200:
         local_path.write_bytes(r.content)
@@ -58,7 +89,8 @@ def _list_prefix(session, url, key, prefix):
     names = []
     offset = 0
     while True:
-        r = session.post(
+        r = _request_with_retry(
+            session, "POST",
             f"{url}/storage/v1/object/list/{BUCKET}",
             headers={
                 "Authorization": f"Bearer {key}",
@@ -66,7 +98,6 @@ def _list_prefix(session, url, key, prefix):
                 "Content-Type":  "application/json",
             },
             json={"prefix": prefix, "limit": 1000, "offset": offset},
-            timeout=60,
         )
         if r.status_code != 200:
             print(f"  list({prefix}) [{r.status_code}]: {r.text[:200]}", file=sys.stderr)
