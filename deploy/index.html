@@ -1797,18 +1797,34 @@
   .ce-trendlegend .dot { display:inline-block; width:9px; height:9px; border-radius:2px; margin-right:5px; vertical-align:middle; }
   .ce-trendlegend .line { display:inline-block; width:18px; height:0; margin-right:6px; vertical-align:middle; }
   @media (max-width:900px) { .ce-qagrid { grid-template-columns:1fr; } }
-  .ua-kpis { display:flex; gap:14px; flex-wrap:wrap; margin-bottom:18px; }
-  .ua-kpi { background:var(--surface); border:1px solid var(--border); border-radius:10px; padding:16px 18px; min-width:160px; }
-  .ua-kpi-n { font-size:26px; font-weight:700; letter-spacing:-0.02em; }
-  .ua-kpi-l { font-size:12px; color:var(--muted); margin-top:4px; }
-  .ua-tabs { display:flex; gap:8px; margin-bottom:14px; }
-  .ua-tab { font-family:inherit; font-size:13px; padding:8px 14px; border:1px solid var(--border); background:var(--surface); border-radius:8px; cursor:pointer; color:var(--muted); }
-  .ua-tab.active { background:var(--ink); color:#fff; border-color:var(--ink); font-weight:600; }
-  .ua-h { font-size:14px; margin:18px 0 8px; }
+  /* User audit page — built on the app theme tokens (kpi cards reuse .kpi.*). */
+  .ua-tabs { display:inline-flex; gap:4px; margin:20px 0 16px; padding:4px; background:var(--soft); border:1px solid var(--border); border-radius:10px; }
+  .ua-tab { font-family:inherit; font-size:13px; font-weight:500; padding:7px 16px; border:0; background:transparent; border-radius:7px; cursor:pointer; color:var(--muted); transition:background .15s ease, color .15s ease; }
+  .ua-tab.active { background:var(--surface); color:var(--ink); font-weight:600; box-shadow:var(--shadow-sm); }
+  .ua-tab .ct { margin-left:7px; font-weight:700; color:var(--muted); font-variant-numeric:tabular-nums; }
+  .ua-tab.active .ct { color:var(--accent); }
+  .ua-panel { background:var(--surface); border:1px solid var(--border); border-radius:12px; box-shadow:var(--shadow-sm); margin-bottom:18px; overflow:hidden; }
+  .ua-panel-h { display:flex; align-items:baseline; justify-content:space-between; gap:12px; padding:15px 18px 11px; }
+  .ua-panel-h .t { font-size:14px; font-weight:600; color:var(--ink); }
+  .ua-panel-h .s { font-size:12px; color:var(--muted); }
   .ua-table { width:100%; border-collapse:collapse; font-size:13px; }
-  .ua-table th, .ua-table td { text-align:left; padding:8px 10px; border-bottom:1px solid var(--border); }
-  .ua-table th.num, .ua-table td.num { text-align:right; }
-  .ua-table td.muted { color:var(--muted); }
+  .ua-table th { text-align:left; padding:9px 18px; font-size:10.5px; font-weight:600; letter-spacing:.05em; text-transform:uppercase; color:var(--muted); border-top:1px solid var(--border); border-bottom:1px solid var(--border); background:var(--soft); }
+  .ua-table td { padding:11px 18px; border-bottom:1px solid var(--border); vertical-align:middle; color:var(--ink); }
+  .ua-table tbody tr:last-child td { border-bottom:0; }
+  .ua-table td.num, .ua-table th.num { text-align:right; font-variant-numeric:tabular-nums; }
+  .ua-email { display:flex; align-items:center; gap:10px; }
+  .ua-avatar { width:26px; height:26px; border-radius:7px; display:inline-flex; align-items:center; justify-content:center; font-size:10px; font-weight:700; color:#fff; flex-shrink:0; letter-spacing:.02em; }
+  .ua-dot { width:9px; height:9px; border-radius:50%; display:inline-block; flex-shrink:0; }
+  .ua-mini { display:inline-flex; align-items:flex-end; gap:3px; height:24px; }
+  .ua-mini .bar { width:5px; border-radius:2px; min-height:3px; }
+  .ua-when { display:flex; flex-direction:column; line-height:1.35; }
+  .ua-when .rel { font-size:11px; color:var(--muted); }
+  .ua-hist { max-height:520px; overflow:auto; }
+  .ua-foot { padding:12px 18px; font-size:12px; color:var(--muted); border-top:1px solid var(--border); }
+  .ua-note { display:flex; gap:12px; align-items:flex-start; background:var(--soft); border:1px solid var(--border); border-radius:12px; padding:14px 16px; font-size:12px; color:var(--muted); line-height:1.6; }
+  .ua-note .ico { color:var(--accent); flex-shrink:0; margin-top:1px; }
+  .ua-note b { color:var(--ink); font-weight:600; }
+  .ua-empty { padding:22px 18px; color:var(--muted); font-size:13px; }
 </style>
 </head>
 <body>
@@ -2829,54 +2845,177 @@ PAGE_RENDERERS.useraudit = function () {
     return;
   }
   const rows = STATE._auditRows || [];
-  const byDomain = { impact: [], windward: [], other: [] };
-  rows.forEach(r => { (byDomain[r.domain] || byDomain.other).push(r); });
-  const distinct     = new Set(rows.map(r => r.email)).size;
-  const distImpact   = new Set(byDomain.impact.map(r => r.email)).size;
-  const distWindward = new Set(byDomain.windward.map(r => r.email)).size;
 
-  const fmt = (ts) => new Date(ts).toLocaleString();
+  // ---- local helpers (all derived from `rows` — no new query) ----
+  // Org is derived from the email domain at display: @impactoutsourcing.co.ke is
+  // internal; EVERY other domain folds into Windward (matches the page footnote).
+  const orgOf = (email) => (email || "").toLowerCase().endsWith("@impactoutsourcing.co.ke") ? "impact" : "windward";
+  const eatDay = (ts) => new Date(ts).toLocaleDateString("en-CA", { timeZone: "Africa/Nairobi" });
+  const fmtDT  = (ts) => new Date(ts).toLocaleString("en-GB", { timeZone: "Africa/Nairobi", day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" });
+  const fmtDMon = (ts) => new Date(ts).toLocaleDateString("en-GB", { timeZone: "Africa/Nairobi", day: "numeric", month: "short" });
+  const relTime = (ts) => {
+    const s = Math.max(0, Math.floor((Date.now() - new Date(ts).getTime()) / 1000));
+    if (s < 60) return "just now";
+    const m = Math.floor(s / 60); if (m < 60) return `${m}m ago`;
+    const h = Math.floor(m / 60); if (h < 24) return `${h}h ago`;
+    const d = Math.floor(h / 24); if (d < 30) return `${d}d ago`;
+    return `${Math.floor(d / 30)}mo ago`;
+  };
+  const emailColor = (email) => {
+    let h = 0; for (const c of (email || "")) h = ((h * 31 + c.charCodeAt(0)) >>> 0);
+    return `hsl(${h % 360} 52% 52%)`;
+  };
+  const emailInitials = (email) => {
+    const local = (email || "").split("@")[0] || "";
+    const parts = local.split(/[._\-+]+/).filter(Boolean);
+    const ini = parts.length >= 2 ? parts[0][0] + parts[1][0] : local.slice(0, 2);
+    return (ini || "?").toUpperCase();
+  };
+  // Last 7 EAT days, oldest → newest (for the sparklines).
+  const today = todayEat();
+  const last7 = Array.from({ length: 7 }, (_, i) => _isoAddDays(today, -(6 - i)));
+  const dayCounts = (evDays) => last7.map(d => evDays.filter(x => x === d).length);
+  const heroTrend = (evDays) => {
+    const c = dayCounts(evDays), mx = Math.max(1, ...c);
+    return `<div class="kpi-trend">${c.map(v => v === 0 ? `<span class="bar miss" title="no logins"></span>` : `<span class="bar" style="height:${Math.max(8, Math.round(v / mx * 100))}%" title="${v} login${v === 1 ? "" : "s"}"></span>`).join("")}</div>`;
+  };
+  const userTrend = (evDays, color) => {
+    const c = dayCounts(evDays), mx = Math.max(1, ...c);
+    return `<div class="ua-mini">${c.map(v => `<span class="bar" style="height:${v === 0 ? 14 : Math.max(28, Math.round(v / mx * 100))}%;background:${v === 0 ? "var(--border)" : color}" title="${v}"></span>`).join("")}</div>`;
+  };
+
+  // Enrich once: org + EAT-day per row.
+  const evs = rows.map(r => ({ email: r.email, event_at: r.event_at, org: orgOf(r.email), day: eatDay(r.event_at) }));
+  const distinctOf = (list) => new Set(list.map(r => r.email)).size;
+  const distinct     = distinctOf(evs);
+  const impactEvs    = evs.filter(r => r.org === "impact");
+  const windwardEvs  = evs.filter(r => r.org === "windward");
+  const distImpact   = distinctOf(impactEvs);
+  const distWindward = distinctOf(windwardEvs);
+  const total        = evs.length;
+  const earliest     = total ? evs.reduce((m, r) => r.event_at < m ? r.event_at : m, evs[0].event_at) : null;
+  const pctUsers     = (n) => distinct > 0 ? Math.round(n / distinct * 100) : 0;
+
+  // Header eyebrow date/time (EAT).
+  const nowEat = new Date();
+  const headDate = nowEat.toLocaleDateString("en-GB", { timeZone: "Africa/Nairobi", weekday: "long", day: "numeric", month: "long", year: "numeric" });
+  const headTime = nowEat.toLocaleTimeString("en-GB", { timeZone: "Africa/Nairobi", hour: "2-digit", minute: "2-digit" });
+
   const tab = STATE.auditTab === "windward" ? "windward" : "impact";
-  const tabRows = byDomain[tab] || [];
+  const orgLabel = tab === "windward" ? "Windward" : "Impact Outsourcing";
+  const tabEvs = (tab === "windward" ? windwardEvs : impactEvs);
 
+  // Per-user rollup for the current tab.
   const users = {};
-  tabRows.forEach(r => {
-    const u = users[r.email] || (users[r.email] = { email: r.email, count: 0, first: r.event_at, last: r.event_at });
-    u.count++;
+  tabEvs.forEach(r => {
+    const u = users[r.email] || (users[r.email] = { email: r.email, count: 0, first: r.event_at, last: r.event_at, days: [] });
+    u.count++; u.days.push(r.day);
     if (r.event_at > u.last)  u.last  = r.event_at;
     if (r.event_at < u.first) u.first = r.event_at;
   });
   const userList = Object.values(users).sort((a, b) => (a.last < b.last ? 1 : -1));
 
-  const summaryRows = userList.map(u =>
-    `<tr><td>${esc(u.email)}</td><td class="num">${u.count}</td><td>${fmt(u.first)}</td><td>${fmt(u.last)}</td></tr>`
-  ).join("") || `<tr><td colspan="4" class="muted">No logins recorded yet.</td></tr>`;
+  const userRows = userList.map(u => {
+    const color = emailColor(u.email);
+    return `<tr>
+      <td><div class="ua-email"><span class="ua-avatar" style="background:${color}">${esc(emailInitials(u.email))}</span>${esc(u.email)}</div></td>
+      <td class="num">${u.count}</td>
+      <td>${esc(fmtDT(u.first))}</td>
+      <td>${esc(fmtDT(u.last))}</td>
+      <td>${userTrend(u.days, color)}</td>
+    </tr>`;
+  }).join("") || `<tr><td colspan="5" class="ua-empty">No logins recorded yet.</td></tr>`;
 
-  const eventRows = tabRows.slice(0, 500).map(r =>
-    `<tr><td>${fmt(r.event_at)}</td><td>${esc(r.email)}</td></tr>`
-  ).join("") || `<tr><td colspan="2" class="muted">No events yet.</td></tr>`;
+  const histShown = tabEvs.slice(0, 500);
+  const histRows = histShown.map(r => `<tr>
+      <td><div class="ua-when"><span class="abs">${esc(fmtDT(r.event_at))}</span><span class="rel">${esc(relTime(r.event_at))}</span></div></td>
+      <td><div class="ua-email"><span class="ua-dot" style="background:${emailColor(r.email)}"></span>${esc(r.email)}</div></td>
+    </tr>`).join("") || `<tr><td colspan="2" class="ua-empty">No logins recorded yet.</td></tr>`;
 
   root.innerHTML = `
   <div class="page">
-    <div class="ua-kpis">
-      <div class="ua-kpi"><div class="ua-kpi-n">${distinct}</div><div class="ua-kpi-l">Total users (active since logging began)</div></div>
-      <div class="ua-kpi"><div class="ua-kpi-n">${distImpact}</div><div class="ua-kpi-l">Impact Outsourcing users</div></div>
-      <div class="ua-kpi"><div class="ua-kpi-n">${distWindward}</div><div class="ua-kpi-l">Windward users</div></div>
-      <div class="ua-kpi"><div class="ua-kpi-n">${rows.length.toLocaleString()}</div><div class="ua-kpi-l">Total login events</div></div>
+    <div class="page-head">
+      <div>
+        <div class="page-eyebrow">Admin &middot; Access &amp; logins &middot; ${esc(headDate)} &middot; ${esc(headTime)} EAT &middot; <span style="color:var(--good)">&#9679;</span> Synced</div>
+        <h1 class="page-title">User <em>audit</em></h1>
+        <div class="page-subtitle">Who has access to the hub and when they last signed in — pulled live from the login log.
+          <span class="dot-sep">&middot;</span><span class="num">${distinct}</span> users
+          <span class="dot-sep">&middot;</span><span class="num">${total.toLocaleString()}</span> login events
+        </div>
+      </div>
+      <div class="page-head-actions">
+        <button class="btn btn-primary" id="uaExportBtn">Export CSV</button>
+      </div>
     </div>
+
+    <div class="kpis kpis-overview-hero">
+      <div class="kpi hero">
+        <div class="kpi-top"><div class="label">Total users</div><span class="kpi-icon">${KPI_ICONS.users}</span></div>
+        <div class="value-row"><span class="value">${distinct}</span></div>
+        ${heroTrend(evs.map(r => r.day))}
+        <div class="foot">Active since logging began${earliest ? " &middot; " + esc(fmtDMon(earliest)) : ""}</div>
+      </div>
+      <div class="kpi k-cyan">
+        <div class="kpi-top"><div class="label">Impact Outsourcing</div><span class="kpi-icon">${KPI_ICONS.users}</span></div>
+        <div class="value-row"><span class="value">${distImpact}</span></div>
+        <div class="delta">Internal &middot; ${pctUsers(distImpact)}% of users</div>
+      </div>
+      <div class="kpi k-orange">
+        <div class="kpi-top"><div class="label">Windward</div><span class="kpi-icon">${KPI_ICONS.anchor}</span></div>
+        <div class="value-row"><span class="value">${distWindward}</span></div>
+        <div class="delta">${distWindward === 0 ? "Vendor &middot; no logins recorded yet" : "Vendor &middot; " + pctUsers(distWindward) + "% of users"}</div>
+      </div>
+      <div class="kpi k-neutral">
+        <div class="kpi-top"><div class="label">Total login events</div><span class="kpi-icon">${KPI_ICONS.activity}</span></div>
+        <div class="value-row"><span class="value">${total.toLocaleString()}</span></div>
+        <div class="delta">${earliest ? "Since " + esc(fmtDMon(earliest)) + " &middot; " : ""}most recent 500 kept</div>
+      </div>
+    </div>
+
     <div class="ua-tabs">
-      <button class="ua-tab ${tab === 'impact'   ? 'active' : ''}" data-uatab="impact">Impact Outsourcing (${distImpact})</button>
-      <button class="ua-tab ${tab === 'windward' ? 'active' : ''}" data-uatab="windward">Windward (${distWindward})</button>
+      <button class="ua-tab ${tab === 'impact'   ? 'active' : ''}" data-uatab="impact">Impact Outsourcing<span class="ct">${distImpact}</span></button>
+      <button class="ua-tab ${tab === 'windward' ? 'active' : ''}" data-uatab="windward">Windward<span class="ct">${distWindward}</span></button>
     </div>
-    <h3 class="ua-h">Users — ${tab === 'windward' ? 'Windward' : 'Impact Outsourcing'}</h3>
-    <table class="ua-table"><thead><tr><th>Email</th><th class="num">Logins</th><th>First seen</th><th>Last seen</th></tr></thead><tbody>${summaryRows}</tbody></table>
-    <h3 class="ua-h">Login history — most recent 500</h3>
-    <table class="ua-table"><thead><tr><th>When</th><th>Email</th></tr></thead><tbody>${eventRows}</tbody></table>
+
+    <div class="ua-panel">
+      <div class="ua-panel-h"><span class="t">Users — ${esc(orgLabel)}</span><span class="s">sorted by last seen</span></div>
+      <table class="ua-table">
+        <thead><tr><th>Email</th><th class="num">Logins</th><th>First seen</th><th>Last seen</th><th>7-day</th></tr></thead>
+        <tbody>${userRows}</tbody>
+      </table>
+    </div>
+
+    <div class="ua-panel">
+      <div class="ua-panel-h"><span class="t">Login history</span><span class="s">most recent 500 &middot; newest first</span></div>
+      <div class="ua-hist">
+        <table class="ua-table">
+          <thead><tr><th>When</th><th>Email</th></tr></thead>
+          <tbody>${histRows}</tbody>
+        </table>
+      </div>
+      <div class="ua-foot">Showing <b>${histShown.length}</b> of <b>${tabEvs.length.toLocaleString()}</b> events &middot; scroll for the full most-recent-500 window</div>
+    </div>
+
+    <div class="ua-note">
+      <span class="ico">${KPI_ICONS.file}</span>
+      <div>Read live from the login-events log. Counts cover everything since logging began${earliest ? " on <b>" + esc(eatDay(earliest)) + "</b>" : ""} (the earliest recorded event). Only the most recent 500 raw events are retained; per-user totals are cumulative. Org is derived from the email domain — <b>@impactoutsourcing.co.ke</b> is internal (Impact Outsourcing); all other domains are treated as Windward. Timestamps are EAT. The View / Month controls in the top bar are independent of the global date picker.</div>
+    </div>
   </div>`;
 
   root.querySelectorAll("[data-uatab]").forEach(b =>
     b.addEventListener("click", () => { STATE.auditTab = b.dataset.uatab; PAGE_RENDERERS.useraudit(); })
   );
+  document.getElementById("uaExportBtn")?.addEventListener("click", () => {
+    const esc2 = (v) => { const s = String(v ?? ""); return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s; };
+    const lines = ["email,domain,event_at"];
+    for (const r of rows) lines.push([esc2(r.email), esc2(r.domain), esc2(r.event_at)].join(","));
+    const blob = new Blob([lines.join("\n")], { type: "text/csv" });
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = `user-audit-${today}.csv`;
+    a.click();
+    URL.revokeObjectURL(a.href);
+  });
 };
 
 // -------- Overview --------
