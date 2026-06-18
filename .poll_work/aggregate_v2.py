@@ -1221,6 +1221,54 @@ def compute_case_scenario_records(records, today_eat, ownership_assignees, cap=5
     return out[:cap], len(out) > cap
 
 
+def compute_qa_changed_today_records(records, today_eat, ownership_assignees, qa_exclude=None, cap=500):
+    """Per-record detail for every record BO QA marked 'changed' TODAY (EAT by
+    qa_status_ts) — the itemized companion to the qa_changed_today COUNT in
+    compute_metrics. This is the authoritative 'today' source the Overview's
+    Quality-flags panel is built on; the Critical Errors page consumes it so its
+    'Today' scope can never miss what the Overview shows. Same selection rule as
+    compute_metrics' qa_changed_today block (qs=='changed' & qa_status_ts EAT ==
+    today & qa_assignee not excluded). The function does NOT apply its own roster
+    filter — it emits every changed record it is given (team=None when the tagger
+    isn't on a team); the caller passes in_scope (already roster-scoped + team
+    stamped), so in practice the list mirrors the Overview exactly. Length equals
+    compute_metrics(records, ...)['qa_changed_today'] over the same records.
+
+    Returns (list, truncated_bool).
+    """
+    qa_exclude = qa_exclude or set()
+    norm = _normalize_ownership(ownership_assignees)
+    out = []
+    for info in records:
+        if info.get("qa_status") != "changed":
+            continue
+        if _parse_eat_date(info.get("qa_status_ts")) != today_eat:
+            continue
+        if (info.get("qa_assignee") or "").strip().lower() in qa_exclude:
+            continue
+        asg  = info.get("assignee")
+        # in_scope records carry the canonical `team`; fall back to deriving it
+        # from the roster for records that haven't been team-stamped.
+        team = info.get("team") or norm.get((asg or "").strip().lower(), {}).get("team")
+        out.append({
+            "airtable_record_id": info.get("airtable_record_id") or info.get("id"),
+            "imo":                info.get("imo"),
+            "role":               info.get("role"),
+            "assignee":           asg,
+            "team":               team,
+            "requested_by":       info.get("requested_by"),
+            # error_type (QA's mistake category) isn't extracted by extract_v2, so
+            # it's None here — the page renders that as "Unspecified". Sampling-backed
+            # rows still carry it; only snapshot-led today-rows lack it for now.
+            "error_type":         info.get("error_type"),
+            "qa_assignee":        info.get("qa_assignee"),
+            "qa_status_ts":       info.get("qa_status_ts"),
+            "source_table":       info.get("_table") or info.get("source_table"),
+        })
+    truncated = len(out) > cap
+    return out[:cap], truncated
+
+
 def compute_ww_qa_reviews(records, today_eat, ownership_assignees, cap=500):
     """Per-record WW QA review list. WW QA has no review-timestamp field, so its
     throughput stays a cumulative count (see ww_qa_throughput); this list surfaces
@@ -1428,6 +1476,11 @@ def aggregate(records, today_eat, ownership_assignees, qa_team_map=None, qa_excl
     add_new_company_records, anc_truncated = compute_add_new_company_records(in_scope, today_eat, ownership_assignees)
     case_gap, case_gap_trunc, case_no_imo, case_no_imo_trunc = compute_case_scenarios(in_scope, today_eat, ownership_assignees)
     case_scenario_records, case_scenario_trunc = compute_case_scenario_records(in_scope, today_eat, ownership_assignees)
+    # Authoritative 'today' source for the Critical Errors page — the itemized
+    # companion to totals.qa_changed_today. Same in_scope + qa_exclude as
+    # compute_metrics, so the list mirrors the Overview's Quality flags exactly.
+    qa_changed_today_records, qa_changed_trunc = compute_qa_changed_today_records(
+        in_scope, today_eat, ownership_assignees, qa_exclude)
     ww_qa_reviews, ww_qa_reviews_trunc = compute_ww_qa_reviews(in_scope, today_eat, ownership_assignees)
     # Experts aren't in the roster, so scan the FULL record set by name (not in_scope).
     expert_activity = compute_expert_activity(records, today_eat)
@@ -1473,6 +1526,8 @@ def aggregate(records, today_eat, ownership_assignees, qa_team_map=None, qa_excl
         "case_no_imo_truncated":      case_no_imo_trunc,
         "case_scenario_records":      case_scenario_records,
         "case_scenario_records_truncated": case_scenario_trunc,
+        "qa_changed_today_records":           qa_changed_today_records,
+        "qa_changed_today_records_truncated": qa_changed_trunc,
         "bo_qa_coverage":             bo_qa_coverage,
         "ww_qa_review_records":           ww_qa_reviews,
         "ww_qa_review_records_truncated": ww_qa_reviews_trunc,
@@ -1677,6 +1732,9 @@ def _load_records(work_dir):
         info = extract(r, FIELD_IDS_IO) if is_io else extract(r)
         info["_sources"] = sources.get(rid, set())
         info["_table"]   = "relations_io" if is_io else "relations_support"
+        info["airtable_record_id"] = rid   # Airtable record id (the raw dict key) —
+        # needed by compute_qa_changed_today_records so the Critical Errors page can
+        # dedup snapshot today-records against the ownership_qa_sampling table by id.
         out.append(info)
     return out
 

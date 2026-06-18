@@ -11130,6 +11130,27 @@ async function loadCriticalErrors() {
         reviewed_at: r.reviewed_at, eatDate: ceEatDate(r.reviewed_at),
         task, sanctions: ceTaskSanctions(task) });
     }
+    // OVERVIEW IS THE LEAD for "today": union in the snapshot's authoritative
+    // changed-today records (same source as the Overview Quality-flags panel:
+    // qa_status_ts == today). The sampling table lags/re-times today's verdicts,
+    // so without this the Critical Errors "Today" scope under-counts vs the
+    // Overview. Historical scopes (week/30d) stay sampling-based. `today` is the
+    // EAT date already computed at the top of this function — do not re-declare.
+    const haveToday = new Set(errors.filter(e => e.eatDate === today).map(e => e.rec));
+    for (const r of (STATE.v2?.qa_changed_today_records || [])) {
+      if (haveToday.has(r.airtable_record_id)) continue;   // already captured via sampling
+      const agent = canonicalAgent((r.assignee || "").trim());
+      const team  = teamForAgent(agent);
+      const task  = ((r.requested_by || "").trim()) || "(no task)";
+      errors.push({
+        rec: r.airtable_record_id, agent: agent || "(unattributed)", team, isRoster: !!team,
+        imo: r.imo, role: r.role, source_table: r.source_table,
+        errorType: (r.error_type || "").trim() || "Unspecified",
+        qa: (r.qa_assignee || "").trim() || "(unattributed)",
+        reviewed_at: r.qa_status_ts, eatDate: today,
+        task, sanctions: ceTaskSanctions(task),
+      });
+    }
     // Reviewed totals this week → per-agent error-rate context. One server-side count
     // (ce_reviewed_by_agent) instead of downloading every reviewed row; falls back to a
     // paginated tally if the function isn't deployed yet.
