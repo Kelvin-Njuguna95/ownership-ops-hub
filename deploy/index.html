@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>CLIENT_A Ownership QA — Operations Hub</title>
+<title>Impact Outsourcing Ownership Ops Hub</title>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.5.0/dist/chart.umd.js"></script>
 <script src="https://unpkg.com/gridjs/dist/gridjs.umd.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -1815,7 +1815,7 @@
 <!-- Auth login overlay — three modes: Sign in/Create account tabs, Reset PIN request, New PIN setup. -->
 <div id="loginOverlay" class="login-overlay" style="display:none">
   <div class="login-card">
-    <h1>CLIENT_A Ownership QA</h1>
+    <h1>Impact Outsourcing Ownership Ops Hub</h1>
     <div class="sub">Sign in to access the dashboard.</div>
 
     <!-- Mode 1: Sign in / Create account tabs -->
@@ -1867,7 +1867,7 @@
       <span class="brand-tile">IO</span>
       <span class="brand-stack">
         <span class="brand-eye">Impact Outsourcing</span>
-        <span class="brand-ttl">Ownership QA</span>
+        <span class="brand-ttl">Ownership Ops Hub</span>
       </span>
     </div>
     <ul id="navList"></ul>
@@ -2966,7 +2966,7 @@ PAGE_RENDERERS.overview = function () {
   const pageHeadHtml = `
     <div class="page-head">
       <div>
-        <div class="page-eyebrow">Ownership QA${headDate ? " &middot; " + headDate : ""} &middot; Africa / Nairobi</div>
+        <div class="page-eyebrow">Ownership Ops Hub${headDate ? " &middot; " + headDate : ""} &middot; Africa / Nairobi</div>
         <h1 class="page-title">Operations <em>overview</em></h1>
         <div class="page-subtitle">
           <span class="num">${teams.length}</span> teams
@@ -3354,9 +3354,11 @@ PAGE_RENDERERS.overview = function () {
     </div>`;
   const whatChangedHtml = buildOverviewWhatChanged(_ce);
 
-  // Order (Feature 4): value summary → what changed → page head → KPIs → flow →
-  // team performance / risk (scorecard, teams-floor, alerts, chart, verdict, flags).
-  root.innerHTML = valueSummaryHtml + whatChangedHtml + pageHeadHtml + kpiHeroHtml + flowHtml + `
+  // Order: page head → KPIs → flow → team performance / risk (scorecard,
+  // teams-floor, alerts, chart, verdict, flags). The value-summary band and
+  // "what changed this week" block were removed from the page; their builders
+  // (valueSummaryHtml / whatChangedHtml) are kept above but intentionally unused.
+  root.innerHTML = pageHeadHtml + kpiHeroHtml + flowHtml + `
     <div class="overview-layout">
       <div class="overview-main">${scorecardHtml}${teamsFloorHtml}${alertsHtml}${chartHtml}</div>
       <div class="overview-side">${verdictHtml}${flagsHtml}</div>
@@ -4739,7 +4741,7 @@ PAGE_RENDERERS.hourly = function () {
   const hourlyAgentCount = teams.reduce((s, tm) => s + ((STATE.roster?.[tm]?.members || []).length), 0);
   const pageHeadHtml = `
     <div class="page-head">
-      <div class="page-eyebrow">Ownership QA &middot; ${esc(date)} &middot; Tagging cadence</div>
+      <div class="page-eyebrow">Ownership Ops Hub &middot; ${esc(date)} &middot; Tagging cadence</div>
       <h1 class="page-title">Hourly <em>output</em></h1>
       <div class="page-subtitle">
         <span class="num">${hourlyAgentCount}</span> agents
@@ -6893,7 +6895,7 @@ PAGE_RENDERERS.intake = function () {
   const pageHeadHtml = `
     <div class="page-head">
       <div>
-        <div class="page-eyebrow">Ownership QA${headDate ? " &middot; " + headDate : ""} &middot; Daily intake</div>
+        <div class="page-eyebrow">Ownership Ops Hub${headDate ? " &middot; " + headDate : ""} &middot; Daily intake</div>
         <h1 class="page-title">Daily <em>intake</em></h1>
         <div class="page-subtitle">
           <span class="num">${intakeToday.toLocaleString()}</span> records today
@@ -7428,7 +7430,7 @@ PAGE_RENDERERS.tasks = function () {
   root.innerHTML = `
     <div class="page-head">
       <div>
-        <div class="page-eyebrow">Ownership QA${headDate ? " &middot; " + headDate : ""} &middot; Operations<span class="tl-live"><span class="dot"></span>Live &middot; ${esc(refLabel)}</span></div>
+        <div class="page-eyebrow">Ownership Ops Hub${headDate ? " &middot; " + headDate : ""} &middot; Operations<span class="tl-live"><span class="dot"></span>Live &middot; ${esc(refLabel)}</span></div>
         <h1 class="page-title">Task <em>lifecycle</em></h1>
         <div class="page-subtitle">
           All tagging tasks across the cache window — filter by team, status, age.
@@ -7951,7 +7953,7 @@ PAGE_RENDERERS.new_companies = function () {
   root.innerHTML = `
     <div class="page-head">
       <div>
-        <div class="page-eyebrow">Ownership QA &middot; ${esc(nowEat)} EAT<span class="nc-live"><span class="dot"></span>Live &middot; ${esc(refLabel)}</span></div>
+        <div class="page-eyebrow">Ownership Ops Hub &middot; ${esc(nowEat)} EAT<span class="nc-live"><span class="dot"></span>Live &middot; ${esc(refLabel)}</span></div>
         <h1 class="page-title">New <em>companies</em></h1>
         <div class="page-subtitle">
           Tagging analytics for new companies — track volume, team load, clearance time.
