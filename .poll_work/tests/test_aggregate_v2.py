@@ -28,6 +28,7 @@ from aggregate_v2 import (  # noqa: E402
     compute_expert_activity,
     compute_metrics,
     compute_not_yet_finalized,
+    compute_qa_changed_today_records,
     compute_qa_done_not_finalized,
     compute_qa_reviewers,
     compute_supply,
@@ -2508,6 +2509,71 @@ class TestComputeAddNewCompanyCleared(unittest.TestCase):
         ]
         self.assertEqual(compute_add_new_company_cleared(records), 0)
         self.assertEqual(compute_add_new_company_cleared([]), 0)
+
+
+class TestQaChangedTodayRecords(unittest.TestCase):
+    """compute_qa_changed_today_records — the itemized companion to the
+    qa_changed_today COUNT. Its length must equal compute_metrics' count over the
+    same records (the Critical Errors 'Today' scope mirrors the Overview)."""
+
+    QA_EXCLUDE = {"leader"}
+
+    def _recs(self):
+        return [
+            # changed TODAY, roster agent Alice → included
+            dict(_info(assignee="Alice", qa_assignee="QA1", qa_status="changed",
+                       qa_status_ts=_ts(0, 11), requested_by="TaskX", imo="100", role="OWNER"),
+                 team="Simba", _table="relations_support", airtable_record_id="rec1"),
+            # changed TODAY, roster agent Carol → included
+            dict(_info(assignee="Carol", qa_assignee="QA2", qa_status="changed",
+                       qa_status_ts=_ts(0, 12), requested_by="TaskY", imo="101"),
+                 team="Nyati", _table="relations_io", airtable_record_id="rec2"),
+            # APPROVE today → excluded (not a changed verdict)
+            dict(_info(assignee="Bob", qa_assignee="QA1", qa_status="approve",
+                       qa_status_ts=_ts(0, 9)), team="Tembo", airtable_record_id="rec3"),
+            # changed YESTERDAY → excluded (qa_status_ts not today)
+            dict(_info(assignee="Alice", qa_assignee="QA1", qa_status="changed",
+                       qa_status_ts=_ts(-1, 11)), team="Simba", airtable_record_id="rec4"),
+            # changed today but QA reviewer is an excluded team-leader → excluded
+            dict(_info(assignee="Alice", qa_assignee="Leader", qa_status="changed",
+                       qa_status_ts=_ts(0, 13)), team="Simba", airtable_record_id="rec5"),
+        ]
+
+    def test_length_equals_qa_changed_today_count(self):
+        recs = self._recs()
+        lst, trunc = compute_qa_changed_today_records(
+            recs, TODAY, OWNERSHIP_ASSIGNEES, self.QA_EXCLUDE)
+        metrics = compute_metrics(recs, TODAY, self.QA_EXCLUDE)
+        # The invariant the whole feature rests on: the itemized list and the
+        # COUNT the Overview reads are derived by the SAME rule over the SAME records.
+        self.assertEqual(len(lst), metrics["qa_changed_today"])
+        self.assertEqual(len(lst), 2)
+        self.assertFalse(trunc)
+
+    def test_selects_the_right_records(self):
+        lst, _ = compute_qa_changed_today_records(
+            self._recs(), TODAY, OWNERSHIP_ASSIGNEES, self.QA_EXCLUDE)
+        self.assertEqual({r["airtable_record_id"] for r in lst}, {"rec1", "rec2"})
+        self.assertEqual({r["assignee"]: r["team"] for r in lst},
+                         {"Alice": "Simba", "Carol": "Nyati"})
+        self.assertEqual({r["assignee"]: r["source_table"] for r in lst},
+                         {"Alice": "relations_support", "Carol": "relations_io"})
+
+    def test_truncation_flag(self):
+        recs = [
+            dict(_info(assignee="Alice", qa_assignee="QA1", qa_status="changed",
+                       qa_status_ts=_ts(0, 11)), team="Simba", airtable_record_id=f"rec{i}")
+            for i in range(3)
+        ]
+        lst, trunc = compute_qa_changed_today_records(
+            recs, TODAY, OWNERSHIP_ASSIGNEES, cap=2)
+        self.assertEqual(len(lst), 2)
+        self.assertTrue(trunc)
+
+    def test_empty(self):
+        lst, trunc = compute_qa_changed_today_records([], TODAY, OWNERSHIP_ASSIGNEES)
+        self.assertEqual(lst, [])
+        self.assertFalse(trunc)
 
 
 if __name__ == "__main__":
