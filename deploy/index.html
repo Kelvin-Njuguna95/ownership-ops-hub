@@ -11292,7 +11292,9 @@ async function loadCriticalErrors() {
     }
     // Reviewed totals this week → per-agent error-rate context. One server-side count
     // (ce_reviewed_by_agent) instead of downloading every reviewed row; falls back to a
-    // paginated tally if the function isn't deployed yet.
+    // paginated tally if the function isn't deployed yet. This whole step is BEST-EFFORT:
+    // the leaderboard (CE_STATE.errors) is already loaded above, so a failure here must
+    // NOT blank the page — it only drops the per-agent error-rate context.
     const reviewedByAgent = {};
     let revRows = null;
     try {
@@ -11301,10 +11303,15 @@ async function loadCriticalErrors() {
       revRows = data;
     } catch (e) {
       console.warn("ce_reviewed_by_agent RPC unavailable, falling back to row scan:", e?.message || e);
-      const reviewed = await page(
-        "airtable_record_id,assignee,qa_status,reviewed_at",
-        (q) => q.in("qa_status", ["approve", "changed"]).gte("reviewed_at", startWk.toISOString()).lt("reviewed_at", endTom.toISOString()));
-      revRows = [...reviewed.values()].map(r => ({ assignee: r.assignee, n: 1 }));
+      try {
+        const reviewed = await page(
+          "airtable_record_id,assignee,qa_status,reviewed_at",
+          (q) => q.in("qa_status", ["approve", "changed"]).gte("reviewed_at", startWk.toISOString()).lt("reviewed_at", endTom.toISOString()));
+        revRows = [...reviewed.values()].map(r => ({ assignee: r.assignee, n: 1 }));
+      } catch (e2) {
+        console.warn("ce reviewed-count fallback scan failed; rendering leaderboard without error-rate context:", e2?.message || e2);
+        revRows = [];
+      }
     }
     for (const r of (revRows || [])) {
       const agent = canonicalAgent((r.assignee || "").trim());
