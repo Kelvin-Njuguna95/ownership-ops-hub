@@ -732,6 +732,65 @@ def supabase_stamp_reviewed(supabase_url, service_key, reviewed_updates, now_utc
     return stamped
 
 
+def supabase_reconcile_verdict(supabase_url, service_key, reviewed_updates):
+    """Propagate a CHANGED verdict to ownership_qa_sampling rows that were already
+    stamped with a DIFFERENT verdict in an earlier cycle.
+
+    ``supabase_stamp_reviewed`` is first-write-wins on ``reviewed_at`` (its
+    ``&reviewed_at=is.null`` filter), so once a row is stamped its ``qa_status``
+    is frozen at whatever verdict the detector observed first. But a QA reviewer
+    can flip their decision afterwards (e.g. approve → changed): Airtable's
+    ``QA_status`` and ``QA_status_ts`` move to the new verdict, while the sampling
+    row keeps the stale one. The record then silently disappears from anything
+    that reads ``ownership_qa_sampling`` filtered on ``qa_status="changed"`` — the
+    Critical Errors page is the symptom that surfaced this (a record the Overview
+    counts straight from Airtable was missing from the page).
+
+    This PATCH reconciles ``qa_status`` (and ``error_type`` on a CHANGE) where the
+    stored value differs from the freshly-observed verdict. The
+    ``&qa_status=neq.<verdict>`` filter makes it touch ONLY rows that actually
+    flipped, so it is a cheap no-op on the common steady-state cycle.
+
+    ``reviewed_at`` is deliberately NOT re-stamped: it stays first-write-wins so it
+    keeps meaning "first cycle a verdict was observed". Consequence: a verdict that
+    flips on a LATER EAT day than the original stamp keeps the original day's
+    ``reviewed_at``, so the Critical Errors "Today" hero (which buckets by
+    ``reviewed_at``) attributes it to the original day, not the flip day. Same-day
+    flips — the observed case — are unaffected. Re-stamping ``reviewed_at`` on a
+    flip is a deliberate semantics change (``reviewed_at`` is used elsewhere) and
+    is left for a separate decision. Returns rows newly reconciled.
+    """
+    from collections import defaultdict as _defaultdict
+    by_group = _defaultdict(list)
+    for rid, val in reviewed_updates.items():
+        verdict, err = val if isinstance(val, tuple) else (val, None)
+        by_group[(verdict, err)].append(rid)
+    if not by_group:
+        return 0
+    base = supabase_url.rstrip("/")
+    reconciled = 0
+    CHUNK = 100
+    for (verdict, err), rec_ids in by_group.items():
+        body = {"qa_status": verdict}
+        if err is not None:
+            body["error_type"] = err
+        for i in range(0, len(rec_ids), CHUNK):
+            chunk = rec_ids[i:i + CHUNK]
+            ids_clause = ",".join(chunk)
+            # qa_status=neq.<verdict> → only rows whose stored verdict differs are
+            # touched; reviewed_at is intentionally absent from the filter and body.
+            patch_url = (f"{base}/rest/v1/ownership_qa_sampling"
+                         f"?airtable_record_id=in.({ids_clause})"
+                         f"&qa_status=neq.{verdict}")
+            result = _sb_patch(
+                patch_url,
+                _sb_headers(service_key, {"Prefer": "return=representation"}),
+                body,
+            )
+            reconciled += len(result)
+    return reconciled
+
+
 def supabase_backfill_error_type(supabase_url, service_key, reviewed_updates):
     """Fill error_type on CHANGED records whose verdict was stamped in an earlier
     cycle. stamp_reviewed() is first-write-wins on reviewed_at, so a record
@@ -953,6 +1012,7 @@ def main():
     comp_result = supabase_insert_completions(supabase_url, service_key, completion_rows)
     samp_new    = supabase_insert_samplings(supabase_url, service_key, sampling_rows)
     reviewed_stamped = supabase_stamp_reviewed(supabase_url, service_key, reviewed_updates, now_utc)
+    verdict_reconciled = supabase_reconcile_verdict(supabase_url, service_key, reviewed_updates)
     error_type_filled = supabase_backfill_error_type(supabase_url, service_key, reviewed_updates)
     alert_new, alert_reopened = supabase_upsert_alerts(supabase_url, service_key, alert_rows)
 
@@ -968,7 +1028,8 @@ def main():
           f"flow_upserted={comp_result['flow_upserted']} "
           f"dup_no_flow={comp_result['duplicates_no_flow']} "
           f"tagging_fill={tagging_fill}")
-    print(f"  qa_sampling:       new={samp_new} reviewed_stamped={reviewed_stamped} error_type_filled={error_type_filled}")
+    print(f"  qa_sampling:       new={samp_new} reviewed_stamped={reviewed_stamped} "
+          f"verdict_reconciled={verdict_reconciled} error_type_filled={error_type_filled}")
     print(f"  alerts:            "
           f"missing_qa_assignee={by_class['missing_qa_assignee']} "
           f"missing_qa_status={by_class['missing_qa_status']} "
