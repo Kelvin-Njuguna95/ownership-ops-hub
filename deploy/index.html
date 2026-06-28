@@ -9519,6 +9519,14 @@ async function _loadReportData(start, end) {
   const tasks = allTasks.filter(t => t.history.some(h => h.snapshot_date >= start && h.snapshot_date <= end));
 
   // 1000-row paged read — a bare .limit() silently caps at db-max-rows (1000).
+  // Order by the SAME column we range-filter on (tsCol), then the unique PK (id)
+  // as a tiebreak. Ordering by a non-filter, non-indexed column (we used to sort
+  // by airtable_record_id) forces Postgres to full-sort the filtered set and
+  // deep-OFFSET through it; past ~5–8k rows that exceeds the statement timeout
+  // (57014), the page errors, and pageFetch returns out.partial with only the
+  // rows loaded so far — silently undercounting the Agents Report ~5×. Sorting
+  // on tsCol keeps the scan index-driven (OFFSET walks the index, no sort); the
+  // secondary .order("id") guarantees a stable, collision-free page boundary.
   const pageFetch = async (table, cols, tsCol) => {
     const out = [];
     for (let page = 0; page < 1000; page++) {
@@ -9526,7 +9534,8 @@ async function _loadReportData(start, end) {
         .select(cols)
         .gte(tsCol, startUtc)
         .lt(tsCol, endUtc)
-        .order("airtable_record_id", { ascending: true })
+        .order(tsCol, { ascending: true })
+        .order("id", { ascending: true })
         .range(page * 1000, page * 1000 + 999);
       if (error) {
         console.error(`report load ${table} — page ${page} failed after ${out.length} rows:`, error?.message || error, error?.code || "");
@@ -9561,6 +9570,34 @@ async function _loadReportData(start, end) {
     samplingPartial: !!(sampling && sampling.partial),
     reviewsPartial: !!(reviews && reviews.partial),
   };
+
+  // Build-time sanity check: per-day team completions (what the Agents Report
+  // counts) vs that day's snapshot.tagged_today (the Airtable start_tagging
+  // truth on the live Overview). A large gap means the completions read is
+  // undercounting — e.g. the statement-timeout page truncation that silently
+  // understated this report ~5×. Detector observation-time vs start_tagging
+  // skew is normally <20%, so only a >30% gap trips the flag. Today (EAT) is
+  // skipped: both sides are still filling in intraday and would cry wolf.
+  try {
+    const compByDay = {};
+    for (const r of data.completions) { const d = eatDate(r.completed_at); if (d) compByDay[d] = (compByDay[d] || 0) + 1; }
+    const today = todayEat();
+    const taggedByDay = {}; const taggedGaps = [];
+    const snaps = await Promise.all(data.dates.map(d => readJson(`snapshots/${d}.json`)));
+    data.dates.forEach((d, i) => {
+      const tg = snaps[i] && snaps[i].totals && snaps[i].totals.tagged_today;
+      if (typeof tg !== "number" || tg <= 0 || d === today) return;
+      taggedByDay[d] = tg;
+      const comp = compByDay[d] || 0;
+      const div = Math.abs(comp - tg) / tg;
+      if (div > 0.30) taggedGaps.push({ day: d, completions: comp, tagged_today: tg, divPct: +(div * 100).toFixed(0) });
+    });
+    data.taggedByDay = taggedByDay;
+    data.taggedMismatch = taggedGaps.length > 0;
+    data.taggedGaps = taggedGaps;
+    if (data.taggedMismatch) console.warn("⚠ Agents Report completions vs tagged_today divergence >30%:", taggedGaps);
+  } catch (e) { console.error("tagged_today tie-out failed:", e); data.taggedMismatch = false; }
+
   REPORT_STATE.cache[cacheKey] = data;
   return data;
 }
@@ -9811,6 +9848,7 @@ function _buildAgentsWorkbook(data) {
     ["QA changed (records, in-range)", m.qaChangedInRange],
     ["QA throughput ratio % (reviewed ÷ completed, may exceed 100%)", m.qaThroughputPct],
     [data.metricMismatch ? "⚠ METRIC MISMATCH — QA totals did not reconcile; see console" : "", ""],
+    [data.taggedMismatch ? `⚠ UNDERCOUNT — daily tagged totals diverge >30% from the Overview's tagged_today: ${data.taggedGaps.map(g => `${g.day} ${g.completions} vs ${g.tagged_today} (−${g.divPct}%)`).join("; ")}` : "", ""],
     [REPORT_COVERAGE_NOTE, ""],
   ];
 
@@ -9953,7 +9991,7 @@ function _renderAgentsCard(data) {
   if (!names.length) { el.innerHTML = `<h3>Agents Report</h3><div class="empty">${data.completionsPartial ? "Couldn’t load this range — hit Refresh." : "No data in this range"}</div><button class="btn" disabled>⤓ Download Excel</button>`; return; }
   const total = names.reduce((s, n) => s + agents[n].total, 0);
   const top = [...names].sort((a, b) => agents[b].total - agents[a].total).slice(0, 8);
-  el.innerHTML = `<h3>Agents Report</h3>${data.completionsPartial ? `<div class="footer-note" style="color:var(--warn)">⚠ Partial — some rows didn’t load; totals may be understated. Hit Refresh.</div>` : ""}${data.metricMismatch ? `<div class="footer-note" style="color:var(--warn)">⚠ Metric mismatch — QA totals didn’t reconcile across sheets; see console.</div>` : ""}
+  el.innerHTML = `<h3>Agents Report</h3>${data.completionsPartial ? `<div class="footer-note" style="color:var(--warn)">⚠ Partial — some rows didn’t load; totals may be understated. Hit Refresh.</div>` : ""}${data.metricMismatch ? `<div class="footer-note" style="color:var(--warn)">⚠ Metric mismatch — QA totals didn’t reconcile across sheets; see console.</div>` : ""}${data.taggedMismatch ? `<div class="footer-note" style="color:var(--warn)">⚠ Undercount — ${data.taggedGaps.map(g => `${g.day} ${g.completions.toLocaleString()} vs ${g.tagged_today.toLocaleString()} tagged (−${g.divPct}%)`).join("; ")}. Daily totals don’t match the Overview’s tagged_today; see console.</div>` : ""}
     <div class="kpis"><div class="kpi"><div class="label">Active agents</div><div class="value">${names.length}</div></div>
       <div class="kpi"><div class="label">Records tagged</div><div class="value">${total.toLocaleString()}</div></div></div>
     <table><thead><tr><th>Agent</th><th>Team</th><th class="right">Tagged</th></tr></thead><tbody>
